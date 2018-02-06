@@ -42,6 +42,47 @@ class TestGrain (TestCase):
         self.assertEqual(grain.duration, Fraction(0,1))
         self.assertEqual(grain.timelabels, [])
 
+    def test_empty_grain_creation_with_missing_data(self):
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        meta = {}
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = Grain(meta)
+
+        self.assertEqual(grain.grain_type, "empty")
+        self.assertEqual(grain.creation_timestamp, cts)
+
+    def test_empty_grain_creation_with_odd_data(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        meta = {
+            "grain": {
+                "source_id": src_id,
+                "flow_id": flow_id,
+                "origin_timestamp": ots,
+                "sync_timestamp": sts,
+                "creation_timestamp": cts,
+                "rate": Fraction(25,1),
+                "duration": Fraction(1,25)
+            }
+        }
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = Grain(meta)
+
+        self.assertEqual(grain.grain_type, "empty")
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertEqual(grain.sync_timestamp, sts)
+        self.assertEqual(grain.source_id, src_id)
+        self.assertEqual(grain.flow_id, flow_id)
+        self.assertEqual(grain.rate, Fraction(25,1))
+        self.assertEqual(grain.duration, Fraction(1,25))
+
     def test_empty_grain_creation_with_ots(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
         flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
