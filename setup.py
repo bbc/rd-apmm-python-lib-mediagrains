@@ -74,8 +74,9 @@ package_names = packages.keys()
 
 packages_required = [
     "nmoscommon",
-    "enum34"
-    ]
+    "enum34",
+    "six",
+]
 
 deps_required = []
 

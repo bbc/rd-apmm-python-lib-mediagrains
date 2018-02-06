@@ -17,7 +17,7 @@
 from __future__ import print_function
 from unittest import TestCase
 import uuid
-from mediagrains.Grain import Grain, VideoGrain
+from mediagrains.grain import Grain, VideoGrain
 from mediagrains.cogframe import CogFrameFormat, CogFrameLayout
 from nmoscommon.timestamp import Timestamp
 import mock

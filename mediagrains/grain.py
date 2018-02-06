@@ -38,6 +38,30 @@ class GRAIN(Sequence):
         self.meta = meta
         self.data = data
         self._factory = "Grain"
+        if "@_ns" not in self.meta:
+            self.meta['@_ns'] = "urn:x-ipstudio:ns:0.1"
+        if 'grain' not in self.meta:
+            self.meta['grain'] = {}
+        if 'grain_type' not in self.meta['grain']:
+            self.meta['grain']['grain_type'] = "empty"
+        if 'source_id' in self.meta['grain'] and isinstance(self.meta["grain"]["source_id"], UUID):
+            self.meta['grain']['source_id'] = str(self.meta['grain']['source_id'])
+        if 'flow_id' in self.meta['grain'] and isinstance(self.meta["grain"]["flow_id"], UUID):
+            self.meta['grain']['flow_id'] = str(self.meta['grain']['flow_id'])
+        if 'origin_timestamp' in self.meta['grain'] and isinstance(self.meta["grain"]["origin_timestamp"], Timestamp):
+            self.meta['grain']['origin_timestamp'] = str(self.meta['grain']['origin_timestamp'])
+        if 'sync_timestamp' in self.meta['grain'] and isinstance(self.meta["grain"]["sync_timestamp"], Timestamp):
+            self.meta['grain']['sync_timestamp'] = str(self.meta['grain']['sync_timestamp'])
+        if 'creation_timestamp' in self.meta['grain'] and isinstance(self.meta["grain"]["creation_timestamp"], Timestamp):
+            self.meta['grain']['creation_timestamp'] = str(self.meta['grain']['creation_timestamp'])
+        if 'creation_timestamp' not in self.meta['grain']:
+            self.meta['grain']['creation_timestamp'] = str(Timestamp.get_time())
+        if 'rate' in self.meta['grain'] and isinstance(self.meta['grain']['rate'], Fraction):
+            self.meta['grain']['rate'] = {'numerator': self.meta['grain']['rate'].numerator,
+                                          'denominator': self.meta['grain']['rate'].denominator}
+        if 'duration' in self.meta['grain'] and isinstance(self.meta['grain']['duration'], Fraction):
+            self.meta['grain']['duration'] = {'numerator': self.meta['grain']['duration'].numerator,
+                                              'denominator': self.meta['grain']['duration'].denominator}
 
     def __len__(self):
         return 2
@@ -577,7 +601,7 @@ def Grain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
             }
         data = None
 
-    if meta['grain']['grain_type'] == 'video':
+    if 'grain' in meta and 'grain_type' in meta['grain'] and meta['grain']['grain_type'] == 'video':
         return VideoGrain(meta, data)
     else:
         return GRAIN(meta, data)

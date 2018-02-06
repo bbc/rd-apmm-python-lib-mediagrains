@@ -39,6 +39,6 @@ Notably this means that the data element of these grains is fully compatible
 with numpy and similar libraries.
 """
 
-from Grain import Grain, VideoGrain
+from grain import Grain, VideoGrain
 
 __all__ = ["Grain", "VideoGrain"]
