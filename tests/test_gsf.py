@@ -19,7 +19,10 @@ from unittest import TestCase
 from uuid import UUID
 from mediagrains.grain import GRAIN, VIDEOGRAIN
 from mediagrains import Grain, VideoGrain
-from mediagrains.gsf import loads, GSFDecodeError
+from mediagrains.gsf import loads
+from mediagrains.gsf import GSFDecodeError
+from mediagrains.gsf import GSFDecodeBadVersionError
+from mediagrains.gsf import GSFDecodeBadFileTypeError
 from mediagrains.cogframe import CogFrameFormat, CogFrameLayout
 from nmoscommon.timestamp import Timestamp, TimeOffset
 from fractions import Fraction
@@ -72,7 +75,16 @@ class TestGSFLoads(TestCase):
 
             self.assertEqual(len(grain.data), grain.components[0].length + grain.components[1].length + grain.components[2].length)
 
+    def test_loads_rejects_incorrect_type_file(self):
+        with self.assertRaises(GSFDecodeBadFileTypeError) as cm:
+            loads(b"POTATO23\x07\x00\x00\x00")
+        self.assertEqual(cm.exception.offset, 0)
+        self.assertEqual(cm.exception.filetype, b"POTATO23")
+
     def test_loads_rejects_incorrect_version_file(self):
-        with self.assertRaises(GSFDecodeError):
+        with self.assertRaises(GSFDecodeBadVersionError) as cm:
             loads(b"SSBBgrsg\x08\x00\x03\x00")
+        self.assertEqual(cm.exception.offset, 0)
+        self.assertEqual(cm.exception.major, 8)
+        self.assertEqual(cm.exception.minor, 3)
 

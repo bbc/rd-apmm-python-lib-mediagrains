@@ -22,7 +22,8 @@ from datetime import datetime
 from nmoscommon.timestamp import Timestamp
 from fractions import Fraction
 
-__all__ = ["GSFDecoder", "loads", "GSFError", "GSFDecodeError"]
+__all__ = ["GSFDecoder", "loads", "GSFError", "GSFDecodeError",
+           "GSFDecodeBadFileTypeError", "GSFDecodeBadVersionError"]
 
 def loads(s, cls=None, parse_grain=None, **kwargs):
     """Deserialise a GSF file from a string (or similar) into python,
@@ -41,6 +42,7 @@ def loads(s, cls=None, parse_grain=None, **kwargs):
     dec = cls(parse_grain=parse_grain, **kwargs)
     return dec.decode(s)
 
+
 class GSFError(Exception):
     pass
 
@@ -50,6 +52,19 @@ class GSFDecodeError(GSFError):
         super(GSFDecodeError, self).__init__(msg)
         self.offset = i
         self.length = length
+
+
+class GSFDecodeBadFileTypeError(GSFDecodeError):
+    def __init__(self, msg, i, filetype):
+        super(GSFDecodeBadFileTypeError, self).__init__(msg, i, 8)
+        self.filetype = filetype
+
+
+class GSFDecodeBadVersionError(GSFDecodeError):
+    def __init__(self, msg, i, major, minor):
+        super(GSFDecodeBadVersionError, self).__init__(msg, i, 8)
+        self.major = major
+        self.minor = minor
 
 
 class GSFDecoder(object):
@@ -118,7 +133,7 @@ class GSFDecoder(object):
         start = i
         (tag, i) = self._read_string(b, i, 8)
         if tag != b"SSBBgrsg":
-            raise GSFDecodeError("File lacks correct header", start)
+            raise GSFDecodeBadFileTypeError("File lacks correct header", start, tag)
         (major, i) = self._read_uint(b, i,  2)
         (minor, i) = self._read_uint(b, i, 2)
         return (major, minor, i)
@@ -303,7 +318,7 @@ class GSFDecoder(object):
 
         (major, minor, i) = self._decode_ssb_header(b, i)
         if (major, minor) != (7,0):
-            raise GSFDecodeError("Unknown Version {}.{}".format(major, minor), 0)
+            raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
 
         (head, i) = self._decode_head(b,i)
         segments = {}
