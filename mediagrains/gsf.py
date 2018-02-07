@@ -22,8 +22,24 @@ from datetime import datetime
 from nmoscommon.timestamp import Timestamp
 from fractions import Fraction
 
-__all__ = ["GSFDecoder"]
+__all__ = ["GSFDecoder", "loads", "GSFError", "GSFDecodeError"]
 
+def loads(s, cls=None, parse_grain=None, **kwargs):
+    """Deserialise a GSF file from a string (or similar) into python,
+    returns a pair of (head, segments) where head is a python dict
+    containing general metadata from the file, and segments is a dictionary
+    mapping numeric segment ids to lists of Grain objects.
+
+    If you wish to use a custom GSFDecoder subclass pass it as cls, if you
+    wish to use a custom Grain constructor pass it as parse_grain. The
+    defaults are GSFDecoder and Grain. Extra kwargs will be passed to the
+    decoder constructor."""
+    if cls is None:
+        cls = GSFDecoder
+    if parse_grain is None:
+        parse_grain = Grain
+    dec = cls(parse_grain=parse_grain, **kwargs)
+    return dec.decode(s)
 
 class GSFError(Exception):
     pass
@@ -37,9 +53,18 @@ class GSFDecodeError(GSFError):
 
 
 class GSFDecoder(object):
-    """A decoder for GSF"""
-    def __init__(self):
-        pass
+    """A decoder for GSF format.
+
+    Constructor takes a single optional argument parse_grain,
+    which should be a function which takes a metadata dictionary
+    and a buffer object and returns some sort of object representing
+    a grain. The default is to use the function Grain.
+
+    The only public method is "decode", which takes a string (or similar)
+    as an argument and returns a pair of a dictionary of file metadata and a
+    dictionary mapping numeric segment ids to lists of grain objects."""
+    def __init__(self, parse_grain=Grain, **kwargs):
+        self.Grain = parse_grain
 
     def _read_uint(self, b, i, l):
         r = 0
@@ -266,7 +291,7 @@ class GSFDecoder(object):
             (meta, i) = self._decode_gbhd(b, i)
             (data, i) = self._decode_grdt(b, i)
 
-            return (Grain(meta, data), local_id, i)
+            return (self.Grain(meta, data), local_id, i)
         else:
             return (None, None, i)
 
@@ -284,7 +309,6 @@ class GSFDecoder(object):
         segments = {}
 
         while i < len(b):
-            print("Decode Next GRAI at offset {}".format(i))
             (grain, local_id, i) = self._decode_grai(b,i)
 
             if grain is None:
@@ -302,5 +326,4 @@ if __name__ == "__main__":  # pragma: no cover
     f = open(fname, "rb")
     b = f.read()
 
-    dec = GSFDecoder()
-    print(dec.decode(b))
+    print(loads(b))

@@ -23,6 +23,7 @@ from nmoscommon.timestamp import Timestamp
 import mock
 from fractions import Fraction
 
+
 class TestGrain (TestCase):
     def test_empty_grain_creation(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
