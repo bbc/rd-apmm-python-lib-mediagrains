@@ -17,19 +17,23 @@
 from __future__ import print_function
 from unittest import TestCase
 from uuid import UUID
-from mediagrains.grain import GRAIN, VIDEOGRAIN
+from mediagrains.grain import GRAIN, VIDEOGRAIN, AUDIOGRAIN
 from mediagrains import Grain, VideoGrain
 from mediagrains.gsf import loads
 from mediagrains.gsf import GSFDecodeError
 from mediagrains.gsf import GSFDecodeBadVersionError
 from mediagrains.gsf import GSFDecodeBadFileTypeError
-from mediagrains.cogframe import CogFrameFormat, CogFrameLayout
+from mediagrains.cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from nmoscommon.timestamp import Timestamp, TimeOffset
 from fractions import Fraction
 from datetime import datetime
 
 with open('examples/video.gsf', 'rb') as f:
     VIDEO_DATA = f.read()
+
+with open('examples/audio.gsf', 'rb') as f:
+    AUDIO_DATA = f.read()
+
 
 class TestGSFLoads(TestCase):
     def test_loads_video(self):
@@ -74,6 +78,35 @@ class TestGSFLoads(TestCase):
             self.assertEqual(grain.components[2].length, 240*135)
 
             self.assertEqual(len(grain.data), grain.components[0].length + grain.components[1].length + grain.components[2].length)
+
+    def test_loads_audio(self):
+        (head, segments) = loads(AUDIO_DATA)
+
+        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 37, 50))
+        self.assertEqual(head['id'], UUID('781fb6c5-d22f-4df5-ba69-69059efd5ced'))
+        self.assertEqual(len(head['segments']), 1)
+        self.assertEqual(head['segments'][0]['id'], UUID('fc4c5533-3fad-4437-93c0-8668cb876578'))
+        self.assertIn(head['segments'][0]['local_id'], segments)
+        self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
+
+        start_ots = Timestamp(1420102800, 0)
+        ots = start_ots
+        total_samples = 0
+        for grain in segments[head['segments'][0]['local_id']]:
+            self.assertIsInstance(grain, AUDIOGRAIN)
+            self.assertEqual(grain.grain_type, "audio")
+            self.assertEqual(grain.source_id, UUID('38bfd902-b35f-40d6-9ecf-dc95869130cf'))
+            self.assertEqual(grain.flow_id, UUID('f1c8c095-5739-46f4-9bbc-3d7050c9ba23'))
+            self.assertEqual(grain.origin_timestamp, ots)
+
+            self.assertEqual(grain.format, CogAudioFormat.S24_INTERLEAVED)
+            self.assertEqual(grain.channels, 2)
+            self.assertEqual(grain.samples, 1024)
+            self.assertEqual(grain.sample_rate, 48000)
+
+            self.assertEqual(len(grain.data), 6144)
+            total_samples += grain.samples
+            ots = start_ots + TimeOffset.from_count(total_samples, grain.sample_rate)
 
     def test_loads_rejects_incorrect_type_file(self):
         with self.assertRaises(GSFDecodeBadFileTypeError) as cm:
