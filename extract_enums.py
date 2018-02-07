@@ -13,7 +13,8 @@ ffi.cdef(cdata)
 c = ffi.dlopen('c')
 
 enums = [("CogFrameFormat", "COG_FRAME_FORMAT_"),
-         ("CogFrameLayout", "COG_FRAME_LAYOUT_")]
+         ("CogFrameLayout", "COG_FRAME_LAYOUT_"),
+         ("CogAudioFormat", "COG_AUDIO_FORMAT_"),]
 
 print "from enum import IntEnum"
 print

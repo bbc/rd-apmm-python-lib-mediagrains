@@ -25,10 +25,10 @@ all:
 	@echo "make clean   - Get rid of scratch and byte files"
 	@echo "make test    - Tests are nice"
 
-cogframe.h: $(COG_HEADER_DIR)/cog/cogframe.h
+cog.h: $(COG_HEADER_DIR)/cog/cog.h
 	gcc -E -I$(COG_HEADER_DIR) $< -o $@
 
-$(MODNAME)/cogframe.py: cogframe.h
+$(MODNAME)/cogframe.py: cog.h
 	./extract_enums.py $< > $@
 
 source: $(MODNAME)/cogframe.py

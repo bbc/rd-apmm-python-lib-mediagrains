@@ -17,8 +17,8 @@
 from __future__ import print_function
 from unittest import TestCase
 import uuid
-from mediagrains.grain import Grain, VideoGrain
-from mediagrains.cogframe import CogFrameFormat, CogFrameLayout
+from mediagrains.grain import Grain, VideoGrain, AudioGrain
+from mediagrains.cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from nmoscommon.timestamp import Timestamp
 import mock
 from fractions import Fraction
@@ -646,5 +646,211 @@ class TestGrain (TestCase):
 
         self.assertEqual(grain.grain_type, "video")
         self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(grain.meta, meta)
+        self.assertEqual(grain.data, data)
+
+    def test_audio_grain_create_S16_PLANES(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = AudioGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                               cog_audio_format=CogAudioFormat.S16_PLANES,
+                               channels=2, samples=1920, sample_rate=48000)
+
+        self.assertEqual(grain.grain_type, "audio")
+        self.assertEqual(grain.source_id, src_id)
+        self.assertEqual(grain.flow_id, flow_id)
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertEqual(grain.sync_timestamp, sts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(25,1))
+        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
+        self.assertEqual(grain.channels, 2)
+        self.assertEqual(grain.samples, 1920)
+        self.assertEqual(grain.sample_rate, 48000)
+
+        self.assertIsInstance(grain.data, bytearray)
+        self.assertEqual(len(grain.data), 1920*2*2)
+
+        self.assertEqual(repr(grain), "AudioGrain({!r},{!r})".format(grain.meta, grain.data))
+
+    def test_audio_grain_create_fills_in_missing_sts(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = AudioGrain(src_id, flow_id, origin_timestamp=ots,
+                               cog_audio_format=CogAudioFormat.S16_PLANES,
+                               channels=2, samples=1920, sample_rate=48000)
+
+        self.assertEqual(grain.grain_type, "audio")
+        self.assertEqual(grain.source_id, src_id)
+        self.assertEqual(grain.flow_id, flow_id)
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertEqual(grain.sync_timestamp, ots)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(25,1))
+        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
+        self.assertEqual(grain.channels, 2)
+        self.assertEqual(grain.samples, 1920)
+        self.assertEqual(grain.sample_rate, 48000)
+
+        self.assertIsInstance(grain.data, bytearray)
+        self.assertEqual(len(grain.data), 1920*2*2)
+
+        self.assertEqual(repr(grain), "AudioGrain({!r},{!r})".format(grain.meta, grain.data))
+
+    def test_audio_grain_create_fills_in_missing_ots(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = AudioGrain(src_id, flow_id,
+                               cog_audio_format=CogAudioFormat.S16_PLANES,
+                               channels=2, samples=1920, sample_rate=48000)
+
+        self.assertEqual(grain.grain_type, "audio")
+        self.assertEqual(grain.source_id, src_id)
+        self.assertEqual(grain.flow_id, flow_id)
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.sync_timestamp, cts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(25,1))
+        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
+        self.assertEqual(grain.channels, 2)
+        self.assertEqual(grain.samples, 1920)
+        self.assertEqual(grain.sample_rate, 48000)
+
+        self.assertIsInstance(grain.data, bytearray)
+        self.assertEqual(len(grain.data), 1920*2*2)
+
+        self.assertEqual(repr(grain), "AudioGrain({!r},{!r})".format(grain.meta, grain.data))
+
+    def test_audio_grain_create_fails_with_no_params(self):
+        with self.assertRaises(AttributeError):
+            grain = AudioGrain(None)
+
+    def test_audio_grain_create_all_formats(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        for (fmt, length) in [(CogAudioFormat.S16_PLANES,         1920*2*2),
+                              (CogAudioFormat.S16_PAIRS,          1920*2*2),
+                              (CogAudioFormat.S16_INTERLEAVED,    1920*2*2),
+                              (CogAudioFormat.S24_PLANES,         1920*2*4),
+                              (CogAudioFormat.S24_PAIRS,          1920*2*3),
+                              (CogAudioFormat.S24_INTERLEAVED,    1920*2*3),
+                              (CogAudioFormat.S32_PLANES,         1920*2*4),
+                              (CogAudioFormat.S32_PAIRS,          1920*2*4),
+                              (CogAudioFormat.S32_INTERLEAVED,    1920*2*4),
+                              (CogAudioFormat.S64_INVALID,        1920*2*8),
+                              (CogAudioFormat.FLOAT_PLANES,       1920*2*4),
+                              (CogAudioFormat.FLOAT_PAIRS,        1920*2*4),
+                              (CogAudioFormat.FLOAT_INTERLEAVED,  1920*2*4),
+                              (CogAudioFormat.DOUBLE_PLANES,      1920*2*8),
+                              (CogAudioFormat.DOUBLE_PAIRS,       1920*2*8),
+                              (CogAudioFormat.DOUBLE_INTERLEAVED, 1920*2*8)]:
+            with mock.patch.object(Timestamp, "get_time", return_value=cts):
+                grain = AudioGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                                   cog_audio_format=fmt,
+                                   channels=2, samples=1920, sample_rate=48000)
+
+                self.assertEqual(grain.grain_type, "audio")
+                self.assertEqual(grain.format, fmt)
+                self.assertIsInstance(grain.data, bytearray)
+                self.assertEqual(len(grain.data), length)
+
+    def test_audio_grain_create_fills_in_missing_meta(self):
+        meta = {}
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = AudioGrain(meta)
+
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.sync_timestamp, cts)
+        self.assertEqual(grain.format, CogAudioFormat.INVALID)
+        self.assertEqual(grain.channels, 0)
+        self.assertEqual(grain.samples, 0)
+        self.assertEqual(grain.sample_rate, 0)
+
+    def test_audio_grain_setters(self):
+        meta = {}
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = AudioGrain(meta)
+
+        grain.format = CogAudioFormat.S16_PLANES
+        self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
+        grain.format = 0xA
+        self.assertEqual(grain.format, CogAudioFormat.S32_INTERLEAVED)
+
+        grain.channels = 2
+        self.assertEqual(grain.channels, 2)
+
+        grain.samples = 1920
+        self.assertEqual(grain.samples, 1920)
+
+        grain.sample_rate = 48000
+        self.assertEqual(grain.sample_rate, 48000)
+
+    def test_grain_makes_audiograin(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        meta = {
+            "@_ns": "urn:x-ipstudio:ns:0.1",
+            "grain": {
+                "grain_type": "audio",
+                "source_id": str(src_id),
+                "flow_id": str(flow_id),
+                "origin_timestamp": str(ots),
+                "sync_timestamp": str(sts),
+                "creation_timestamp": str(cts),
+                "rate": {
+                    "numerator": 25,
+                    "denominator": 1,
+                },
+                "duration": {
+                    "numerator": 1,
+                    "denominator": 25,
+                },
+                "cog_audio": {
+                    "format": CogAudioFormat.S16_PLANES,
+                    "samples": 1920,
+                    "channels": 6,
+                    "sample_rate": 48000
+                }
+            },
+        }
+
+        data = bytearray(1920*6*2)
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = Grain(meta, data=data)
+
+        self.assertEqual(grain.grain_type, "audio")
+        self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
         self.assertEqual(grain.meta, meta)
         self.assertEqual(grain.data, data)

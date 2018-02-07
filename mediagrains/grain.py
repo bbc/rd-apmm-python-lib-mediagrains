@@ -19,9 +19,9 @@ from uuid import UUID
 from nmoscommon.timestamp import Timestamp
 from collections import Sequence, MutableSequence, Mapping
 from fractions import Fraction
-from cogframe import CogFrameFormat, CogFrameLayout
+from cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
-__all__ = ["Grain", "VideoGrain"]
+__all__ = ["Grain", "VideoGrain", "AudioGrain"]
 
 
 class GRAIN(Sequence):
@@ -56,6 +56,10 @@ class GRAIN(Sequence):
             self.meta['grain']['creation_timestamp'] = str(self.meta['grain']['creation_timestamp'])
         if 'creation_timestamp' not in self.meta['grain']:
             self.meta['grain']['creation_timestamp'] = str(Timestamp.get_time())
+        if 'origin_timestamp' not in self.meta['grain']:
+            self.meta['grain']['origin_timestamp'] = self.meta['grain']['creation_timestamp']
+        if 'sync_timestamp' not in self.meta['grain']:
+            self.meta['grain']['sync_timestamp'] = self.meta['grain']['origin_timestamp']
         if 'rate' in self.meta['grain'] and isinstance(self.meta['grain']['rate'], Fraction):
             self.meta['grain']['rate'] = {'numerator': self.meta['grain']['rate'].numerator,
                                           'denominator': self.meta['grain']['rate'].denominator}
@@ -336,6 +340,52 @@ class VIDEOGRAIN(GRAIN):
                                                          'denominator': value.denominator}
 
 
+class AUDIOGRAIN(GRAIN):
+    def __init__(self, meta, data):
+        super(AUDIOGRAIN, self).__init__(meta, data)
+        self._factory = "AudioGrain"
+        self.meta['grain']['grain_type'] = 'audio'
+        if 'cog_audio' not in self.meta['grain']:
+            self.meta['grain']['cog_audio'] = {}
+        if 'format' not in self.meta['grain']['cog_audio']:
+            self.meta['grain']['cog_audio']['format'] = CogAudioFormat.INVALID
+        for key in ['samples', 'channels', 'sample_rate']:
+            if key not in self.meta['grain']['cog_audio']:
+                self.meta['grain']['cog_audio'][key] = 0
+
+    @property
+    def format(self):
+        return CogAudioFormat(self.meta['grain']['cog_audio']['format'])
+
+    @format.setter
+    def format(self, value):
+        self.meta['grain']['cog_audio']['format'] = CogAudioFormat(value)
+
+    @property
+    def samples(self):
+        return self.meta['grain']['cog_audio']['samples']
+
+    @samples.setter
+    def samples(self, value):
+        self.meta['grain']['cog_audio']['samples'] = int(value)
+
+    @property
+    def channels(self):
+        return self.meta['grain']['cog_audio']['channels']
+
+    @channels.setter
+    def channels(self, value):
+        self.meta['grain']['cog_audio']['channels'] = int(value)
+
+    @property
+    def sample_rate(self):
+        return self.meta['grain']['cog_audio']['sample_rate']
+
+    @sample_rate.setter
+    def sample_rate(self, value):
+        self.meta['grain']['cog_audio']['sample_rate'] = int(value)
+
+
 def size_for_format(fmt, w, h):
     if ((fmt>>8)&0x1) == 0x00:  # Cog frame is not packed
         h_shift = (fmt&0x01)
@@ -371,6 +421,22 @@ def size_for_format(fmt, w, h):
             return w*h*4
         else:
             return 0
+
+def size_for_audio_format(cog_audio_format, channels, samples):
+    if (cog_audio_format & 0x200) == 0x200:  # compressed format, no idea of correct size
+        return 0
+
+    if (cog_audio_format & 0x3) == 0x1:
+        channels += 1
+        channels //= 2
+        channels *= 2
+    if (cog_audio_format & 0xC) == 0xC:
+        depth = 8
+    elif (cog_audio_format & 0xf) == 0x04:
+        depth = 4
+    else:
+        depth = ((cog_audio_format & 0xf) >> 2) + 2
+    return channels * samples * depth
 
 def components_for_format(fmt, w, h):
     components = []
@@ -464,6 +530,69 @@ def components_for_format(fmt, w, h):
                 'length': h*w*4
             })
     return components
+
+
+def AudioGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
+               sync_timestamp=None, rate=Fraction(25,1), duration=Fraction(1,25),
+               cog_audio_format=CogAudioFormat.INVALID,
+               samples=0,
+               channels=0,
+               sample_rate=48000,
+               flow_id=None, data=None):
+    meta = None
+    data = None
+    src_id = None
+    flow_id = None
+
+    if isinstance(src_id_or_meta, dict):
+        meta = src_id_or_meta
+        if data is None:
+            data = flow_id_or_data
+    else:
+        src_id = src_id_or_meta
+        if flow_id is None:
+            flow_id = flow_id_or_data
+
+    if meta is None:
+        if src_id is None or flow_id is None:
+            raise AttributeError("Must include either metadata, or src_id, and flow_id")
+
+        cts = Timestamp.get_time()
+        if origin_timestamp is None:
+            origin_timestamp = cts
+        if sync_timestamp is None:
+            sync_timestamp = origin_timestamp
+        meta = {
+            "@_ns": "urn:x-ipstudio:ns:0.1",
+            "grain": {
+                "grain_type": "audio",
+                "source_id": str(src_id),
+                "flow_id": str(flow_id),
+                "origin_timestamp": str(origin_timestamp),
+                "sync_timestamp": str(sync_timestamp),
+                "creation_timestamp": str(cts),
+                "rate": {
+                    "numerator": Fraction(rate).numerator,
+                    "denominator": Fraction(rate).denominator,
+                    },
+                "duration": {
+                    "numerator": Fraction(duration).numerator,
+                    "denominator": Fraction(duration).denominator,
+                    },
+                "cog_audio": {
+                    "format": cog_audio_format,
+                    "samples": samples,
+                    "channels": channels,
+                    "sample_rate": sample_rate
+                }
+            }
+        }
+
+    if data is None:
+        size = size_for_audio_format(cog_audio_format, channels, samples)
+        data = bytearray(size)
+
+    return AUDIOGRAIN(meta, data)
 
 
 def VideoGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
@@ -603,6 +732,8 @@ def Grain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
 
     if 'grain' in meta and 'grain_type' in meta['grain'] and meta['grain']['grain_type'] == 'video':
         return VideoGrain(meta, data)
+    elif 'grain' in meta and 'grain_type' in meta['grain'] and meta['grain']['grain_type'] == 'audio':
+        return AudioGrain(meta, data)
     else:
         return GRAIN(meta, data)
 
