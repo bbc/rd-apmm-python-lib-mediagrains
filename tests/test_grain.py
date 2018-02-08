@@ -17,7 +17,7 @@
 from __future__ import print_function
 from unittest import TestCase
 import uuid
-from mediagrains.grain import Grain, VideoGrain, AudioGrain
+from mediagrains.grain import Grain, VideoGrain, AudioGrain, CodedVideoGrain
 from mediagrains.cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from nmoscommon.timestamp import Timestamp
 import mock
@@ -42,6 +42,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.rate, Fraction(0,1))
         self.assertEqual(grain.duration, Fraction(0,1))
         self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain, (grain.meta, grain.data))
 
     def test_empty_grain_creation_with_missing_data(self):
         cts = Timestamp.from_tai_sec_nsec("417798915:0")
@@ -299,11 +300,22 @@ class TestGrain (TestCase):
 
         self.assertEqual(repr(grain), "VideoGrain({!r},{!r})".format(grain.meta, grain.data))
 
-        self.assertEqual(dict(grain.components[0]), { 'stride' : 1920*2,
-                                                      'width': 1920,
-                                                      'height': 1080,
-                                                      'offset': 0,
-                                                      'length': 1920*1080*2 })
+        self.assertEqual(grain.components, [{ 'stride' : 1920*2,
+                                              'width': 1920,
+                                              'height': 1080,
+                                              'offset': 0,
+                                              'length': 1920*1080*2 },
+                                            { 'stride' : 1920,
+                                              'width': 1920/2,
+                                              'height': 1080,
+                                              'offset': 1920*1080*2,
+                                              'length': 1920*1080 },
+                                            { 'stride' : 1920,
+                                              'width': 1920/2,
+                                              'height': 1080,
+                                              'offset': 1920*1080*3,
+                                              'length': 1920*1080 }])
+        
 
     def test_video_grain_create_sizes(self):
         for (fmt, complens) in [
@@ -852,5 +864,256 @@ class TestGrain (TestCase):
 
         self.assertEqual(grain.grain_type, "audio")
         self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
+        self.assertEqual(grain.meta, meta)
+        self.assertEqual(grain.data, data)
+
+    def test_coded_video_grain_create_VC2(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedVideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                                    cog_frame_format=CogFrameFormat.VC2,
+                                    origin_width=1920, origin_height=1080,
+                                    length=1296000, cog_frame_layout=CogFrameLayout.FULL_FRAME,
+                                    unit_offsets=[3,2])
+
+        self.assertEqual(grain.grain_type, "coded_video")
+        self.assertEqual(grain.source_id, src_id)
+        self.assertEqual(grain.flow_id, flow_id)
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertEqual(grain.sync_timestamp, sts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(25,1))
+        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.format, CogFrameFormat.VC2)
+        self.assertEqual(grain.origin_width, 1920)
+        self.assertEqual(grain.origin_height, 1080)
+        self.assertEqual(grain.coded_width, 1920)
+        self.assertEqual(grain.coded_height, 1080)
+        self.assertEqual(grain.length, 1296000)
+        self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
+        self.assertEqual(grain.unit_offsets, [3,2])
+        self.assertEqual(repr(grain.unit_offsets), repr([3,2]))
+
+        self.assertIsInstance(grain.data, bytearray)
+        self.assertEqual(len(grain.data), grain.length)
+
+        self.assertEqual(repr(grain), "CodedVideoGrain({!r},{!r})".format(grain.meta, grain.data))
+
+    def test_coded_video_grain_create_fills_empty_meta(self):
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        meta = {}
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedVideoGrain(meta)
+
+        self.assertEqual(grain.grain_type, "coded_video")
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.sync_timestamp, cts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(0,1))
+        self.assertEqual(grain.duration, Fraction(0,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.format, CogFrameFormat.UNKNOWN)
+        self.assertEqual(grain.origin_width, 0)
+        self.assertEqual(grain.origin_height, 0)
+        self.assertEqual(grain.coded_width, 0)
+        self.assertEqual(grain.coded_height, 0)
+        self.assertEqual(grain.length, 0)
+        self.assertEqual(grain.layout, CogFrameLayout.UNKNOWN)
+        self.assertEqual(grain.unit_offsets, [])
+
+    def test_coded_video_grain_create_corrects_numeric_data(self):
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        meta = {
+            'grain': {
+                'cog_coded_frame': {
+                    'format': 0x0200,
+                    'layout': 0x04
+                }
+            }
+        }
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedVideoGrain(meta)
+
+        self.assertEqual(grain.grain_type, "coded_video")
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.sync_timestamp, cts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(0,1))
+        self.assertEqual(grain.duration, Fraction(0,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.format, CogFrameFormat.MJPEG)
+        self.assertEqual(grain.origin_width, 0)
+        self.assertEqual(grain.origin_height, 0)
+        self.assertEqual(grain.coded_width, 0)
+        self.assertEqual(grain.coded_height, 0)
+        self.assertEqual(grain.length, 0)
+        self.assertEqual(grain.layout, CogFrameLayout.SEGMENTED_FRAME)
+        self.assertEqual(grain.unit_offsets, [])
+
+    def test_coded_video_grain_setters(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedVideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                                    cog_frame_format=CogFrameFormat.VC2,
+                                    origin_width=1920, origin_height=1080,
+                                    length=1296000, cog_frame_layout=CogFrameLayout.FULL_FRAME)
+
+        grain.format = CogFrameFormat.MJPEG
+        self.assertEqual(grain.format, CogFrameFormat.MJPEG)
+
+        grain.origin_width = 1
+        self.assertEqual(grain.origin_width, 1)
+        grain.origin_height = 2
+        self.assertEqual(grain.origin_height, 2)
+        grain.coded_width = 3
+        self.assertEqual(grain.coded_width, 3)
+        grain.coded_height = 4
+        self.assertEqual(grain.coded_height, 4)
+        grain.length = 5
+        self.assertEqual(grain.length, 5)
+        grain.layout = CogFrameLayout.UNKNOWN
+        self.assertEqual(grain.layout, CogFrameLayout.UNKNOWN)
+        grain.temporal_offset = 75
+        self.assertEqual(grain.temporal_offset, 75)
+
+        self.assertNotIn('unit_offsets', grain.meta['grain']['cog_coded_frame'])
+        self.assertEqual(grain.unit_offsets, [])
+        grain.unit_offsets = [1, 2, 3]
+        self.assertEqual(grain.unit_offsets, grain.meta['grain']['cog_coded_frame']['unit_offsets'])
+        self.assertEqual(grain.unit_offsets, [1, 2, 3])
+        grain.unit_offsets.append(4)
+        self.assertEqual(grain.unit_offsets, grain.meta['grain']['cog_coded_frame']['unit_offsets'])
+        self.assertEqual(grain.unit_offsets, [1, 2, 3, 4])
+        grain.unit_offsets[0] = 35
+        self.assertEqual(grain.unit_offsets, grain.meta['grain']['cog_coded_frame']['unit_offsets'])
+        self.assertEqual(grain.unit_offsets, [35, 2, 3, 4])
+        del grain.unit_offsets[3]
+        self.assertEqual(grain.unit_offsets, grain.meta['grain']['cog_coded_frame']['unit_offsets'])
+        self.assertEqual(grain.unit_offsets, [35, 2, 3])
+        del grain.unit_offsets[0]
+        del grain.unit_offsets[0]
+        del grain.unit_offsets[0]
+        self.assertNotIn('unit_offsets', grain.meta['grain']['cog_coded_frame'])
+        self.assertEqual(grain.unit_offsets, [])
+        with self.assertRaises(IndexError):
+            del grain.unit_offsets[0]
+        with self.assertRaises(IndexError):
+            grain.unit_offsets[0] = 1
+        grain.unit_offsets.append(1)
+        self.assertEqual(grain.unit_offsets, grain.meta['grain']['cog_coded_frame']['unit_offsets'])
+        self.assertEqual(grain.unit_offsets, [1])
+        grain.unit_offsets = []
+        self.assertNotIn('unit_offsets', grain.meta['grain']['cog_coded_frame'])
+        self.assertEqual(grain.unit_offsets, [])
+
+    def test_coded_video_grain_create_with_data(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+        data = bytearray(500)
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedVideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                                    cog_frame_format=CogFrameFormat.VC2,
+                                    origin_width=1920, origin_height=1080,
+                                    cog_frame_layout=CogFrameLayout.FULL_FRAME,
+                                    data=data)
+
+        self.assertEqual(grain.data, data)
+        self.assertEqual(len(grain.data), grain.length)
+
+    def test_coded_video_grain_create_with_cts_and_ots(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedVideoGrain(src_id, flow_id, origin_timestamp=ots,
+                                    cog_frame_format=CogFrameFormat.VC2,
+                                    origin_width=1920, origin_height=1080,
+                                    cog_frame_layout=CogFrameLayout.FULL_FRAME)
+
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertEqual(grain.sync_timestamp, ots)
+
+    def test_coded_video_grain_create_with_cts(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedVideoGrain(src_id, flow_id,
+                                    cog_frame_format=CogFrameFormat.VC2,
+                                    origin_width=1920, origin_height=1080,
+                                    cog_frame_layout=CogFrameLayout.FULL_FRAME)
+
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.sync_timestamp, cts)
+
+    def test_coded_video_grain_create_fails_with_empty(self):
+        with self.assertRaises(AttributeError):
+            CodedVideoGrain(None)
+
+    def test_grain_makes_codedvideograin(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        meta = {
+            "@_ns": "urn:x-ipstudio:ns:0.1",
+            "grain": {
+                "grain_type": "coded_video",
+                "source_id": str(src_id),
+                "flow_id": str(flow_id),
+                "origin_timestamp": str(ots),
+                "sync_timestamp": str(sts),
+                "creation_timestamp": str(cts),
+                "rate": {
+                    "numerator": 25,
+                    "denominator": 1,
+                },
+                "duration": {
+                    "numerator": 1,
+                    "denominator": 25,
+                },
+                "cog_coded_frame": {
+                    "format": 0x0207,
+                    "origin_width": 1920,
+                    "origin_height": 1080,
+                    "coded_width": 1920,
+                    "coded_height": 1088,
+                    "layout": 0x00,
+                    "length": 1296000
+                }
+            },
+        }
+
+        data = bytearray(1296000)
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = Grain(meta, data=data)
+
+        self.assertEqual(grain.grain_type, "coded_video")
+        self.assertEqual(grain.format, CogFrameFormat.VC2)
         self.assertEqual(grain.meta, meta)
         self.assertEqual(grain.data, data)

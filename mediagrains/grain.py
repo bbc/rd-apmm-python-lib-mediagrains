@@ -21,7 +21,7 @@ from collections import Sequence, MutableSequence, Mapping
 from fractions import Fraction
 from cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
-__all__ = ["Grain", "VideoGrain", "AudioGrain"]
+__all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain"]
 
 
 class GRAIN(Sequence):
@@ -44,26 +44,37 @@ class GRAIN(Sequence):
             self.meta['grain'] = {}
         if 'grain_type' not in self.meta['grain']:
             self.meta['grain']['grain_type'] = "empty"
-        if 'source_id' in self.meta['grain'] and isinstance(self.meta["grain"]["source_id"], UUID):
-            self.meta['grain']['source_id'] = str(self.meta['grain']['source_id'])
-        if 'flow_id' in self.meta['grain'] and isinstance(self.meta["grain"]["flow_id"], UUID):
-            self.meta['grain']['flow_id'] = str(self.meta['grain']['flow_id'])
-        if 'origin_timestamp' in self.meta['grain'] and isinstance(self.meta["grain"]["origin_timestamp"], Timestamp):
-            self.meta['grain']['origin_timestamp'] = str(self.meta['grain']['origin_timestamp'])
-        if 'sync_timestamp' in self.meta['grain'] and isinstance(self.meta["grain"]["sync_timestamp"], Timestamp):
-            self.meta['grain']['sync_timestamp'] = str(self.meta['grain']['sync_timestamp'])
-        if 'creation_timestamp' in self.meta['grain'] and isinstance(self.meta["grain"]["creation_timestamp"], Timestamp):
-            self.meta['grain']['creation_timestamp'] = str(self.meta['grain']['creation_timestamp'])
         if 'creation_timestamp' not in self.meta['grain']:
             self.meta['grain']['creation_timestamp'] = str(Timestamp.get_time())
         if 'origin_timestamp' not in self.meta['grain']:
             self.meta['grain']['origin_timestamp'] = self.meta['grain']['creation_timestamp']
         if 'sync_timestamp' not in self.meta['grain']:
             self.meta['grain']['sync_timestamp'] = self.meta['grain']['origin_timestamp']
-        if 'rate' in self.meta['grain'] and isinstance(self.meta['grain']['rate'], Fraction):
+        if 'rate' not in self.meta['grain']:
+            self.meta['grain']['rate'] = {'numerator': 0,
+                                          'denominator': 1}
+        if 'duration' not in self.meta['grain']:
+            self.meta['grain']['duration'] = {'numerator': 0,
+                                              'denominator': 1}
+        if 'source_id' not in self.meta['grain']:
+            self.meta['grain']['source_id'] = "00000000-0000-0000-0000-000000000000"
+        if 'flow_id' not in self.meta['grain']:
+            self.meta['grain']['flow_id'] = "00000000-0000-0000-0000-000000000000"
+
+        if isinstance(self.meta["grain"]["source_id"], UUID):
+            self.meta['grain']['source_id'] = str(self.meta['grain']['source_id'])
+        if isinstance(self.meta["grain"]["flow_id"], UUID):
+            self.meta['grain']['flow_id'] = str(self.meta['grain']['flow_id'])
+        if isinstance(self.meta["grain"]["origin_timestamp"], Timestamp):
+            self.meta['grain']['origin_timestamp'] = str(self.meta['grain']['origin_timestamp'])
+        if isinstance(self.meta["grain"]["sync_timestamp"], Timestamp):
+            self.meta['grain']['sync_timestamp'] = str(self.meta['grain']['sync_timestamp'])
+        if isinstance(self.meta["grain"]["creation_timestamp"], Timestamp):
+            self.meta['grain']['creation_timestamp'] = str(self.meta['grain']['creation_timestamp'])
+        if isinstance(self.meta['grain']['rate'], Fraction):
             self.meta['grain']['rate'] = {'numerator': self.meta['grain']['rate'].numerator,
                                           'denominator': self.meta['grain']['rate'].denominator}
-        if 'duration' in self.meta['grain'] and isinstance(self.meta['grain']['duration'], Fraction):
+        if isinstance(self.meta['grain']['duration'], Fraction):
             self.meta['grain']['duration'] = {'numerator': self.meta['grain']['duration'].numerator,
                                               'denominator': self.meta['grain']['duration'].denominator}
 
@@ -83,6 +94,9 @@ class GRAIN(Sequence):
             return "{}({!r})".format(self._factory, self.meta)
         else:
             return "{}({!r},{!r})".format(self._factory, self.meta, self.data)
+
+    def __eq__(self, other):
+        return tuple(self) == other
 
     @property
     def grain_type(self):
@@ -193,6 +207,9 @@ class VIDEOGRAIN(GRAIN):
         def __len__(self):
             return self.meta.__len__()
 
+        def __eq__(self, other):
+            return dict(self) == other
+
         @property
         def stride(self):
             return self.meta['stride']
@@ -251,6 +268,9 @@ class VIDEOGRAIN(GRAIN):
 
         def __len__(self):
             return len(self.parent.meta['grain']['cog_frame']['components'])
+
+        def __eq__(self, other):
+            return list(self) == other
 
     def __init__(self, meta, data):
         super(VIDEOGRAIN, self).__init__(meta, data)
@@ -338,6 +358,147 @@ class VIDEOGRAIN(GRAIN):
         value = Fraction(value)
         self.meta['grain']['cog_frame']['pixel_aspect_ratio'] = { 'numerator': value.numerator,
                                                          'denominator': value.denominator}
+
+
+class CODEDVIDEOGRAIN(GRAIN):
+    def __init__(self, meta, data):
+        super(CODEDVIDEOGRAIN, self).__init__(meta, data)
+        self._factory = "CodedVideoGrain"
+        self.meta['grain']['grain_type'] = 'coded_video'
+        if 'cog_coded_frame' not in self.meta['grain']:
+            self.meta['grain']['cog_coded_frame'] = {}
+        if 'format' not in self.meta['grain']['cog_coded_frame']:
+            self.meta['grain']['cog_coded_frame']['format'] = CogFrameFormat.UNKNOWN
+        if 'layout' not in self.meta['grain']['cog_coded_frame']:
+            self.meta['grain']['cog_coded_frame']['layout'] = CogFrameLayout.UNKNOWN
+        for key in ['origin_width', 'origin_height', 'coded_width', 'coded_height', 'temportal_offset', 'length' ]:
+            if key not in self.meta['grain']['cog_coded_frame']:
+                self.meta['grain']['cog_coded_frame'][key] = 0
+        if 'is_key_frame' not in self.meta['grain']['cog_coded_frame']:
+            self.meta['grain']['cog_coded_frame']['is_key_frame'] = False
+        if not isinstance(self.meta['grain']['cog_coded_frame']['format'], CogFrameFormat):
+            self.meta['grain']['cog_coded_frame']['format'] = CogFrameFormat(self.meta['grain']['cog_coded_frame']['format'])
+        if not isinstance(self.meta['grain']['cog_coded_frame']['layout'], CogFrameLayout):
+            self.meta['grain']['cog_coded_frame']['layout'] = CogFrameLayout(self.meta['grain']['cog_coded_frame']['layout'])
+
+    @property
+    def format(self):
+        return CogFrameFormat(self.meta['grain']['cog_coded_frame']['format'])
+
+    @format.setter
+    def format(self, value):
+        self.meta['grain']['cog_coded_frame']['format'] = CogFrameFormat(value)
+
+    @property
+    def layout(self):
+        return CogFrameLayout(self.meta['grain']['cog_coded_frame']['layout'])
+
+    @layout.setter
+    def layout(self, value):
+        self.meta['grain']['cog_coded_frame']['layout'] = CogFrameLayout(value)
+
+    @property
+    def origin_width(self):
+        return self.meta['grain']['cog_coded_frame']['origin_width']
+
+    @origin_width.setter
+    def origin_width(self, value):
+        self.meta['grain']['cog_coded_frame']['origin_width'] = value
+
+    @property
+    def origin_height(self):
+        return self.meta['grain']['cog_coded_frame']['origin_height']
+
+    @origin_height.setter
+    def origin_height(self, value):
+        self.meta['grain']['cog_coded_frame']['origin_height'] = value
+
+    @property
+    def coded_width(self):
+        return self.meta['grain']['cog_coded_frame']['coded_width']
+
+    @coded_width.setter
+    def coded_width(self, value):
+        self.meta['grain']['cog_coded_frame']['coded_width'] = value
+
+    @property
+    def coded_height(self):
+        return self.meta['grain']['cog_coded_frame']['coded_height']
+
+    @coded_height.setter
+    def coded_height(self, value):
+        self.meta['grain']['cog_coded_frame']['coded_height'] = value
+
+    @property
+    def temporal_offset(self):
+        return self.meta['grain']['cog_coded_frame']['temporal_offset']
+
+    @temporal_offset.setter
+    def temporal_offset(self, value):
+        self.meta['grain']['cog_coded_frame']['temporal_offset'] = value
+
+    @property
+    def length(self):
+        return self.meta['grain']['cog_coded_frame']['length']
+
+    @length.setter
+    def length(self, value):
+        self.meta['grain']['cog_coded_frame']['length'] = value
+
+    class UNITOFFSETS(MutableSequence):
+        def __init__(self, parent):
+            self.parent = parent
+
+        def __getitem__(self, key):
+            if 'unit_offsets' in self.parent.meta['grain']['cog_coded_frame']:
+                return self.parent.meta['grain']['cog_coded_frame']['unit_offsets'][key]
+            else:
+                raise IndexError("list index out of range")
+
+        def __setitem__(self, key, value):
+            if 'unit_offsets' in self.parent.meta['grain']['cog_coded_frame']:
+                self.parent.meta['grain']['cog_coded_frame']['unit_offsets'][key] = value
+            else:
+                raise IndexError("list assignment index out of range")
+
+        def __delitem__(self, key):
+            if 'unit_offsets' in self.parent.meta['grain']['cog_coded_frame']:
+                del self.parent.meta['grain']['cog_coded_frame']['unit_offsets'][key]
+                if len(self.parent.meta['grain']['cog_coded_frame']['unit_offsets']) == 0:
+                    del self.parent.meta['grain']['cog_coded_frame']['unit_offsets']
+            else:
+                raise IndexError("list assignment index out of range")
+
+        def insert(self, key, value):
+            if 'unit_offsets' not in self.parent.meta['grain']['cog_coded_frame']:
+                d = []
+                d.insert(key, value)
+                self.parent.meta['grain']['cog_coded_frame']['unit_offsets'] = d
+            else:
+                self.parent.meta['grain']['cog_coded_frame']['unit_offsets'].insert(key, value)
+
+        def __len__(self):
+            if 'unit_offsets' in self.parent.meta['grain']['cog_coded_frame']:
+                return len(self.parent.meta['grain']['cog_coded_frame']['unit_offsets'])
+            else:
+                return 0
+
+        def __eq__(self, other):
+            return list(self) == other
+
+        def __repr__(self):
+            return repr(self.parent.meta['grain']['cog_coded_frame']['unit_offsets'])
+
+    @property
+    def unit_offsets(self):
+        return CODEDVIDEOGRAIN.UNITOFFSETS(self)
+
+    @unit_offsets.setter
+    def unit_offsets(self, value):
+        if len(value) != 0:
+            self.meta['grain']['cog_coded_frame']['unit_offsets'] = value
+        elif 'unit_offsets' in self.meta['grain']['cog_coded_frame']:
+            del self.meta['grain']['cog_coded_frame']['unit_offsets']
 
 
 class AUDIOGRAIN(GRAIN):
@@ -540,9 +701,7 @@ def AudioGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
                sample_rate=48000,
                flow_id=None, data=None):
     meta = None
-    data = None
     src_id = None
-    flow_id = None
 
     if isinstance(src_id_or_meta, dict):
         meta = src_id_or_meta
@@ -601,9 +760,7 @@ def VideoGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
                height=1080, cog_frame_layout=CogFrameLayout.UNKNOWN,
                flow_id=None, data=None):
     meta = None
-    data = None
     src_id = None
-    flow_id = None
 
     if isinstance(src_id_or_meta, dict):
         meta = src_id_or_meta
@@ -659,6 +816,83 @@ def VideoGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
         meta['grain']['cog_frame']['components'] = components_for_format(cog_frame_format, width, height)
 
     return VIDEOGRAIN(meta, data)
+
+def CodedVideoGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
+                    sync_timestamp=None, rate=Fraction(25,1), duration=Fraction(1,25),
+                    cog_frame_format=CogFrameFormat.UNKNOWN, origin_width=1920,
+                    origin_height=1080, coded_width=None,
+                    coded_height=None, temporal_offset=0, length=None,
+                    cog_frame_layout=CogFrameLayout.UNKNOWN, unit_offsets=None,
+                    flow_id=None, data=None):
+    meta = None
+    src_id = None
+
+    if isinstance(src_id_or_meta, dict):
+        meta = src_id_or_meta
+        if data is None:
+            data = flow_id_or_data
+    else:
+        src_id = src_id_or_meta
+        if flow_id is None:
+            flow_id = flow_id_or_data
+
+    if coded_width is None:
+        coded_width = origin_width
+    if coded_height is None:
+        coded_height = origin_height
+
+    if length is None:
+        if data is not None:
+            length = len(data)
+        else:
+            length = 0
+
+    if meta is None:
+        if src_id is None or flow_id is None:
+            raise AttributeError("Must include either metadata, or src_id, and flow_id")
+
+        cts = Timestamp.get_time()
+        if origin_timestamp is None:
+            origin_timestamp = cts
+        if sync_timestamp is None:
+            sync_timestamp = origin_timestamp
+        meta = {
+            "@_ns": "urn:x-ipstudio:ns:0.1",
+            "grain": {
+                "grain_type": "coded_video",
+                "source_id": str(src_id),
+                "flow_id": str(flow_id),
+                "origin_timestamp": str(origin_timestamp),
+                "sync_timestamp": str(sync_timestamp),
+                "creation_timestamp": str(cts),
+                "rate": {
+                    "numerator": Fraction(rate).numerator,
+                    "denominator": Fraction(rate).denominator,
+                    },
+                "duration": {
+                    "numerator": Fraction(duration).numerator,
+                    "denominator": Fraction(duration).denominator,
+                    },
+                "cog_coded_frame": {
+                    "format": cog_frame_format,
+                    "origin_width": origin_width,
+                    "origin_height": origin_height,
+                    "coded_width": coded_width,
+                    "coded_height": coded_height,
+                    "layout": cog_frame_layout,
+                    "temporal_offset": temporal_offset,
+                    "length": length
+                }
+            },
+        }
+
+    if data is None:
+        data = bytearray(length)
+
+    if "grain" in meta and "cog_coded_frame" in meta['grain'] and unit_offsets is not None:
+        meta['grain']['cog_coded_frame']['unit_offsets'] = unit_offsets
+
+    return CODEDVIDEOGRAIN(meta, data)
 
 def Grain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
           sync_timestamp=None, rate=Fraction(25,1), duration=Fraction(1,25),
@@ -734,6 +968,8 @@ def Grain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
         return VideoGrain(meta, data)
     elif 'grain' in meta and 'grain_type' in meta['grain'] and meta['grain']['grain_type'] == 'audio':
         return AudioGrain(meta, data)
+    elif 'grain' in meta and 'grain_type' in meta['grain'] and meta['grain']['grain_type'] == 'coded_video':
+        return CodedVideoGrain(meta, data)
     else:
         return GRAIN(meta, data)
 

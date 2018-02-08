@@ -17,7 +17,7 @@
 from __future__ import print_function
 from unittest import TestCase
 from uuid import UUID
-from mediagrains.grain import GRAIN, VIDEOGRAIN, AUDIOGRAIN
+from mediagrains.grain import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN
 from mediagrains import Grain, VideoGrain
 from mediagrains.gsf import loads
 from mediagrains.gsf import GSFDecodeError
@@ -30,6 +30,9 @@ from datetime import datetime
 
 with open('examples/video.gsf', 'rb') as f:
     VIDEO_DATA = f.read()
+
+with open('examples/coded_video.gsf', 'rb') as f:
+    CODED_VIDEO_DATA = f.read()
 
 with open('examples/audio.gsf', 'rb') as f:
     AUDIO_DATA = f.read()
@@ -107,6 +110,46 @@ class TestGSFLoads(TestCase):
             self.assertEqual(len(grain.data), 6144)
             total_samples += grain.samples
             ots = start_ots + TimeOffset.from_count(total_samples, grain.sample_rate)
+
+    def test_loads_coded_video(self):
+        (head, segments) = loads(CODED_VIDEO_DATA)
+
+        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 41))
+        self.assertEqual(head['id'], UUID('8875f02c-2528-4566-9e9a-23efc3a9bbe5'))
+        self.assertEqual(len(head['segments']), 1)
+        self.assertEqual(head['segments'][0]['id'], UUID('bdfa1343-0a20-4a98-92f5-0f7f0eb75479'))
+        self.assertIn(head['segments'][0]['local_id'], segments)
+        self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
+
+        ots = Timestamp(1420102800, 0)
+        unit_offsets = [[0, 6, 34, 42, 711, 719],
+                        [0, 6, 14],
+                        [0, 6, 14],
+                        [0, 6, 14],
+                        [0, 6, 14],
+                        [0, 6, 14],
+                        [0, 6, 14],
+                        [0, 6, 14],
+                        [0, 6, 14],
+                        [0, 6, 14]]
+        for grain in segments[head['segments'][0]['local_id']]:
+            self.assertIsInstance(grain, CODEDVIDEOGRAIN)
+            self.assertEqual(grain.grain_type, "coded_video")
+            self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
+            self.assertEqual(grain.flow_id, UUID('b6b05efb-6067-4ff8-afac-ec735a85674e'))
+            self.assertEqual(grain.origin_timestamp, ots)
+            ots += TimeOffset.from_nanosec(20000000)
+
+            self.assertEqual(grain.format, CogFrameFormat.H264)
+            self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
+            self.assertEqual(grain.origin_width, 1920)
+            self.assertEqual(grain.origin_height, 1080)
+            self.assertEqual(grain.coded_width, 0)
+            self.assertEqual(grain.coded_height, 0)
+            self.assertEqual(grain.length, 0)
+            self.assertEqual(grain.temporal_offset, 0)
+            self.assertEqual(grain.unit_offsets, unit_offsets[0])
+            unit_offsets.pop(0)
 
     def test_loads_rejects_incorrect_type_file(self):
         with self.assertRaises(GSFDecodeBadFileTypeError) as cm:
