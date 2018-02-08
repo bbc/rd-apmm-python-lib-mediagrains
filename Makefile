@@ -1,4 +1,9 @@
-PYTHON=`which python`
+PYTHON2=`which python2`
+PYTHON3=`which python3`
+VIRTUALENV=virtualenv
+PIP=pip
+NOSE2=nose2
+
 DESTDIR=/
 PROJECT=mediagrains
 MODNAME=mediagrains
@@ -11,11 +16,17 @@ TEST_DEPS=\
 REMOTE_DEPS=\
 	git+https://github.com/bbc/nmos-common/
 
-VENV=virtpython
-VENV_ACTIVATE=$(VENV)/bin/activate
-VENV_MODULE_DIR=$(VENV)/lib/python2.7/site-packages
-VENV_TEST_DEPS=$(addprefix $(VENV_MODULE_DIR)/,$(TEST_DEPS))
-VENV_INSTALLED=$(VENV_MODULE_DIR)/$(MODNAME).egg-link
+VENV2=virtpython2
+VENV2_ACTIVATE=$(VENV2)/bin/activate
+VENV2_MODULE_DIR=$(VENV2)/lib/python2.7/site-packages
+VENV2_TEST_DEPS=$(addprefix $(VENV2_MODULE_DIR)/,$(TEST_DEPS))
+VENV2_INSTALLED=$(VENV2_MODULE_DIR)/$(MODNAME).egg-link
+
+VENV3=virtpython3
+VENV3_ACTIVATE=$(VENV3)/bin/activate
+VENV3_MODULE_DIR=$(VENV3)/lib/python3.5/site-packages
+VENV3_TEST_DEPS=$(addprefix $(VENV3_MODULE_DIR)/,$(TEST_DEPS))
+VENV3_INSTALLED=$(VENV3_MODULE_DIR)/$(MODNAME).egg-link
 
 COG_HEADER_DIR=/usr/include/cog-1.2
 
@@ -23,7 +34,9 @@ all:
 	@echo "make source  - Create source package"
 	@echo "make install - Install on local system (only during development)"
 	@echo "make clean   - Get rid of scratch and byte files"
-	@echo "make test    - Tests are nice"
+	@echo "make test2   - Test under python 2"
+	@echo "make test3   - Test under python 3"
+	@echo "make test    - Test under both versions"
 
 cog.h: $(COG_HEADER_DIR)/cog/cog.h
 	gcc -E -I$(COG_HEADER_DIR) $< -o $@
@@ -38,26 +51,44 @@ install: $(MODNAME)/cogframe.py
 	$(PYTHON) setup.py install --root $(DESTDIR) $(COMPILE)
 
 clean:
-	$(PYTHON) setup.py clean
+	$(PYTHON) setup.py clean || true
 	rm -rf $(MODNAME)/cogframe.py
 	rm -rf ./cogframe.h
 	rm -rf build/ MANIFEST
-	rm -rf $(VENV)
+	rm -rf $(VENV2)
+	rm -rf $(VENV3)
 	find . -name '*.pyc' -delete
 
-$(VENV):
-	virtualenv $@
+$(VENV2):
+	$(VIRTUALENV) -p $(PYTHON2) $@
 
-rdeps: $(VENV)
-	. $(VENV_ACTIVATE); pip install $(REMOTE_DEPS)
+rdeps2: $(VENV2)
+	. $(VENV2_ACTIVATE); $(PIP) install $(REMOTE_DEPS)
 
-$(VENV_TEST_DEPS): $(VENV)
-	. $(VENV_ACTIVATE); pip install $(@F)
+$(VENV2_TEST_DEPS): $(VENV2)
+	. $(VENV2_ACTIVATE); $(PIP) install $(@F)
 
-$(VENV_INSTALLED) : $(VENV) rdeps $(MODNAME)/cogframe.py
-	. $(VENV_ACTIVATE); pip install -e .
+$(VENV2_INSTALLED) : $(VENV2) rdeps2 $(MODNAME)/cogframe.py
+	. $(VENV2_ACTIVATE); $(PIP) install -e .
 
-test: $(VENV_TEST_DEPS) $(VENV_INSTALLED)
-	. $(VENV_ACTIVATE); nose2 --with-coverage --coverage-report=annotate --coverage-report=term --coverage=mediagrains
+test2: $(VENV2_TEST_DEPS) $(VENV2_INSTALLED)
+	. $(VENV2_ACTIVATE); $(NOSE2) --with-coverage --coverage-report=annotate --coverage-report=term --coverage=mediagrains
 
-.PHONY: test clean install source rdeps all
+$(VENV3):
+	$(VIRTUALENV) -p $(PYTHON3) $@
+
+rdeps3: $(VENV3)
+	. $(VENV3_ACTIVATE); $(PIP) install $(REMOTE_DEPS)
+
+$(VENV3_TEST_DEPS): $(VENV3)
+	. $(VENV3_ACTIVATE); $(PIP) install $(@F)
+
+$(VENV3_INSTALLED) : $(VENV3) rdeps3 $(MODNAME)/cogframe.py
+	. $(VENV3_ACTIVATE); $(PIP) install -e .
+
+test3: $(VENV3_TEST_DEPS) $(VENV3_INSTALLED)
+	. $(VENV3_ACTIVATE); $(NOSE2) --with-coverage --coverage-report=annotate --coverage-report=term --coverage=mediagrains
+
+test: test2 #test3
+
+.PHONY: test test2 test3 clean install source rdeps2 rdeps3 all
