@@ -155,7 +155,7 @@ class TestGSFLoads(TestCase):
         with self.assertRaises(GSFDecodeBadFileTypeError) as cm:
             loads(b"POTATO23\x07\x00\x00\x00")
         self.assertEqual(cm.exception.offset, 0)
-        self.assertEqual(cm.exception.filetype, b"POTATO23")
+        self.assertEqual(cm.exception.filetype, "POTATO23")
 
     def test_loads_rejects_incorrect_version_file(self):
         with self.assertRaises(GSFDecodeBadVersionError) as cm:

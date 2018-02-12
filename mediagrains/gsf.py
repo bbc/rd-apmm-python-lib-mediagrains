@@ -98,7 +98,7 @@ class GSFDecoder(object):
         return (r, i)
 
     def _read_string(self, b, i, l):
-        return (str(b[i:i+l]), i+l)
+        return (b[i:i+l].decode(encoding='ascii'), i+l)
 
     def _read_varstring(self, b, i):
         (l, i) = self._read_uint(b, i, 2)
@@ -132,7 +132,7 @@ class GSFDecoder(object):
     def _decode_ssb_header(self, b, i):
         start = i
         (tag, i) = self._read_string(b, i, 8)
-        if tag != b"SSBBgrsg":
+        if tag != "SSBBgrsg":
             raise GSFDecodeBadFileTypeError("File lacks correct header", start, tag)
         (major, i) = self._read_uint(b, i,  2)
         (minor, i) = self._read_uint(b, i, 2)
@@ -156,7 +156,7 @@ class GSFDecoder(object):
         start = i
         head = {}
 
-        (tag, size, i) = self._decode_block_header(b, i, [b"head"])
+        (tag, size, i) = self._decode_block_header(b, i, ["head"])
         (head['id'], i) = self._read_uuid(b, i)
         (head['created'], i) = self._read_timestamp(b, i)
         head['segments'] = []
@@ -165,10 +165,10 @@ class GSFDecoder(object):
         head_end = start + size
         while i < head_end:
             segm_start = i
-            (tag, size, i) = self._decode_block_header(b, i, [b"segm", b"tag"])
+            (tag, size, i) = self._decode_block_header(b, i, ["segm", "tag "])
             segm_end = segm_start + size
-            if tag == b"tag":
-                (tag, s, i) = self._decode_block_header(b, i, [b"tag"])
+            if tag == "tag ":
+                (tag, s, i) = self._decode_block_header(b, i, ["tag "])
                 (key, i) = self._read_varstring(b, i)
                 (val, i) = self._read_varstring(b, i)
                 head['tags'].append((key, val))
@@ -180,7 +180,7 @@ class GSFDecoder(object):
                 segm['tags'] = []
 
                 while i < segm_end:
-                    (tag, size, i) = self._decode_block_header(b, i, [b"tag"])
+                    (tag, size, i) = self._decode_block_header(b, i, ["tag "])
                     (key, i) = self._read_varstring(b, i)
                     (val, i) = self._read_varstring(b, i)
                     segm.tags.append((key, val))
@@ -200,7 +200,7 @@ class GSFDecoder(object):
             "grain": {
             }
         }
-        (_, size, i) = self._decode_block_header(b, i, [b"gbhd"])
+        (_, size, i) = self._decode_block_header(b, i, ["gbhd"])
         gbhd_end = start + size
         (meta['grain']['source_id'], i) = self._read_uuid(b, i)
         (meta['grain']['flow_id'], i) = self._read_uuid(b, i)
@@ -211,16 +211,16 @@ class GSFDecoder(object):
         (meta['grain']['duration'], i) = self._read_rational(b, i)
 
         block_start = i
-        (tag, size, i) = self._decode_block_header(b, i, [b"tils"], optional=True)
+        (tag, size, i) = self._decode_block_header(b, i, ["tils"], optional=True)
         block_end = block_start + size
         if size != 0:
             (meta['grain']['timelabels'], i) = self._decode_tils(b, block_start)
 
         block_start = i
-        (tag, size, i) = self._decode_block_header(b, i, [b"tils", b"vghd", b"cghd", b"aghd", b"cahd", b"eghd"])
+        (tag, size, i) = self._decode_block_header(b, i, ["tils", "vghd", "cghd", "aghd", "cahd", "eghd"])
         block_end = block_start + size
 
-        if tag == b"vghd":
+        if tag == "vghd":
             meta['grain']['grain_type'] = 'video'
             meta['grain']['cog_frame'] = {}
             (meta['grain']['cog_frame']['format'], i) = self._read_uint(b, i, 4)
@@ -237,7 +237,7 @@ class GSFDecoder(object):
             meta['grain']['cog_frame']['components'] = []
             if i < block_end:
                 comp_start = i
-                (tag, size, i) = self._decode_block_header(b, i, [b"comp"], optional=True)
+                (tag, size, i) = self._decode_block_header(b, i, ["comp"], optional=True)
                 comp_end = comp_start + size
                 if size != 0:
                     (n_comps, i) = self._read_uint(b, i, 2)
@@ -249,7 +249,7 @@ class GSFDecoder(object):
                         (comp['length'], i) = self._read_uint(b, i, 4)
                         meta['grain']['cog_frame']['components'].append(comp)
                 i = comp_end
-        elif tag == b'cghd':
+        elif tag == 'cghd':
             meta['grain']['grain_type'] = "coded_video"
             meta['grain']['cog_coded_frame'] = {}
             (meta['grain']['cog_coded_frame']['format'], i) = self._read_uint(b, i, 4)
@@ -263,7 +263,7 @@ class GSFDecoder(object):
 
             if i < block_end:
                 unof_start = i
-                (tag, size, i) = self._decode_block_header(b, i, [b"unof"], optional=True)
+                (tag, size, i) = self._decode_block_header(b, i, ["unof"], optional=True)
                 unof_end = unof_start + size
 
                 if size != 0:
@@ -272,14 +272,14 @@ class GSFDecoder(object):
                     for u in range(0, num):
                         (offset, i) = self._read_uint(b, i, 4)
                         meta['grain']['cog_coded_frame']['unit_offsets'].append(offset)
-        elif tag == b"aghd":
+        elif tag == "aghd":
             meta['grain']['grain_type'] = "audio"
             meta['grain']['cog_audio'] = {}
             (meta['grain']['cog_audio']['format'], i) = self._read_uint(b, i, 4)
             (meta['grain']['cog_audio']['channels'], i) = self._read_uint(b, i, 2)
             (meta['grain']['cog_audio']['samples'], i) = self._read_uint(b, i, 4)
             (meta['grain']['cog_audio']['sample_rate'], i) = self._read_uint(b, i, 4)
-        elif tag == b"cahd":
+        elif tag == "cahd":
             meta['grain']['grain_type'] = "coded_audio"
             meta['grain']['cog_coded_audio'] = {}
             (meta['grain']['cog_coded_audio']['format'], i) = self._read_uint(b, i, 4)
@@ -295,11 +295,11 @@ class GSFDecoder(object):
 
     def _decode_grdt(self, b, i):
         start = i
-        (_, size, i) = self._decode_block_header(b, i, [b"grdt"])
+        (_, size, i) = self._decode_block_header(b, i, ["grdt"])
         return (b[i:start+size], start + size)
 
     def _decode_grai(self, b, i):
-        (_, size, i) = self._decode_block_header(b, i, [b"grai"])
+        (_, size, i) = self._decode_block_header(b, i, ["grai"])
         if size > 0:
             (local_id, i) = self._read_uint(b, i, 2)
 

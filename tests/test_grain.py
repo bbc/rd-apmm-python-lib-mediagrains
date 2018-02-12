@@ -282,18 +282,21 @@ class TestGrain (TestCase):
         self.assertEqual(grain.components[0].height, 1080)
         self.assertEqual(grain.components[0].offset, 0)
         self.assertEqual(grain.components[0].length, 1920*1080*2)
+        self.assertEqual(len(grain.components[0]), 5)
 
         self.assertEqual(grain.components[1].stride, 1920)
         self.assertEqual(grain.components[1].width, 1920/2)
         self.assertEqual(grain.components[1].height, 1080)
         self.assertEqual(grain.components[1].offset, 1920*1080*2)
         self.assertEqual(grain.components[1].length, 1920*1080)
+        self.assertEqual(len(grain.components[1]), 5)
 
         self.assertEqual(grain.components[2].stride, 1920)
         self.assertEqual(grain.components[2].width, 1920/2)
         self.assertEqual(grain.components[2].height, 1080)
         self.assertEqual(grain.components[2].offset, 1920*1080*2 + 1920*1080)
         self.assertEqual(grain.components[2].length, 1920*1080)
+        self.assertEqual(len(grain.components[2]), 5)
 
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*1080*2*2)

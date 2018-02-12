@@ -15,11 +15,16 @@
 # limitations under the License.
 
 from __future__ import print_function
+from __future__ import absolute_import
+
+from six import string_types
+
 from uuid import UUID
 from nmoscommon.timestamp import Timestamp
 from collections import Sequence, MutableSequence, Mapping
 from fractions import Fraction
-from cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
+
+from .cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
 __all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain"]
 
@@ -940,7 +945,7 @@ def Grain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
         if isinstance(flow_id, UUID):
             flow_id = str(flow_id)
 
-        if not isinstance(src_id, basestring) or not isinstance(flow_id, basestring):
+        if not isinstance(src_id, string_types) or not isinstance(flow_id, string_types):
             raise AttributeError("Invalid types for src_id and flow_id")
 
         meta = {

@@ -14,7 +14,7 @@ TEST_DEPS=\
 
 # This is a list of URLs from which dependencies of the package which are not in pip will be fetched
 REMOTE_DEPS=\
-	git+https://github.com/bbc/nmos-common/
+	git+https://github.com/jamesba/nmos-common/@python3
 
 VENV2=virtpython2
 VENV2_ACTIVATE=$(VENV2)/bin/activate
