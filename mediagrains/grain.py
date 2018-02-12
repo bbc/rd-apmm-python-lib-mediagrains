@@ -26,7 +26,7 @@ from fractions import Fraction
 
 from .cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
-__all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain", "CodedAudioGrain"]
+__all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain", "CodedAudioGrain", "EventGrain"]
 
 
 class GRAIN(Sequence):
@@ -193,6 +193,114 @@ class GRAIN(Sequence):
     @property
     def length(self):
         return len(self.data)
+
+
+class EVENTGRAIN(GRAIN):
+    def __init__(self, meta, data):
+        if data is not None:
+            meta['grain']['event_payload'] = json.loads(data)
+        super(EVENTGRAIN, self).__init__(meta)
+        self._factory = "EventGrain"
+        self.meta['grain']['grain_type'] = 'event'
+        if 'event_payload' not in self.meta['grain']:
+            self.meta['grain']['event_payload'] = {}
+        if 'type' not in self.meta['grain']['event_payload']:
+            self.meta['grain']['event_payload']['type'] = ""
+        if 'topic' not in self.meta['grain']['event_payload']:
+            self.meta['grain']['event_payload']['topic'] = ""
+        if 'data' not in self.meta['grain']['event_payload']:
+            self.meta['grain']['event_payload']['data'] = []
+
+    @property
+    def event_type(self):
+        return self.meta['grain']['event_payload']['type']
+
+    @event_type.setter
+    def event_type(self, value):
+        self.meta['grain']['event_payload']['type'] = value
+
+    @property
+    def topic(self):
+        return self.meta['grain']['event_payload']['topic']
+
+    @topic.setter
+    def topic(self, value):
+        self.meta['grain']['event_payload']['topic'] = value
+
+
+    class DATA(Mapping):
+        def __init__(self, meta):
+            self.meta = meta
+
+        def __getitem__(self, key):
+            return self.meta[key]
+
+        def __setitem__(self, key, value):
+            self.meta[key] = value
+
+        def __delitem__(self, key):
+            del self.meta[key]
+
+        def __iter__(self):
+            return self.meta.__iter__()
+
+        def __len__(self):
+            return self.meta.__len__()
+
+        def __eq__(self, other):
+            return dict(self) == other
+
+        @property
+        def path(self):
+            return self.meta['path']
+
+        @path.setter
+        def path(self, value):
+            self.meta['path'] = value
+
+        @property
+        def pre(self):
+            if 'pre' in self.meta:
+                return self.meta['pre']
+            else:
+                return None
+
+        @pre.setter
+        def pre(self, value):
+            if value is not None:
+                self.meta['pre'] = value
+            else:
+                del self.meta['pre']
+
+        @property
+        def post(self):
+            if 'post' in self.meta:
+                return self.meta['post']
+            else:
+                return None
+
+        @post.setter
+        def post(self, value):
+            if value is not None:
+                self.meta['post'] = value
+            else:
+                del self.meta['post']
+    
+    @property
+    def data(self):
+        return [EVENTGRAIN.DATA(datum) for datum in self.meta['grain']['event_payload']['data']]
+
+    @data.setter
+    def data(self, value):
+        self.meta['grain']['event_payload']['data'] = [dict(datum) for datum in value]
+
+    def append(self, path, pre=None, post=None):
+        datum = { 'path' : path }
+        if pre is not None:
+            datum['pre'] = pre
+        if post is not None:
+            datum['post'] = post
+        self.meta['grain']['event_payload']['data'].append(datum)
 
 
 class VIDEOGRAIN(GRAIN):
@@ -1033,6 +1141,59 @@ def CodedVideoGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
 
     return CODEDVIDEOGRAIN(meta, data)
 
+
+def EventGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
+               sync_timestamp=None, rate=Fraction(25,1), duration=Fraction(1,25),
+               event_type='', topic='',
+               flow_id=None, data=None):
+    meta = None
+    src_id = None
+
+    if isinstance(src_id_or_meta, dict):
+        meta = src_id_or_meta
+        if data is None:
+            data = flow_id_or_data
+    else:
+        src_id = src_id_or_meta
+        if flow_id is None:
+            flow_id = flow_id_or_data
+
+    if meta is None:
+        if src_id is None or flow_id is None:
+            raise AttributeError("Must include either metadata, or src_id, and flow_id")
+
+        cts = Timestamp.get_time()
+        if origin_timestamp is None:
+            origin_timestamp = cts
+        if sync_timestamp is None:
+            sync_timestamp = origin_timestamp
+        meta = {
+            "@_ns": "urn:x-ipstudio:ns:0.1",
+            "grain": {
+                "grain_type": "event",
+                "source_id": str(src_id),
+                "flow_id": str(flow_id),
+                "origin_timestamp": str(origin_timestamp),
+                "sync_timestamp": str(sync_timestamp),
+                "creation_timestamp": str(cts),
+                "rate": {
+                    "numerator": Fraction(rate).numerator,
+                    "denominator": Fraction(rate).denominator,
+                    },
+                "duration": {
+                    "numerator": Fraction(duration).numerator,
+                    "denominator": Fraction(duration).denominator,
+                    },
+                "event_payload": {
+                    "type": event_type,
+                    "topic": topic,
+                    "data": []
+                }
+            },
+        }
+
+    return EVENTGRAIN(meta, data)
+
 def Grain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
           sync_timestamp=None, rate=Fraction(25,1), duration=Fraction(1,25),
           flow_id=None, data=None, src_id=None, meta=None):
@@ -1111,6 +1272,8 @@ def Grain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
         return CodedVideoGrain(meta, data)
     elif 'grain' in meta and 'grain_type' in meta['grain'] and meta['grain']['grain_type'] == 'coded_audio':
         return CodedAudioGrain(meta, data)
+    elif 'grain' in meta and 'grain_type' in meta['grain'] and meta['grain']['grain_type'] in ['event', 'data']:
+        return EventGrain(meta, data)
     else:
         return GRAIN(meta, data)
 

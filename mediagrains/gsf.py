@@ -288,6 +288,8 @@ class GSFDecoder(object):
             (meta['grain']['cog_coded_audio']['priming'], i) = self._read_uint(b, i, 4)
             (meta['grain']['cog_coded_audio']['remainder'], i) = self._read_uint(b, i, 4)
             (meta['grain']['cog_coded_audio']['sample_rate'], i) = self._read_uint(b, i, 4)
+        elif tag == "eghd":
+            meta['grain']['grain_type'] = "event"
         else:
             raise GSFDecodeError("Unknown type {} at offset {}".format(tag, i), start, length=gbhd_end - start)
         i = block_end

@@ -40,6 +40,6 @@ with numpy and similar libraries.
 """
 
 from __future__ import absolute_import
-from .grain import Grain, VideoGrain, CodedVideoGrain, AudioGrain, CodedAudioGrain
+from .grain import Grain, VideoGrain, CodedVideoGrain, AudioGrain, CodedAudioGrain, EventGrain
 
-__all__ = ["Grain", "VideoGrain", "CodedVideoGrain", "AudioGrain", "CodedAudioGrain"]
+__all__ = ["Grain", "VideoGrain", "CodedVideoGrain", "AudioGrain", "CodedAudioGrain", "EventGrain"]
