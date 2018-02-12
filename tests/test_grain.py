@@ -17,7 +17,7 @@
 from __future__ import print_function
 from unittest import TestCase
 import uuid
-from mediagrains.grain import Grain, VideoGrain, AudioGrain, CodedVideoGrain
+from mediagrains.grain import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain
 from mediagrains.cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from nmoscommon.timestamp import Timestamp
 import mock
@@ -985,8 +985,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.coded_width, 3)
         grain.coded_height = 4
         self.assertEqual(grain.coded_height, 4)
-        grain.length = 5
-        self.assertEqual(grain.length, 5)
         grain.layout = CogFrameLayout.UNKNOWN
         self.assertEqual(grain.layout, CogFrameLayout.UNKNOWN)
         grain.temporal_offset = 75
@@ -1120,3 +1118,255 @@ class TestGrain (TestCase):
         self.assertEqual(grain.format, CogFrameFormat.VC2)
         self.assertEqual(grain.meta, meta)
         self.assertEqual(grain.data, data)
+
+    def test_coded_audio_grain_create_MP1(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedAudioGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                                    cog_audio_format=CogAudioFormat.MP1,
+                                    samples=1920,
+                                    channels=6,
+                                    priming=0,
+                                    remainder=0,
+                                    sample_rate=48000,
+                                    length=15360)
+
+        self.assertEqual(grain.grain_type, "coded_audio")
+        self.assertEqual(grain.source_id, src_id)
+        self.assertEqual(grain.flow_id, flow_id)
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertEqual(grain.sync_timestamp, sts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(25,1))
+        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.format, CogAudioFormat.MP1)
+        self.assertEqual(grain.samples, 1920)
+        self.assertEqual(grain.channels, 6)
+        self.assertEqual(grain.priming, 0)
+        self.assertEqual(grain.remainder, 0)
+        self.assertEqual(grain.sample_rate, 48000)
+        self.assertEqual(grain.length, 15360)
+
+        self.assertIsInstance(grain.data, bytearray)
+        self.assertEqual(len(grain.data), grain.length)
+
+        self.assertEqual(repr(grain), "CodedAudioGrain({!r},{!r})".format(grain.meta, grain.data))
+
+    def test_coded_audio_grain_create_without_sts(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedAudioGrain(src_id, flow_id, origin_timestamp=ots,
+                                    cog_audio_format=CogAudioFormat.MP1,
+                                    samples=1920,
+                                    channels=6,
+                                    priming=0,
+                                    remainder=0,
+                                    sample_rate=48000,
+                                    length=15360)
+
+        self.assertEqual(grain.grain_type, "coded_audio")
+        self.assertEqual(grain.source_id, src_id)
+        self.assertEqual(grain.flow_id, flow_id)
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertEqual(grain.sync_timestamp, ots)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(25,1))
+        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.format, CogAudioFormat.MP1)
+        self.assertEqual(grain.samples, 1920)
+        self.assertEqual(grain.channels, 6)
+        self.assertEqual(grain.priming, 0)
+        self.assertEqual(grain.remainder, 0)
+        self.assertEqual(grain.sample_rate, 48000)
+        self.assertEqual(grain.length, 15360)
+
+        self.assertIsInstance(grain.data, bytearray)
+        self.assertEqual(len(grain.data), grain.length)
+
+        self.assertEqual(repr(grain), "CodedAudioGrain({!r},{!r})".format(grain.meta, grain.data))
+
+    def test_coded_audio_grain_create_without_sts_or_ots(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedAudioGrain(src_id, flow_id,
+                                    cog_audio_format=CogAudioFormat.MP1,
+                                    samples=1920,
+                                    channels=6,
+                                    priming=0,
+                                    remainder=0,
+                                    sample_rate=48000,
+                                    length=15360)
+
+        self.assertEqual(grain.grain_type, "coded_audio")
+        self.assertEqual(grain.source_id, src_id)
+        self.assertEqual(grain.flow_id, flow_id)
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.sync_timestamp, cts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(25,1))
+        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.format, CogAudioFormat.MP1)
+        self.assertEqual(grain.samples, 1920)
+        self.assertEqual(grain.channels, 6)
+        self.assertEqual(grain.priming, 0)
+        self.assertEqual(grain.remainder, 0)
+        self.assertEqual(grain.sample_rate, 48000)
+        self.assertEqual(grain.length, 15360)
+
+        self.assertIsInstance(grain.data, bytearray)
+        self.assertEqual(len(grain.data), grain.length)
+
+        self.assertEqual(repr(grain), "CodedAudioGrain({!r},{!r})".format(grain.meta, grain.data))
+
+    def test_coded_audio_grain_create_fills_empty_meta(self):
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        meta = {}
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedAudioGrain(meta)
+
+        self.assertEqual(grain.grain_type, "coded_audio")
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.sync_timestamp, cts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(0,1))
+        self.assertEqual(grain.duration, Fraction(0,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.format, CogAudioFormat.INVALID)
+        self.assertEqual(grain.samples, 0)
+        self.assertEqual(grain.channels, 0)
+        self.assertEqual(grain.priming, 0)
+        self.assertEqual(grain.remainder, 0)
+        self.assertEqual(grain.sample_rate, 48000)
+        self.assertEqual(grain.length, 0)
+
+    def test_coded_audio_grain_create_corrects_numeric_data(self):
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        meta = {
+            'grain': {
+                'cog_coded_audio': {
+                    'format': 0x200
+                }
+            }
+        }
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedAudioGrain(meta)
+
+        self.assertEqual(grain.grain_type, "coded_audio")
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.sync_timestamp, cts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(0,1))
+        self.assertEqual(grain.duration, Fraction(0,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.format, CogAudioFormat.MP1)
+        self.assertEqual(grain.samples, 0)
+        self.assertEqual(grain.channels, 0)
+        self.assertEqual(grain.priming, 0)
+        self.assertEqual(grain.remainder, 0)
+        self.assertEqual(grain.sample_rate, 48000)
+        self.assertEqual(grain.length, 0)
+
+    def test_coded_audio_grain_setters(self):
+        meta = {}
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedAudioGrain(meta)
+
+        grain.format = CogAudioFormat.MP1
+        self.assertEqual(grain.format, CogAudioFormat.MP1)
+        grain.format = 0x202
+        self.assertEqual(grain.format, CogAudioFormat.OPUS)
+
+        grain.channels = 2
+        self.assertEqual(grain.channels, 2)
+
+        grain.samples = 1920
+        self.assertEqual(grain.samples, 1920)
+
+        grain.priming = 12
+        self.assertEqual(grain.priming, 12)
+
+        grain.remainder = 105
+        self.assertEqual(grain.remainder, 105)
+
+        grain.sample_rate = 48000
+        self.assertEqual(grain.sample_rate, 48000)
+
+    def test_coded_audio_grain_with_data(self):
+        meta = {}
+        data = bytearray(15360)
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedAudioGrain(meta, data)
+
+        self.assertEqual(grain.length, len(data))
+        self.assertEqual(grain.data, data)
+
+    def test_coded_audio_grain_raises_on_empty(self):
+        with self.assertRaises(AttributeError):
+            grain = CodedAudioGrain(None)
+
+    def test_grain_makes_codedaudiograin(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        meta = {
+            "@_ns": "urn:x-ipstudio:ns:0.1",
+            "grain": {
+                "grain_type": "coded_audio",
+                "source_id": str(src_id),
+                "flow_id": str(flow_id),
+                "origin_timestamp": str(ots),
+                "sync_timestamp": str(sts),
+                "creation_timestamp": str(cts),
+                "rate": {
+                    "numerator": 25,
+                    "denominator": 1,
+                },
+                "duration": {
+                    "numerator": 1,
+                    "denominator": 25,
+                },
+                "cog_coded_audio": {
+                    "format": CogAudioFormat.MP1,
+                    "samples": 1920,
+                    "channels": 6,
+                    "priming": 12,
+                    "remainder": 105,
+                    "sample_rate": 48000
+                }
+            },
+        }
+
+        data = bytearray(15360)
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = Grain(meta, data=data)
+
+        self.assertEqual(grain.grain_type, "coded_audio")
+        self.assertEqual(grain.format, CogAudioFormat.MP1)
+        self.assertEqual(grain.meta, meta)
+        self.assertEqual(grain.data, data)
+    

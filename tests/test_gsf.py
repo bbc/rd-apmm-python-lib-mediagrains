@@ -17,7 +17,7 @@
 from __future__ import print_function
 from unittest import TestCase
 from uuid import UUID
-from mediagrains.grain import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN
+from mediagrains.grain import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN
 from mediagrains import Grain, VideoGrain
 from mediagrains.gsf import loads
 from mediagrains.gsf import GSFDecodeError
@@ -36,6 +36,9 @@ with open('examples/coded_video.gsf', 'rb') as f:
 
 with open('examples/audio.gsf', 'rb') as f:
     AUDIO_DATA = f.read()
+
+with open('examples/coded_audio.gsf', 'rb') as f:
+    CODED_AUDIO_DATA = f.read()
 
 
 class TestGSFLoads(TestCase):
@@ -122,16 +125,17 @@ class TestGSFLoads(TestCase):
         self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
 
         ots = Timestamp(1420102800, 0)
-        unit_offsets = [[0, 6, 34, 42, 711, 719],
-                        [0, 6, 14],
-                        [0, 6, 14],
-                        [0, 6, 14],
-                        [0, 6, 14],
-                        [0, 6, 14],
-                        [0, 6, 14],
-                        [0, 6, 14],
-                        [0, 6, 14],
-                        [0, 6, 14]]
+        unit_offsets = [
+            ([0, 6, 34, 42, 711, 719], 36114),
+            ([0, 6, 14], 380),
+            ([0, 6, 14], 8277),
+            ([0, 6, 14], 4914),
+            ([0, 6, 14], 4961),
+            ([0, 6, 14], 3777),
+            ([0, 6, 14], 1950),
+            ([0, 6, 14], 31),
+            ([0, 6, 14], 25),
+            ([0, 6, 14], 6241)]
         for grain in segments[head['segments'][0]['local_id']]:
             self.assertIsInstance(grain, CODEDVIDEOGRAIN)
             self.assertEqual(grain.grain_type, "coded_video")
@@ -146,9 +150,9 @@ class TestGSFLoads(TestCase):
             self.assertEqual(grain.origin_height, 1080)
             self.assertEqual(grain.coded_width, 0)
             self.assertEqual(grain.coded_height, 0)
-            self.assertEqual(grain.length, 0)
+            self.assertEqual(grain.length, unit_offsets[0][1])
             self.assertEqual(grain.temporal_offset, 0)
-            self.assertEqual(grain.unit_offsets, unit_offsets[0])
+            self.assertEqual(grain.unit_offsets, unit_offsets[0][0])
             unit_offsets.pop(0)
 
     def test_loads_rejects_incorrect_type_file(self):
@@ -164,3 +168,44 @@ class TestGSFLoads(TestCase):
         self.assertEqual(cm.exception.major, 8)
         self.assertEqual(cm.exception.minor, 3)
 
+    def test_loads_coded_audio(self):
+        (head, segments) = loads(CODED_AUDIO_DATA)
+
+        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 5))
+        self.assertEqual(head['id'], UUID('2dbc5889-15f1-427c-b727-5201dd3b053c'))
+        self.assertEqual(len(head['segments']), 1)
+        self.assertEqual(head['segments'][0]['id'], UUID('6ca3a217-f2c2-4344-832b-6ea87bc5ddb8'))
+        self.assertIn(head['segments'][0]['local_id'], segments)
+        self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
+
+        start_ots = Timestamp(1420102800, 0)
+        ots = start_ots
+        total_samples = 0
+        lengths = [ 603,
+                    690,
+                    690,
+                    689,
+                    690,
+                    690,
+                    689,
+                    690,
+                    690,
+                    689]
+        for grain in segments[head['segments'][0]['local_id']]:
+            self.assertIsInstance(grain, CODEDAUDIOGRAIN)
+            self.assertEqual(grain.grain_type, "coded_audio")
+            self.assertEqual(grain.source_id, UUID('38bfd902-b35f-40d6-9ecf-dc95869130cf'))
+            self.assertEqual(grain.flow_id, UUID('e615296b-ff40-4d95-8398-6a4082305f3a'))
+            self.assertEqual(grain.origin_timestamp, ots)
+
+            self.assertEqual(grain.format, CogAudioFormat.AAC)
+            self.assertEqual(grain.channels, 2)
+            self.assertEqual(grain.samples, 1024)
+            self.assertEqual(grain.priming, 0)
+            self.assertEqual(grain.remainder, 0)
+            self.assertEqual(grain.sample_rate, 48000)
+
+            self.assertEqual(len(grain.data), lengths[0])
+            lengths.pop(0)
+            total_samples += grain.samples
+            ots = start_ots + TimeOffset.from_count(total_samples, grain.sample_rate)
