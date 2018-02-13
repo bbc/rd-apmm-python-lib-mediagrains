@@ -25,7 +25,7 @@ VENV2_NMOSCOMMON=$(VENV2_MODULE_DIR)/nmoscommon
 
 VENV3=virtpython3
 VENV3_ACTIVATE=$(VENV3)/bin/activate
-VENV3_MODULE_DIR=$(VENV3)/lib/python3.*/site-packages
+VENV3_MODULE_DIR=$(wildcard $(VENV3)/lib/python3.*/site-packages)
 VENV3_TEST_DEPS=$(addprefix $(VENV3_MODULE_DIR)/,$(TEST_DEPS))
 VENV3_INSTALLED=$(VENV3_MODULE_DIR)/$(MODNAME).egg-link
 VENV3_NMOSCOMMON=$(VENV3_MODULE_DIR)/nmoscommon
@@ -39,6 +39,11 @@ all:
 	@echo "make test2   - Test under python 2"
 	@echo "make test3   - Test under python 3"
 	@echo "make test    - Test under both versions"
+
+submodules:
+	git submodule init && git submodule update
+
+$(COG_HEADER_DIR)/cog/cog.h: submodules
 
 cog.i: $(COG_HEADER_DIR)/cog/cog.h
 	gcc -E -I$(COG_HEADER_DIR) $< -o $@
@@ -55,7 +60,7 @@ install: $(MODNAME)/cogframe.py
 clean:
 	$(PYTHON) setup.py clean || true
 	rm -rf $(MODNAME)/cogframe.py
-	rm -rf ./cogframe.h
+	rm -rf ./cog.i
 	rm -rf build/ MANIFEST
 	rm -rf $(VENV2)
 	rm -rf $(VENV3)
@@ -64,7 +69,7 @@ clean:
 $(VENV2):
 	$(VIRTUALENV) -p $(PYTHON2) $@
 
-rdeps2: $(VENV2)
+rdeps2: $(VENV2) submodules
 	. $(VENV2_ACTIVATE); $(PIP) install $(REMOTE_DEPS)
 
 $(VENV2_NMOSCOMMON): rdeps2
@@ -72,16 +77,16 @@ $(VENV2_NMOSCOMMON): rdeps2
 $(VENV2_TEST_DEPS): $(VENV2)
 	. $(VENV2_ACTIVATE); $(PIP) install $(@F)
 
-$(VENV2_INSTALLED) : $(VENV2) $(VENV2_NMOSCOMMON) $(MODNAME)/cogframe.py
+$(VENV2_INSTALLED) : $(VENV2_NMOSCOMMON) $(MODNAME)/cogframe.py
 	. $(VENV2_ACTIVATE); $(PIP) install -e .
 
-test2: $(VENV2) $(VENV2_NMOSCOMMON) $(VENV2_TEST_DEPS) $(VENV2_INSTALLED)
+test2: $(VENV2_TEST_DEPS) $(VENV2_INSTALLED)
 	. $(VENV2_ACTIVATE); $(NOSE2) --with-coverage --coverage-report=annotate --coverage-report=term --coverage=mediagrains
 
 $(VENV3):
 	$(VIRTUALENV) -p $(PYTHON3) $@
 
-rdeps3: $(VENV3)
+rdeps3: $(VENV3) submodules
 	. $(VENV3_ACTIVATE); $(PIP) install $(REMOTE_DEPS)
 
 $(VENV3_NMOSCOMMON): rdeps3
@@ -89,12 +94,12 @@ $(VENV3_NMOSCOMMON): rdeps3
 $(VENV3_TEST_DEPS): $(VENV3)
 	. $(VENV3_ACTIVATE); $(PIP) install $(@F)
 
-$(VENV3_INSTALLED) : $(VENV3) $(VENV3_NMOSCOMMON) $(MODNAME)/cogframe.py
+$(VENV3_INSTALLED) : $(VENV3_NMOSCOMMON) $(MODNAME)/cogframe.py
 	. $(VENV3_ACTIVATE); $(PIP) install -e .
 
-test3: $(VENV3) $(VENV3_NMOSCOMMON) $(VENV3_TEST_DEPS) $(VENV3_INSTALLED)
+test3: $(VENV3_TEST_DEPS) $(VENV3_INSTALLED)
 	. $(VENV3_ACTIVATE); $(NOSE2) --with-coverage --coverage-report=annotate --coverage-report=term --coverage=mediagrains
 
-test: $(VENV2) $(VENV2_NMOSCOMMON) $(VENV2_TEST_DEPS) $(VENV2_INSTALLED) test2 $(VENV3) $(VENV3_NMOSCOMMON) $(VENV3_TEST_DEPS) $(VENV3_INSTALLED) test3
+test: test2 test3
 
-.PHONY: test test2 test3 clean install source rdeps2 rdeps3 all
+.PHONY: test test2 test3 clean install source rdeps2 rdeps3 all submodules
