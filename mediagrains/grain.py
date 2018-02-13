@@ -26,6 +26,8 @@ from fractions import Fraction
 
 from .cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
+import json
+
 __all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain", "CodedAudioGrain", "EventGrain"]
 
 
@@ -199,7 +201,7 @@ class EVENTGRAIN(GRAIN):
     def __init__(self, meta, data):
         if data is not None:
             meta['grain']['event_payload'] = json.loads(data)
-        super(EVENTGRAIN, self).__init__(meta)
+        super(EVENTGRAIN, self).__init__(meta, None)
         self._factory = "EventGrain"
         self.meta['grain']['grain_type'] = 'event'
         if 'event_payload' not in self.meta['grain']:
@@ -276,22 +278,22 @@ class EVENTGRAIN(GRAIN):
         def post(self):
             if 'post' in self.meta:
                 return self.meta['post']
-            else:
+            elif 'pre' in self.meta:
                 return None
 
         @post.setter
         def post(self, value):
             if value is not None:
                 self.meta['post'] = value
-            else:
+            elif 'post' in self.meta:
                 del self.meta['post']
     
     @property
-    def data(self):
+    def event_data(self):
         return [EVENTGRAIN.DATA(datum) for datum in self.meta['grain']['event_payload']['data']]
 
-    @data.setter
-    def data(self, value):
+    @event_data.setter
+    def event_data(self, value):
         self.meta['grain']['event_payload']['data'] = [dict(datum) for datum in value]
 
     def append(self, path, pre=None, post=None):

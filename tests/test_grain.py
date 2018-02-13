@@ -17,11 +17,12 @@
 from __future__ import print_function
 from unittest import TestCase
 import uuid
-from mediagrains.grain import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain
+from mediagrains.grain import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from nmoscommon.timestamp import Timestamp
 import mock
 from fractions import Fraction
+import json
 
 
 class TestGrain (TestCase):
@@ -1369,4 +1370,207 @@ class TestGrain (TestCase):
         self.assertEqual(grain.format, CogAudioFormat.MP1)
         self.assertEqual(grain.meta, meta)
         self.assertEqual(grain.data, data)
-    
+
+    def test_event_grain_create(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+        
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = EventGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                               event_type='urn:x-ipstudio:format:event.query', topic='/dummy')
+
+        self.assertEqual(grain.grain_type, "event")
+        self.assertEqual(grain.source_id, src_id)
+        self.assertEqual(grain.flow_id, flow_id)
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertEqual(grain.sync_timestamp, sts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(25,1))
+        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.event_type, "urn:x-ipstudio:format:event.query")
+        self.assertEqual(grain.topic, "/dummy")
+        self.assertEqual(grain.event_data, [])
+
+        self.assertEqual(repr(grain), "EventGrain({!r})".format(grain.meta))
+
+    def test_event_grain_create_without_sts(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = EventGrain(src_id, flow_id, origin_timestamp=ots,
+                               event_type='urn:x-ipstudio:format:event.query', topic='/dummy')
+
+        self.assertEqual(grain.grain_type, "event")
+        self.assertEqual(grain.source_id, src_id)
+        self.assertEqual(grain.flow_id, flow_id)
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertEqual(grain.sync_timestamp, ots)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(25,1))
+        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.event_type, "urn:x-ipstudio:format:event.query")
+        self.assertEqual(grain.topic, "/dummy")
+        self.assertEqual(grain.event_data, [])
+
+        self.assertEqual(repr(grain), "EventGrain({!r})".format(grain.meta))
+
+    def test_event_grain_create_without_sts_or_ots(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = EventGrain(src_id, flow_id,
+                               event_type='urn:x-ipstudio:format:event.query', topic='/dummy')
+
+        self.assertEqual(grain.grain_type, "event")
+        self.assertEqual(grain.source_id, src_id)
+        self.assertEqual(grain.flow_id, flow_id)
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.sync_timestamp, cts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(25,1))
+        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.event_type, "urn:x-ipstudio:format:event.query")
+        self.assertEqual(grain.topic, "/dummy")
+        self.assertEqual(grain.event_data, [])
+
+        self.assertEqual(repr(grain), "EventGrain({!r})".format(grain.meta))
+
+    def test_event_grain_create_fills_in_empty_meta(self):
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        meta = {}
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = EventGrain(meta)
+
+        self.assertEqual(grain.grain_type, "event")
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.sync_timestamp, cts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(0,1))
+        self.assertEqual(grain.duration, Fraction(0,1))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.event_type, "")
+        self.assertEqual(grain.topic, "")
+        self.assertEqual(grain.event_data, [])
+
+    def test_event_grain_create_fails_on_None(self):
+        with self.assertRaises(AttributeError):
+            grain = EventGrain(None)
+
+    def test_event_grain_create_from_meta_and_data(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        meta = {
+            "@_ns": "urn:x-ipstudio:ns:0.1",
+            "grain": {
+                "grain_type": "event",
+                "source_id": str(src_id),
+                "flow_id": str(flow_id),
+                "origin_timestamp": str(ots),
+                "sync_timestamp": str(sts),
+                "creation_timestamp": str(cts),
+                "rate": {
+                    "numerator": 25,
+                    "denominator": 1,
+                },
+                "duration": {
+                    "numerator": 1,
+                    "denominator": 25,
+                }
+            }
+        }
+        data = json.dumps({
+            'type': 'urn:x-ipstudio:format:event.notify',
+            'topic': '/foo',
+            'data': [
+                {
+                    'path': '/bar',
+                    'pre': 'baz'
+                },
+                {
+                    'path': '/beep',
+                    'pre': 'boop',
+                    'post': 'bong'
+                }
+            ]
+        })
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = Grain(meta, data)
+
+        self.assertEqual(grain.grain_type, "event")
+        self.assertEqual(grain.source_id, src_id)
+        self.assertEqual(grain.flow_id, flow_id)
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertEqual(grain.sync_timestamp, sts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(25,1))
+        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.event_type, "urn:x-ipstudio:format:event.notify")
+        self.assertEqual(grain.topic, "/foo")
+        self.assertEqual(len(grain.event_data), 2)
+        self.assertEqual(len(grain.event_data[0]), 2)
+        self.assertEqual(grain.event_data[0].path, '/bar')
+        self.assertEqual(grain.event_data[0].pre, 'baz')
+        self.assertIsNone(grain.event_data[0].post)
+        self.assertEqual(len(grain.event_data[1]), 3)
+        self.assertEqual(grain.event_data[1].path, '/beep')
+        self.assertEqual(grain.event_data[1].pre, 'boop')
+        self.assertEqual(grain.event_data[1].post, 'bong')
+
+    def test_event_grain_setters(self):
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        meta = {}
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = EventGrain(meta)
+
+        grain.event_type = "urn:x-ipstudio:format:event.potato"
+        self.assertEqual(grain.event_type, "urn:x-ipstudio:format:event.potato")
+        grain.topic = "/important/data"
+        self.assertEqual(grain.topic, "/important/data")
+        grain.append('/sub/path', 'was', 'is')
+        self.assertEqual(len(grain.event_data), 1)
+        self.assertEqual(grain.event_data[0], {'path': '/sub/path',
+                                               'pre': 'was',
+                                               'post': 'is'})
+        self.assertEqual(grain.event_data[0].path, '/sub/path')
+        self.assertEqual(grain.event_data[0].pre, 'was')
+        self.assertEqual(grain.event_data[0].post, 'is')
+        grain.event_data[0].path = '/location'
+        grain.event_data[0].pre = 'now'
+        grain.event_data[0].post = 'next'
+        self.assertEqual(grain.event_data[0], {'path': '/location',
+                                               'pre': 'now',
+                                               'post': 'next'})
+        grain.event_data[0]['post'] = 'never'
+        del grain.event_data[0]['post']
+        self.assertIsNone(grain.event_data[0].post)
+
+        grain.event_data[0].pre = None
+        grain.event_data[0].post = 'never_was'
+        grain.event_data[0].post = None
+        grain.event_data[0].post = None
+        self.assertNotIn('pre', grain.event_data[0])
+        self.assertIsNone(grain.event_data[0].pre)
+
+        grain.event_data = []
+        self.assertEqual(len(grain.event_data), 0)
