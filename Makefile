@@ -1,4 +1,4 @@
-PYTHON2=`which python2`
+PYTHON2=`which python2.7`
 PYTHON3=`which python3`
 VIRTUALENV=virtualenv
 PIP=pip
@@ -14,21 +14,23 @@ TEST_DEPS=\
 
 # This is a list of URLs from which dependencies of the package which are not in pip will be fetched
 REMOTE_DEPS=\
-	git+https://github.com/jamesba/nmos-common/@python3
+	submodules/nmos-common
 
 VENV2=virtpython2
 VENV2_ACTIVATE=$(VENV2)/bin/activate
 VENV2_MODULE_DIR=$(VENV2)/lib/python2.7/site-packages
 VENV2_TEST_DEPS=$(addprefix $(VENV2_MODULE_DIR)/,$(TEST_DEPS))
 VENV2_INSTALLED=$(VENV2_MODULE_DIR)/$(MODNAME).egg-link
+VENV2_NMOSCOMMON=$(VENV2_MODULE_DIR)/nmoscommon
 
 VENV3=virtpython3
 VENV3_ACTIVATE=$(VENV3)/bin/activate
-VENV3_MODULE_DIR=$(VENV3)/lib/python3.5/site-packages
+VENV3_MODULE_DIR=$(VENV3)/lib/python3.*/site-packages
 VENV3_TEST_DEPS=$(addprefix $(VENV3_MODULE_DIR)/,$(TEST_DEPS))
 VENV3_INSTALLED=$(VENV3_MODULE_DIR)/$(MODNAME).egg-link
+VENV3_NMOSCOMMON=$(VENV3_MODULE_DIR)/nmoscommon
 
-COG_HEADER_DIR=/usr/include/cog-1.2
+COG_HEADER_DIR=submodules/rd-ips-core-lib-cog2/
 
 all:
 	@echo "make source  - Create source package"
@@ -38,11 +40,11 @@ all:
 	@echo "make test3   - Test under python 3"
 	@echo "make test    - Test under both versions"
 
-cog.h: $(COG_HEADER_DIR)/cog/cog.h
+cog.i: $(COG_HEADER_DIR)/cog/cog.h
 	gcc -E -I$(COG_HEADER_DIR) $< -o $@
 
-$(MODNAME)/cogframe.py: cog.h
-	./extract_enums.py $< > $@
+$(MODNAME)/cogframe.py: cog.i
+	./extract_enums.py $< $@
 
 source: $(MODNAME)/cogframe.py
 	$(PYTHON) setup.py sdist $(COMPILE)
@@ -65,13 +67,15 @@ $(VENV2):
 rdeps2: $(VENV2)
 	. $(VENV2_ACTIVATE); $(PIP) install $(REMOTE_DEPS)
 
+$(VENV2_NMOSCOMMON): rdeps2
+
 $(VENV2_TEST_DEPS): $(VENV2)
 	. $(VENV2_ACTIVATE); $(PIP) install $(@F)
 
-$(VENV2_INSTALLED) : $(VENV2) rdeps2 $(MODNAME)/cogframe.py
+$(VENV2_INSTALLED) : $(VENV2) $(VENV2_NMOSCOMMON) $(MODNAME)/cogframe.py
 	. $(VENV2_ACTIVATE); $(PIP) install -e .
 
-test2: $(VENV2_TEST_DEPS) $(VENV2_INSTALLED)
+test2: $(VENV2) $(VENV2_NMOSCOMMON) $(VENV2_TEST_DEPS) $(VENV2_INSTALLED)
 	. $(VENV2_ACTIVATE); $(NOSE2) --with-coverage --coverage-report=annotate --coverage-report=term --coverage=mediagrains
 
 $(VENV3):
@@ -80,15 +84,17 @@ $(VENV3):
 rdeps3: $(VENV3)
 	. $(VENV3_ACTIVATE); $(PIP) install $(REMOTE_DEPS)
 
+$(VENV3_NMOSCOMMON): rdeps3
+
 $(VENV3_TEST_DEPS): $(VENV3)
 	. $(VENV3_ACTIVATE); $(PIP) install $(@F)
 
-$(VENV3_INSTALLED) : $(VENV3) rdeps3 $(MODNAME)/cogframe.py
+$(VENV3_INSTALLED) : $(VENV3) $(VENV3_NMOSCOMMON) $(MODNAME)/cogframe.py
 	. $(VENV3_ACTIVATE); $(PIP) install -e .
 
-test3: $(VENV3_TEST_DEPS) $(VENV3_INSTALLED)
+test3: $(VENV3) $(VENV3_NMOSCOMMON) $(VENV3_TEST_DEPS) $(VENV3_INSTALLED)
 	. $(VENV3_ACTIVATE); $(NOSE2) --with-coverage --coverage-report=annotate --coverage-report=term --coverage=mediagrains
 
-test: test2 #test3
+test: $(VENV2) $(VENV2_NMOSCOMMON) $(VENV2_TEST_DEPS) $(VENV2_INSTALLED) test2 $(VENV3) $(VENV3_NMOSCOMMON) $(VENV3_TEST_DEPS) $(VENV3_INSTALLED) test3
 
 .PHONY: test test2 test3 clean install source rdeps2 rdeps3 all
