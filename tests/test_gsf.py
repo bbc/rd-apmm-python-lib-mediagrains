@@ -17,7 +17,7 @@
 from __future__ import print_function
 from unittest import TestCase
 from uuid import UUID
-from mediagrains.grain import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN
+from mediagrains.grain import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
 from mediagrains import Grain, VideoGrain
 from mediagrains.gsf import loads
 from mediagrains.gsf import GSFDecodeError
@@ -39,6 +39,9 @@ with open('examples/audio.gsf', 'rb') as f:
 
 with open('examples/coded_audio.gsf', 'rb') as f:
     CODED_AUDIO_DATA = f.read()
+
+with open('examples/event.gsf', 'rb') as f:
+    EVENT_DATA = f.read()
 
 
 class TestGSFLoads(TestCase):
@@ -209,3 +212,36 @@ class TestGSFLoads(TestCase):
             lengths.pop(0)
             total_samples += grain.samples
             ots = start_ots + TimeOffset.from_count(total_samples, grain.sample_rate)
+
+    def test_loads_event(self):
+        self.maxDiff = None
+        (head, segments) = loads(EVENT_DATA)
+
+        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 37, 35))
+        self.assertEqual(head['id'], UUID('3c45f8b5-1853-4723-808a-ab5cbf598ccc'))
+        self.assertEqual(len(head['segments']), 1)
+        self.assertEqual(head['segments'][0]['id'], UUID('db095cb5-050b-4b8c-92e8-31351422e93a'))
+        self.assertIn(head['segments'][0]['local_id'], segments)
+        self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
+
+        start_ots = Timestamp(1447176512, 400000000)
+        ots = start_ots
+        line = ''
+        seqnum = 3107787894242499264
+        for grain in segments[head['segments'][0]['local_id']]:
+            self.assertIsInstance(grain, EVENTGRAIN)
+            self.assertEqual(grain.grain_type, "event")
+            self.assertEqual(grain.source_id, UUID('2db4268e-82ef-49f9-bc0f-1726e8352d76'))
+            self.assertEqual(grain.flow_id, UUID('5333bae9-0768-4e31-be1c-fbd5dc2e34ac'))
+            self.assertEqual(grain.origin_timestamp, ots)
+
+            self.assertEqual(grain.event_type, 'urn:x-ipstudio:format:event.ttext.ebuttlive')
+            self.assertEqual(grain.topic, '')
+            self.assertEqual(len(grain.event_data), 1)
+            self.assertEqual(grain.event_data[0].path, 'Subs')
+            self.assertEqual(grain.event_data[0].pre, line)
+            line = '<?xml version="1.0" encoding="UTF-8"?>\n<tt:tt ttp:timeBase="clock" ttp:clockMode="utc" xml:lang="en" xmlns:tt="http://www.w3.org/ns/ttml"  xmlns:ebuttExt="urn:ebu:tt:extension"  xmlns:ttp="http://www.w3.org/ns/ttml#parameter" xmlns:tts="http://www.w3.org/ns/ttml#styling" ttp:cellResolution="50 30" xmlns:ebuttm="urn:ebu:tt:metadata" tts:extent="1920px 1080px" ttp:dropMode="nonDrop" ttp:markerMode="discontinuous" ebuttm:sequenceIdentifier="5333bae9-0768-4e31-be1c-fbd5dc2e34ac" ebuttm:sequenceNumber="' + str(seqnum) + '"><tt:head><tt:metadata><ebuttm:documentMetadata><ebuttm:documentEbuttVersion>v1.0</ebuttm:documentEbuttVersion><ebuttm:documentTotalNumberOfSubtitles>1</ebuttm:documentTotalNumberOfSubtitles><ebuttm:documentMaximumNumberOfDisplayableCharacterInAnyRow>40</ebuttm:documentMaximumNumberOfDisplayableCharacterInAnyRow><ebuttm:documentCountryOfOrigin>gb</ebuttm:documentCountryOfOrigin></ebuttm:documentMetadata></tt:metadata><tt:styling><tt:style xml:id="defaultStyle" tts:fontFamily="monospaceSansSerif" tts:fontSize="1c 1c" tts:lineHeight="normal" tts:textAlign="center" tts:color="white" tts:backgroundColor="transparent" tts:fontStyle="normal" tts:fontWeight="normal" tts:textDecoration="none" /><tt:style xml:id="WhiteOnBlack" tts:color="white" tts:backgroundColor="black" tts:fontSize="1c 2c"/><tt:style xml:id="textCenter" tts:textAlign="center"/></tt:styling><tt:layout><tt:region xml:id="bottom" tts:origin="10% 10%" tts:extent="80% 80%" tts:padding="0c" tts:displayAlign="after" tts:writingMode="lrtb"/></tt:layout></tt:head><tt:body dur="00:00:10"><tt:div style="defaultStyle"><tt:p xml:id="sub2" style="textCenter" region="bottom"><tt:span style="WhiteOnBlack">' + ots.to_iso8601_utc() + '</tt:span></tt:p></tt:div></tt:body></tt:tt>'
+            self.assertEqual(grain.event_data[0].post, line, msg="\n\nExpected:\n\n{!r}\n\nGot:\n\n{!r}\n\n".format(line, grain.event_data[0].post))
+            
+            ots = ots + TimeOffset.from_nanosec(20000000)
+            seqnum += 20000000
