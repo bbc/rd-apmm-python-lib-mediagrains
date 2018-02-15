@@ -14,6 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""\
+A library for deserialising GSF files, either from string buffers or file
+objects.
+"""
+
 from __future__ import print_function, absolute_import
 from . import Grain
 from six import indexbytes
@@ -22,7 +27,7 @@ from datetime import datetime
 from nmoscommon.timestamp import Timestamp
 from fractions import Fraction
 
-__all__ = ["GSFDecoder", "loads", "GSFError", "GSFDecodeError",
+__all__ = ["GSFDecoder", "load", "loads", "GSFError", "GSFDecodeError",
            "GSFDecodeBadFileTypeError", "GSFDecodeBadVersionError"]
 
 
@@ -44,11 +49,35 @@ def loads(s, cls=None, parse_grain=None, **kwargs):
     return dec.decode(s)
 
 
+def load(fp, cls=None, parse_grain=None, **kwargs):
+    """Deserialise a GSF file from a file object (or similar) into python,
+    returns a pair of (head, segments) where head is a python dict
+    containing general metadata from the file, and segments is a dictionary
+    mapping numeric segment ids to lists of Grain objects.
+
+    If you wish to use a custom GSFDecoder subclass pass it as cls, if you
+    wish to use a custom Grain constructor pass it as parse_grain. The
+    defaults are GSFDecoder and Grain. Extra kwargs will be passed to the
+    decoder constructor."""
+    s = fp.read()
+    return loads(s, cls=cls, parse_grain=parse_grain, **kwargs)
+
+
 class GSFError(Exception):
+    """A generic GSF error, all other GSF exceptions inherit from it."""
     pass
 
 
 class GSFDecodeError(GSFError):
+    """A generic GSF Decoder error, all other GSF Decodrr exceptions inherit from it.
+
+    properties:
+
+    offset
+        The offset from the start of the file at which the bad data is located
+
+    length
+        The length of the bad data"""
     def __init__(self, msg, i, length=None):
         super(GSFDecodeError, self).__init__(msg)
         self.offset = i
@@ -56,12 +85,26 @@ class GSFDecodeError(GSFError):
 
 
 class GSFDecodeBadFileTypeError(GSFDecodeError):
+    """The file type was not GSF.
+    properties:
+
+    filetype
+        The file type string"""
     def __init__(self, msg, i, filetype):
         super(GSFDecodeBadFileTypeError, self).__init__(msg, i, 8)
         self.filetype = filetype
 
 
 class GSFDecodeBadVersionError(GSFDecodeError):
+    """The version was not 7.0
+
+    properties:
+
+    major
+        The major version detected
+
+    minor
+        The minor version detected"""
     def __init__(self, msg, i, major, minor):
         super(GSFDecodeBadVersionError, self).__init__(msg, i, 8)
         self.major = major
