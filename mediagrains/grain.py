@@ -229,7 +229,6 @@ class EVENTGRAIN(GRAIN):
     def topic(self, value):
         self.meta['grain']['event_payload']['topic'] = value
 
-
     class DATA(Mapping):
         def __init__(self, meta):
             self.meta = meta
@@ -287,7 +286,7 @@ class EVENTGRAIN(GRAIN):
                 self.meta['post'] = value
             elif 'post' in self.meta:
                 del self.meta['post']
-    
+
     @property
     def event_data(self):
         return [EVENTGRAIN.DATA(datum) for datum in self.meta['grain']['event_payload']['data']]
@@ -297,7 +296,7 @@ class EVENTGRAIN(GRAIN):
         self.meta['grain']['event_payload']['data'] = [dict(datum) for datum in value]
 
     def append(self, path, pre=None, post=None):
-        datum = { 'path' : path }
+        datum = {'path': path}
         if pre is not None:
             datum['pre'] = pre
         if post is not None:
@@ -373,13 +372,13 @@ class VIDEOGRAIN(GRAIN):
         def __init__(self, parent):
             self.parent = parent
 
-        def __getitem__(self,key):
+        def __getitem__(self, key):
             return VIDEOGRAIN.COMPONENT(self.parent.meta['grain']['cog_frame']['components'][key])
 
-        def __setitem__(self,key,value):
+        def __setitem__(self, key, value):
             self.parent.meta['grain']['cog_frame']['components'][key] = VIDEOGRAIN.COMPONENT(value)
 
-        def __delitem__(self,key):
+        def __delitem__(self, key):
             del self.parent.meta['grain']['cog_frame']['components'][key]
 
         def insert(self, key, value):
@@ -461,8 +460,8 @@ class VIDEOGRAIN(GRAIN):
     @source_aspect_ratio.setter
     def source_aspect_ratio(self, value):
         value = Fraction(value)
-        self.meta['grain']['cog_frame']['source_aspect_ratio'] = { 'numerator': value.numerator,
-                                                          'denominator': value.denominator}
+        self.meta['grain']['cog_frame']['source_aspect_ratio'] = {'numerator': value.numerator,
+                                                                  'denominator': value.denominator}
 
     @property
     def pixel_aspect_ratio(self):
@@ -475,8 +474,8 @@ class VIDEOGRAIN(GRAIN):
     @pixel_aspect_ratio.setter
     def pixel_aspect_ratio(self, value):
         value = Fraction(value)
-        self.meta['grain']['cog_frame']['pixel_aspect_ratio'] = { 'numerator': value.numerator,
-                                                         'denominator': value.denominator}
+        self.meta['grain']['cog_frame']['pixel_aspect_ratio'] = {'numerator': value.numerator,
+                                                                 'denominator': value.denominator}
 
 
 class CODEDVIDEOGRAIN(GRAIN):
@@ -490,7 +489,7 @@ class CODEDVIDEOGRAIN(GRAIN):
             self.meta['grain']['cog_coded_frame']['format'] = CogFrameFormat.UNKNOWN
         if 'layout' not in self.meta['grain']['cog_coded_frame']:
             self.meta['grain']['cog_coded_frame']['layout'] = CogFrameLayout.UNKNOWN
-        for key in ['origin_width', 'origin_height', 'coded_width', 'coded_height', 'temportal_offset', 'length' ]:
+        for key in ['origin_width', 'origin_height', 'coded_width', 'coded_height', 'temportal_offset', 'length']:
             if key not in self.meta['grain']['cog_coded_frame']:
                 self.meta['grain']['cog_coded_frame'][key] = 0
         if 'is_key_frame' not in self.meta['grain']['cog_coded_frame']:
@@ -676,7 +675,7 @@ class CODEDAUDIOGRAIN(GRAIN):
                 self.meta['grain']['cog_coded_audio'][key] = DEF
         if not isinstance(self.meta['grain']['cog_coded_audio']['format'], CogAudioFormat):
             self.meta['grain']['cog_coded_audio']['format'] = CogAudioFormat(self.meta['grain']['cog_coded_audio']['format'])
-        
+
     @property
     def format(self):
         return self.meta['grain']['cog_coded_audio']['format']
@@ -762,6 +761,7 @@ def size_for_format(fmt, w, h):
         else:
             return 0
 
+
 def size_for_audio_format(cog_audio_format, channels, samples):
     if (cog_audio_format & 0x200) == 0x200:  # compressed format, no idea of correct size
         return 0
@@ -778,12 +778,13 @@ def size_for_audio_format(cog_audio_format, channels, samples):
         depth = ((cog_audio_format & 0xf) >> 2) + 2
     return channels * samples * depth
 
+
 def components_for_format(fmt, w, h):
     components = []
-    if ((fmt>>8)&0x1) == 0x00:  # Cog frame is not packed
-        h_shift = (fmt&0x01)
-        v_shift = ((fmt>>1)&0x01)
-        depth = (fmt&0xc)
+    if ((fmt >> 8) & 0x1) == 0x00:  # Cog frame is not packed
+        h_shift = (fmt & 0x01)
+        v_shift = ((fmt >> 1) & 0x01)
+        depth = (fmt & 0xc)
         if depth == 0:
             bpv = 1
         elif depth == 4:
@@ -873,7 +874,7 @@ def components_for_format(fmt, w, h):
 
 
 def AudioGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
-               sync_timestamp=None, rate=Fraction(25,1), duration=Fraction(1,25),
+               sync_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
                cog_audio_format=CogAudioFormat.INVALID,
                samples=0,
                channels=0,
@@ -934,7 +935,7 @@ def AudioGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
 
 
 def CodedAudioGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
-                    sync_timestamp=None, rate=Fraction(25,1), duration=Fraction(1,25),
+                    sync_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
                     cog_audio_format=CogAudioFormat.INVALID,
                     samples=0,
                     channels=0,
@@ -1005,7 +1006,7 @@ def CodedAudioGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
 
 
 def VideoGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
-               sync_timestamp=None, rate=Fraction(25,1), duration=Fraction(1,25),
+               sync_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
                cog_frame_format=CogFrameFormat.UNKNOWN, width=1920,
                height=1080, cog_frame_layout=CogFrameLayout.UNKNOWN,
                flow_id=None, data=None):
@@ -1067,8 +1068,9 @@ def VideoGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
 
     return VIDEOGRAIN(meta, data)
 
+
 def CodedVideoGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
-                    sync_timestamp=None, rate=Fraction(25,1), duration=Fraction(1,25),
+                    sync_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
                     cog_frame_format=CogFrameFormat.UNKNOWN, origin_width=1920,
                     origin_height=1080, coded_width=None,
                     coded_height=None, temporal_offset=0, length=None,
@@ -1145,7 +1147,7 @@ def CodedVideoGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
 
 
 def EventGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
-               sync_timestamp=None, rate=Fraction(25,1), duration=Fraction(1,25),
+               sync_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
                event_type='', topic='',
                flow_id=None, data=None):
     meta = None
@@ -1196,8 +1198,9 @@ def EventGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
 
     return EVENTGRAIN(meta, data)
 
+
 def Grain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
-          sync_timestamp=None, rate=Fraction(25,1), duration=Fraction(1,25),
+          sync_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
           flow_id=None, data=None, src_id=None, meta=None):
     """\
     Several possible ways to construct a grain:

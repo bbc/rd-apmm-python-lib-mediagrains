@@ -40,8 +40,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(0,1))
-        self.assertEqual(grain.duration, Fraction(0,1))
+        self.assertEqual(grain.rate, Fraction(0, 1))
+        self.assertEqual(grain.duration, Fraction(0, 1))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain, (grain.meta, grain.data))
 
@@ -69,8 +69,8 @@ class TestGrain (TestCase):
                 "origin_timestamp": ots,
                 "sync_timestamp": sts,
                 "creation_timestamp": cts,
-                "rate": Fraction(25,1),
-                "duration": Fraction(1,25)
+                "rate": Fraction(25, 1),
+                "duration": Fraction(1, 25)
             }
         }
 
@@ -83,8 +83,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.source_id, src_id)
         self.assertEqual(grain.flow_id, flow_id)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
 
     def test_empty_grain_creation_with_ots(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -101,8 +101,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.sync_timestamp, ots)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(0,1))
-        self.assertEqual(grain.duration, Fraction(0,1))
+        self.assertEqual(grain.rate, Fraction(0, 1))
+        self.assertEqual(grain.duration, Fraction(0, 1))
         self.assertEqual(grain.timelabels, [])
 
     def test_empty_grain_creation_with_ots_and_sts(self):
@@ -121,8 +121,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(0,1))
-        self.assertEqual(grain.duration, Fraction(0,1))
+        self.assertEqual(grain.rate, Fraction(0, 1))
+        self.assertEqual(grain.duration, Fraction(0, 1))
         self.assertEqual(grain.timelabels, [])
 
     def test_empty_grain_castable_to_tuple(self):
@@ -167,7 +167,7 @@ class TestGrain (TestCase):
                 "duration": {
                     "numerator": 1,
                     "denominator": 25,
-                    },                
+                    },
                 "timelabels": [{
                     "tag": "timelabel1",
                     "timelabel": {
@@ -189,8 +189,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [
             {
                 "tag": "timelabel1",
@@ -240,10 +240,10 @@ class TestGrain (TestCase):
         self.assertEqual(grain.creation_timestamp, cts)
 
         grain.rate = 50
-        self.assertEqual(grain.rate, Fraction(50,1))
+        self.assertEqual(grain.rate, Fraction(50, 1))
 
         grain.duration = 0.25
-        self.assertEqual(grain.duration, Fraction(1,4))
+        self.assertEqual(grain.duration, Fraction(1, 4))
 
         self.assertEqual(grain.timelabels, [])
 
@@ -253,7 +253,6 @@ class TestGrain (TestCase):
         cts = Timestamp.from_tai_sec_nsec("417798915:0")
         ots = Timestamp.from_tai_sec_nsec("417798915:5")
         sts = Timestamp.from_tai_sec_nsec("417798915:10")
-        
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
@@ -266,8 +265,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(grain.width, 1920)
@@ -304,22 +303,21 @@ class TestGrain (TestCase):
 
         self.assertEqual(repr(grain), "VideoGrain({!r},{!r})".format(grain.meta, grain.data))
 
-        self.assertEqual(grain.components, [{ 'stride' : 1920*2,
-                                              'width': 1920,
-                                              'height': 1080,
-                                              'offset': 0,
-                                              'length': 1920*1080*2 },
-                                            { 'stride' : 1920,
-                                              'width': 1920/2,
-                                              'height': 1080,
-                                              'offset': 1920*1080*2,
-                                              'length': 1920*1080 },
-                                            { 'stride' : 1920,
-                                              'width': 1920/2,
-                                              'height': 1080,
-                                              'offset': 1920*1080*3,
-                                              'length': 1920*1080 }])
-        
+        self.assertEqual(grain.components, [{'stride': 1920*2,
+                                             'width': 1920,
+                                             'height': 1080,
+                                             'offset': 0,
+                                             'length': 1920*1080*2},
+                                            {'stride': 1920,
+                                             'width': 1920/2,
+                                             'height': 1080,
+                                             'offset': 1920*1080*2,
+                                             'length': 1920*1080},
+                                            {'stride': 1920,
+                                             'width': 1920/2,
+                                             'height': 1080,
+                                             'offset': 1920*1080*3,
+                                             'length': 1920*1080}])
 
     def test_video_grain_create_sizes(self):
         for (fmt, complens) in [
@@ -344,7 +342,6 @@ class TestGrain (TestCase):
             cts = Timestamp.from_tai_sec_nsec("417798915:0")
             ots = Timestamp.from_tai_sec_nsec("417798915:5")
             sts = Timestamp.from_tai_sec_nsec("417798915:10")
-        
 
             with mock.patch.object(Timestamp, "get_time", return_value=cts):
                 grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
@@ -366,7 +363,6 @@ class TestGrain (TestCase):
         cts = Timestamp.from_tai_sec_nsec("417798915:0")
         ots = Timestamp.from_tai_sec_nsec("417798915:5")
         sts = Timestamp.from_tai_sec_nsec("417798915:10")
-        
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
@@ -393,11 +389,11 @@ class TestGrain (TestCase):
         del grain.components[0]['potato']
         self.assertNotIn('potato', grain.components[0])
 
-        grain.components.append({ 'stride': 1920,
-                                  'width': 1920,
-                                  'height': 1080,
-                                  'offset': 1920*1080*2*2,
-                                  'length': 1920*1080 })
+        grain.components.append({'stride': 1920,
+                                 'width': 1920,
+                                 'height': 1080,
+                                 'offset': 1920*1080*2*2,
+                                 'length': 1920*1080})
 
         self.assertEqual(grain.components[3].stride, 1920)
         self.assertEqual(grain.components[3].width, 1920)
@@ -409,11 +405,11 @@ class TestGrain (TestCase):
         del grain.components[3]
         self.assertEqual(len(grain.components), 3)
 
-        grain.components[0] = { 'stride': 1920,
-                                'width': 1920,
-                                'height': 1080,
-                                'offset': 1920*1080*2*2,
-                                'length': 1920*1080 }
+        grain.components[0] = {'stride': 1920,
+                               'width': 1920,
+                               'height': 1080,
+                               'offset': 1920*1080*2*2,
+                               'length': 1920*1080}
 
         self.assertEqual(grain.components[0].stride, 1920)
         self.assertEqual(grain.components[0].width, 1920)
@@ -477,8 +473,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(grain.width, 1920)
@@ -512,12 +508,11 @@ class TestGrain (TestCase):
 
         self.assertEqual(repr(grain), "VideoGrain({!r},{!r})".format(grain.meta, grain.data))
 
-        self.assertEqual(dict(grain.components[0]), { 'stride' : 1920*2,
-                                                      'width': 1920,
-                                                      'height': 1080,
-                                                      'offset': 0,
-                                                      'length': 1920*1080*2 })
-
+        self.assertEqual(dict(grain.components[0]), {'stride': 1920*2,
+                                                     'width': 1920,
+                                                     'height': 1080,
+                                                     'offset': 0,
+                                                     'length': 1920*1080*2})
 
     def test_video_grain_setters(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -525,7 +520,6 @@ class TestGrain (TestCase):
         cts = Timestamp.from_tai_sec_nsec("417798915:0")
         ots = Timestamp.from_tai_sec_nsec("417798915:5")
         sts = Timestamp.from_tai_sec_nsec("417798915:10")
-        
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
@@ -552,22 +546,22 @@ class TestGrain (TestCase):
         self.assertEqual(grain.extension, 1)
 
         grain.source_aspect_ratio = 50
-        self.assertEqual(grain.source_aspect_ratio, Fraction(50,1))
+        self.assertEqual(grain.source_aspect_ratio, Fraction(50, 1))
 
         grain.pixel_aspect_ratio = 0.25
-        self.assertEqual(grain.pixel_aspect_ratio, Fraction(1,4))
+        self.assertEqual(grain.pixel_aspect_ratio, Fraction(1, 4))
 
     def test_grain_fails_with_no_metadata(self):
         with self.assertRaises(AttributeError):
-            grain = Grain(None)
+            Grain(None)
 
     def test_grain_fails_with_bad_src_id(self):
         with self.assertRaises(AttributeError):
-            grain = Grain([], 0x44)
+            Grain([], 0x44)
 
     def test_video_grain_fails_with_no_metadata(self):
         with self.assertRaises(AttributeError):
-            grain = VideoGrain(None)
+            VideoGrain(None)
 
     def test_video_grain_create_with_ots_and_no_sts(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -683,8 +677,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
         self.assertEqual(grain.channels, 2)
@@ -713,8 +707,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.sync_timestamp, ots)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
         self.assertEqual(grain.channels, 2)
@@ -742,8 +736,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
         self.assertEqual(grain.channels, 2)
@@ -757,7 +751,7 @@ class TestGrain (TestCase):
 
     def test_audio_grain_create_fails_with_no_params(self):
         with self.assertRaises(AttributeError):
-            grain = AudioGrain(None)
+            AudioGrain(None)
 
     def test_audio_grain_create_all_formats(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -883,7 +877,7 @@ class TestGrain (TestCase):
                                     cog_frame_format=CogFrameFormat.VC2,
                                     origin_width=1920, origin_height=1080,
                                     length=1296000, cog_frame_layout=CogFrameLayout.FULL_FRAME,
-                                    unit_offsets=[3,2])
+                                    unit_offsets=[3, 2])
 
         self.assertEqual(grain.grain_type, "coded_video")
         self.assertEqual(grain.source_id, src_id)
@@ -891,8 +885,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogFrameFormat.VC2)
         self.assertEqual(grain.origin_width, 1920)
@@ -901,8 +895,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.coded_height, 1080)
         self.assertEqual(grain.length, 1296000)
         self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
-        self.assertEqual(grain.unit_offsets, [3,2])
-        self.assertEqual(repr(grain.unit_offsets), repr([3,2]))
+        self.assertEqual(grain.unit_offsets, [3, 2])
+        self.assertEqual(repr(grain.unit_offsets), repr([3, 2]))
 
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), grain.length)
@@ -920,8 +914,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(0,1))
-        self.assertEqual(grain.duration, Fraction(0,25))
+        self.assertEqual(grain.rate, Fraction(0, 1))
+        self.assertEqual(grain.duration, Fraction(0, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogFrameFormat.UNKNOWN)
         self.assertEqual(grain.origin_width, 0)
@@ -950,8 +944,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(0,1))
-        self.assertEqual(grain.duration, Fraction(0,25))
+        self.assertEqual(grain.rate, Fraction(0, 1))
+        self.assertEqual(grain.duration, Fraction(0, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogFrameFormat.MJPEG)
         self.assertEqual(grain.origin_width, 0)
@@ -1143,8 +1137,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogAudioFormat.MP1)
         self.assertEqual(grain.samples, 1920)
@@ -1181,8 +1175,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.sync_timestamp, ots)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogAudioFormat.MP1)
         self.assertEqual(grain.samples, 1920)
@@ -1218,8 +1212,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogAudioFormat.MP1)
         self.assertEqual(grain.samples, 1920)
@@ -1245,8 +1239,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(0,1))
-        self.assertEqual(grain.duration, Fraction(0,25))
+        self.assertEqual(grain.rate, Fraction(0, 1))
+        self.assertEqual(grain.duration, Fraction(0, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogAudioFormat.INVALID)
         self.assertEqual(grain.samples, 0)
@@ -1273,8 +1267,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(0,1))
-        self.assertEqual(grain.duration, Fraction(0,25))
+        self.assertEqual(grain.rate, Fraction(0, 1))
+        self.assertEqual(grain.duration, Fraction(0, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogAudioFormat.MP1)
         self.assertEqual(grain.samples, 0)
@@ -1324,7 +1318,7 @@ class TestGrain (TestCase):
 
     def test_coded_audio_grain_raises_on_empty(self):
         with self.assertRaises(AttributeError):
-            grain = CodedAudioGrain(None)
+            CodedAudioGrain(None)
 
     def test_grain_makes_codedaudiograin(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -1377,7 +1371,6 @@ class TestGrain (TestCase):
         cts = Timestamp.from_tai_sec_nsec("417798915:0")
         ots = Timestamp.from_tai_sec_nsec("417798915:5")
         sts = Timestamp.from_tai_sec_nsec("417798915:10")
-        
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = EventGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
@@ -1389,8 +1382,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.event_type, "urn:x-ipstudio:format:event.query")
         self.assertEqual(grain.topic, "/dummy")
@@ -1403,7 +1396,6 @@ class TestGrain (TestCase):
         flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
         cts = Timestamp.from_tai_sec_nsec("417798915:0")
         ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = EventGrain(src_id, flow_id, origin_timestamp=ots,
@@ -1415,8 +1407,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.sync_timestamp, ots)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.event_type, "urn:x-ipstudio:format:event.query")
         self.assertEqual(grain.topic, "/dummy")
@@ -1439,8 +1431,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.event_type, "urn:x-ipstudio:format:event.query")
         self.assertEqual(grain.topic, "/dummy")
@@ -1459,8 +1451,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(0,1))
-        self.assertEqual(grain.duration, Fraction(0,1))
+        self.assertEqual(grain.rate, Fraction(0, 1))
+        self.assertEqual(grain.duration, Fraction(0, 1))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.event_type, "")
         self.assertEqual(grain.topic, "")
@@ -1468,7 +1460,7 @@ class TestGrain (TestCase):
 
     def test_event_grain_create_fails_on_None(self):
         with self.assertRaises(AttributeError):
-            grain = EventGrain(None)
+            EventGrain(None)
 
     def test_event_grain_create_from_meta_and_data(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -1521,8 +1513,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25,1))
-        self.assertEqual(grain.duration, Fraction(1,25))
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.event_type, "urn:x-ipstudio:format:event.notify")
         self.assertEqual(grain.topic, "/foo")

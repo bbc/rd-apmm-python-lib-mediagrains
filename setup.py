@@ -54,7 +54,7 @@ def is_package(path):
         )
 
 
-def find_packages(path, base="" ):
+def find_packages(path, base=""):
     """ Find all packages in path """
     packages = {}
     for item in os.listdir(path):

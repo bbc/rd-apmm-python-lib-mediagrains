@@ -25,6 +25,7 @@ from fractions import Fraction
 __all__ = ["GSFDecoder", "loads", "GSFError", "GSFDecodeError",
            "GSFDecodeBadFileTypeError", "GSFDecodeBadVersionError"]
 
+
 def loads(s, cls=None, parse_grain=None, **kwargs):
     """Deserialise a GSF file from a string (or similar) into python,
     returns a pair of (head, segments) where head is a python dict
@@ -262,9 +263,7 @@ class GSFDecoder(object):
             (meta['grain']['cog_coded_frame']['temporal_offset'], i) = self._read_sint(b, i, 4)
 
             if i < block_end:
-                unof_start = i
                 (tag, size, i) = self._decode_block_header(b, i, ["unof"], optional=True)
-                unof_end = unof_start + size
 
                 if size != 0:
                     meta['grain']['cog_coded_frame']['unit_offsets'] = []
@@ -319,14 +318,14 @@ class GSFDecoder(object):
         i = 0
 
         (major, minor, i) = self._decode_ssb_header(b, i)
-        if (major, minor) != (7,0):
+        if (major, minor) != (7, 0):
             raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
 
-        (head, i) = self._decode_head(b,i)
+        (head, i) = self._decode_head(b, i)
         segments = {}
 
         while i < len(b):
-            (grain, local_id, i) = self._decode_grai(b,i)
+            (grain, local_id, i) = self._decode_grai(b, i)
 
             if grain is None:
                 break
@@ -336,6 +335,7 @@ class GSFDecoder(object):
             segments[local_id].append(grain)
 
         return (head, segments)
+
 
 if __name__ == "__main__":  # pragma: no cover
     import sys
