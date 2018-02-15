@@ -17,7 +17,7 @@
 from __future__ import print_function
 from unittest import TestCase
 import uuid
-from mediagrains.grain import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
+from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from nmoscommon.timestamp import Timestamp
 import mock
@@ -44,6 +44,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.duration, Fraction(0, 1))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain, (grain.meta, grain.data))
+        self.assertIsNone(grain.data)
+        self.assertEqual(grain.length, 0)
 
     def test_empty_grain_creation_with_missing_data(self):
         cts = Timestamp.from_tai_sec_nsec("417798915:0")

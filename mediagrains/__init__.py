@@ -17,29 +17,29 @@
 """\
 Library for handling media grains in pure python.
 
-The library contains two functions: Grain and VideoGrain
-which allow the construction of grains and video grains specifically.
+The library contains the functions: Grain, VideoGrain, CodedVideoGrain,
+AudioGrain, CodedAudioGrain, and EventGrain as well as the module gsf.
 
-If Grain is fed the deserialised json from a Video grain it will generate
-a VideoGrain class, rather than a generic grain.
+The individual functions document their useage.
 
-All the grain classes can be freely treated as 2-tuples:
+The classes returned from the functions are fully useable as if they were a 
+tuple:
 
 (meta, data)
 
-but can also be accessed using a number of additional convenience methods.
-
-
-If used to create a new videograin the VideoGrain function will allocate an
-apropriately sized bytearray to use as the data member. When initialised with
-a preexisting data object anything which follows the python buffer interface
-should work.
+where "meta" is a dictionary containing grain metadata in a standard format, 
+and "data" is a bytes-like object. When the various constructor functions
+are used in a way that constructs a new data element they will construct a
+bytearray object of the apropriate size. Remember that in Python 2 bytes-like
+objects are stringlike, but in Python 3 they resemble sequences of integers.
 
 Notably this means that the data element of these grains is fully compatible
 with numpy and similar libraries.
+
+The gsf and grain submodules have their own documentation.
 """
 
 from __future__ import absolute_import
-from .grain import Grain, VideoGrain, CodedVideoGrain, AudioGrain, CodedAudioGrain, EventGrain
+from .grain_constructors import Grain, VideoGrain, CodedVideoGrain, AudioGrain, CodedAudioGrain, EventGrain
 
 __all__ = ["Grain", "VideoGrain", "CodedVideoGrain", "AudioGrain", "CodedAudioGrain", "EventGrain"]
