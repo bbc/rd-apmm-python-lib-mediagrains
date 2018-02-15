@@ -52,3 +52,56 @@ submodules/nmos-common
 is the nmoscommon library used to provide the Timestamp class which is
 needed during testing.
 
+## Examples
+
+As an example of using this in your own code the following is a simple
+program to load the contents of a GSF file and print the timestamp of
+each grain.
+
+```Python console
+>>> from mediagrains.gsf import load
+>>> f = open('examples/video.gsf', "rb")
+>>> (head, segments) = load(f)
+>>> print('\n'.join(str(grain.origin_timestamp) for grain in segments[1]))
+1420102800:0
+1420102800:20000000
+1420102800:40000000
+1420102800:60000000
+1420102800:80000000
+1420102800:100000000
+1420102800:120000000
+1420102800:140000000
+1420102800:160000000
+1420102800:180000000
+```
+
+Alternatively to create a new video grain in 10-bit planar YUV 4:2:0 and fill
+it with colour-bars:
+
+```Python console
+>>> from mediagrains import VideoGrain
+>>> from uuid import uuid1
+>>> from mediagrains.cogframe import CogFrameFormat, CogFrameLayout
+>>> src_id = uuid1()
+>>> flow_id = uuid1()
+>>> grain = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+>>> colours = [
+...      (0x3FF, 0x000, 0x3FF),
+...      (0x3FF, 0x3FF, 0x000),
+...      (0x3FF, 0x000, 0x000),
+...      (0x3FF, 0x3FF, 0x3FF),
+...      (0x3FF, 0x200, 0x3FF),
+...      (0x3FF, 0x3FF, 0x200) ]
+>>> x_offset = [0, 0, 0]
+>>> for colour in colours:
+...     i = 0
+...     for c in grain.components:
+...             for x in range(0,c.width//len(colours)):
+...                     for y in range(0,c.height):
+...                             grain.data[c.offset + y*c.stride + (x_offset[i] + x)*2 + 0] = colour[i] & 0xFF
+...                             grain.data[c.offset + y*c.stride + (x_offset[i] + x)*2 + 1] = colour[i] >> 8
+...             x_offset[i] += c.width//len(colours)
+...             i += 1
+```
+
+The object grain can then be freely used for whatever video processing is desired.
