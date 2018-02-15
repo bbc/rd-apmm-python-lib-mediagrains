@@ -1,5 +1,6 @@
 PYTHON2=`which python2.7`
 PYTHON3=`which python3`
+PYTHON=`which python`
 VIRTUALENV=virtualenv
 PIP=pip
 NOSE2=nose2
@@ -49,7 +50,7 @@ cog.i: $(COG_HEADER_DIR)/cog/cog.h
 	gcc -E -I$(COG_HEADER_DIR) $< -o $@
 
 $(MODNAME)/cogframe.py: cog.i
-	./extract_enums.py $< $@
+	$(PYTHON) extract_enums.py $< $@
 
 source: $(MODNAME)/cogframe.py
 	$(PYTHON) setup.py sdist $(COMPILE)
