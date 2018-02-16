@@ -23,8 +23,6 @@ directly by client code, but their documentation may be instructive.
 from __future__ import print_function
 from __future__ import absolute_import
 
-from six import string_types
-
 from uuid import UUID
 from nmoscommon.timestamp import Timestamp
 from collections import Sequence, MutableSequence, Mapping
@@ -34,8 +32,7 @@ from .cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
 import json
 
-__all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain", "CodedAudioGrain", "EventGrain",
-           "GRAIN", "VIDEOGRAIN", "AUDIOGRAIN", "CODEDVIDEOGRAIN", "CODEDAUDIOGRAIN", "EVENTGRAIN"]
+__all__ = ["GRAIN", "VIDEOGRAIN", "AUDIOGRAIN", "CODEDVIDEOGRAIN", "CODEDAUDIOGRAIN", "EVENTGRAIN"]
 
 
 class GRAIN(Sequence):
@@ -151,7 +148,7 @@ length
         if self.data is None:
             return "{}({!r})".format(self._factory, self.meta)
         else:
-            return "{}({!r},{!r})".format(self._factory, self.meta, self.data)
+            return "{}({!r},< binary data of length {} >)".format(self._factory, self.meta, len(self.data))
 
     def __eq__(self, other):
         return tuple(self) == other
