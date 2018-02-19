@@ -19,7 +19,8 @@ from unittest import TestCase
 from uuid import UUID
 from mediagrains import VideoGrain
 from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
-from mediagrains.gsf import loads, dumps, GSFEncoder
+from mediagrains.gsf import loads, load, dumps, GSFEncoder
+from mediagrains.gsf import GSFDecodeError
 from mediagrains.gsf import GSFDecodeBadVersionError
 from mediagrains.gsf import GSFDecodeBadFileTypeError
 from mediagrains.cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
@@ -272,6 +273,50 @@ class TestGSFLoads(TestCase):
 
             self.assertEqual(len(grain.data), grain.components[0].length + grain.components[1].length + grain.components[2].length)
 
+    def test_load_video(self):
+        file = BytesIO(VIDEO_DATA)
+        (head, segments) = load(file)
+
+        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 22))
+        self.assertEqual(head['id'], UUID('163fd9b7-bef4-4d92-8488-31f3819be008'))
+        self.assertEqual(len(head['segments']), 1)
+        self.assertEqual(head['segments'][0]['id'], UUID('c6a3d3ff-74c0-446d-b59e-de1041f27e8a'))
+        self.assertIn(head['segments'][0]['local_id'], segments)
+        self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
+
+        ots = Timestamp(1420102800, 0)
+        for grain in segments[head['segments'][0]['local_id']]:
+            self.assertIsInstance(grain, VIDEOGRAIN)
+            self.assertEqual(grain.grain_type, "video")
+            self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
+            self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
+            self.assertEqual(grain.origin_timestamp, ots)
+            ots += TimeOffset.from_nanosec(20000000)
+
+            self.assertEqual(grain.format, CogFrameFormat.U8_420)
+            self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
+            self.assertEqual(grain.width, 480)
+            self.assertEqual(grain.height, 270)
+
+            self.assertEqual(len(grain.components), 3)
+
+            self.assertEqual(grain.components[0].width, 480)
+            self.assertEqual(grain.components[0].height, 270)
+            self.assertEqual(grain.components[0].stride, 480)
+            self.assertEqual(grain.components[0].length, 480*270)
+
+            self.assertEqual(grain.components[1].width, 240)
+            self.assertEqual(grain.components[1].height, 135)
+            self.assertEqual(grain.components[1].stride, 240)
+            self.assertEqual(grain.components[1].length, 240*135)
+
+            self.assertEqual(grain.components[2].width, 240)
+            self.assertEqual(grain.components[2].height, 135)
+            self.assertEqual(grain.components[2].stride, 240)
+            self.assertEqual(grain.components[2].length, 240*135)
+
+            self.assertEqual(len(grain.data), grain.components[0].length + grain.components[1].length + grain.components[2].length)
+
     def test_loads_audio(self):
         (head, segments) = loads(AUDIO_DATA)
 
@@ -354,6 +399,155 @@ class TestGSFLoads(TestCase):
         self.assertEqual(cm.exception.offset, 0)
         self.assertEqual(cm.exception.major, 8)
         self.assertEqual(cm.exception.minor, 3)
+
+    def test_loads_rejects_bad_head_tag(self):
+        with self.assertRaises(GSFDecodeError) as cm:
+            loads(b"SSBBgrsg\x07\x00\x00\x00" +
+                  b"\xff\xff\xff\xff")
+        self.assertEqual(cm.exception.offset, 12)
+
+    def test_loads_raises_exception_without_head(self):
+        with self.assertRaises(GSFDecodeError) as cm:
+            loads(b"SSBBgrsg\x07\x00\x00\x00")
+        self.assertEqual(cm.exception.offset, 12)
+
+    def test_loads_skips_unknown_block_before_head(self):
+        (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
+                                 b"dumy\x08\x00\x00\x00" +
+                                 b"head\x1f\x00\x00\x00" +
+                                 b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                                 b"\xbf\x07\x03\x1d\x0f\x0f\x0f")
+
+        self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
+        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))
+        self.assertEqual(head['segments'], [])
+        self.assertEqual(head['tags'], [])
+
+    def test_loads_skips_unknown_block_instead_of_segm(self):
+        (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
+                                 b"head\x27\x00\x00\x00" +
+                                 b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                                 b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
+                                 b"dumy\x08\x00\x00\x00")
+
+        self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
+        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))
+        self.assertEqual(head['segments'], [])
+        self.assertEqual(head['tags'], [])
+
+    def test_loads_skips_unknown_block_before_segm(self):
+        (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
+                                   (b"head\x49\x00\x00\x00" +
+                                    b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                                    b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
+                                      (b"dumy\x08\x00\x00\x00") +
+                                      (b"segm\x22\x00\x00\x00" +
+                                       b"\x01\x00" +
+                                       b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00")))
+
+        self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
+        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))
+        self.assertEqual(len(head['segments']), 1)
+        self.assertEqual(head['segments'][0]['local_id'], 1)
+        self.assertEqual(head['segments'][0]['id'], UUID('d3e191f0-1594-11e8-91ac-dca904824eec'))
+        self.assertEqual(head['segments'][0]['tags'], [])
+        self.assertEqual(head['segments'][0]['count'], 0)
+        self.assertEqual(head['tags'], [])
+
+    def test_loads_raises_when_head_to_small(self):
+        with self.assertRaises(GSFDecodeError) as cm:
+            (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
+                                    (b"head\x27\x00\x00\x00" +
+                                     b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                                     b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
+                                       (b"dumy\x08\x00\x00\x00") +
+                                       (b"segm\x22\x00\x00\x00" +
+                                        b"\x01\x00" +
+                                        b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
+                                        b"\x00\x00\x00\x00\x00\x00\x00\x00")))
+
+        self.assertEqual(cm.exception.offset, 12)
+
+    def test_loads_raises_when_segm_to_small(self):
+        with self.assertRaises(GSFDecodeError) as cm:
+            (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
+                                    (b"head\x41\x00\x00\x00" +
+                                     b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                                     b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
+                                       (b"segm\x21\x00\x00\x00" +
+                                        b"\x01\x00" +
+                                        b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
+                                        b"\x00\x00\x00\x00\x00\x00\x00\x00")))
+
+        self.assertEqual(cm.exception.offset, 43)
+
+    def test_loads_decodes_tils(self):
+        src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
+        flow_id = UUID('da78668a-1596-11e8-a577-dca904824eec')
+        (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
+                                   (b"head\x41\x00\x00\x00" +
+                                    b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                                    b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
+                                      (b"segm\x22\x00\x00\x00" +
+                                       b"\x01\x00" +
+                                       b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
+                                       b"\x01\x00\x00\x00\x00\x00\x00\x00")) +
+                                   (b"grai\x8d\x00\x00\x00" +
+                                    b"\x01\x00" +
+                                      (b"gbhd\x83\x00\x00\x00" +
+                                       src_id.bytes +
+                                       flow_id.bytes +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                         (b"tils\x27\x00\x00\x00" +
+                                          b"\x01\x00" +
+                                          b"dummy timecode\x00\x00" +
+                                          b"\x07\x00\x00\x00" +
+                                          b"\x19\x00\x00\x00\x01\x00\x00\x00" +
+                                          b"\x00"))))
+
+        self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
+        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))
+        self.assertEqual(len(head['segments']), 1)
+        self.assertEqual(head['segments'][0]['local_id'], 1)
+        self.assertEqual(head['segments'][0]['id'], UUID('d3e191f0-1594-11e8-91ac-dca904824eec'))
+        self.assertEqual(head['segments'][0]['tags'], [])
+        self.assertEqual(head['segments'][0]['count'], 1)
+        self.assertEqual(head['tags'], [])
+        self.assertEqual(segments[1][0].timelabels, [{'tag': 'dummy timecode', 'timelabel': {'frames_since_midnight': 7,
+                                                                                             'frame_rate_numerator': 25,
+                                                                                             'frame_rate_denominator': 1,
+                                                                                             'drop_frame': False}}])
+
+    def test_loads_raises_when_grain_type_unknown(self):
+        with self.assertRaises(GSFDecodeError) as cm:
+            src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
+            flow_id = UUID('da78668a-1596-11e8-a577-dca904824eec')
+            (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
+                                       (b"head\x41\x00\x00\x00" +
+                                        b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                                        b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
+                                          (b"segm\x22\x00\x00\x00" +
+                                           b"\x01\x00" +
+                                           b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
+                                           b"\x01\x00\x00\x00\x00\x00\x00\x00")) +
+                                       (b"grai\x8d\x00\x00\x00" +
+                                        b"\x01\x00" +
+                                          (b"gbhd\x83\x00\x00\x00" +
+                                           src_id.bytes +
+                                           flow_id.bytes +
+                                           b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                           b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                           b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                           b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                           b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                             (b"dumy\x08\x00\x00\x00"))))
+
+        self.assertEqual(cm.exception.offset, 87)
 
     def test_loads_coded_audio(self):
         (head, segments) = loads(CODED_AUDIO_DATA)
