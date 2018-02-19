@@ -303,7 +303,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*1080*2*2)
 
-        self.assertEqual(repr(grain), "VideoGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "VideoGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
         self.assertEqual(grain.components, [{'stride': 1920*2,
                                              'width': 1920,
@@ -508,7 +508,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*1080*2*2)
 
-        self.assertEqual(repr(grain), "VideoGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "VideoGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
         self.assertEqual(dict(grain.components[0]), {'stride': 1920*2,
                                                      'width': 1920,
@@ -690,7 +690,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*2*2)
 
-        self.assertEqual(repr(grain), "AudioGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_audio_grain_create_fills_in_missing_sts(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -720,7 +720,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*2*2)
 
-        self.assertEqual(repr(grain), "AudioGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_audio_grain_create_fills_in_missing_ots(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -749,7 +749,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*2*2)
 
-        self.assertEqual(repr(grain), "AudioGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_audio_grain_create_fails_with_no_params(self):
         with self.assertRaises(AttributeError):
@@ -903,7 +903,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), grain.length)
 
-        self.assertEqual(repr(grain), "CodedVideoGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "CodedVideoGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_video_grain_create_fills_empty_meta(self):
         cts = Timestamp.from_tai_sec_nsec("417798915:0")
@@ -1153,7 +1153,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), grain.length)
 
-        self.assertEqual(repr(grain), "CodedAudioGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_audio_grain_create_without_sts(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -1191,7 +1191,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), grain.length)
 
-        self.assertEqual(repr(grain), "CodedAudioGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_audio_grain_create_without_sts_or_ots(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -1228,7 +1228,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), grain.length)
 
-        self.assertEqual(repr(grain), "CodedAudioGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_audio_grain_create_fills_empty_meta(self):
         cts = Timestamp.from_tai_sec_nsec("417798915:0")

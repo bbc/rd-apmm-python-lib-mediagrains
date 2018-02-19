@@ -27,9 +27,12 @@ from datetime import datetime
 from nmoscommon.timestamp import Timestamp
 from fractions import Fraction
 from frozendict import frozendict
+from six import BytesIO, PY2
 
 __all__ = ["GSFDecoder", "load", "loads", "GSFError", "GSFDecodeError",
-           "GSFDecodeBadFileTypeError", "GSFDecodeBadVersionError"]
+           "GSFDecodeBadFileTypeError", "GSFDecodeBadVersionError",
+           "GSFEncoder", "dump", "dumps", "GSFEncodeError",
+           "GSFEncodeAddToActiveDump"]
 
 
 def loads(s, cls=None, parse_grain=None, **kwargs):
@@ -62,6 +65,41 @@ def load(fp, cls=None, parse_grain=None, **kwargs):
     decoder constructor."""
     s = fp.read()
     return loads(s, cls=cls, parse_grain=parse_grain, **kwargs)
+
+
+def dump(grains, fp, cls=None, segment_tags=None, **kwargs):
+    """Serialise a series of grains into a GSF file.
+
+    :param grains an iterable of grain objects
+    :param fp a ByteIO-like object to write to
+    :param segment_tags a list of pairs of strings to use as tags for the segment created
+    :param cls the class to use for encoding, GSFEncoder is the default
+
+    other keyword arguments will be fed to the class constructor.
+
+    This method will serialise the grains in a single segment."""
+    if cls is None:
+        cls = GSFEncoder
+    enc = cls(fp, **kwargs)
+    seg = enc.add_segment(tags=segment_tags)
+    seg.add_grains(grains)
+    enc.dump()
+
+
+def dumps(grains, cls=None, segment_tags=None, **kwargs):
+    """Serialise a series of grains into a new bytes object.
+
+    :param grains an iterable of grain objects
+    :param fp a ByteIO-like object to write to
+    :param segment_tags a list of pairs of strings to use as tags for the segment created
+    :param cls the class to use for encoding, GSFEncoder is the default
+
+    other keyword arguments will be fed to the class constructor.
+
+    This method will serialise the grains in a single segment."""
+    b = BytesIO()
+    dump(grains, b, cls=cls, segment_tags=segment_tags, **kwargs)
+    return b.getvalue()
 
 
 class GSFError(Exception):
@@ -452,17 +490,26 @@ class GSFEncoder(object):
         self.minor = minor
         self.id = id
         self.created = created
-        self._tags = tags
+        self._tags = []
 
         if self.id is None:
             self.id = uuid1()
         if self.created is None:
             self.created = datetime.now()
-        if self._tags is None:
-            self._tags = []
         self._segments = {}
         self._next_local = 1
         self._active_dump = False
+
+        if tags is not None:
+            for tag in tags:
+                if isinstance(tag, GSFEncoderTag):
+                    self._tags.append(tag)
+                elif isinstance(tag, tuple):
+                    self.add_tag(tag[0], tag[1])
+                elif isinstance(tag, dict) and 'key' in tag and 'value' in tag:
+                    self.add_tag(tag['key'], tag['value'])
+                else:
+                    raise GSFEncodeError("No idea how to turn {!r} into a tag".format(tag))
 
     @property
     def tags(self):
@@ -479,7 +526,7 @@ class GSFEncoder(object):
 
         self._tags.append(GSFEncoderTag(key, value))
 
-    def add_segment(self, id=None, local_id=None):
+    def add_segment(self, id=None, local_id=None, tags=None):
         """Add a segment to the file, if id is specified it should be a uuid,
         otherwise one will be generated. If local_id is specified it should be an 
         integer, otherwise the next available integer will be used. Returns the newly
@@ -498,7 +545,7 @@ class GSFEncoder(object):
         if self._active_dump:
             raise GSFEncodeAddToActiveDump("Cannot add a new segment {} ({!s}) to an encoder that is currently dumping".format(local_id, id))
 
-        seg = GSFEncoderSegment(id, local_id)
+        seg = GSFEncoderSegment(id, local_id, tags=tags)
         self._segments[local_id] = seg
         return seg
 
@@ -541,7 +588,7 @@ class GSFEncoder(object):
         it will append."""
         self._active_dump = True
 
-        if self.file.seekable():
+        if not PY2 and self.file.seekable():
             self.file.seek(0)
             self.file.truncate()
 
@@ -631,13 +678,24 @@ class GSFEncoderTag(object):
 class GSFEncoderSegment(object):
     """A class to represent a segment within a GSF file, used for constructing them."""
 
-    def __init__(self, id, local_id):
+    def __init__(self, id, local_id, tags=None):
         self.id = id
         self.local_id = local_id
         self._count_pos = -1
         self._file = None
         self._tags = []
         self._grains = []
+
+        if tags is not None:
+            for tag in tags:
+                if isinstance(tag, GSFEncoderTag):
+                    self._tags.append(tag)
+                elif isinstance(tag, tuple):
+                    self.add_tag(tag[0], tag[1])
+                elif isinstance(tag, dict) and 'key' in tag and 'value' in tag:
+                    self.add_tag(tag['key'], tag['value'])
+                else:
+                    raise GSFEncodeError("No idea how to turn {!r} into a tag".format(tag))
 
     @property
     def count(self):
@@ -665,7 +723,7 @@ class GSFEncoderSegment(object):
         if all_at_once:
             _write_sint(file, self.count, 8)
         else:
-            if file.seekable():
+            if not PY2 and file.seekable():
                 self._count_pos = file.tell()
             _write_sint(file, -1, 8)
 
@@ -784,7 +842,7 @@ class GSFEncoderSegment(object):
         if self._file is None:
             return
 
-        if self._file.seekable() and self._count_pos != -1:
+        if not PY2 and self._file.seekable() and self._count_pos != -1:
             curpos = self._file.tell()
             self._file.seek(self._count_pos)
             _write_sint(self._file, self.count, 8)
@@ -816,23 +874,13 @@ def main():
 
         print(loads(b))
     else:
-        from io import BytesIO
         from . import VideoGrain
         from .cogframe import CogFrameFormat
 
-        file = BytesIO()
-        enc = GSFEncoder(file)
-        seg = enc.add_segment()
-        enc.add_tag("potato", "harvest")
-        seg.add_tag("definitely", "maybe")
-        seg.add_tag("rainbow", "dash")
         src_id = uuid1()
         flow_id = uuid1()
-        seg.add_grain(VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080))
-        enc.start_dump()
-        enc.end_dump()
-
-        print(loads(file.getvalue()))
+        data = dumps([VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080),], tags=[('rainbow', 'dash'), ('potato', 'harvest')], segment_tags=[('special', 'circumstances')])
+        print(loads(data))
 
 if __name__ == "__main__":  # pragma: no cover
     main()
