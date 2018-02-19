@@ -25,6 +25,7 @@ from mediagrains.gsf import GSFDecodeBadFileTypeError
 from mediagrains.cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from nmoscommon.timestamp import Timestamp, TimeOffset
 from datetime import datetime
+from fractions import Fraction
 from six import PY2
 
 if PY2:
@@ -85,6 +86,8 @@ class TestGSFDumps(TestCase):
         grain = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
         for i in range(0,len(grain.data)):
             grain.data[i] = i & 0xFF
+        grain.source_aspect_ratio = Fraction(16, 9)
+        grain.pixel_aspect_ratio = 1
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
         created = datetime(1983, 3, 29, 15, 15)
@@ -119,6 +122,8 @@ class TestGSFDumps(TestCase):
         self.assertEqual(segments[1][0].format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(segments[1][0].width, 1920)
         self.assertEqual(segments[1][0].height, 1080)
+        self.assertEqual(segments[1][0].source_aspect_ratio, Fraction(16, 9))
+        self.assertEqual(segments[1][0].pixel_aspect_ratio, Fraction(1, 1))
 
         self.assertEqual(segments[1][0].data, grain.data)
 
