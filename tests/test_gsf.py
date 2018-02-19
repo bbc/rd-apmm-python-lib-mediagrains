@@ -19,14 +19,14 @@ from unittest import TestCase
 from uuid import UUID
 from mediagrains import VideoGrain
 from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
-from mediagrains.gsf import loads, dumps
+from mediagrains.gsf import loads, dumps, GSFEncoder
 from mediagrains.gsf import GSFDecodeBadVersionError
 from mediagrains.gsf import GSFDecodeBadFileTypeError
 from mediagrains.cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from nmoscommon.timestamp import Timestamp, TimeOffset
 from datetime import datetime
 from fractions import Fraction
-from six import PY2
+from six import PY2, BytesIO
 
 if PY2:
     import mock
@@ -126,6 +126,107 @@ class TestGSFDumps(TestCase):
         self.assertEqual(segments[1][0].pixel_aspect_ratio, Fraction(1, 1))
 
         self.assertEqual(segments[1][0].data, grain.data)
+
+    def test_dumps_videograins(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        for i in range(0,len(grain0.data)):
+            grain0.data[i] = i & 0xFF
+        for i in range(0,len(grain1.data)):
+            grain1.data[i] = 0xFF - (i & 0xFF)
+        grain0.source_aspect_ratio = Fraction(16, 9)
+        grain0.pixel_aspect_ratio = 1
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                (head, segments) = loads(dumps([grain0, grain1]))
+
+        self.assertIn('id', head)
+        self.assertIn(head['id'], uuids)
+        self.assertIn('tags', head)
+        self.assertEqual(len(head['tags']), 0)
+        self.assertIn('created', head)
+        self.assertEqual(head['created'], created)
+        self.assertIn('segments', head)
+        self.assertEqual(len(head['segments']), 1)
+        self.assertIn('count', head['segments'][0])
+        self.assertEqual(head['segments'][0]['count'], 2)
+        self.assertIn('local_id', head['segments'][0])
+        self.assertEqual(head['segments'][0]['local_id'], 1)
+        self.assertIn('id', head['segments'][0])
+        self.assertIn(head['segments'][0]['id'], uuids)
+        self.assertIn('tags', head['segments'][0])
+        self.assertEqual(len(head['segments'][0]['tags']), 0)
+
+        self.assertEqual(len(segments), 1)
+        self.assertIn(1, segments)
+        self.assertEqual(len(segments[1]), head['segments'][0]['count'])
+
+        self.assertEqual(segments[1][0].source_id, src_id)
+        self.assertEqual(segments[1][0].flow_id, flow_id)
+        self.assertEqual(segments[1][0].grain_type, 'video')
+        self.assertEqual(segments[1][0].format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(segments[1][0].width, 1920)
+        self.assertEqual(segments[1][0].height, 1080)
+        self.assertEqual(segments[1][0].source_aspect_ratio, Fraction(16, 9))
+        self.assertEqual(segments[1][0].pixel_aspect_ratio, Fraction(1, 1))
+
+        self.assertEqual(segments[1][0].data, grain0.data)
+
+        self.assertEqual(segments[1][1].source_id, src_id)
+        self.assertEqual(segments[1][1].flow_id, flow_id)
+        self.assertEqual(segments[1][1].grain_type, 'video')
+        self.assertEqual(segments[1][1].format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(segments[1][1].width, 1920)
+        self.assertEqual(segments[1][1].height, 1080)
+        self.assertEqual(segments[1][1].source_aspect_ratio, 0)
+        self.assertEqual(segments[1][1].pixel_aspect_ratio, 0)
+
+        self.assertEqual(segments[1][1].data, grain1.data)
+
+    def test_dump_progressively(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+
+        file = BytesIO()
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                enc = GSFEncoder(file)
+                enc.add_segment()
+                self.assertEqual(len(file.getvalue()), 0)
+                enc.start_dump()
+                dump0 = file.getvalue()
+                (head0, segments0) = loads(dump0)
+                enc.add_grain(grain0)
+                dump1 = file.getvalue()
+                (head1, segments1) = loads(dump1)
+                enc.add_grain(grain1, segment_local_id=1)
+                dump2 = file.getvalue()
+                (head2, segments2) = loads(dump2)
+                enc.end_dump()
+                dump3 = file.getvalue()
+                (head3, segments3) = loads(dump3)
+
+        self.assertEqual(head0['segments'][0]['count'], -1)
+        self.assertEqual(head1['segments'][0]['count'], -1)
+        self.assertEqual(head2['segments'][0]['count'], -1)
+        self.assertEqual(head3['segments'][0]['count'], 2)
+
+        if 1 in segments0:
+            self.assertEqual(len(segments0[1]), 0)
+        self.assertEqual(len(segments1[1]), 1)
+        self.assertEqual(len(segments2[1]), 2)
+        self.assertEqual(len(segments3[1]), 2)
 
 class TestGSFLoads(TestCase):
     def test_loads_video(self):

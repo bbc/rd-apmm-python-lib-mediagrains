@@ -27,7 +27,7 @@ from datetime import datetime
 from nmoscommon.timestamp import Timestamp
 from fractions import Fraction
 from frozendict import frozendict
-from six import BytesIO, PY2
+from six import BytesIO, PY3
 
 __all__ = ["GSFDecoder", "load", "loads", "GSFError", "GSFDecodeError",
            "GSFDecodeBadFileTypeError", "GSFDecodeBadVersionError",
@@ -177,7 +177,7 @@ class GSFDecoder(object):
     def _read_sint(self, b, i, l):
         (r, i) = self._read_uint(b, i, l)
         if (r >> ((8*l) - 1)) == 1:
-            r -= (1 << (8*i))
+            r -= (1 << (8*l))
         return (r, i)
 
     def _read_string(self, b, i, l):
@@ -462,6 +462,18 @@ def _write_rational(file, value):
     _write_uint(file, value.denominator, 4)
 
 
+def seekable(file):  # pragma: no cover
+    if PY3:
+        return file.seekable()
+    else:
+        try:
+            file.tell()
+        except IOError:
+            return False
+        else:
+            return True
+
+
 class GSFEncoder(object):
     """An encoder for GSF format.
 
@@ -588,7 +600,7 @@ class GSFEncoder(object):
         it will append."""
         self._active_dump = True
 
-        if not PY2 and self.file.seekable():
+        if seekable(self.file):
             self.file.seek(0)
             self.file.truncate()
 
@@ -723,7 +735,7 @@ class GSFEncoderSegment(object):
         if all_at_once:
             _write_sint(file, self.count, 8)
         else:
-            if not PY2 and file.seekable():
+            if seekable(file):
                 self._count_pos = file.tell()
             _write_sint(file, -1, 8)
 
@@ -842,7 +854,7 @@ class GSFEncoderSegment(object):
         if self._file is None:
             return
 
-        if not PY2 and self._file.seekable() and self._count_pos != -1:
+        if seekable(self._file) and self._count_pos != -1:
             curpos = self._file.tell()
             self._file.seek(self._count_pos)
             _write_sint(self._file, self.count, 8)
@@ -857,12 +869,15 @@ class GSFEncoderSegment(object):
 
     def add_grain(self, grain):
         """Add a grain to the segment, which should be a Grain object"""
-        self.add_grains((grain,))
+        self._grains.append(grain)
+        if self._file is not None:
+            self._write_grain(grain)
 
     def add_grains(self, grains):
         """Add several grains to the segment, the parameter shouold be an
         iterable of grain objects"""
-        self._grains.extend(grains)
+        for grain in grains:
+            self.add_grain(grain)
 
 
 def main():
