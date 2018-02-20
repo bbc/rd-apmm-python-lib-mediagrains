@@ -21,13 +21,16 @@ from mediagrains import VideoGrain
 from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
 from mediagrains.gsf import loads, load, dumps, GSFEncoder
 from mediagrains.gsf import GSFDecodeError
+from mediagrains.gsf import GSFEncodeError
 from mediagrains.gsf import GSFDecodeBadVersionError
 from mediagrains.gsf import GSFDecodeBadFileTypeError
+from mediagrains.gsf import GSFEncodeAddToActiveDump
 from mediagrains.cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from nmoscommon.timestamp import Timestamp, TimeOffset
 from datetime import datetime
 from fractions import Fraction
 from six import PY2, BytesIO
+from frozendict import frozendict
 
 if PY2:
     import mock
@@ -229,6 +232,83 @@ class TestGSFDumps(TestCase):
         self.assertEqual(len(segments2[1]), 2)
         self.assertEqual(len(segments3[1]), 2)
 
+    def test_dumps_fails_with_invalid_tags(self):
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+        with self.assertRaises(GSFEncodeError):
+            with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+                with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                    (head, segments) = loads(dumps([], tags=[None, None]))
+
+    def test_dumps_can_set_tags(self):
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                (head, segments) = loads(dumps([], tags=[('potato', 'harvest')], segment_tags=[('rainbow', 'dash')]))
+
+        self.assertEqual(len(head['tags']), 1)
+        self.assertIn(('potato', 'harvest'), head['tags'])
+
+        self.assertEqual(len(head['segments'][0]['tags']), 1)
+        self.assertIn(('rainbow', 'dash'), head['segments'][0]['tags'])
+
+    def test_encoder_access_methods(self):
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                enc = GSFEncoder([], tags=[('potato', 'harvest')])
+                enc.add_segment(tags=[('rainbow', 'dash')])
+
+        self.assertEqual(enc.tags, (('potato', 'harvest'),))
+        self.assertIsInstance(enc.segments, frozendict)
+        self.assertEqual(enc.segments[1].tags, (('rainbow', 'dash'),))
+
+    def test_encoder_raises_when_adding_to_active_encode(self):
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+        file = BytesIO()
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                enc = GSFEncoder(file, tags=[('potato', 'harvest')])
+                seg = enc.add_segment(tags=[('rainbow', 'dash')])
+
+        with self.assertRaises(GSFEncodeError):
+            enc.add_segment(local_id=1)
+
+        with self.assertRaises(GSFEncodeError):
+            enc.add_segment(tags=[None])
+
+        enc.start_dump()
+
+        with self.assertRaises(GSFEncodeAddToActiveDump):
+            enc.add_tag('upside', 'down')
+        with self.assertRaises(GSFEncodeAddToActiveDump):
+            enc.add_segment()
+        with self.assertRaises(GSFEncodeAddToActiveDump):
+            seg.add_tag('upside', 'down')
+
+    def test_encoder_can_add_grains_to_nonexistent_segment(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+        file = BytesIO()
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                enc = GSFEncoder(file, tags=[('potato', 'harvest')])
+
+        enc.add_grain(grain0, segment_local_id=2)
+
+        self.assertEqual(enc.segments[2].grains[0], grain0)
+
 class TestGSFLoads(TestCase):
     def test_loads_video(self):
         (head, segments) = loads(VIDEO_DATA)
@@ -403,7 +483,7 @@ class TestGSFLoads(TestCase):
     def test_loads_rejects_bad_head_tag(self):
         with self.assertRaises(GSFDecodeError) as cm:
             loads(b"SSBBgrsg\x07\x00\x00\x00" +
-                  b"\xff\xff\xff\xff")
+                  b"\xff\xff\xff\xff\x00\x00\x00\x00")
         self.assertEqual(cm.exception.offset, 12)
 
     def test_loads_raises_exception_without_head(self):
@@ -455,7 +535,7 @@ class TestGSFLoads(TestCase):
         self.assertEqual(head['segments'][0]['count'], 0)
         self.assertEqual(head['tags'], [])
 
-    def test_loads_raises_when_head_to_small(self):
+    def test_loads_raises_when_head_too_small(self):
         with self.assertRaises(GSFDecodeError) as cm:
             (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
                                     (b"head\x27\x00\x00\x00" +
@@ -469,7 +549,7 @@ class TestGSFLoads(TestCase):
 
         self.assertEqual(cm.exception.offset, 12)
 
-    def test_loads_raises_when_segm_to_small(self):
+    def test_loads_raises_when_segm_too_small(self):
         with self.assertRaises(GSFDecodeError) as cm:
             (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
                                     (b"head\x41\x00\x00\x00" +
@@ -508,7 +588,8 @@ class TestGSFLoads(TestCase):
                                           b"dummy timecode\x00\x00" +
                                           b"\x07\x00\x00\x00" +
                                           b"\x19\x00\x00\x00\x01\x00\x00\x00" +
-                                          b"\x00"))))
+                                          b"\x00"))) +
+                                   (b"grai\x08\x00\x00\x00"))
 
         self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
         self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))
@@ -548,6 +629,47 @@ class TestGSFLoads(TestCase):
                                              (b"dumy\x08\x00\x00\x00"))))
 
         self.assertEqual(cm.exception.offset, 87)
+
+    def test_loads_decodes_empty_grains(self):
+        src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
+        flow_id = UUID('da78668a-1596-11e8-a577-dca904824eec')
+        (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
+                                   (b"head\x41\x00\x00\x00" +
+                                    b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                                    b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
+                                      (b"segm\x22\x00\x00\x00" +
+                                       b"\x01\x00" +
+                                       b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
+                                       b"\x02\x00\x00\x00\x00\x00\x00\x00")) +
+                                   (b"grai\x66\x00\x00\x00" +
+                                    b"\x01\x00" +
+                                      (b"gbhd\x5c\x00\x00\x00" +
+                                       src_id.bytes +
+                                       flow_id.bytes +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00")) +
+                                   (b"dumy\x08\x00\x00\x00") +
+                                   (b"grai\x6E\x00\x00\x00" +
+                                    b"\x01\x00" +
+                                      (b"gbhd\x5c\x00\x00\x00" +
+                                       src_id.bytes +
+                                       flow_id.bytes +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00") +
+                                      (b"grdt\x08\x00\x00\x00")) +
+                                   (b"dumy\x08\x00\x00\x00"))
+
+        self.assertEqual(len(segments[1]), 2)
+        self.assertEqual(segments[1][0].grain_type, "empty")
+        self.assertIsNone(segments[1][0].data)
+        self.assertEqual(segments[1][1].grain_type, "empty")
+        self.assertIsNone(segments[1][1].data)
 
     def test_loads_coded_audio(self):
         (head, segments) = loads(CODED_AUDIO_DATA)

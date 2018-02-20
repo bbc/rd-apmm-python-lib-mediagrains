@@ -223,7 +223,7 @@ class GSFDecoder(object):
 
     def _decode_block_header(self, b, i, allowed=None, optional=False):
         start = i
-        while i < len(b):
+        while i <= len(b) - 8:
             try:
                 (tag, i) = self._read_string(b, i, 4)
             except UnicodeDecodeError:
@@ -321,11 +321,11 @@ class GSFDecoder(object):
         if size != 0:
             (meta['grain']['timelabels'], i) = self._decode_tils(b, i)
 
-        (tag, size, i) = self._decode_block_header(b, i, optional=True)
-        if tag == "":
+        if i == gbhd_end:
             meta['grain']['grain_type'] = 'empty'
             block_end = i
         else:
+            (tag, size, i) = self._decode_block_header(b, i, ['vghd', 'cghd', 'aghd', 'cahd', 'eghd'])
             block_start = i - 8
             block_end = block_start + size
 
@@ -403,22 +403,32 @@ class GSFDecoder(object):
         return (meta, gbhd_end)
 
     def _decode_grdt(self, b, i):
-        start = i
         (_, size, i) = self._decode_block_header(b, i, ["grdt"])
+        if size <= 8:
+            return (None, i)
+        start = i - 8
         return (b[i:start+size], start + size)
 
     def _decode_grai(self, b, i):
         start = i
-        (_, size, i) = self._decode_block_header(b, i, ["grai"])
+        (tag, size, i) = self._decode_block_header(b, i, ["grai"])
+        if tag == "":
+            return (None, None, start)
         if size > 0:
-            (local_id, i) = self._read_uint(b, i, 2)
+            start = i - 8
+            end = start + size
+            if i <= end - 2:
+                (local_id, i) = self._read_uint(b, i, 2)
 
-            (meta, i) = self._decode_gbhd(b, i)
-            (data, i) = self._decode_grdt(b, i)
+                if i <= end - 8:
+                    (meta, i) = self._decode_gbhd(b, i)
+                    data = None
+                    if i <= end - 8:
+                        (data, i) = self._decode_grdt(b, i)
 
-            return (self.Grain(meta, data), local_id, start + size)
-        else:
-            return (None, None, start + 8)
+                    return (self.Grain(meta, data), local_id, start + size)
+            return (None, None, end)
+        return (None, None, start + 8)
 
     def decode(self, s):
         """Decode a GSF formatted bytes object, returning a dictionary mapping
@@ -538,13 +548,9 @@ class GSFEncoder(object):
 
         if tags is not None:
             for tag in tags:
-                if isinstance(tag, GSFEncoderTag):
-                    self._tags.append(tag)
-                elif isinstance(tag, tuple):
+                try:
                     self.add_tag(tag[0], tag[1])
-                elif isinstance(tag, dict) and 'key' in tag and 'value' in tag:
-                    self.add_tag(tag['key'], tag['value'])
-                else:
+                except (TypeError, IndexError):
                     raise GSFEncodeError("No idea how to turn {!r} into a tag".format(tag))
 
     @property
@@ -710,6 +716,9 @@ class GSFEncoderTag(object):
         _write_uint(file, len(self.encoded_value), 2)
         file.write(self.encoded_value)
 
+    def __eq__(self, other):
+        return other.__eq__((self.key, self.value))
+
 
 class GSFEncoderSegment(object):
     """A class to represent a segment within a GSF file, used for constructing them."""
@@ -724,13 +733,9 @@ class GSFEncoderSegment(object):
 
         if tags is not None:
             for tag in tags:
-                if isinstance(tag, GSFEncoderTag):
-                    self._tags.append(tag)
-                elif isinstance(tag, tuple):
+                try:
                     self.add_tag(tag[0], tag[1])
-                elif isinstance(tag, dict) and 'key' in tag and 'value' in tag:
-                    self.add_tag(tag['key'], tag['value'])
-                else:
+                except (TypeError, IndexError):
                     raise GSFEncodeError("No idea how to turn {!r} into a tag".format(tag))
 
     @property
@@ -890,6 +895,8 @@ class GSFEncoderSegment(object):
 
     def add_tag(self, key, value):
         """Add a tag to the segment"""
+        if self._file is not None:
+            raise GSFEncodeAddToActiveDump("Cannot add a tag to a segment which is part of an active export")
         self._tags.append(GSFEncoderTag(key, value))
 
     def add_grain(self, grain):
@@ -903,24 +910,3 @@ class GSFEncoderSegment(object):
         iterable of grain objects"""
         for grain in grains:
             self.add_grain(grain)
-
-
-def main():
-    import sys
-    if len(sys.argv) > 1:
-        fname = sys.argv[1]
-        f = open(fname, "rb")
-        b = f.read()
-
-        print(loads(b))
-    else:
-        from . import VideoGrain
-        from .cogframe import CogFrameFormat
-
-        src_id = uuid1()
-        flow_id = uuid1()
-        data = dumps([VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080),], tags=[('rainbow', 'dash'), ('potato', 'harvest')], segment_tags=[('special', 'circumstances')])
-        print(loads(data))
-
-if __name__ == "__main__":  # pragma: no cover
-    main()
