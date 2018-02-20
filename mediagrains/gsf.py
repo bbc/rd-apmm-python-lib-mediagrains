@@ -367,7 +367,7 @@ class GSFDecoder(object):
                 (meta['grain']['cog_coded_frame']['origin_height'], i) = self._read_uint(b, i, 4)
                 (meta['grain']['cog_coded_frame']['coded_width'], i) = self._read_uint(b, i, 4)
                 (meta['grain']['cog_coded_frame']['coded_height'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_frame']['key_frame'], i) = self._read_bool(b, i)
+                (meta['grain']['cog_coded_frame']['is_key_frame'], i) = self._read_bool(b, i)
                 (meta['grain']['cog_coded_frame']['temporal_offset'], i) = self._read_sint(b, i, 4)
 
                 if i < block_end:
@@ -879,6 +879,60 @@ class GSFEncoderSegment(object):
                 _write_uint(self._file, comp.height, 4)
                 _write_uint(self._file, comp.stride, 4)
                 _write_uint(self._file, comp.length, 4)
+
+    def _aghd_size_for_grain(self, grain):
+        return 22
+
+    def _write_aghd_for_grain(self, grain):
+        self._file.write(b"aghd")
+        _write_uint(self._file, self._aghd_size_for_grain(grain), 4)
+
+        _write_uint(self._file, int(grain.format), 4)
+        _write_uint(self._file, int(grain.channels), 2)
+        _write_uint(self._file, int(grain.samples), 4)
+        _write_uint(self._file, int(grain.sample_rate), 4)
+
+    def _cghd_size_for_grain(self, grain):
+        size = 37
+        if len(grain.unit_offsets) > 0:
+            size += 10 + 4*len(grain.unit_offsets)
+        return size
+
+    def _write_cghd_for_grain(self, grain):
+        self._file.write(b"cghd")
+        _write_uint(self._file, self._cghd_size_for_grain(grain), 4)
+
+        _write_uint(self._file, int(grain.format), 4)
+        _write_uint(self._file, int(grain.layout), 4)
+        _write_uint(self._file, int(grain.origin_width), 4)
+        _write_uint(self._file, int(grain.origin_height), 4)
+        _write_uint(self._file, int(grain.coded_width), 4)
+        _write_uint(self._file, int(grain.coded_height), 4)
+        _write_uint(self._file, 1 if grain.is_key_frame else 0, 1)
+        _write_uint(self._file, int(grain.temporal_offset), 4)
+
+        if len(grain.unit_offsets) > 0:
+            self._file.write(b"unof")
+            _write_uint(self._file, 10 + 4*len(grain.unit_offsets), 4)
+
+            _write_uint(self._file, len(grain.unit_offsets), 2)
+
+            for i in range(0, len(grain.unit_offsets)):
+                _write_uint(self._file, grain.unit_offsets[i], 4)
+
+    def _cahd_size_for_grain(self, grain):
+        return 30
+
+    def _write_cahd_for_grain(self, grain):
+        self._file.write(b"cahd")
+        _write_uint(self._file, self._cahd_size_for_grain(grain), 4)
+
+        _write_uint(self._file, int(grain.format), 4)
+        _write_uint(self._file, int(grain.channels), 2)
+        _write_uint(self._file, int(grain.samples), 4)
+        _write_uint(self._file, int(grain.priming), 4)
+        _write_uint(self._file, int(grain.remainder), 4)
+        _write_uint(self._file, int(grain.sample_rate), 4)
 
     def complete_write(self):
         if self._file is None:

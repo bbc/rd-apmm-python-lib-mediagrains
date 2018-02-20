@@ -986,6 +986,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.layout, CogFrameLayout.UNKNOWN)
         grain.temporal_offset = 75
         self.assertEqual(grain.temporal_offset, 75)
+        grain.is_key_frame = True
+        self.assertTrue(grain.is_key_frame, 75)
 
         self.assertNotIn('unit_offsets', grain.meta['grain']['cog_coded_frame'])
         self.assertEqual(grain.unit_offsets, [])

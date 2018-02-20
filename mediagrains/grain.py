@@ -878,6 +878,14 @@ unit_offsets
         self.meta['grain']['cog_coded_frame']['coded_height'] = value
 
     @property
+    def is_key_frame(self):
+        return self.meta['grain']['cog_coded_frame']['is_key_frame']
+
+    @is_key_frame.setter
+    def is_key_frame(self, value):
+        self.meta['grain']['cog_coded_frame']['is_key_frame'] = bool(value)
+
+    @property
     def temporal_offset(self):
         return self.meta['grain']['cog_coded_frame']['temporal_offset']
 

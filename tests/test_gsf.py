@@ -17,7 +17,7 @@
 from __future__ import print_function
 from unittest import TestCase
 from uuid import UUID
-from mediagrains import VideoGrain
+from mediagrains import VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
 from mediagrains.gsf import loads, load, dumps, GSFEncoder
 from mediagrains.gsf import GSFDecodeError
@@ -192,6 +192,187 @@ class TestGSFDumps(TestCase):
 
         self.assertEqual(segments[1][1].data, grain1.data)
 
+    def test_dumps_audiograins(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        grain0 = AudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
+        grain1 = AudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
+        for i in range(0,len(grain0.data)):
+            grain0.data[i] = i & 0xFF
+        for i in range(0,len(grain1.data)):
+            grain1.data[i] = 0xFF - (i & 0xFF)
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                (head, segments) = loads(dumps([grain0, grain1]))
+
+        self.assertIn('id', head)
+        self.assertIn(head['id'], uuids)
+        self.assertIn('tags', head)
+        self.assertEqual(len(head['tags']), 0)
+        self.assertIn('created', head)
+        self.assertEqual(head['created'], created)
+        self.assertIn('segments', head)
+        self.assertEqual(len(head['segments']), 1)
+        self.assertIn('count', head['segments'][0])
+        self.assertEqual(head['segments'][0]['count'], 2)
+        self.assertIn('local_id', head['segments'][0])
+        self.assertEqual(head['segments'][0]['local_id'], 1)
+        self.assertIn('id', head['segments'][0])
+        self.assertIn(head['segments'][0]['id'], uuids)
+        self.assertIn('tags', head['segments'][0])
+        self.assertEqual(len(head['segments'][0]['tags']), 0)
+
+        self.assertEqual(len(segments), 1)
+        self.assertIn(1, segments)
+        self.assertEqual(len(segments[1]), head['segments'][0]['count'])
+
+        self.assertEqual(segments[1][0].source_id, src_id)
+        self.assertEqual(segments[1][0].flow_id, flow_id)
+        self.assertEqual(segments[1][0].grain_type, 'audio')
+        self.assertEqual(segments[1][0].format, CogAudioFormat.S16_PLANES)
+        self.assertEqual(segments[1][0].samples, 1920)
+        self.assertEqual(segments[1][0].sample_rate, 48000)
+
+        self.assertEqual(segments[1][0].data, grain0.data)
+
+        self.assertEqual(segments[1][1].source_id, src_id)
+        self.assertEqual(segments[1][1].flow_id, flow_id)
+        self.assertEqual(segments[1][1].grain_type, 'audio')
+        self.assertEqual(segments[1][1].format, CogAudioFormat.S16_PLANES)
+        self.assertEqual(segments[1][1].samples, 1920)
+        self.assertEqual(segments[1][1].sample_rate, 48000)
+
+        self.assertEqual(segments[1][1].data, grain1.data)
+
+    def test_dumps_codedvideograins(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        grain0 = CodedVideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.VC2, origin_width=1920, origin_height=1080, coded_width=1920,
+                                 coded_height=1088, is_key_frame=True, temporal_offset=-23, length=1024, unit_offsets=[5, 15, 105])
+        grain1 = CodedVideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.VC2, origin_width=1920, origin_height=1080, coded_width=1920,
+                                 coded_height=1088, temporal_offset=17, length=256)
+        for i in range(0,len(grain0.data)):
+            grain0.data[i] = i & 0xFF
+        for i in range(0,len(grain1.data)):
+            grain1.data[i] = 0xFF - (i & 0xFF)
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                (head, segments) = loads(dumps([grain0, grain1]))
+
+        self.assertIn('id', head)
+        self.assertIn(head['id'], uuids)
+        self.assertIn('tags', head)
+        self.assertEqual(len(head['tags']), 0)
+        self.assertIn('created', head)
+        self.assertEqual(head['created'], created)
+        self.assertIn('segments', head)
+        self.assertEqual(len(head['segments']), 1)
+        self.assertIn('count', head['segments'][0])
+        self.assertEqual(head['segments'][0]['count'], 2)
+        self.assertIn('local_id', head['segments'][0])
+        self.assertEqual(head['segments'][0]['local_id'], 1)
+        self.assertIn('id', head['segments'][0])
+        self.assertIn(head['segments'][0]['id'], uuids)
+        self.assertIn('tags', head['segments'][0])
+        self.assertEqual(len(head['segments'][0]['tags']), 0)
+
+        self.assertEqual(len(segments), 1)
+        self.assertIn(1, segments)
+        self.assertEqual(len(segments[1]), head['segments'][0]['count'])
+
+        self.assertEqual(segments[1][0].source_id, src_id)
+        self.assertEqual(segments[1][0].flow_id, flow_id)
+        self.assertEqual(segments[1][0].grain_type, 'coded_video')
+        self.assertEqual(segments[1][0].format, CogFrameFormat.VC2)
+        self.assertEqual(segments[1][0].origin_width, 1920)
+        self.assertEqual(segments[1][0].origin_height, 1080)
+        self.assertEqual(segments[1][0].coded_width, 1920)
+        self.assertEqual(segments[1][0].coded_height, 1088)
+        self.assertEqual(segments[1][0].temporal_offset, -23)
+        self.assertEqual(segments[1][0].unit_offsets, [5, 15, 105])
+        self.assertTrue(segments[1][0].is_key_frame)
+
+        self.assertEqual(segments[1][0].data, grain0.data)
+
+        self.assertEqual(segments[1][1].source_id, src_id)
+        self.assertEqual(segments[1][1].flow_id, flow_id)
+        self.assertEqual(segments[1][1].grain_type, 'coded_video')
+        self.assertEqual(segments[1][1].format, CogFrameFormat.VC2)
+        self.assertEqual(segments[1][1].origin_width, 1920)
+        self.assertEqual(segments[1][1].origin_height, 1080)
+        self.assertEqual(segments[1][1].coded_width, 1920)
+        self.assertEqual(segments[1][1].coded_height, 1088)
+        self.assertEqual(segments[1][1].temporal_offset, 17)
+        self.assertEqual(segments[1][1].unit_offsets, [])
+        self.assertFalse(segments[1][1].is_key_frame)
+
+        self.assertEqual(segments[1][1].data, grain1.data)
+
+    def test_dumps_codedaudiograins(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        grain0 = CodedAudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.AAC, samples=1920, sample_rate=48000, priming=23, remainder=17, length=1024)
+        grain1 = CodedAudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.AAC, samples=1920, sample_rate=48000, priming=5, remainder=104, length=1500)
+        for i in range(0,len(grain0.data)):
+            grain0.data[i] = i & 0xFF
+        for i in range(0,len(grain1.data)):
+            grain1.data[i] = 0xFF - (i & 0xFF)
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                (head, segments) = loads(dumps([grain0, grain1]))
+
+        self.assertIn('id', head)
+        self.assertIn(head['id'], uuids)
+        self.assertIn('tags', head)
+        self.assertEqual(len(head['tags']), 0)
+        self.assertIn('created', head)
+        self.assertEqual(head['created'], created)
+        self.assertIn('segments', head)
+        self.assertEqual(len(head['segments']), 1)
+        self.assertIn('count', head['segments'][0])
+        self.assertEqual(head['segments'][0]['count'], 2)
+        self.assertIn('local_id', head['segments'][0])
+        self.assertEqual(head['segments'][0]['local_id'], 1)
+        self.assertIn('id', head['segments'][0])
+        self.assertIn(head['segments'][0]['id'], uuids)
+        self.assertIn('tags', head['segments'][0])
+        self.assertEqual(len(head['segments'][0]['tags']), 0)
+
+        self.assertEqual(len(segments), 1)
+        self.assertIn(1, segments)
+        self.assertEqual(len(segments[1]), head['segments'][0]['count'])
+
+        self.assertEqual(segments[1][0].source_id, src_id)
+        self.assertEqual(segments[1][0].flow_id, flow_id)
+        self.assertEqual(segments[1][0].grain_type, 'coded_audio')
+        self.assertEqual(segments[1][0].format, CogAudioFormat.AAC)
+        self.assertEqual(segments[1][0].samples, 1920)
+        self.assertEqual(segments[1][0].sample_rate, 48000)
+        self.assertEqual(segments[1][0].priming, 23)
+        self.assertEqual(segments[1][0].remainder, 17)
+
+        self.assertEqual(segments[1][0].data, grain0.data)
+
+        self.assertEqual(segments[1][1].source_id, src_id)
+        self.assertEqual(segments[1][1].flow_id, flow_id)
+        self.assertEqual(segments[1][1].grain_type, 'coded_audio')
+        self.assertEqual(segments[1][1].format, CogAudioFormat.AAC)
+        self.assertEqual(segments[1][1].samples, 1920)
+        self.assertEqual(segments[1][1].sample_rate, 48000)
+        self.assertEqual(segments[1][1].priming, 5)
+        self.assertEqual(segments[1][1].remainder, 104)
+
+        self.assertEqual(segments[1][1].data, grain1.data)
+
     def test_dump_progressively(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
@@ -308,6 +489,7 @@ class TestGSFDumps(TestCase):
         enc.add_grain(grain0, segment_local_id=2)
 
         self.assertEqual(enc.segments[2].grains[0], grain0)
+
 
 class TestGSFLoads(TestCase):
     def test_loads_video(self):
