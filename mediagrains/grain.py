@@ -243,10 +243,125 @@ length
 
     @property
     def timelabels(self):
-        if 'timelabels' in self.meta['grain']:
-            return self.meta['grain']['timelabels']
-        else:
-            return []
+        return GRAIN.TIMELABELS(self)
+
+    @timelabels.setter
+    def timelabels(self, value):
+        self.meta['grain']['timelabels'] = []
+        for x in value:
+            self.timelabels.append(x)
+
+    def add_timelabel(self, tag, count, rate, drop_frame=False):
+        tl = GRAIN.TIMELABEL()
+        tl.tag = tag
+        tl.count = count
+        tl.rate = rate
+        tl.drop_frame = drop_frame
+        self.timelabels.append(tl)
+
+    class TIMELABEL(Mapping):
+        def __init__(self, meta=None):
+            if meta is None:
+                meta = {}
+            self.meta = meta
+            if 'tag' not in self.meta:
+                self.meta['tag'] = ''
+            if 'timelabel' not in self.meta:
+                self.meta['timelabel'] = {}
+            if 'frames_since_midnight' not in self.meta['timelabel']:
+                self.meta['timelabel']['frames_since_midnight'] = 0
+            if 'frame_rate_numerator' not in self.meta['timelabel']:
+                self.meta['timelabel']['frame_rate_numerator'] = 0
+            if 'frame_rate_denominator' not in self.meta['timelabel']:
+                self.meta['timelabel']['frame_rate_denominator'] = 1
+            if 'drop_frame' not in self.meta['timelabel']:
+                self.meta['timelabel']['drop_frame'] = False
+
+        def __getitem__(self, key):
+            return self.meta[key]
+
+        def __setitem__(self, key, value):
+            if key not in ['tag', 'timelabel']:
+                raise KeyError
+            self.meta[key] = value
+
+        def __iter__(self):
+            return self.meta.__iter__()
+
+        def __len__(self):
+            return 2
+
+        def __eq__(self, other):
+            return dict(self) == other
+
+        @property
+        def tag(self):
+            return self.meta['tag']
+
+        @tag.setter
+        def tag(self, value):
+            self.meta['tag'] = value
+
+        @property
+        def count(self):
+            return self.meta['timelabel']['frames_since_midnight']
+
+        @count.setter
+        def count(self, value):
+            self.meta['timelabel']['frames_since_midnight'] = int(value)
+
+        @property
+        def rate(self):
+            return Fraction(self.meta['timelabel']['frame_rate_numerator'],
+                            self.meta['timelabel']['frame_rate_denominator'])
+
+        @rate.setter
+        def rate(self, value):
+            value = Fraction(value)
+            self.meta['timelabel']['frame_rate_numerator'] = value.numerator
+            self.meta['timelabel']['frame_rate_denominator'] = value.denominator
+
+        @property
+        def drop_frame(self):
+            return self.meta['timelabel']['drop_frame']
+
+        @drop_frame.setter
+        def drop_frame(self, value):
+            self.meta['timelabel']['drop_frame'] = bool(value)
+
+    class TIMELABELS(MutableSequence):
+        def __init__(self, parent):
+            self.parent = parent
+
+        def __getitem__(self, key):
+            if 'timelabels' not in self.parent.meta['grain']:
+                raise IndexError("list index out of range")
+            return GRAIN.TIMELABEL(self.parent.meta['grain']['timelabels'][key])
+
+        def __setitem__(self, key, value):
+            if 'timelabels' not in self.parent.meta['grain']:
+                raise IndexError("list assignment index out of range")
+            self.parent.meta['grain']['timelabels'][key] = dict(GRAIN.TIMELABEL(value))
+
+        def __delitem__(self, key):
+            if 'timelabels' not in self.parent.meta['grain']:
+                raise IndexError("list assignment index out of range")
+            del self.parent.meta['grain']['timelabels'][key]
+            if len(self.parent.meta['grain']['timelabels']) == 0:
+                del self.parent.meta['grain']['timelabels']
+
+        def insert(self, key, value):
+            if 'timelabels' not in self.parent.meta['grain']:
+                self.parent.meta['grain']['timelabels'] = []
+            self.parent.meta['grain']['timelabels'].insert(key, dict(GRAIN.TIMELABEL(value)))
+
+        def __len__(self):
+            if 'timelabels' not in self.parent.meta['grain']:
+                return 0
+            return len(self.parent.meta['grain']['timelabels'])
+
+        def __eq__(self, other):
+            return list(self) == other
 
     @property
     def length(self):

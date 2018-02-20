@@ -436,6 +436,15 @@ class TestGSFDumps(TestCase):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = Grain(src_id, flow_id)
+        grain0.timelabels = [{
+            'tag': 'tiggle',
+            'timelabel': {
+                'frames_since_midnight': 7,
+                'frame_rate_numerator': 300,
+                'frame_rate_denominator': 1,
+                'drop_frame': False
+            }
+        }]
         grain1 = Grain(src_id, flow_id)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -468,12 +477,34 @@ class TestGSFDumps(TestCase):
         self.assertEqual(segments[1][0].source_id, src_id)
         self.assertEqual(segments[1][0].flow_id, flow_id)
         self.assertEqual(segments[1][0].grain_type, 'empty')
+        self.assertEqual(segments[1][0].timelabels,  [{
+            'tag': 'tiggle',
+            'timelabel': {
+                'frames_since_midnight': 7,
+                'frame_rate_numerator': 300,
+                'frame_rate_denominator': 1,
+                'drop_frame': False
+            }
+        }])
         self.assertIsNone(segments[1][0].data)
 
         self.assertEqual(segments[1][1].source_id, src_id)
         self.assertEqual(segments[1][1].flow_id, flow_id)
         self.assertEqual(segments[1][1].grain_type, 'empty')
         self.assertIsNone(segments[1][1].data)
+
+    def test_dumps_invalidgrains(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        grain = Grain(src_id, flow_id)
+        grain.grain_type = "invalid"
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+        with self.assertRaises(GSFEncodeError):
+            with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+                with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                    (head, segments) = loads(dumps([grain]))
 
     def test_dump_progressively(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
@@ -514,6 +545,27 @@ class TestGSFDumps(TestCase):
         self.assertEqual(len(segments1[1]), 1)
         self.assertEqual(len(segments2[1]), 2)
         self.assertEqual(len(segments3[1]), 2)
+
+    def test_end_dump_without_start_does_nothing(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+
+        file = BytesIO()
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                enc = GSFEncoder(file)
+                enc.add_segment()
+                dump0 = file.getvalue()
+                enc.end_dump()
+                dump1 = file.getvalue()
+
+        self.assertEqual(dump0, dump1)
 
     def test_dumps_fails_with_invalid_tags(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
