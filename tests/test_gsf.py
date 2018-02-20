@@ -17,7 +17,7 @@
 from __future__ import print_function
 from unittest import TestCase
 from uuid import UUID
-from mediagrains import VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
+from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
 from mediagrains.gsf import loads, load, dumps, GSFEncoder
 from mediagrains.gsf import GSFDecodeError
@@ -372,6 +372,108 @@ class TestGSFDumps(TestCase):
         self.assertEqual(segments[1][1].remainder, 104)
 
         self.assertEqual(segments[1][1].data, grain1.data)
+
+    def test_dumps_eventgrains(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        grain0 = EventGrain(src_id, flow_id)
+        grain0.event_type = "urn:x-testing:stupid/type"
+        grain0.topic = "/watashi"
+        grain0.append("/inu", post="desu")
+        grain1 = EventGrain(src_id, flow_id)
+        grain1.event_type = "urn:x-testing:clever/type"
+        grain1.topic = "/inu"
+        grain1.append("/sukimono", pre="da")
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                (head, segments) = loads(dumps([grain0, grain1]))
+
+        self.assertIn('id', head)
+        self.assertIn(head['id'], uuids)
+        self.assertIn('tags', head)
+        self.assertEqual(len(head['tags']), 0)
+        self.assertIn('created', head)
+        self.assertEqual(head['created'], created)
+        self.assertIn('segments', head)
+        self.assertEqual(len(head['segments']), 1)
+        self.assertIn('count', head['segments'][0])
+        self.assertEqual(head['segments'][0]['count'], 2)
+        self.assertIn('local_id', head['segments'][0])
+        self.assertEqual(head['segments'][0]['local_id'], 1)
+        self.assertIn('id', head['segments'][0])
+        self.assertIn(head['segments'][0]['id'], uuids)
+        self.assertIn('tags', head['segments'][0])
+        self.assertEqual(len(head['segments'][0]['tags']), 0)
+
+        self.assertEqual(len(segments), 1)
+        self.assertIn(1, segments)
+        self.assertEqual(len(segments[1]), head['segments'][0]['count'])
+
+        self.assertEqual(segments[1][0].source_id, src_id)
+        self.assertEqual(segments[1][0].flow_id, flow_id)
+        self.assertEqual(segments[1][0].grain_type, 'event')
+        self.assertEqual(segments[1][0].event_type, "urn:x-testing:stupid/type")
+        self.assertEqual(segments[1][0].topic, "/watashi")
+        self.assertEqual(len(segments[1][0].event_data), 1)
+        self.assertEqual(segments[1][0].event_data[0].path, "/inu")
+        self.assertIsNone(segments[1][0].event_data[0].pre)
+        self.assertEqual(segments[1][0].event_data[0].post, "desu")
+
+        self.assertEqual(segments[1][1].source_id, src_id)
+        self.assertEqual(segments[1][1].flow_id, flow_id)
+        self.assertEqual(segments[1][1].grain_type, 'event')
+        self.assertEqual(segments[1][1].event_type, "urn:x-testing:clever/type")
+        self.assertEqual(segments[1][1].topic, "/inu")
+        self.assertEqual(len(segments[1][1].event_data), 1)
+        self.assertEqual(segments[1][1].event_data[0].path, "/sukimono")
+        self.assertEqual(segments[1][1].event_data[0].pre, "da")
+        self.assertIsNone(segments[1][1].event_data[0].post)
+
+    def test_dumps_emptygrains(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        grain0 = Grain(src_id, flow_id)
+        grain1 = Grain(src_id, flow_id)
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                (head, segments) = loads(dumps([grain0, grain1]))
+
+        self.assertIn('id', head)
+        self.assertIn(head['id'], uuids)
+        self.assertIn('tags', head)
+        self.assertEqual(len(head['tags']), 0)
+        self.assertIn('created', head)
+        self.assertEqual(head['created'], created)
+        self.assertIn('segments', head)
+        self.assertEqual(len(head['segments']), 1)
+        self.assertIn('count', head['segments'][0])
+        self.assertEqual(head['segments'][0]['count'], 2)
+        self.assertIn('local_id', head['segments'][0])
+        self.assertEqual(head['segments'][0]['local_id'], 1)
+        self.assertIn('id', head['segments'][0])
+        self.assertIn(head['segments'][0]['id'], uuids)
+        self.assertIn('tags', head['segments'][0])
+        self.assertEqual(len(head['segments'][0]['tags']), 0)
+
+        self.assertEqual(len(segments), 1)
+        self.assertIn(1, segments)
+        self.assertEqual(len(segments[1]), head['segments'][0]['count'])
+
+        self.assertEqual(segments[1][0].source_id, src_id)
+        self.assertEqual(segments[1][0].flow_id, flow_id)
+        self.assertEqual(segments[1][0].grain_type, 'empty')
+        self.assertIsNone(segments[1][0].data)
+
+        self.assertEqual(segments[1][1].source_id, src_id)
+        self.assertEqual(segments[1][1].flow_id, flow_id)
+        self.assertEqual(segments[1][1].grain_type, 'empty')
+        self.assertIsNone(segments[1][1].data)
 
     def test_dump_progressively(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')

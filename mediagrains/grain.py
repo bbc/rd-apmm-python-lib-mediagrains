@@ -91,7 +91,7 @@ length
     """
     def __init__(self, meta, data):
         self.meta = meta
-        self.data = data
+        self._data = data
         self._factory = "Grain"
         if "@_ns" not in self.meta:
             self.meta['@_ns'] = "urn:x-ipstudio:ns:0.1"
@@ -152,6 +152,14 @@ length
 
     def __eq__(self, other):
         return tuple(self) == other
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, value):
+        self._data = value
 
     @property
     def grain_type(self):
@@ -265,7 +273,7 @@ meta
     The meta dictionary object
 
 data
-    The data bytes-like object, or None
+    The data bytes-like object, containing a json representation of the data
 
 grain_type
     A string containing the type of the grain, always "event"
@@ -298,7 +306,7 @@ timelabels
     A list object containing time label data
 
 length
-    Always 0
+    the length of the json representation in data
 
 The EventGrain class also provides additional properies
 
@@ -320,19 +328,44 @@ append(path, pre=None, post=None)
     only json serialisable objects for the values of pre and post.
     """
     def __init__(self, meta, data):
-        if data is not None:
-            meta['grain']['event_payload'] = json.loads(data)
         super(EVENTGRAIN, self).__init__(meta, None)
         self._factory = "EventGrain"
         self.meta['grain']['grain_type'] = 'event'
         if 'event_payload' not in self.meta['grain']:
             self.meta['grain']['event_payload'] = {}
+        if data is not None:
+            self.data = data
         if 'type' not in self.meta['grain']['event_payload']:
             self.meta['grain']['event_payload']['type'] = ""
         if 'topic' not in self.meta['grain']['event_payload']:
             self.meta['grain']['event_payload']['topic'] = ""
         if 'data' not in self.meta['grain']['event_payload']:
             self.meta['grain']['event_payload']['data'] = []
+
+    @property
+    def data(self):
+        return json.dumps({ 'type' : self.event_type,
+                            'topic': self.topic,
+                            'data': [dict(datum) for datum in self.event_data]}).encode('utf-8')
+
+    @data.setter
+    def data(self, value):
+        value = json.loads(value)
+        if 'type' not in value or 'topic' not in value or 'data' not in value:
+            raise ValueError("incorrectly formated event payload")
+        self.event_type = value['type']
+        self.topic = value['topic']
+        self.meta['grain']['event_payload']['data'] = []
+        for datum in value['data']:
+            d = {'path': datum['path']}
+            if 'pre' in datum:
+                d['pre'] = datum['pre']
+            if 'post' in datum:
+                d['post'] = datum['post']
+            self.meta['grain']['event_payload']['data'].append(d)
+
+    def __repr__(self):
+        return "EventGrain({!r})".format(self.meta)
 
     @property
     def event_type(self):

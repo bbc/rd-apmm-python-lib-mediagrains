@@ -880,6 +880,15 @@ class GSFEncoderSegment(object):
                 _write_uint(self._file, comp.stride, 4)
                 _write_uint(self._file, comp.length, 4)
 
+    def _eghd_size_for_grain(self, grain):
+        return 9
+
+    def _write_eghd_for_grain(self, grain):
+        self._file.write(b"eghd")
+        _write_uint(self._file, self._eghd_size_for_grain(grain), 4)
+
+        _write_uint(self._file, 0x00, 1)
+
     def _aghd_size_for_grain(self, grain):
         return 22
 
