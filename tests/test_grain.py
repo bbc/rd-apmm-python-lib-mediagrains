@@ -247,7 +247,58 @@ class TestGrain (TestCase):
         grain.duration = 0.25
         self.assertEqual(grain.duration, Fraction(1, 4))
 
+        grain.data = bytearray(10)
+        self.assertEqual(len(grain.data), 10)
+        self.assertEqual(grain.length, 10)
+
         self.assertEqual(grain.timelabels, [])
+        grain.add_timelabel('test', 1, 25)
+        self.assertEqual(len(grain.timelabels), 1)
+        self.assertEqual(grain.timelabels[0].tag, 'test')
+        self.assertEqual(grain.timelabels[0].count, 1)
+        self.assertEqual(grain.timelabels[0].rate, Fraction(25,1))
+        self.assertFalse(grain.timelabels[0].drop_frame)
+
+        grain.timelabels[0]['tag'] = 'potato'
+        self.assertEqual(grain.timelabels[0].tag, 'potato')
+
+        with self.assertRaises(KeyError):
+            grain.timelabels[0]['potato'] = 3
+
+        self.assertEqual(len(grain.timelabels[0]), 2)
+
+        grain.timelabels[0] = {
+            'tag': 'other_tag',
+            'timelabel': {
+                'frames_since_midnight': 7,
+                'frame_rate_numerator': 30000,
+                'frame_rate_denominator': 1001,
+                'drop_frame': True
+            }
+        }
+        self.assertEqual(len(grain.timelabels), 1)
+        self.assertEqual(grain.timelabels[0].tag, 'other_tag')
+        self.assertEqual(grain.timelabels[0].count, 7)
+        self.assertEqual(grain.timelabels[0].rate, Fraction(30000,1001))
+        self.assertTrue(grain.timelabels[0].drop_frame)
+
+        del grain.timelabels[0]
+
+        self.assertEqual(len(grain.timelabels), 0)
+
+        with self.assertRaises(IndexError):
+            del grain.timelabels[0]
+
+        with self.assertRaises(IndexError):
+            grain.timelabels[0] = {
+                'tag': 'other_tag',
+                'timelabel': {
+                    'frames_since_midnight': 7,
+                    'frame_rate_numerator': 30000,
+                    'frame_rate_denominator': 1001,
+                    'drop_frame': True
+                }
+            }
 
     def test_video_grain_create_YUV422_10bit(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -303,7 +354,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*1080*2*2)
 
-        self.assertEqual(repr(grain), "VideoGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "VideoGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
         self.assertEqual(grain.components, [{'stride': 1920*2,
                                              'width': 1920,
@@ -508,7 +559,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*1080*2*2)
 
-        self.assertEqual(repr(grain), "VideoGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "VideoGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
         self.assertEqual(dict(grain.components[0]), {'stride': 1920*2,
                                                      'width': 1920,
@@ -690,7 +741,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*2*2)
 
-        self.assertEqual(repr(grain), "AudioGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_audio_grain_create_fills_in_missing_sts(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -720,7 +771,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*2*2)
 
-        self.assertEqual(repr(grain), "AudioGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_audio_grain_create_fills_in_missing_ots(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -749,7 +800,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*2*2)
 
-        self.assertEqual(repr(grain), "AudioGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_audio_grain_create_fails_with_no_params(self):
         with self.assertRaises(AttributeError):
@@ -903,7 +954,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), grain.length)
 
-        self.assertEqual(repr(grain), "CodedVideoGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "CodedVideoGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_video_grain_create_fills_empty_meta(self):
         cts = Timestamp.from_tai_sec_nsec("417798915:0")
@@ -986,6 +1037,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.layout, CogFrameLayout.UNKNOWN)
         grain.temporal_offset = 75
         self.assertEqual(grain.temporal_offset, 75)
+        grain.is_key_frame = True
+        self.assertTrue(grain.is_key_frame, 75)
 
         self.assertNotIn('unit_offsets', grain.meta['grain']['cog_coded_frame'])
         self.assertEqual(grain.unit_offsets, [])
@@ -1153,7 +1206,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), grain.length)
 
-        self.assertEqual(repr(grain), "CodedAudioGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_audio_grain_create_without_sts(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -1191,7 +1244,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), grain.length)
 
-        self.assertEqual(repr(grain), "CodedAudioGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_audio_grain_create_without_sts_or_ots(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -1228,7 +1281,7 @@ class TestGrain (TestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), grain.length)
 
-        self.assertEqual(repr(grain), "CodedAudioGrain({!r},{!r})".format(grain.meta, grain.data))
+        self.assertEqual(repr(grain), "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_audio_grain_create_fills_empty_meta(self):
         cts = Timestamp.from_tai_sec_nsec("417798915:0")
@@ -1390,6 +1443,9 @@ class TestGrain (TestCase):
         self.assertEqual(grain.event_type, "urn:x-ipstudio:format:event.query")
         self.assertEqual(grain.topic, "/dummy")
         self.assertEqual(grain.event_data, [])
+        self.assertEqual(json.loads(grain.data), {'type': "urn:x-ipstudio:format:event.query",
+                                                  'topic': "/dummy",
+                                                  'data': []})
 
         self.assertEqual(repr(grain), "EventGrain({!r})".format(grain.meta))
 
@@ -1555,6 +1611,11 @@ class TestGrain (TestCase):
         self.assertEqual(grain.event_data[0], {'path': '/location',
                                                'pre': 'now',
                                                'post': 'next'})
+        self.assertEqual(json.loads(grain.data), {'type': "urn:x-ipstudio:format:event.potato",
+                                                  'topic': "/important/data",
+                                                  'data': [{'path': '/location',
+                                                            'pre': 'now',
+                                                            'post': 'next'}]})
         grain.event_data[0]['post'] = 'never'
         del grain.event_data[0]['post']
         self.assertIsNone(grain.event_data[0].post)
@@ -1568,3 +1629,20 @@ class TestGrain (TestCase):
 
         grain.event_data = []
         self.assertEqual(len(grain.event_data), 0)
+        self.assertEqual(json.loads(grain.data), {'type': "urn:x-ipstudio:format:event.potato",
+                                                  'topic': "/important/data",
+                                                  'data': []})
+
+        grain.data = json.dumps({'type': "urn:x-ipstudio:format:event.potato",
+                                 'topic': "/important/data",
+                                 'data': [{'path': '/location',
+                                           'pre': 'now',
+                                           'post': 'next'}]})
+        self.assertEqual(json.loads(grain.data), {'type': "urn:x-ipstudio:format:event.potato",
+                                                  'topic': "/important/data",
+                                                  'data': [{'path': '/location',
+                                                            'pre': 'now',
+                                                            'post': 'next'}]})
+
+        with self.assertRaises(ValueError):
+            grain.data = json.dumps({'potato': "masher"})

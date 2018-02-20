@@ -708,7 +708,7 @@ def CodedVideoGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
                     sync_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
                     cog_frame_format=CogFrameFormat.UNKNOWN, origin_width=1920,
                     origin_height=1080, coded_width=None,
-                    coded_height=None, temporal_offset=0, length=None,
+                    coded_height=None, is_key_frame=False, temporal_offset=0, length=None,
                     cog_frame_layout=CogFrameLayout.UNKNOWN, unit_offsets=None,
                     flow_id=None, data=None):
     """\
@@ -747,6 +747,7 @@ A properly formated metadata dictionary for a Video Grain should look like:
                     "coded_width": coded_width, # int
                     "coded_height": coded_height, # int
                     "layout": cog_frame_layout, # int or CogFrameLayout
+                    "is_key_frame": False, # bool
                     "temporal_offset": temporal_offset, # int
                     "unit_offsets": [0, 16, 27] # list of int (optional)
                 }
@@ -763,6 +764,7 @@ Alternatively it may be called as:
                     cog_frame_format=CogFrameFormat.UNKNOWN,
                     origin_width=1920,
                     origin_height=1080,
+                    is_key_frame=False,
                     coded_width=None,
                     coded_height=None,
                     temporal_offset=0,
@@ -835,6 +837,7 @@ class mediagrains.grain.CODEDVIDEOGRAIN
                     "coded_width": coded_width,
                     "coded_height": coded_height,
                     "layout": cog_frame_layout,
+                    "is_key_frame": is_key_frame,
                     "temporal_offset": temporal_offset
                 }
             },

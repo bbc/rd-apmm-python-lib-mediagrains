@@ -76,6 +76,7 @@ packages_required = [
     "nmoscommon",
     "enum34",
     "six",
+    "frozendict",
 ]
 
 deps_required = []

@@ -23,8 +23,6 @@ directly by client code, but their documentation may be instructive.
 from __future__ import print_function
 from __future__ import absolute_import
 
-from six import string_types
-
 from uuid import UUID
 from nmoscommon.timestamp import Timestamp
 from collections import Sequence, MutableSequence, Mapping
@@ -34,8 +32,7 @@ from .cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
 import json
 
-__all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain", "CodedAudioGrain", "EventGrain",
-           "GRAIN", "VIDEOGRAIN", "AUDIOGRAIN", "CODEDVIDEOGRAIN", "CODEDAUDIOGRAIN", "EVENTGRAIN"]
+__all__ = ["GRAIN", "VIDEOGRAIN", "AUDIOGRAIN", "CODEDVIDEOGRAIN", "CODEDAUDIOGRAIN", "EVENTGRAIN"]
 
 
 class GRAIN(Sequence):
@@ -94,7 +91,7 @@ length
     """
     def __init__(self, meta, data):
         self.meta = meta
-        self.data = data
+        self._data = data
         self._factory = "Grain"
         if "@_ns" not in self.meta:
             self.meta['@_ns'] = "urn:x-ipstudio:ns:0.1"
@@ -151,10 +148,18 @@ length
         if self.data is None:
             return "{}({!r})".format(self._factory, self.meta)
         else:
-            return "{}({!r},{!r})".format(self._factory, self.meta, self.data)
+            return "{}({!r},< binary data of length {} >)".format(self._factory, self.meta, len(self.data))
 
     def __eq__(self, other):
         return tuple(self) == other
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, value):
+        self._data = value
 
     @property
     def grain_type(self):
@@ -238,10 +243,125 @@ length
 
     @property
     def timelabels(self):
-        if 'timelabels' in self.meta['grain']:
-            return self.meta['grain']['timelabels']
-        else:
-            return []
+        return GRAIN.TIMELABELS(self)
+
+    @timelabels.setter
+    def timelabels(self, value):
+        self.meta['grain']['timelabels'] = []
+        for x in value:
+            self.timelabels.append(x)
+
+    def add_timelabel(self, tag, count, rate, drop_frame=False):
+        tl = GRAIN.TIMELABEL()
+        tl.tag = tag
+        tl.count = count
+        tl.rate = rate
+        tl.drop_frame = drop_frame
+        self.timelabels.append(tl)
+
+    class TIMELABEL(Mapping):
+        def __init__(self, meta=None):
+            if meta is None:
+                meta = {}
+            self.meta = meta
+            if 'tag' not in self.meta:
+                self.meta['tag'] = ''
+            if 'timelabel' not in self.meta:
+                self.meta['timelabel'] = {}
+            if 'frames_since_midnight' not in self.meta['timelabel']:
+                self.meta['timelabel']['frames_since_midnight'] = 0
+            if 'frame_rate_numerator' not in self.meta['timelabel']:
+                self.meta['timelabel']['frame_rate_numerator'] = 0
+            if 'frame_rate_denominator' not in self.meta['timelabel']:
+                self.meta['timelabel']['frame_rate_denominator'] = 1
+            if 'drop_frame' not in self.meta['timelabel']:
+                self.meta['timelabel']['drop_frame'] = False
+
+        def __getitem__(self, key):
+            return self.meta[key]
+
+        def __setitem__(self, key, value):
+            if key not in ['tag', 'timelabel']:
+                raise KeyError
+            self.meta[key] = value
+
+        def __iter__(self):
+            return self.meta.__iter__()
+
+        def __len__(self):
+            return 2
+
+        def __eq__(self, other):
+            return dict(self) == other
+
+        @property
+        def tag(self):
+            return self.meta['tag']
+
+        @tag.setter
+        def tag(self, value):
+            self.meta['tag'] = value
+
+        @property
+        def count(self):
+            return self.meta['timelabel']['frames_since_midnight']
+
+        @count.setter
+        def count(self, value):
+            self.meta['timelabel']['frames_since_midnight'] = int(value)
+
+        @property
+        def rate(self):
+            return Fraction(self.meta['timelabel']['frame_rate_numerator'],
+                            self.meta['timelabel']['frame_rate_denominator'])
+
+        @rate.setter
+        def rate(self, value):
+            value = Fraction(value)
+            self.meta['timelabel']['frame_rate_numerator'] = value.numerator
+            self.meta['timelabel']['frame_rate_denominator'] = value.denominator
+
+        @property
+        def drop_frame(self):
+            return self.meta['timelabel']['drop_frame']
+
+        @drop_frame.setter
+        def drop_frame(self, value):
+            self.meta['timelabel']['drop_frame'] = bool(value)
+
+    class TIMELABELS(MutableSequence):
+        def __init__(self, parent):
+            self.parent = parent
+
+        def __getitem__(self, key):
+            if 'timelabels' not in self.parent.meta['grain']:
+                raise IndexError("list index out of range")
+            return GRAIN.TIMELABEL(self.parent.meta['grain']['timelabels'][key])
+
+        def __setitem__(self, key, value):
+            if 'timelabels' not in self.parent.meta['grain']:
+                raise IndexError("list assignment index out of range")
+            self.parent.meta['grain']['timelabels'][key] = dict(GRAIN.TIMELABEL(value))
+
+        def __delitem__(self, key):
+            if 'timelabels' not in self.parent.meta['grain']:
+                raise IndexError("list assignment index out of range")
+            del self.parent.meta['grain']['timelabels'][key]
+            if len(self.parent.meta['grain']['timelabels']) == 0:
+                del self.parent.meta['grain']['timelabels']
+
+        def insert(self, key, value):
+            if 'timelabels' not in self.parent.meta['grain']:
+                self.parent.meta['grain']['timelabels'] = []
+            self.parent.meta['grain']['timelabels'].insert(key, dict(GRAIN.TIMELABEL(value)))
+
+        def __len__(self):
+            if 'timelabels' not in self.parent.meta['grain']:
+                return 0
+            return len(self.parent.meta['grain']['timelabels'])
+
+        def __eq__(self, other):
+            return list(self) == other
 
     @property
     def length(self):
@@ -268,7 +388,7 @@ meta
     The meta dictionary object
 
 data
-    The data bytes-like object, or None
+    The data bytes-like object, containing a json representation of the data
 
 grain_type
     A string containing the type of the grain, always "event"
@@ -301,7 +421,7 @@ timelabels
     A list object containing time label data
 
 length
-    Always 0
+    the length of the json representation in data
 
 The EventGrain class also provides additional properies
 
@@ -323,19 +443,44 @@ append(path, pre=None, post=None)
     only json serialisable objects for the values of pre and post.
     """
     def __init__(self, meta, data):
-        if data is not None:
-            meta['grain']['event_payload'] = json.loads(data)
         super(EVENTGRAIN, self).__init__(meta, None)
         self._factory = "EventGrain"
         self.meta['grain']['grain_type'] = 'event'
         if 'event_payload' not in self.meta['grain']:
             self.meta['grain']['event_payload'] = {}
+        if data is not None:
+            self.data = data
         if 'type' not in self.meta['grain']['event_payload']:
             self.meta['grain']['event_payload']['type'] = ""
         if 'topic' not in self.meta['grain']['event_payload']:
             self.meta['grain']['event_payload']['topic'] = ""
         if 'data' not in self.meta['grain']['event_payload']:
             self.meta['grain']['event_payload']['data'] = []
+
+    @property
+    def data(self):
+        return json.dumps({ 'type' : self.event_type,
+                            'topic': self.topic,
+                            'data': [dict(datum) for datum in self.event_data]}).encode('utf-8')
+
+    @data.setter
+    def data(self, value):
+        value = json.loads(value)
+        if 'type' not in value or 'topic' not in value or 'data' not in value:
+            raise ValueError("incorrectly formated event payload")
+        self.event_type = value['type']
+        self.topic = value['topic']
+        self.meta['grain']['event_payload']['data'] = []
+        for datum in value['data']:
+            d = {'path': datum['path']}
+            if 'pre' in datum:
+                d['pre'] = datum['pre']
+            if 'post' in datum:
+                d['post'] = datum['post']
+            self.meta['grain']['event_payload']['data'].append(d)
+
+    def __repr__(self):
+        return "EventGrain({!r})".format(self.meta)
 
     @property
     def event_type(self):
@@ -879,6 +1024,14 @@ unit_offsets
     @coded_height.setter
     def coded_height(self, value):
         self.meta['grain']['cog_coded_frame']['coded_height'] = value
+
+    @property
+    def is_key_frame(self):
+        return self.meta['grain']['cog_coded_frame']['is_key_frame']
+
+    @is_key_frame.setter
+    def is_key_frame(self, value):
+        self.meta['grain']['cog_coded_frame']['is_key_frame'] = bool(value)
 
     @property
     def temporal_offset(self):
