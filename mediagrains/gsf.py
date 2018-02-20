@@ -649,10 +649,10 @@ class GSFEncoder(object):
         for seg in self._segments.values():
             seg.complete_write()
 
-        self.file.write(b"grai")
-        _write_uint(self.file, 0, 4)
-        
-        self._active_dump = False
+        if self._active_dump:
+            self.file.write(b"grai")
+            _write_uint(self.file, 0, 4)
+            self._active_dump = False
 
     def _write_file_header(self):
         self.file.write(b"SSBB")  # signature
@@ -822,7 +822,7 @@ class GSFEncoderSegment(object):
             self._write_cahd_for_grain(grain)
         elif grain.grain_type == "event":
             self._write_eghd_for_grain(grain)
-        elif grain.grain_type != "empty":
+        elif grain.grain_type != "empty":  # pragma: no cover (should be unreachable)
             raise GSFEncodeError("Unknown grain type: {}".format(grain.grain_type))
 
         self._file.write(b"grdt")
