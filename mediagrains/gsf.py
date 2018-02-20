@@ -818,13 +818,14 @@ class GSFEncoderSegment(object):
             self._write_cahd_for_grain(grain)
         elif grain.grain_type == "event":
             self._write_eghd_for_grain(grain)
-        else:
+        elif grain.grain_type != "empty":
             raise GSFEncodeError("Unknown grain type: {}".format(grain.grain_type))
 
         self._file.write(b"grdt")
         _write_uint(self._file, 8 + grain.length, 4)
 
-        self._file.write(grain.data)
+        if grain.data is not None:
+            self._file.write(grain.data)
 
     def _gbhd_size_for_grain(self, grain):
         size = 92
@@ -840,7 +841,7 @@ class GSFEncoderSegment(object):
             size += self._cahd_size_for_grain(grain)
         elif grain.grain_type == "event":
             size += self._eghd_size_for_grain(grain)
-        else:
+        elif grain.grain_type != "empty":
             raise GSFEncodeError("Unknown grain type: {}".format(grain.grain_type))
         return size
 
