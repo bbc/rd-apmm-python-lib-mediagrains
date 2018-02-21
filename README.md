@@ -34,16 +34,17 @@ to run both run
 All tests are run inside a virtual environment so as to avoid
 polluting the global python environment.
 
-## submodules
+## prerequisites
 
-This repo currently uses a git submodule. The checkout is
-automated by the Makefile.
+The nmoscommon library used to provide the Timestamp class is
+needed during testing. This library is available here:
 
+< git+https://github.com/jamesba/nmos-common/@python3 >
 
-submodules/nmos-common
-
-is the nmoscommon library used to provide the Timestamp class which is
-needed during testing.
+to install this package that one must be installed, to run the tests
+it must be available in a repository that pip will look at during
+package instalation (if you don't have such a repo you can set one up
+quickly using devpi).
 
 ## Examples
 
