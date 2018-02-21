@@ -252,6 +252,53 @@ class TestGrain (TestCase):
         self.assertEqual(grain.length, 10)
 
         self.assertEqual(grain.timelabels, [])
+        grain.add_timelabel('test', 1, 25)
+        self.assertEqual(len(grain.timelabels), 1)
+        self.assertEqual(grain.timelabels[0].tag, 'test')
+        self.assertEqual(grain.timelabels[0].count, 1)
+        self.assertEqual(grain.timelabels[0].rate, Fraction(25,1))
+        self.assertFalse(grain.timelabels[0].drop_frame)
+
+        grain.timelabels[0]['tag'] = 'potato'
+        self.assertEqual(grain.timelabels[0].tag, 'potato')
+
+        with self.assertRaises(KeyError):
+            grain.timelabels[0]['potato'] = 3
+
+        self.assertEqual(len(grain.timelabels[0]), 2)
+
+        grain.timelabels[0] = {
+            'tag': 'other_tag',
+            'timelabel': {
+                'frames_since_midnight': 7,
+                'frame_rate_numerator': 30000,
+                'frame_rate_denominator': 1001,
+                'drop_frame': True
+            }
+        }
+        self.assertEqual(len(grain.timelabels), 1)
+        self.assertEqual(grain.timelabels[0].tag, 'other_tag')
+        self.assertEqual(grain.timelabels[0].count, 7)
+        self.assertEqual(grain.timelabels[0].rate, Fraction(30000,1001))
+        self.assertTrue(grain.timelabels[0].drop_frame)
+
+        del grain.timelabels[0]
+
+        self.assertEqual(len(grain.timelabels), 0)
+
+        with self.assertRaises(IndexError):
+            del grain.timelabels[0]
+
+        with self.assertRaises(IndexError):
+            grain.timelabels[0] = {
+                'tag': 'other_tag',
+                'timelabel': {
+                    'frames_since_midnight': 7,
+                    'frame_rate_numerator': 30000,
+                    'frame_rate_denominator': 1001,
+                    'drop_frame': True
+                }
+            }
 
     def test_video_grain_create_YUV422_10bit(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
