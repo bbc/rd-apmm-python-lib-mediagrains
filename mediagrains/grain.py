@@ -28,7 +28,7 @@ from nmoscommon.timestamp import Timestamp
 from collections import Sequence, MutableSequence, Mapping
 from fractions import Fraction
 
-from .cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
+from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
 import json
 

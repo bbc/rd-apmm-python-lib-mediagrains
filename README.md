@@ -36,15 +36,8 @@ polluting the global python environment.
 
 ## submodules
 
-This repo currently uses two git submodules. Their checkout is
+This repo currently uses a git submodule. The checkout is
 automated by the Makefile.
-
-
-submodules/rd-ips-core-lib-cog2
-
-is used to get a header file for processing to make a python file
-containing certain enumerated types needed for compatibility with our
-C++ implementations.
 
 
 submodules/nmos-common
@@ -81,7 +74,7 @@ it with colour-bars:
 ```Python console
 >>> from mediagrains import VideoGrain
 >>> from uuid import uuid1
->>> from mediagrains.cogframe import CogFrameFormat, CogFrameLayout
+>>> from mediagrains.cogenum import CogFrameFormat, CogFrameLayout
 >>> src_id = uuid1()
 >>> flow_id = uuid1()
 >>> grain = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)

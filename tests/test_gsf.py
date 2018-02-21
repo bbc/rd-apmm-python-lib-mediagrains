@@ -25,7 +25,7 @@ from mediagrains.gsf import GSFEncodeError
 from mediagrains.gsf import GSFDecodeBadVersionError
 from mediagrains.gsf import GSFDecodeBadFileTypeError
 from mediagrains.gsf import GSFEncodeAddToActiveDump
-from mediagrains.cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
+from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from nmoscommon.timestamp import Timestamp, TimeOffset
 from datetime import datetime
 from fractions import Fraction
