@@ -31,8 +31,6 @@ VENV3_TEST_DEPS=$(addprefix $(VENV3_MODULE_DIR)/,$(TEST_DEPS))
 VENV3_INSTALLED=$(VENV3_MODULE_DIR)/$(MODNAME).egg-link
 VENV3_NMOSCOMMON=$(VENV3_MODULE_DIR)/nmoscommon
 
-COG_HEADER_DIR=submodules/rd-ips-core-lib-cog2/
-
 all:
 	@echo "make source  - Create source package"
 	@echo "make install - Install on local system (only during development)"
@@ -44,24 +42,14 @@ all:
 submodules:
 	git submodule init && git submodule update
 
-$(COG_HEADER_DIR)/cog/cog.h: submodules
-
-cog.i: $(COG_HEADER_DIR)/cog/cog.h
-	gcc -E -I$(COG_HEADER_DIR) $< -o $@
-
-$(MODNAME)/cogframe.py: cog.i
-	$(PYTHON) extract_enums.py $< $@
-
-source: $(MODNAME)/cogframe.py
+source:
 	$(PYTHON) setup.py sdist $(COMPILE)
 
-install: $(MODNAME)/cogframe.py
+install:
 	$(PYTHON) setup.py install --root $(DESTDIR) $(COMPILE)
 
 clean:
 	$(PYTHON) setup.py clean || true
-	rm -rf $(MODNAME)/cogframe.py
-	rm -rf ./cog.i
 	rm -rf build/ MANIFEST
 	rm -rf $(VENV2)
 	rm -rf $(VENV3)
@@ -78,7 +66,7 @@ $(VENV2_NMOSCOMMON): rdeps2
 $(VENV2_TEST_DEPS): $(VENV2)
 	. $(VENV2_ACTIVATE); $(PIP) install $(@F)
 
-$(VENV2_INSTALLED) : $(VENV2_NMOSCOMMON) $(MODNAME)/cogframe.py
+$(VENV2_INSTALLED) : $(VENV2_NMOSCOMMON)
 	. $(VENV2_ACTIVATE); $(PIP) install -e .
 
 test2: $(VENV2_TEST_DEPS) $(VENV2_INSTALLED)
@@ -95,7 +83,7 @@ $(VENV3_NMOSCOMMON): rdeps3
 $(VENV3_TEST_DEPS): $(VENV3)
 	. $(VENV3_ACTIVATE); $(PIP) install $(@F)
 
-$(VENV3_INSTALLED) : $(VENV3_NMOSCOMMON) $(MODNAME)/cogframe.py
+$(VENV3_INSTALLED) : $(VENV3_NMOSCOMMON)
 	. $(VENV3_ACTIVATE); $(PIP) install -e .
 
 test3: $(VENV3_TEST_DEPS) $(VENV3_INSTALLED)

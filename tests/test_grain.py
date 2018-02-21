@@ -18,7 +18,7 @@ from __future__ import print_function
 from unittest import TestCase
 import uuid
 from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
-from mediagrains.cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
+from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from nmoscommon.timestamp import Timestamp
 import mock
 from fractions import Fraction

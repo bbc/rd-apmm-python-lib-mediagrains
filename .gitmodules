@@ -1,6 +1,3 @@
-[submodule "rd-ips-core-lib-cog2"]
-	path = submodules/rd-ips-core-lib-cog2
-	url = git@github.com:bbc/rd-ips-core-lib-cog2.git
 [submodule "submodules/nmos-common"]
 	path = submodules/nmos-common
 	url = https://github.com/jamesba/nmos-common/

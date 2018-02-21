@@ -28,7 +28,7 @@ from uuid import UUID
 from nmoscommon.timestamp import Timestamp
 from fractions import Fraction
 
-from .cogframe import CogFrameFormat, CogFrameLayout, CogAudioFormat
+from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from .grain import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
 
 __all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain", "CodedAudioGrain", "EventGrain"]
