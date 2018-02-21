@@ -136,3 +136,6 @@ and will be written to the output file as they are added.
 
 If the underlying file is seakable then the end_dump call will upade all segment
 metadata to list the correct grain count, otherwise the counts will be left at -1.
+
+
+GOING BACK IN TIME!
