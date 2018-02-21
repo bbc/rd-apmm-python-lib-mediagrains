@@ -256,7 +256,7 @@ class TestGrain (TestCase):
         self.assertEqual(len(grain.timelabels), 1)
         self.assertEqual(grain.timelabels[0].tag, 'test')
         self.assertEqual(grain.timelabels[0].count, 1)
-        self.assertEqual(grain.timelabels[0].rate, Fraction(25,1))
+        self.assertEqual(grain.timelabels[0].rate, Fraction(25, 1))
         self.assertFalse(grain.timelabels[0].drop_frame)
 
         grain.timelabels[0]['tag'] = 'potato'
@@ -279,7 +279,7 @@ class TestGrain (TestCase):
         self.assertEqual(len(grain.timelabels), 1)
         self.assertEqual(grain.timelabels[0].tag, 'other_tag')
         self.assertEqual(grain.timelabels[0].count, 7)
-        self.assertEqual(grain.timelabels[0].rate, Fraction(30000,1001))
+        self.assertEqual(grain.timelabels[0].rate, Fraction(30000, 1001))
         self.assertTrue(grain.timelabels[0].drop_frame)
 
         del grain.timelabels[0]

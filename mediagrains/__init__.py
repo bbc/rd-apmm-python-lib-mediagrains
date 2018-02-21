@@ -22,12 +22,12 @@ AudioGrain, CodedAudioGrain, and EventGrain as well as the module gsf.
 
 The individual functions document their useage.
 
-The classes returned from the functions are fully useable as if they were a 
+The classes returned from the functions are fully useable as if they were a
 tuple:
 
 (meta, data)
 
-where "meta" is a dictionary containing grain metadata in a standard format, 
+where "meta" is a dictionary containing grain metadata in a standard format,
 and "data" is a bytes-like object. When the various constructor functions
 are used in a way that constructs a new data element they will construct a
 bytearray object of the apropriate size. Remember that in Python 2 bytes-like

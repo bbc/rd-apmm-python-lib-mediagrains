@@ -227,7 +227,7 @@ class GSFDecoder(object):
             try:
                 (tag, i) = self._read_string(b, i, 4)
             except UnicodeDecodeError:
-                raise GSFDecodeError("Bytes {!r} at location {} do not make a valid tag for a block".format(b[i:i+4],i), i, 4)
+                raise GSFDecodeError("Bytes {!r} at location {} do not make a valid tag for a block".format(b[i:i+4], i), i, 4)
             (size, i) = self._read_uint(b, i, 4)
             if allowed is None or tag in allowed:
                 return (tag, size, i)
@@ -286,7 +286,7 @@ class GSFDecoder(object):
     def _decode_tils(self, b, i):
         tils = []
         (n, i) = self._read_uint(b, i, 2)
-        for k in range(0,n):
+        for k in range(0, n):
             (tag, i) = self._read_string(b, i, 16)
             tag = tag.strip('\x00')
             (count, i) = self._read_uint(b, i, 4)
@@ -469,7 +469,7 @@ class GSFEncodeAddToActiveDump(GSFEncodeError):
 
 def _write_uint(file, val, size):
     d = bytearray(size)
-    for i in range(0,size):
+    for i in range(0, size):
         d[i] = (val & 0xFF)
         val >>= 8
     file.write(d)
@@ -523,7 +523,7 @@ class GSFEncoder(object):
     any segments in use MUST be added first before start_dump is called.
 
     In addition the following properties provide access to file-level metadata:
- 
+
     major    -- an integer (default 7)
     minor    -- an integer (default 0)
     id       -- a uuid.UUID
@@ -574,7 +574,7 @@ class GSFEncoder(object):
 
     def add_segment(self, id=None, local_id=None, tags=None):
         """Add a segment to the file, if id is specified it should be a uuid,
-        otherwise one will be generated. If local_id is specified it should be an 
+        otherwise one will be generated. If local_id is specified it should be an
         integer, otherwise the next available integer will be used. Returns the newly
         created segment."""
 
@@ -612,7 +612,7 @@ class GSFEncoder(object):
         If no segment matching the criteria exists then one will be created.
         """
         if segment_local_id is None:
-            segments = sorted([ local_id for local_id in self._segments if segment_id is None or self._segments[local_id].id == segment_id ])
+            segments = sorted([local_id for local_id in self._segments if segment_id is None or self._segments[local_id].id == segment_id])
             if len(segments) > 0:
                 segment_local_id = segments[0]
         if segment_local_id is not None and segment_local_id in self._segments:
@@ -865,11 +865,11 @@ class GSFEncoderSegment(object):
         _write_uint(self._file, int(grain.height), 4)
         _write_uint(self._file, int(grain.extension), 4)
         if grain.source_aspect_ratio is None:
-            _write_rational(self._file, Fraction(0,1))
+            _write_rational(self._file, Fraction(0, 1))
         else:
             _write_rational(self._file, grain.source_aspect_ratio)
         if grain.pixel_aspect_ratio is None:
-            _write_rational(self._file, Fraction(0,1))
+            _write_rational(self._file, Fraction(0, 1))
         else:
             _write_rational(self._file, grain.pixel_aspect_ratio)
 

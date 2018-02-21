@@ -459,9 +459,9 @@ append(path, pre=None, post=None)
 
     @property
     def data(self):
-        return json.dumps({ 'type' : self.event_type,
-                            'topic': self.topic,
-                            'data': [dict(datum) for datum in self.event_data]}).encode('utf-8')
+        return json.dumps({'type': self.event_type,
+                           'topic': self.topic,
+                           'data': [dict(datum) for datum in self.event_data]}).encode('utf-8')
 
     @data.setter
     def data(self, value):
@@ -1353,6 +1353,7 @@ remainder
 
 if __name__ == "__main__":  # pragma: no cover
     from uuid import uuid1, uuid5
+    from .grain_constructors import Grain
 
     src_id = uuid1()
     flow_id = uuid5(src_id, "flow_id:test_flow")

@@ -64,7 +64,7 @@ class TestGSFDumps(TestCase):
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
         self.assertIn('tags', head)
-        self.assertEqual(head['tags'], [('potato','harvest')])
+        self.assertEqual(head['tags'], [('potato', 'harvest')])
         self.assertIn('created', head)
         self.assertEqual(head['created'], created)
         self.assertIn('segments', head)
@@ -88,7 +88,7 @@ class TestGSFDumps(TestCase):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        for i in range(0,len(grain.data)):
+        for i in range(0, len(grain.data)):
             grain.data[i] = i & 0xFF
         grain.source_aspect_ratio = Fraction(16, 9)
         grain.pixel_aspect_ratio = 1
@@ -136,9 +136,9 @@ class TestGSFDumps(TestCase):
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
         grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        for i in range(0,len(grain0.data)):
+        for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
-        for i in range(0,len(grain1.data)):
+        for i in range(0, len(grain1.data)):
             grain1.data[i] = 0xFF - (i & 0xFF)
         grain0.source_aspect_ratio = Fraction(16, 9)
         grain0.pixel_aspect_ratio = 1
@@ -197,9 +197,9 @@ class TestGSFDumps(TestCase):
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = AudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
         grain1 = AudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
-        for i in range(0,len(grain0.data)):
+        for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
-        for i in range(0,len(grain1.data)):
+        for i in range(0, len(grain1.data)):
             grain1.data[i] = 0xFF - (i & 0xFF)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -254,9 +254,9 @@ class TestGSFDumps(TestCase):
                                  coded_height=1088, is_key_frame=True, temporal_offset=-23, length=1024, unit_offsets=[5, 15, 105])
         grain1 = CodedVideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.VC2, origin_width=1920, origin_height=1080, coded_width=1920,
                                  coded_height=1088, temporal_offset=17, length=256)
-        for i in range(0,len(grain0.data)):
+        for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
-        for i in range(0,len(grain1.data)):
+        for i in range(0, len(grain1.data)):
             grain1.data[i] = 0xFF - (i & 0xFF)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -319,9 +319,9 @@ class TestGSFDumps(TestCase):
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = CodedAudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.AAC, samples=1920, sample_rate=48000, priming=23, remainder=17, length=1024)
         grain1 = CodedAudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.AAC, samples=1920, sample_rate=48000, priming=5, remainder=104, length=1500)
-        for i in range(0,len(grain0.data)):
+        for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
-        for i in range(0,len(grain1.data)):
+        for i in range(0, len(grain1.data)):
             grain1.data[i] = 0xFF - (i & 0xFF)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -547,11 +547,6 @@ class TestGSFDumps(TestCase):
         self.assertEqual(len(segments3[1]), 2)
 
     def test_end_dump_without_start_does_nothing(self):
-        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
-        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
         created = datetime(1983, 3, 29, 15, 15)
@@ -853,14 +848,14 @@ class TestGSFLoads(TestCase):
 
     def test_loads_skips_unknown_block_before_segm(self):
         (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
-                                   (b"head\x49\x00\x00\x00" +
-                                    b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
-                                    b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
-                                      (b"dumy\x08\x00\x00\x00") +
-                                      (b"segm\x22\x00\x00\x00" +
-                                       b"\x01\x00" +
-                                       b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00")))
+                                 (b"head\x49\x00\x00\x00" +
+                                  b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                                  b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
+                                  (b"dumy\x08\x00\x00\x00") +
+                                  (b"segm\x22\x00\x00\x00" +
+                                   b"\x01\x00" +
+                                   b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00")))
 
         self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
         self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))
@@ -874,27 +869,27 @@ class TestGSFLoads(TestCase):
     def test_loads_raises_when_head_too_small(self):
         with self.assertRaises(GSFDecodeError) as cm:
             (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
-                                    (b"head\x27\x00\x00\x00" +
-                                     b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
-                                     b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
-                                       (b"dumy\x08\x00\x00\x00") +
-                                       (b"segm\x22\x00\x00\x00" +
-                                        b"\x01\x00" +
-                                        b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
-                                        b"\x00\x00\x00\x00\x00\x00\x00\x00")))
+                                     (b"head\x27\x00\x00\x00" +
+                                      b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                                      b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
+                                      (b"dumy\x08\x00\x00\x00") +
+                                      (b"segm\x22\x00\x00\x00" +
+                                       b"\x01\x00" +
+                                       b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00")))
 
         self.assertEqual(cm.exception.offset, 12)
 
     def test_loads_raises_when_segm_too_small(self):
         with self.assertRaises(GSFDecodeError) as cm:
             (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
-                                    (b"head\x41\x00\x00\x00" +
-                                     b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
-                                     b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
-                                       (b"segm\x21\x00\x00\x00" +
-                                        b"\x01\x00" +
-                                        b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
-                                        b"\x00\x00\x00\x00\x00\x00\x00\x00")))
+                                     (b"head\x41\x00\x00\x00" +
+                                      b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                                      b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
+                                      (b"segm\x21\x00\x00\x00" +
+                                       b"\x01\x00" +
+                                       b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00")))
 
         self.assertEqual(cm.exception.offset, 43)
 
@@ -902,30 +897,30 @@ class TestGSFLoads(TestCase):
         src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
         flow_id = UUID('da78668a-1596-11e8-a577-dca904824eec')
         (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
-                                   (b"head\x41\x00\x00\x00" +
-                                    b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
-                                    b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
-                                      (b"segm\x22\x00\x00\x00" +
-                                       b"\x01\x00" +
-                                       b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
-                                       b"\x01\x00\x00\x00\x00\x00\x00\x00")) +
-                                   (b"grai\x8d\x00\x00\x00" +
+                                 (b"head\x41\x00\x00\x00" +
+                                  b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                                  b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
+                                  (b"segm\x22\x00\x00\x00" +
+                                   b"\x01\x00" +
+                                   b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
+                                   b"\x01\x00\x00\x00\x00\x00\x00\x00")) +
+                                 (b"grai\x8d\x00\x00\x00" +
+                                  b"\x01\x00" +
+                                  (b"gbhd\x83\x00\x00\x00" +
+                                   src_id.bytes +
+                                   flow_id.bytes +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                   (b"tils\x27\x00\x00\x00" +
                                     b"\x01\x00" +
-                                      (b"gbhd\x83\x00\x00\x00" +
-                                       src_id.bytes +
-                                       flow_id.bytes +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                         (b"tils\x27\x00\x00\x00" +
-                                          b"\x01\x00" +
-                                          b"dummy timecode\x00\x00" +
-                                          b"\x07\x00\x00\x00" +
-                                          b"\x19\x00\x00\x00\x01\x00\x00\x00" +
-                                          b"\x00"))) +
-                                   (b"grai\x08\x00\x00\x00"))
+                                    b"dummy timecode\x00\x00" +
+                                    b"\x07\x00\x00\x00" +
+                                    b"\x19\x00\x00\x00\x01\x00\x00\x00" +
+                                    b"\x00"))) +
+                                 (b"grai\x08\x00\x00\x00"))
 
         self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
         self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))
@@ -945,24 +940,24 @@ class TestGSFLoads(TestCase):
             src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
             flow_id = UUID('da78668a-1596-11e8-a577-dca904824eec')
             (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
-                                       (b"head\x41\x00\x00\x00" +
-                                        b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
-                                        b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
-                                          (b"segm\x22\x00\x00\x00" +
-                                           b"\x01\x00" +
-                                           b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
-                                           b"\x01\x00\x00\x00\x00\x00\x00\x00")) +
-                                       (b"grai\x8d\x00\x00\x00" +
-                                        b"\x01\x00" +
-                                          (b"gbhd\x83\x00\x00\x00" +
-                                           src_id.bytes +
-                                           flow_id.bytes +
-                                           b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                           b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                           b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                           b"\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                           b"\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                             (b"dumy\x08\x00\x00\x00"))))
+                                     (b"head\x41\x00\x00\x00" +
+                                      b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                                      b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
+                                      (b"segm\x22\x00\x00\x00" +
+                                       b"\x01\x00" +
+                                       b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
+                                       b"\x01\x00\x00\x00\x00\x00\x00\x00")) +
+                                     (b"grai\x8d\x00\x00\x00" +
+                                      b"\x01\x00" +
+                                      (b"gbhd\x83\x00\x00\x00" +
+                                       src_id.bytes +
+                                       flow_id.bytes +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                       (b"dumy\x08\x00\x00\x00"))))
 
         self.assertEqual(cm.exception.offset, 87)
 
@@ -970,36 +965,36 @@ class TestGSFLoads(TestCase):
         src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
         flow_id = UUID('da78668a-1596-11e8-a577-dca904824eec')
         (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
-                                   (b"head\x41\x00\x00\x00" +
-                                    b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
-                                    b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
-                                      (b"segm\x22\x00\x00\x00" +
-                                       b"\x01\x00" +
-                                       b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
-                                       b"\x02\x00\x00\x00\x00\x00\x00\x00")) +
-                                   (b"grai\x66\x00\x00\x00" +
-                                    b"\x01\x00" +
-                                      (b"gbhd\x5c\x00\x00\x00" +
-                                       src_id.bytes +
-                                       flow_id.bytes +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00")) +
-                                   (b"dumy\x08\x00\x00\x00") +
-                                   (b"grai\x6E\x00\x00\x00" +
-                                    b"\x01\x00" +
-                                      (b"gbhd\x5c\x00\x00\x00" +
-                                       src_id.bytes +
-                                       flow_id.bytes +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00") +
-                                      (b"grdt\x08\x00\x00\x00")) +
-                                   (b"dumy\x08\x00\x00\x00"))
+                                 (b"head\x41\x00\x00\x00" +
+                                  b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                                  b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
+                                  (b"segm\x22\x00\x00\x00" +
+                                   b"\x01\x00" +
+                                   b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
+                                   b"\x02\x00\x00\x00\x00\x00\x00\x00")) +
+                                 (b"grai\x66\x00\x00\x00" +
+                                  b"\x01\x00" +
+                                  (b"gbhd\x5c\x00\x00\x00" +
+                                   src_id.bytes +
+                                   flow_id.bytes +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00")) +
+                                 (b"dumy\x08\x00\x00\x00") +
+                                 (b"grai\x6E\x00\x00\x00" +
+                                  b"\x01\x00" +
+                                  (b"gbhd\x5c\x00\x00\x00" +
+                                   src_id.bytes +
+                                   flow_id.bytes +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                   b"\x00\x00\x00\x00\x00\x00\x00\x00") +
+                                  (b"grdt\x08\x00\x00\x00")) +
+                                 (b"dumy\x08\x00\x00\x00"))
 
         self.assertEqual(len(segments[1]), 2)
         self.assertEqual(segments[1][0].grain_type, "empty")
