@@ -524,12 +524,16 @@ class GSFEncoder(object):
 
     In addition the following properties provide access to file-level metadata:
  
-    major    -- an integer
-    minor    -- an integer
+    major    -- an integer (default 7)
+    minor    -- an integer (default 0)
     id       -- a uuid.UUID
     created  -- a datetime.datetime
     tags     -- a tuple of tags
-    segments -- a fronzendict of GSFEncoderSegments"""
+    segments -- a frozendict of GSFEncoderSegments
+
+    The current version of the library is designed for compatibility with v.7.0 of the GSF format. Setting a
+    different version number will simply change the reported version number in the file, but will not alter the
+    syntax at all. If future versions of this code add support for other versions of GSF then this will change."""
     def __init__(self, file, major=7, minor=0, id=None, created=None, tags=None):
         self.file = file
         self.major = major
@@ -970,7 +974,7 @@ class GSFEncoderSegment(object):
             self._write_grain(grain)
 
     def add_grains(self, grains):
-        """Add several grains to the segment, the parameter shouold be an
+        """Add several grains to the segment, the parameter should be an
         iterable of grain objects"""
         for grain in grains:
             self.add_grain(grain)

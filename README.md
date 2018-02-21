@@ -4,8 +4,8 @@ A python library for handling grain-based media in a python-native
 style. Please read the poydoc documentation for more details.
 
 Provides constructor functions for various types of grains and classes
-that nicely wrap those grains, as well as a full deserialisation
-library for GSF format.
+that nicely wrap those grains, as well as a full serialisation and
+deserialisation library for GSF format.
 
 ## Installing with Python and make
 
@@ -104,4 +104,35 @@ it with colour-bars:
 ...             i += 1
 ```
 
-The object grain can then be freely used for whatever video processing is desired.
+The object grain can then be freely used for whatever video processing
+is desired, or it can be serialised into a GSF file as follows:
+
+```Python console
+>>> from mediagrains.gsf import dump
+>>> f = open('dummyfile.gsf', 'wb')
+>>> dump(f, [grain])
+>>> f.close()
+```
+The encoding module also supports a "progressive" mode where an
+encoder object is created and a dump started, then grains can be added
+and will be written to the output file as they are added.
+
+```Python console
+>>> from uuid import uuid1
+>>> from mediagrains import Grain
+>>> from mediagrains.gsf import GSFEncoder
+>>> src_id = uuid1()
+>>> flow_id = uuid1()
+>>> f = open('dummyfile.gsf', 'wb')
+>>> enc = GSFEncoder(f)
+>>> seg = enc.add_segment()  # This must be done before the call to start_dump
+>>> enc.start_dump()  # This writes the file header and starts the export
+>>> seg.add_grain(Grain(src_id, flow_id))  # Adds a grain and writes it to the file
+>>> seg.add_grain(Grain(src_id, flow_id))  # Adds a grain and writes it to the file
+>>> seg.add_grain(Grain(src_id, flow_id))  # Adds a grain and writes it to the file
+>>> enc.end_dump()  # This ends the export and finishes off the file
+>>> f.close()
+```
+
+If the underlying file is seakable then the end_dump call will upade all segment
+metadata to list the correct grain count, otherwise the counts will be left at -1.
