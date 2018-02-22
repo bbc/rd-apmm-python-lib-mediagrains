@@ -23,6 +23,8 @@ directly by client code, but their documentation may be instructive.
 from __future__ import print_function
 from __future__ import absolute_import
 
+from six import string_types
+
 from uuid import UUID
 from nmoscommon.timestamp import Timestamp
 from collections import Sequence, MutableSequence, Mapping
@@ -465,6 +467,8 @@ append(path, pre=None, post=None)
 
     @data.setter
     def data(self, value):
+        if not isinstance(value, string_types):
+            value = value.decode('utf-8')
         value = json.loads(value)
         if 'type' not in value or 'topic' not in value or 'data' not in value:
             raise ValueError("incorrectly formated event payload")

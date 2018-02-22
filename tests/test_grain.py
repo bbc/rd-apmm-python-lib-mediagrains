@@ -1443,9 +1443,9 @@ class TestGrain (TestCase):
         self.assertEqual(grain.event_type, "urn:x-ipstudio:format:event.query")
         self.assertEqual(grain.topic, "/dummy")
         self.assertEqual(grain.event_data, [])
-        self.assertEqual(json.loads(grain.data), {'type': "urn:x-ipstudio:format:event.query",
-                                                  'topic': "/dummy",
-                                                  'data': []})
+        self.assertEqual(json.loads(grain.data.decode('utf-8')), {'type': "urn:x-ipstudio:format:event.query",
+                                                                  'topic': "/dummy",
+                                                                  'data': []})
 
         self.assertEqual(repr(grain), "EventGrain({!r})".format(grain.meta))
 
@@ -1611,11 +1611,11 @@ class TestGrain (TestCase):
         self.assertEqual(grain.event_data[0], {'path': '/location',
                                                'pre': 'now',
                                                'post': 'next'})
-        self.assertEqual(json.loads(grain.data), {'type': "urn:x-ipstudio:format:event.potato",
-                                                  'topic': "/important/data",
-                                                  'data': [{'path': '/location',
-                                                            'pre': 'now',
-                                                            'post': 'next'}]})
+        self.assertEqual(json.loads(grain.data.decode('utf-8')), {'type': "urn:x-ipstudio:format:event.potato",
+                                                                  'topic': "/important/data",
+                                                                  'data': [{'path': '/location',
+                                                                            'pre': 'now',
+                                                                            'post': 'next'}]})
         grain.event_data[0]['post'] = 'never'
         del grain.event_data[0]['post']
         self.assertIsNone(grain.event_data[0].post)
@@ -1629,20 +1629,20 @@ class TestGrain (TestCase):
 
         grain.event_data = []
         self.assertEqual(len(grain.event_data), 0)
-        self.assertEqual(json.loads(grain.data), {'type': "urn:x-ipstudio:format:event.potato",
-                                                  'topic': "/important/data",
-                                                  'data': []})
+        self.assertEqual(json.loads(grain.data.decode('utf-8')), {'type': "urn:x-ipstudio:format:event.potato",
+                                                                  'topic': "/important/data",
+                                                                  'data': []})
 
         grain.data = json.dumps({'type': "urn:x-ipstudio:format:event.potato",
                                  'topic': "/important/data",
                                  'data': [{'path': '/location',
                                            'pre': 'now',
                                            'post': 'next'}]})
-        self.assertEqual(json.loads(grain.data), {'type': "urn:x-ipstudio:format:event.potato",
-                                                  'topic': "/important/data",
-                                                  'data': [{'path': '/location',
-                                                            'pre': 'now',
-                                                            'post': 'next'}]})
+        self.assertEqual(json.loads(grain.data.decode('utf-8')), {'type': "urn:x-ipstudio:format:event.potato",
+                                                                  'topic': "/important/data",
+                                                                  'data': [{'path': '/location',
+                                                                            'pre': 'now',
+                                                                            'post': 'next'}]})
 
         with self.assertRaises(ValueError):
-            grain.data = json.dumps({'potato': "masher"})
+            grain.data = bytearray(json.dumps({'potato': "masher"}).encode('utf-8'))
