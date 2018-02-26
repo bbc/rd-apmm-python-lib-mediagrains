@@ -21,6 +21,7 @@ install:
 
 clean:
 	$(PYTHON) setup.py clean || true
+	rm -rf .tox
 	rm -rf build/ MANIFEST
 	rm -rf dist
 	rm -rf deb_dist
