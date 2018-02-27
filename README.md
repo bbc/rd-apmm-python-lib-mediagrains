@@ -1,7 +1,7 @@
 # rd-apmm-python-lib-mediagrains
 
 A python library for handling grain-based media in a python-native
-style. Please read the poydoc documentation for more details.
+style. Please read the pydoc documentation for more details.
 
 Provides constructor functions for various types of grains and classes
 that nicely wrap those grains, as well as a full serialisation and
