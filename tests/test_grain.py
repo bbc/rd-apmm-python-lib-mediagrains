@@ -46,6 +46,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain, (grain.meta, grain.data))
         self.assertIsNone(grain.data)
         self.assertEqual(grain.length, 0)
+        self.assertEqual(grain.expected_length, 0)
 
     def test_empty_grain_creation_with_missing_data(self):
         cts = Timestamp.from_tai_sec_nsec("417798915:0")
@@ -72,7 +73,8 @@ class TestGrain (TestCase):
                 "sync_timestamp": sts,
                 "creation_timestamp": cts,
                 "rate": Fraction(25, 1),
-                "duration": Fraction(1, 25)
+                "duration": Fraction(1, 25),
+                "length": 23
             }
         }
 
@@ -87,6 +89,8 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.rate, Fraction(25, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
+        self.assertEqual(grain.length, 0)
+        self.assertEqual(grain.expected_length, 23)
 
     def test_empty_grain_creation_with_ots(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -371,6 +375,7 @@ class TestGrain (TestCase):
                                              'height': 1080,
                                              'offset': 1920*1080*3,
                                              'length': 1920*1080}])
+        self.assertEqual(grain.expected_length, 1920*1080*4)
 
     def test_video_grain_create_sizes(self):
         for (fmt, complens) in [
@@ -712,6 +717,72 @@ class TestGrain (TestCase):
         self.assertEqual(grain.meta, meta)
         self.assertEqual(grain.data, data)
 
+    def test_grain_makes_videograin_without_data(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        meta = {
+            "@_ns": "urn:x-ipstudio:ns:0.1",
+            "grain": {
+                "grain_type": "video",
+                "source_id": str(src_id),
+                "flow_id": str(flow_id),
+                "origin_timestamp": str(ots),
+                "sync_timestamp": str(sts),
+                "creation_timestamp": str(cts),
+                "rate": {
+                    "numerator": 25,
+                    "denominator": 1,
+                },
+                "duration": {
+                    "numerator": 1,
+                    "denominator": 25,
+                },
+                "cog_frame": {
+                    "format": CogFrameFormat.S16_422_10BIT,
+                    "width": 1920,
+                    "height": 1080,
+                    "layout": CogFrameLayout.FULL_FRAME,
+                    "extension": 0,
+                    "components": [
+                        {
+                            'stride': 4096,
+                            'width': 1920,
+                            'height': 1080,
+                            'offset': 0,
+                            'length': 4096*1080
+                        },
+                        {
+                            'stride': 2048,
+                            'width': 960,
+                            'height': 1080,
+                            'offset': 4096*1080,
+                            'length': 2048*1080
+                        },
+                        {
+                            'stride': 2048,
+                            'width': 960,
+                            'height': 1080,
+                            'offset': 4096*1080 + 2048*1080,
+                            'length': 2048*1080
+                        }
+                    ]
+                }
+            },
+        }
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = Grain(meta)
+
+        self.assertEqual(grain.grain_type, "video")
+        self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(grain.meta, meta)
+        self.assertEqual(grain.length, 0)
+        self.assertEqual(grain.expected_length, 8192*1080)
+
     def test_audio_grain_create_S16_PLANES(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
         flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
@@ -740,6 +811,7 @@ class TestGrain (TestCase):
 
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*2*2)
+        self.assertEqual(grain.expected_length, 1920*2*2)
 
         self.assertEqual(repr(grain), "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 

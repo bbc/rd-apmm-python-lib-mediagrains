@@ -29,7 +29,7 @@ from nmoscommon.timestamp import Timestamp
 from fractions import Fraction
 
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
-from .grain import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
+from .grain import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN, size_for_audio_format
 
 __all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain", "CodedAudioGrain", "EventGrain"]
 
@@ -269,22 +269,6 @@ class mediagrains.grain.AUDIOGRAIN
                 }
             }
         }
-
-    def size_for_audio_format(cog_audio_format, channels, samples):
-        if (cog_audio_format & 0x200) == 0x200:  # compressed format, no idea of correct size
-            return 0
-
-        if (cog_audio_format & 0x3) == 0x1:
-            channels += 1
-            channels //= 2
-            channels *= 2
-        if (cog_audio_format & 0xC) == 0xC:
-            depth = 8
-        elif (cog_audio_format & 0xf) == 0x04:
-            depth = 4
-        else:
-            depth = ((cog_audio_format & 0xf) >> 2) + 2
-        return channels * samples * depth
 
     if data is None:
         size = size_for_audio_format(cog_audio_format, channels, samples)

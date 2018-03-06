@@ -90,6 +90,9 @@ timelabels
 
 length
     The length of the data property, or 0 if it is None
+
+expected_length
+    How long the data would be expected to be based on what's listed in the metadata
     """
     def __init__(self, meta, data):
         self.meta = meta
@@ -371,6 +374,13 @@ length
             return len(self.data)
         else:
             return 0
+
+    @property
+    def expected_length(self):
+        if 'length' in self.meta['grain']:
+            return self.meta['grain']['length']
+        else:
+            return self.length
 
 
 class EVENTGRAIN(GRAIN):
@@ -879,6 +889,14 @@ length
         self.meta['grain']['cog_frame']['pixel_aspect_ratio'] = {'numerator': value.numerator,
                                                                  'denominator': value.denominator}
 
+    @property
+    def expected_length(self):
+        length = 0
+        for component in self.components:
+            if component.offset + component.length > length:
+                length = component.offset + component.length
+        return length
+
 
 class CODEDVIDEOGRAIN(GRAIN):
     """\
@@ -1101,6 +1119,23 @@ unit_offsets
             del self.meta['grain']['cog_coded_frame']['unit_offsets']
 
 
+def size_for_audio_format(cog_audio_format, channels, samples):
+    if (cog_audio_format & 0x200) == 0x200:  # compressed format, no idea of correct size
+        return 0
+
+    if (cog_audio_format & 0x3) == 0x1:
+        channels += 1
+        channels //= 2
+        channels *= 2
+    if (cog_audio_format & 0xC) == 0xC:
+        depth = 8
+    elif (cog_audio_format & 0xf) == 0x04:
+        depth = 4
+    else:
+        depth = ((cog_audio_format & 0xf) >> 2) + 2
+    return channels * samples * depth
+
+
 class AUDIOGRAIN(GRAIN):
     """\
 A class representing a raw audio grain.
@@ -1212,6 +1247,10 @@ sample_rate
     @sample_rate.setter
     def sample_rate(self, value):
         self.meta['grain']['cog_audio']['sample_rate'] = int(value)
+
+    @property
+    def expected_length(self):
+        return size_for_audio_format(self.format, self.channels, self.samples)
 
 
 class CODEDAUDIOGRAIN(GRAIN):
