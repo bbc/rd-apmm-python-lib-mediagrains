@@ -103,13 +103,3 @@ ENV/
 
 # coverage
 *,cover
-
-
-#intermediate files
-cogframe.h
-lextab.py
-yacctab.py
-virtpython2
-virtpython3
-mediagrains/cogframe.py
-cog.i
