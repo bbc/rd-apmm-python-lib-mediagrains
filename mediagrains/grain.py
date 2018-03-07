@@ -803,26 +803,24 @@ length
         self.meta['grain']['grain_type'] = 'video'
         if 'cog_frame' not in self.meta['grain']:
             self.meta['grain']['cog_frame'] = {
-                'format': CogFrameFormat.UNKNOWN,
+                'format': int(CogFrameFormat.UNKNOWN),
                 'width': 0,
                 'height': 0,
-                'layout': CogFrameLayout.UNKNOWN,
+                'layout': int(CogFrameLayout.UNKNOWN),
                 'extension': 0,
                 'components': []
             }
-        if not isinstance(self.meta['grain']['cog_frame']['format'], CogFrameFormat):
-            self.meta['grain']['cog_frame']['format'] = CogFrameFormat(self.meta['grain']['cog_frame']['format'])
-        if not isinstance(self.meta['grain']['cog_frame']['layout'], CogFrameLayout):
-            self.meta['grain']['cog_frame']['layout'] = CogFrameLayout(self.meta['grain']['cog_frame']['layout'])
+        self.meta['grain']['cog_frame']['format'] = int(self.meta['grain']['cog_frame']['format'])
+        self.meta['grain']['cog_frame']['layout'] = int(self.meta['grain']['cog_frame']['layout'])
         self.components = VIDEOGRAIN.COMPONENT_LIST(self)
 
     @property
     def format(self):
-        return self.meta['grain']['cog_frame']['format']
+        return CogFrameFormat(self.meta['grain']['cog_frame']['format'])
 
     @format.setter
     def format(self, value):
-        self.meta['grain']['cog_frame']['format'] = CogFrameFormat(value)
+        self.meta['grain']['cog_frame']['format'] = int(value)
 
     @property
     def width(self):
@@ -842,11 +840,11 @@ length
 
     @property
     def layout(self):
-        return self.meta['grain']['cog_frame']['layout']
+        return CogFrameLayout(self.meta['grain']['cog_frame']['layout'])
 
     @layout.setter
     def layout(self, value):
-        self.meta['grain']['cog_frame']['layout'] = CogFrameLayout(value)
+        self.meta['grain']['cog_frame']['layout'] = int(value)
 
     @property
     def extension(self):
@@ -981,18 +979,16 @@ unit_offsets
         if 'cog_coded_frame' not in self.meta['grain']:
             self.meta['grain']['cog_coded_frame'] = {}
         if 'format' not in self.meta['grain']['cog_coded_frame']:
-            self.meta['grain']['cog_coded_frame']['format'] = CogFrameFormat.UNKNOWN
+            self.meta['grain']['cog_coded_frame']['format'] = int(CogFrameFormat.UNKNOWN)
         if 'layout' not in self.meta['grain']['cog_coded_frame']:
-            self.meta['grain']['cog_coded_frame']['layout'] = CogFrameLayout.UNKNOWN
+            self.meta['grain']['cog_coded_frame']['layout'] = int(CogFrameLayout.UNKNOWN)
         for key in ['origin_width', 'origin_height', 'coded_width', 'coded_height', 'temportal_offset', 'length']:
             if key not in self.meta['grain']['cog_coded_frame']:
                 self.meta['grain']['cog_coded_frame'][key] = 0
         if 'is_key_frame' not in self.meta['grain']['cog_coded_frame']:
             self.meta['grain']['cog_coded_frame']['is_key_frame'] = False
-        if not isinstance(self.meta['grain']['cog_coded_frame']['format'], CogFrameFormat):
-            self.meta['grain']['cog_coded_frame']['format'] = CogFrameFormat(self.meta['grain']['cog_coded_frame']['format'])
-        if not isinstance(self.meta['grain']['cog_coded_frame']['layout'], CogFrameLayout):
-            self.meta['grain']['cog_coded_frame']['layout'] = CogFrameLayout(self.meta['grain']['cog_coded_frame']['layout'])
+        self.meta['grain']['cog_coded_frame']['format'] = int(self.meta['grain']['cog_coded_frame']['format'])
+        self.meta['grain']['cog_coded_frame']['layout'] = int(self.meta['grain']['cog_coded_frame']['layout'])
 
     @property
     def format(self):
@@ -1000,7 +996,7 @@ unit_offsets
 
     @format.setter
     def format(self, value):
-        self.meta['grain']['cog_coded_frame']['format'] = CogFrameFormat(value)
+        self.meta['grain']['cog_coded_frame']['format'] = int(value)
 
     @property
     def layout(self):
@@ -1008,7 +1004,7 @@ unit_offsets
 
     @layout.setter
     def layout(self, value):
-        self.meta['grain']['cog_coded_frame']['layout'] = CogFrameLayout(value)
+        self.meta['grain']['cog_coded_frame']['layout'] = int(value)
 
     @property
     def origin_width(self):
@@ -1206,10 +1202,11 @@ sample_rate
         if 'cog_audio' not in self.meta['grain']:
             self.meta['grain']['cog_audio'] = {}
         if 'format' not in self.meta['grain']['cog_audio']:
-            self.meta['grain']['cog_audio']['format'] = CogAudioFormat.INVALID
+            self.meta['grain']['cog_audio']['format'] = int(CogAudioFormat.INVALID)
         for key in ['samples', 'channels', 'sample_rate']:
             if key not in self.meta['grain']['cog_audio']:
                 self.meta['grain']['cog_audio'][key] = 0
+        self.meta['grain']['cog_audio']['format'] = int(self.meta['grain']['cog_audio']['format'])
 
     @property
     def format(self):
@@ -1217,7 +1214,7 @@ sample_rate
 
     @format.setter
     def format(self, value):
-        self.meta['grain']['cog_audio']['format'] = CogAudioFormat(value)
+        self.meta['grain']['cog_audio']['format'] = int(value)
 
     @property
     def samples(self):
@@ -1329,7 +1326,7 @@ remainder
         if 'cog_coded_audio' not in self.meta['grain']:
             self.meta['grain']['cog_coded_audio'] = {}
         if 'format' not in self.meta['grain']['cog_coded_audio']:
-            self.meta['grain']['cog_coded_audio']['format'] = CogAudioFormat.INVALID
+            self.meta['grain']['cog_coded_audio']['format'] = int(CogAudioFormat.INVALID)
         for (key, DEF) in [('channels', 0),
                            ('samples', 0),
                            ('priming', 0),
@@ -1337,16 +1334,15 @@ remainder
                            ('sample_rate', 48000)]:
             if key not in self.meta['grain']['cog_coded_audio']:
                 self.meta['grain']['cog_coded_audio'][key] = DEF
-        if not isinstance(self.meta['grain']['cog_coded_audio']['format'], CogAudioFormat):
-            self.meta['grain']['cog_coded_audio']['format'] = CogAudioFormat(self.meta['grain']['cog_coded_audio']['format'])
+        self.meta['grain']['cog_coded_audio']['format'] = int(self.meta['grain']['cog_coded_audio']['format'])
 
     @property
     def format(self):
-        return self.meta['grain']['cog_coded_audio']['format']
+        return CogAudioFormat(self.meta['grain']['cog_coded_audio']['format'])
 
     @format.setter
     def format(self, value):
-        self.meta['grain']['cog_coded_audio']['format'] = CogAudioFormat(value)
+        self.meta['grain']['cog_coded_audio']['format'] = int(value)
 
     @property
     def channels(self):
