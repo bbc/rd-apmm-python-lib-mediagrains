@@ -12,19 +12,6 @@
 from __future__ import print_function
 from setuptools import setup
 import os
-from subprocess import check_output, CalledProcessError
-
-
-def git_version(version):
-    try:
-        gitsha = check_output('git rev-parse --short HEAD'.split())
-    except CalledProcessError:
-        return version
-    gitsha = gitsha.decode('utf-8').strip()
-    gitstatus = (
-            ".dirty" if len(check_output('git status --porcelain -uno'.split())
-                            .decode('utf-8').strip()) > 0 else "")
-    return version + "+{}{}".format(gitsha, gitstatus)
 
 
 def check_packages(packages):
@@ -90,7 +77,7 @@ packages_required = [
 deps_required = []
 
 setup(name="mediagrains",
-      version=git_version("0.1.0"),
+      version="0.1.0",
       description="Simple utility for grain-based media",
       url='https://github.com/bbc/rd-apmm-python-lib-mediagrains',
       author='James Weaver',
