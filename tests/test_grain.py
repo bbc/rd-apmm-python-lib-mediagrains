@@ -645,6 +645,19 @@ class TestGrain (TestCase):
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
 
+    def test_videograin_meta_is_json_serialisable(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots,
+                               cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                               width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
+
+        self.assertEqual(json.loads(json.dumps(grain.meta)), grain.meta)
+
     def test_grain_makes_videograin(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
         flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
@@ -942,6 +955,21 @@ class TestGrain (TestCase):
         grain.sample_rate = 48000
         self.assertEqual(grain.sample_rate, 48000)
 
+    def test_audiograin_meta_is_json_serialisable(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = AudioGrain(src_id, flow_id,
+                               cog_audio_format=CogAudioFormat.S16_PLANES,
+                               channels=2, samples=1920, sample_rate=48000)
+
+        try:
+            self.assertEqual(json.loads(json.dumps(grain.meta)), grain.meta)
+        except ValueError:
+            self.fail(msg="Json serialisation produces: {} which is not json deserialisable".format(json.dumps(grain.meta)))
+
     def test_grain_makes_audiograin(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
         flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
@@ -1189,6 +1217,19 @@ class TestGrain (TestCase):
     def test_coded_video_grain_create_fails_with_empty(self):
         with self.assertRaises(AttributeError):
             CodedVideoGrain(None)
+
+    def test_coded_video_grain_meta_is_json_serialisable(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedVideoGrain(src_id, flow_id,
+                                    cog_frame_format=CogFrameFormat.VC2,
+                                    origin_width=1920, origin_height=1080,
+                                    cog_frame_layout=CogFrameLayout.FULL_FRAME)
+
+        self.assertEqual(json.loads(json.dumps(grain.meta)), grain.meta)
 
     def test_grain_makes_codedvideograin(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -1441,6 +1482,26 @@ class TestGrain (TestCase):
     def test_coded_audio_grain_raises_on_empty(self):
         with self.assertRaises(AttributeError):
             CodedAudioGrain(None)
+
+    def test_codedaudiograin_meta_is_json_serialisable(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedAudioGrain(src_id, flow_id,
+                                    cog_audio_format=CogAudioFormat.MP1,
+                                    samples=1920,
+                                    channels=6,
+                                    priming=0,
+                                    remainder=0,
+                                    sample_rate=48000,
+                                    length=15360)
+
+        try:
+            self.assertEqual(json.loads(json.dumps(grain.meta)), grain.meta)
+        except ValueError:
+            self.fail(msg="Json serialisation produces: {} which is not json deserialisable".format(json.dumps(grain.meta)))
 
     def test_grain_makes_codedaudiograin(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
