@@ -188,8 +188,8 @@ class TestGSFDumps(TestCase):
         self.assertEqual(segments[1][1].format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(segments[1][1].width, 1920)
         self.assertEqual(segments[1][1].height, 1080)
-        self.assertEqual(segments[1][1].source_aspect_ratio, 0)
-        self.assertEqual(segments[1][1].pixel_aspect_ratio, 0)
+        self.assertIsNone(segments[1][1].source_aspect_ratio)
+        self.assertIsNone(segments[1][1].pixel_aspect_ratio)
 
         self.assertEqual(segments[1][1].data, grain1.data)
 
@@ -672,16 +672,19 @@ class TestGSFLoads(TestCase):
             self.assertEqual(grain.components[0].height, 270)
             self.assertEqual(grain.components[0].stride, 480)
             self.assertEqual(grain.components[0].length, 480*270)
+            self.assertEqual(grain.components[0].offset, 0)
 
             self.assertEqual(grain.components[1].width, 240)
             self.assertEqual(grain.components[1].height, 135)
             self.assertEqual(grain.components[1].stride, 240)
             self.assertEqual(grain.components[1].length, 240*135)
+            self.assertEqual(grain.components[1].offset, 480*270)
 
             self.assertEqual(grain.components[2].width, 240)
             self.assertEqual(grain.components[2].height, 135)
             self.assertEqual(grain.components[2].stride, 240)
             self.assertEqual(grain.components[2].length, 240*135)
+            self.assertEqual(grain.components[2].offset, 480*270 + 240*135)
 
             self.assertEqual(len(grain.data), grain.components[0].length + grain.components[1].length + grain.components[2].length)
 

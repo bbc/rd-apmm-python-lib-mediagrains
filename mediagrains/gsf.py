@@ -339,11 +339,13 @@ class GSFDecoder(object):
                 (meta['grain']['cog_frame']['height'], i) = self._read_uint(b, i, 4)
                 (meta['grain']['cog_frame']['extension'], i) = self._read_uint(b, i, 4)
                 (ar, i) = self._read_rational(b, i)
-                meta['grain']['cog_frame']['source_aspect_ratio'] = {'numerator': ar.numerator,
-                                                                     'denominator': ar.denominator}
+                if ar != 0:
+                    meta['grain']['cog_frame']['source_aspect_ratio'] = {'numerator': ar.numerator,
+                                                                         'denominator': ar.denominator}
                 (ar, i) = self._read_rational(b, i)
-                meta['grain']['cog_frame']['pixel_aspect_ratio'] = {'numerator': ar.numerator,
-                                                                    'denominator': ar.denominator}
+                if ar != 0:
+                    meta['grain']['cog_frame']['pixel_aspect_ratio'] = {'numerator': ar.numerator,
+                                                                        'denominator': ar.denominator}
                 meta['grain']['cog_frame']['components'] = []
                 if i < block_end:
                     comp_start = i
@@ -351,12 +353,15 @@ class GSFDecoder(object):
                     comp_end = comp_start + size
                     if size != 0:
                         (n_comps, i) = self._read_uint(b, i, 2)
+                        offset = 0
                         for c in range(0, n_comps):
                             comp = {}
                             (comp['width'], i) = self._read_uint(b, i, 4)
                             (comp['height'], i) = self._read_uint(b, i, 4)
                             (comp['stride'], i) = self._read_uint(b, i, 4)
                             (comp['length'], i) = self._read_uint(b, i, 4)
+                            comp['offset'] = offset
+                            offset += comp['length']
                             meta['grain']['cog_frame']['components'].append(comp)
                     i = comp_end
             elif tag == 'cghd':
