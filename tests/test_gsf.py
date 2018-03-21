@@ -672,16 +672,19 @@ class TestGSFLoads(TestCase):
             self.assertEqual(grain.components[0].height, 270)
             self.assertEqual(grain.components[0].stride, 480)
             self.assertEqual(grain.components[0].length, 480*270)
+            self.assertEqual(grain.components[0].offset, 0)
 
             self.assertEqual(grain.components[1].width, 240)
             self.assertEqual(grain.components[1].height, 135)
             self.assertEqual(grain.components[1].stride, 240)
             self.assertEqual(grain.components[1].length, 240*135)
+            self.assertEqual(grain.components[1].offset, 480*270)
 
             self.assertEqual(grain.components[2].width, 240)
             self.assertEqual(grain.components[2].height, 135)
             self.assertEqual(grain.components[2].stride, 240)
             self.assertEqual(grain.components[2].length, 240*135)
+            self.assertEqual(grain.components[2].offset, 480*270 + 240*135)
 
             self.assertEqual(len(grain.data), grain.components[0].length + grain.components[1].length + grain.components[2].length)
 
