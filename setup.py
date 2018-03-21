@@ -83,7 +83,7 @@ packages_required = [
 deps_required = []
 
 setup(name="mediagrains",
-      version="0.1.0+dev1",
+      version="0.1.0+dev2",
       description="Simple utility for grain-based media",
       url='https://github.com/bbc/rd-apmm-python-lib-mediagrains',
       author='James Weaver',

@@ -188,8 +188,8 @@ class TestGSFDumps(TestCase):
         self.assertEqual(segments[1][1].format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(segments[1][1].width, 1920)
         self.assertEqual(segments[1][1].height, 1080)
-        self.assertEqual(segments[1][1].source_aspect_ratio, 0)
-        self.assertEqual(segments[1][1].pixel_aspect_ratio, 0)
+        self.assertIsNone(segments[1][1].source_aspect_ratio)
+        self.assertIsNone(segments[1][1].pixel_aspect_ratio)
 
         self.assertEqual(segments[1][1].data, grain1.data)
 

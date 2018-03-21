@@ -339,11 +339,13 @@ class GSFDecoder(object):
                 (meta['grain']['cog_frame']['height'], i) = self._read_uint(b, i, 4)
                 (meta['grain']['cog_frame']['extension'], i) = self._read_uint(b, i, 4)
                 (ar, i) = self._read_rational(b, i)
-                meta['grain']['cog_frame']['source_aspect_ratio'] = {'numerator': ar.numerator,
-                                                                     'denominator': ar.denominator}
+                if ar != 0:
+                    meta['grain']['cog_frame']['source_aspect_ratio'] = {'numerator': ar.numerator,
+                                                                         'denominator': ar.denominator}
                 (ar, i) = self._read_rational(b, i)
-                meta['grain']['cog_frame']['pixel_aspect_ratio'] = {'numerator': ar.numerator,
-                                                                    'denominator': ar.denominator}
+                if ar != 0:
+                    meta['grain']['cog_frame']['pixel_aspect_ratio'] = {'numerator': ar.numerator,
+                                                                        'denominator': ar.denominator}
                 meta['grain']['cog_frame']['components'] = []
                 if i < block_end:
                     comp_start = i
