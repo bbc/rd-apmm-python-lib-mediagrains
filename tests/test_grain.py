@@ -24,6 +24,7 @@ from nmoscommon.timestamp import Timestamp
 import mock
 from fractions import Fraction
 import json
+from copy import copy, deepcopy
 
 
 class TestGrain (TestCase):
@@ -1780,3 +1781,55 @@ class TestGrain (TestCase):
 
         with self.assertRaises(ValueError):
             grain.data = bytearray(json.dumps({'potato': "masher"}).encode('utf-8'))
+
+    def test_copy(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                               cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                               width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
+
+        grain.data[0] = 0x1B
+        grain.data[1] = 0xBC
+
+        clone = copy(grain)
+
+        self.assertEqual(grain.data[0], clone.data[0])
+        self.assertEqual(grain.data[1], clone.data[1])
+
+        grain.data[0] = 0xCA
+        grain.data[1] = 0xFE
+
+        self.assertEqual(grain.data[0], clone.data[0])
+        self.assertEqual(grain.data[1], clone.data[1])
+
+    def test_deepcopy(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                               cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                               width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
+
+        grain.data[0] = 0x1B
+        grain.data[1] = 0xBC
+
+        clone = deepcopy(grain)
+
+        self.assertEqual(grain.data[0], clone.data[0])
+        self.assertEqual(grain.data[1], clone.data[1])
+
+        grain.data[0] = 0xCA
+        grain.data[1] = 0xFE
+
+        self.assertNotEqual(grain.data[0], clone.data[0])
+        self.assertNotEqual(grain.data[1], clone.data[1])

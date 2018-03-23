@@ -28,6 +28,7 @@ clean:
 	rm -rf tox-generated.ini
 	find . -name '*.pyc' -delete
 	find . -name '*.py,cover' -delete
+	find . -name '__pycache__' -delete
 
 test:
 	tox
