@@ -30,6 +30,7 @@ from uuid import UUID
 from nmoscommon.timestamp import Timestamp
 from collections import Sequence, MutableSequence, Mapping
 from fractions import Fraction
+from copy import copy, deepcopy
 
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
@@ -158,6 +159,14 @@ expected_length
 
     def __eq__(self, other):
         return tuple(self) == other
+
+    def __copy__(self):
+        from .grain_constructors import Grain
+        return Grain(copy(self.meta), self.data)
+
+    def __deepcopy__(self, memo):
+        from .grain_constructors import Grain
+        return Grain(deepcopy(self.meta), deepcopy(self.data))
 
     @property
     def data(self):
