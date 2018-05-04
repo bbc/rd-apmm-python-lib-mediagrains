@@ -26,7 +26,7 @@ from __future__ import absolute_import
 __all__ = ["LumaSteps"]
 
 from fractions import Fraction
-from nmoscommon.timestamp import Timestamp
+from nmoscommon.timestamp import Timestamp, TimeOffset
 from copy import deepcopy
 
 from . import VideoGrain
@@ -56,14 +56,16 @@ pixel_ranges = {
 def LumaSteps(src_id, flow_id, width, height,
               rate=Fraction(25, 1),
               origin_timestamp=None,
-              cog_frame_format=CogFrameFormat.U8_444):
+              cog_frame_format=CogFrameFormat.U8_444,
+              step=1):
     """Returns a generator for video grains in U8_444 format.
     :param src_id: source_id for grains
     :param flow_id: flow_id for grains
     :param width: width of grains
     :param height: height of grains
     :param rate: rate of grains
-    :param origin_timestamp: the origin timestamp of the first grain."""
+    :param origin_timestamp: the origin timestamp of the first grain.
+    :param step: The number of grains to increment by each time (values above 1 cause skipping)"""
 
     if cog_frame_format not in pixel_ranges:
         raise ValueError("Not a supported format for this generator")
@@ -111,9 +113,11 @@ def LumaSteps(src_id, flow_id, width, height,
                 vg.data[v + 2*x + 0] = _chromaval & 0xFF
                 vg.data[v + 2*x + 1] = (_chromaval >> 8) & 0xFF
 
+    origin_timestamp = vg.origin_timestamp
+    count = 0
     while True:
         yield deepcopy(vg)
-        vg.origin_timestamp = Timestamp.from_count(vg.origin_timestamp.to_count(rate.numerator, rate.denominator) + 1,
-                                                   rate.numerator, rate.denominator)
-        vg.sync_timestamp = Timestamp.from_count(vg.sync_timestamp.to_count(rate.numerator, rate.denominator) + 1,
-                                                 rate.numerator, rate.denominator)
+        count += step
+        vg.origin_timestamp = origin_timestamp + TimeOffset.from_count(count,
+                                                                       rate.numerator, rate.denominator)
+        vg.sync_timestamp = vg.origin_timestamp
