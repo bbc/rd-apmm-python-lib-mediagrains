@@ -1,6 +1,9 @@
 # Changelog for mediagrains
 ---------------------------
 
+- v0.2.1
+    - Added step option to testsignalgenerator
+
 - v0.2.0:
     - Added first test signal generator: LumaSteps
     - Added copy and deepcopy implementations to grain classes
