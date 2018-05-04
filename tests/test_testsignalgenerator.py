@@ -125,11 +125,13 @@ class TestLumaSteps(TestCase):
         """Testing that the LumaSteps generator produces alternate frames when skip is set"""
         width = 240
         height = 4
+        rate = Fraction(50, 1)
+        step = 2
         UUT = LumaSteps(src_id, flow_id, width, height,
                         origin_timestamp=origin_timestamp,
                         cog_frame_format=CogFrameFormat.S16_422_10BIT,
-                        rate=Fraction(50, 1),
-                        step=2)
+                        rate=rate,
+                        step=step)
 
         # Extracts the first 10 grains from the generator
         grains = [grain for _, grain in zip(range(10), UUT)]
@@ -138,4 +140,5 @@ class TestLumaSteps(TestCase):
         for grain in grains:
             self.assertEqual(grain.origin_timestamp, ts)
             self.assertEqual(grain.sync_timestamp, ts)
-            ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
+            ts = Timestamp.from_count(ts.to_count(rate.numerator, rate.denominator) + step,
+                                      rate.numerator, rate.denominator)
