@@ -404,14 +404,18 @@ class GSFDecoder(object):
         else:
             return (Fraction(numerator, denominator), i)
 
-    def _decode_ssb_header(self, b, i):
-        start = i
-        (tag, i) = self._read_string(b, i, 8)
+    def _decode_ssb_header(self):
+        ssb_block = GSFBlock(self.file_data)
+
+        tag = ssb_block.read_string(8)
+
         if tag != "SSBBgrsg":
-            raise GSFDecodeBadFileTypeError("File lacks correct header", start, tag)
-        (major, i) = self._read_uint(b, i,  2)
-        (minor, i) = self._read_uint(b, i, 2)
-        return (major, minor, i)
+            raise GSFDecodeBadFileTypeError("File lacks correct header", ssb_block.block_start, tag)
+
+        major = ssb_block.read_uint(2)
+        minor = ssb_block.read_uint(2)
+
+        return (major, minor)
 
     def _decode_block_header(self, b, i, allowed=None, optional=False):
         start = i
@@ -634,9 +638,9 @@ class GSFDecoder(object):
             self.file_data = BytesIO(s)
 
         b = None
-        i = 0
+        i = 12
 
-        (major, minor, i) = self._decode_ssb_header(b, i)
+        (major, minor) = self._decode_ssb_header()
         if (major, minor) != (7, 0):
             raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
 
