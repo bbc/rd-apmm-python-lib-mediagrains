@@ -151,6 +151,133 @@ class GSFDecodeBadVersionError(GSFDecodeError):
         self.minor = minor
 
 
+class GSFBlock():
+    """Context manager for a single block in a GSF file
+
+    Decodes the tag and size of the block
+    """
+    def __init__(self, file_data):
+        self.file_data = file_data
+        self.size = None
+        self.block_start = self.file_data.tell()  # In binary mode, this should always be in bytes
+
+    def __enter__(self):
+        try:
+            self.tag = self.read_string(4)
+        except UnicodeDecodeError:
+            self.file_data.seek(-4, 1)
+            bad_bytes = self.file_data.read(4)
+            position = self.file_data.tell() - 4
+            raise GSFDecodeError(
+                "Bytes {!r} at location {} do not make a valid tag for a block".format(
+                    bad_bytes, position),
+                position)
+
+        self.size = self.read_uint(4)
+        return self
+
+    def __exit__(self, *args):
+        self.file_data.seek(self.block_start + self.size, 0)  # TODO: Real constant
+
+    def has_child_block(self, strict_blocks=True):
+        """Checks if there is space for another child block in this block
+
+        Returns true if there is space for another child block (i.e. > 8 bytes) in this block.
+        If strict_blocks=True, this block only contains other blocks rather than any other data. As a result, if there
+        are bytes left, but not enough for another block, raise a GSFDecodeError.
+        Must be used in a context manager.
+
+        :param strict_blocks: Set to True to raise if a partial block is found
+        :returns: True if there is spaces for another block
+        :raises GSFDecodeError: If there is a partial block and strict=True
+        """
+        assert self.size is not None, "in_block() only works in a context manager"
+
+        bytes_remaining = self.get_remaining()
+        if bytes_remaining >= 8:
+            return True
+        elif bytes_remaining != 0 and strict_blocks:
+            position = self.file_data.tell()
+            raise GSFDecodeError("Found a partial block (or parent too small) in '{}' at {}".format(self.tag, position),
+                                 position)
+        else:
+            return False
+
+    def get_remaining(self):
+        """Returns number of bytes left in this block. Only works in a context manager"""
+        assert self.size is not None, "get_remaining() only works in a context manager"
+        return (self.block_start + self.size) - self.file_data.tell()
+
+    def read_uint(self, l):
+        r = 0
+        uint_bytes = bytes(self.file_data.read(l))
+
+        if len(uint_bytes) != l:
+            raise EOFError("Unable to read enough bytes from source")
+
+        for n in range(0, l):
+            r += (indexbytes(uint_bytes, n) << (n*8))
+        return r
+
+    def read_bool(self):
+        n = self.read_uint(1)
+        return (n != 0)
+
+    def read_sint(self, l):
+        r = self.read_uint(l)
+        if (r >> ((8*l) - 1)) == 1:
+            r -= (1 << (8*l))
+        return r
+
+    def read_string(self, l):
+        string_data = self.file_data.read(l)
+        if (len(string_data) != l):
+            raise EOFError("Unable to read enough bytes from source")
+
+        return string_data.decode(encoding='utf-8')
+
+    def read_varstring(self):
+        length = self.read_uint(2)
+        return self.read_string(length)
+
+    def read_uuid(self):
+        uuid_data = self.file_data.read(16)
+
+        if (len(uuid_data) != 16):
+            raise EOFError("Unable to read enough bytes from source")
+
+        return UUID(bytes=uuid_data)
+
+    def read_timestamp(self):
+        year = self.read_sint(2)
+        month = self.read_uint(1)
+        day = self.read_uint(1)
+        hour = self.read_uint(1)
+        minute = self.read_uint(1)
+        second = self.read_uint(1)
+        return datetime(year, month, day, hour, minute, second)
+
+    def read_ippts(self):
+        secs = self.read_uint(6)
+        nano = self.read_uint(4)
+        return Timestamp(secs, nano)
+
+    def read_rational(self):
+        """Read a rational (fraction)
+
+        If numerator or denominator is 0, returns Fraction(0)
+
+        :returns: fraction.Fraction
+        :raises EOFError: If there are fewer than 8 bytes left in the source
+        """
+        numerator = self.read_uint(4)
+        denominator = self.read_uint(4)
+        if numerator == 0 or denominator == 0:
+            return Fraction(0)
+        else:
+            return Fraction(numerator, denominator)
+
+
 class GSFDecoder(object):
     """A decoder for GSF format.
 
