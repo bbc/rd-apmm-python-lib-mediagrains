@@ -431,53 +431,61 @@ class GSFDecoder(object):
                 return ("", 0, start)
         return ("", 0, start)
 
-    def _decode_head(self, b, i):
-        start = i
-        head = {}
+    def _decode_head(self, i):
+        """Find the "head" block and decode it
 
-        (tag, size, i) = self._decode_block_header(b, i, ["head"])
-        if tag == "":
-            raise GSFDecodeError("No head block found in file", i)
-        head_start = i - 8
-        (head['id'], i) = self._read_uuid(b, i)
-        (head['created'], i) = self._read_timestamp(b, i)
-        head['segments'] = []
-        head['tags'] = []
+        Searches the file looking for the "head" block; once found parses it and the segments within
 
-        head_end = head_start + size
-        while i < head_end:
-            (tag, size, i) = self._decode_block_header(b, i, ["segm", "tag "])
-            if tag == "":
-                i = head_end
-                break
-            segm_start = i - 8
-            segm_end = segm_start + size
-            if tag == "tag ":
-                (key, i) = self._read_varstring(b, i)
-                (val, i) = self._read_varstring(b, i)
-                head['tags'].append((key, val))
-            else:
-                segm = {}
-                (segm['local_id'], i) = self._read_uint(b, i, 2)
-                (segm['id'], i) = self._read_uuid(b, i)
-                (segm['count'], i) = self._read_sint(b, i, 8)
-                segm['tags'] = []
+        :returns: Head block as a dict
+        :raises GSFDecodeError: If the head block was not found
+        """
+        head = None
 
-                while i < segm_end:
-                    (tag, size, i) = self._decode_block_header(b, i, ["tag "])
-                    if tag != "":
-                        (key, i) = self._read_varstring(b, i)
-                        (val, i) = self._read_varstring(b, i)
-                        segm['tags'].append((key, val))
-                head['segments'].append(segm)
+        while head is None:
+            try:
+                with GSFBlock(self.file_data) as block:
+                    if block.tag != "head":
+                        # If this isn't the head block, skip it
+                        continue
 
-            if i > segm_end:
-                raise GSFDecodeError("Size of segm block not large enough to contain its contents", segm_start, length=segm_end - segm_start)
+                    # Read head block data
+                    head = {}
+                    head['id'] = block.read_uuid()
+                    head['created'] = block.read_timestamp()
 
-        if i != head_end:
-            raise GSFDecodeError("Size of head block not large enough to contain its contents", start, length=head_end - start)
+                    head['segments'] = []
+                    head['tags'] = []
 
-        return (head, i)
+                    # Read rest of head block, parsing children
+                    while block.has_child_block():
+                        with GSFBlock(self.file_data) as head_child:
+                            # Parse a segment block
+                            if head_child.tag == "segm":
+                                segm = {}
+                                segm['local_id'] = head_child.read_uint(2)
+                                segm['id'] = head_child.read_uuid()
+                                segm['count'] = head_child.read_sint(8)
+                                segm['tags'] = []
+
+                                # Segment blocks can have child tags as well
+                                while head_child.has_child_block():
+                                    with GSFBlock(self.file_data) as segm_tag:
+                                        if segm_tag.tag == "tag ":
+                                            key = segm_tag.read_varstring()
+                                            value = segm_tag.read_varstring()
+                                            segm['tags'].append((key, value))
+
+                                head['segments'].append(segm)
+
+                            # Parse a tag block
+                            elif head_child.tag == "tag ":
+                                key = head_child.read_varstring()
+                                value = head_child.read_varstring()
+                                head['tags'].append((key, value))
+            except EOFError:
+                raise GSFDecodeError("No head block found in file", self.file_data.tell())
+
+        return (head, i + block.size)
 
     def _decode_tils(self, b, i):
         tils = []
@@ -644,7 +652,7 @@ class GSFDecoder(object):
         if (major, minor) != (7, 0):
             raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
 
-        (head, i) = self._decode_head(b, i)
+        (head, i) = self._decode_head(i)
         segments = {}
 
         while i < len(b):
