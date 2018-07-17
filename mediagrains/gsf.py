@@ -152,16 +152,30 @@ class GSFDecodeBadVersionError(GSFDecodeError):
 
 
 class GSFBlock():
-    """Context manager for a single block in a GSF file
+    """A single block in a GSF file
 
-    Decodes the tag and size of the block
+    Has methods to read various types from the block.
+    Can also be used as a context manager, in which case it will automatically decode the block tag and size, exposed
+    by the `tag` and `size` attributes.
     """
     def __init__(self, file_data):
+        """Constructor. Records the start byte of the block in `block_start`
+
+        :param file_data: An instance of io.BufferedReader positioned at the start of the block
+        """
         self.file_data = file_data
         self.size = None
         self.block_start = self.file_data.tell()  # In binary mode, this should always be in bytes
 
     def __enter__(self):
+        """When used as a context manager, read block size and tag on entry
+
+        - When entering a block, tag and size should be read
+        - If tag doesn't decode, a GSFDecodeError should be raised
+
+        :returns: Instance of GSFBlock
+        :raises GSFDecodeError: If the block tag failed to decode as UTF-8
+        """
         try:
             self.tag = self.read_string(4)
         except UnicodeDecodeError:
@@ -177,6 +191,7 @@ class GSFBlock():
         return self
 
     def __exit__(self, *args):
+        """When used as a context manager, exiting context should seek to the block end"""
         self.file_data.seek(self.block_start + self.size, 0)  # TODO: Real constant
 
     def has_child_block(self, strict_blocks=True):
@@ -191,7 +206,7 @@ class GSFBlock():
         :returns: True if there is spaces for another block
         :raises GSFDecodeError: If there is a partial block and strict=True
         """
-        assert self.size is not None, "in_block() only works in a context manager"
+        assert self.size is not None, "has_child_block() only works in a context manager"
 
         bytes_remaining = self.get_remaining()
         if bytes_remaining >= 8:
@@ -204,11 +219,22 @@ class GSFBlock():
             return False
 
     def get_remaining(self):
-        """Returns number of bytes left in this block. Only works in a context manager"""
+        """Get the number of bytes left in this block
+
+        Only works in a context manager, will raise an AssertionError if not
+
+        :returns: Number of bytes left in the block
+        """
         assert self.size is not None, "get_remaining() only works in a context manager"
         return (self.block_start + self.size) - self.file_data.tell()
 
     def read_uint(self, l):
+        """Read an unsigned integer of length l
+
+        :param l: Number of bytes used to store the integer
+        :returns: Unsigned integer
+        :raises EOFError: If there are fewer than l bytes left in the source
+        """
         r = 0
         uint_bytes = bytes(self.file_data.read(l))
 
@@ -220,16 +246,32 @@ class GSFBlock():
         return r
 
     def read_bool(self):
+        """Read a boolean value
+
+        :returns: Boolean value
+        :raises EOFError: If there are no more bytes left in the source"""
         n = self.read_uint(1)
         return (n != 0)
 
     def read_sint(self, l):
+        """Read a 2's complement signed integer
+
+        :param l: Number of bytes used to store the integer
+        :returns: Signed integer
+        :raises EOFError: If there are fewer than l bytes left in the source
+        """
         r = self.read_uint(l)
         if (r >> ((8*l) - 1)) == 1:
             r -= (1 << (8*l))
         return r
 
     def read_string(self, l):
+        """Read a fixed-length string, treating it as UTF-8
+
+        :param l: Number of bytes in the string
+        :returns: String
+        :raises EOFError: If there are fewer than l bytes left in the source
+        """
         string_data = self.file_data.read(l)
         if (len(string_data) != l):
             raise EOFError("Unable to read enough bytes from source")
@@ -237,10 +279,22 @@ class GSFBlock():
         return string_data.decode(encoding='utf-8')
 
     def read_varstring(self):
+        """Read a variable length string
+
+        Reads a 2 byte uint to get the string length, then reads a string of that length
+
+        :returns: String
+        :raises EOFError: If there are too few bytes left in the source
+        """
         length = self.read_uint(2)
         return self.read_string(length)
 
     def read_uuid(self):
+        """Read a UUID
+
+        :returns: UUID
+        :raises EOFError: If there are fewer than l bytes left in the source
+        """
         uuid_data = self.file_data.read(16)
 
         if (len(uuid_data) != 16):
@@ -249,6 +303,11 @@ class GSFBlock():
         return UUID(bytes=uuid_data)
 
     def read_timestamp(self):
+        """Read a date-time (with seconds resolution) stored in 7 bytes
+
+        :returns: Datetime
+        :raises EOFError: If there are fewer than 7 bytes left in the source
+        """
         year = self.read_sint(2)
         month = self.read_uint(1)
         day = self.read_uint(1)
@@ -258,6 +317,11 @@ class GSFBlock():
         return datetime(year, month, day, hour, minute, second)
 
     def read_ippts(self):
+        """Read a mediatimestamp.Timestamp
+
+        :returns: Timestamp
+        :raises EOFError: If there are fewer than 10 bytes left in the source
+        """
         secs = self.read_uint(6)
         nano = self.read_uint(4)
         return Timestamp(secs, nano)
