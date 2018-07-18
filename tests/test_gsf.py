@@ -781,7 +781,7 @@ class TestGSFBlock(TestCase):
         for i in range(0, post_child_len):
             test_stream.write(b"\x42")
 
-        test_stream.write(b"blok\x08\x00\x00\x00")
+        test_stream.write(b"blk2\x08\x00\x00\x00")
 
         test_stream.seek(0, SEEK_SET)
 
@@ -802,6 +802,24 @@ class TestGSFBlock(TestCase):
         with GSFBlock(test_stream) as UUT:
             self.assertEqual("blok", UUT.tag)
             self.assertEqual(28, UUT.size)
+
+    def test_contextmanager_skips_unwanted_blocks(self):
+        """Test that GSFBlock() seeks over unwanted blocks"""
+        test_stream = self._make_sample_stream()
+
+        with GSFBlock(test_stream, want_tag="blk2") as UUT:
+            self.assertEqual("blk2", UUT.tag)
+
+            # blok is 28 bytes long, we should skip it, plus 8 bytes of blk2
+            self.assertEqual(28 + 8, test_stream.tell())
+
+    def test_contextmanager_errors_unwanted_blocks(self):
+        """Test that GSFBlock() raises GSFDecodeError when finding an unwanted block"""
+        test_stream = self._make_sample_stream()
+
+        with self.assertRaises(GSFDecodeError):
+            with GSFBlock(test_stream, want_tag="chil", raise_on_wrong_tag=True):
+                pass
 
     def test_contextmanager_seeks_on_exit(self):
         """Test that the context manager seeks to the end of a block on exit"""

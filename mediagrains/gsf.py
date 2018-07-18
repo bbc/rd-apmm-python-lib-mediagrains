@@ -159,12 +159,17 @@ class GSFBlock():
     Can also be used as a context manager, in which case it will automatically decode the block tag and size, exposed
     by the `tag` and `size` attributes.
     """
-    def __init__(self, file_data):
+    def __init__(self, file_data, want_tag=None, raise_on_wrong_tag=False):
         """Constructor. Records the start byte of the block in `block_start`
 
         :param file_data: An instance of io.BufferedReader positioned at the start of the block
+        :param want_tag: If set to a tag string, and in a context manager, skip any block without that tag
+        :param raise_on_wrong_tag: Set to True to raise a GSFDecodeError if the next block isn't `want_tag`
         """
         self.file_data = file_data
+        self.want_tag = want_tag
+        self.raise_on_wrong_tag = raise_on_wrong_tag
+
         self.size = None
         self.block_start = self.file_data.tell()  # In binary mode, this should always be in bytes
 
@@ -173,23 +178,34 @@ class GSFBlock():
 
         - When entering a block, tag and size should be read
         - If tag doesn't decode, a GSFDecodeError should be raised
+        - If want_tag was supplied to the constructor, skip blocks that don't have that tag
+        - Unless raise_on_wrong_tag was also supplied, in which case raise
 
         :returns: Instance of GSFBlock
-        :raises GSFDecodeError: If the block tag failed to decode as UTF-8
+        :raises GSFDecodeError: If the block tag failed to decode as UTF-8, or an unwanted tag was found
         """
-        try:
-            self.tag = self.read_string(4)
-        except UnicodeDecodeError:
-            self.file_data.seek(-4, SEEK_CUR)
-            bad_bytes = self.file_data.read(4)
-            position = self.file_data.tell() - 4
-            raise GSFDecodeError(
-                "Bytes {!r} at location {} do not make a valid tag for a block".format(
-                    bad_bytes, position),
-                position)
+        while True:
+            try:
+                self.tag = self.read_string(4)
+            except UnicodeDecodeError:
+                self.file_data.seek(-4, SEEK_CUR)
+                position = self.file_data.tell()
+                bad_bytes = self.file_data.read(4)
+                raise GSFDecodeError(
+                    "Bytes {!r} at location {} do not make a valid tag for a block".format(
+                        bad_bytes, position),
+                    position)
 
-        self.size = self.read_uint(4)
-        return self
+            self.size = self.read_uint(4)
+
+            if self.want_tag is None or self.tag == self.want_tag:
+                return self
+            elif self.tag != self.want_tag and self.raise_on_wrong_tag:
+                raise GSFDecodeError("Wanted tag {} but got {} at {}".format(self.want_tag, self.tag, self.block_start),
+                                     self.block_start)
+            else:
+                self.file_data.seek(self.block_start + self.size, SEEK_SET)
+                self.block_start = self.file_data.tell()
 
     def __exit__(self, *args):
         """When used as a context manager, exiting context should seek to the block end"""
