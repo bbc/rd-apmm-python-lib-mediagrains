@@ -406,6 +406,11 @@ class GSFDecoder(object):
             return (Fraction(numerator, denominator), i)
 
     def _decode_ssb_header(self):
+        """Find and read the SSB header in the GSF file
+
+        :returns: (major, minor) version tuple
+        :raises GSFDecodeBadFileTypeError: If the SSB tag shows this isn't a GSF file
+        """
         ssb_block = GSFBlock(self.file_data)
 
         tag = ssb_block.read_string(8)
@@ -489,6 +494,11 @@ class GSFDecoder(object):
         return head
 
     def _decode_tils(self, tils_block):
+        """Decode timelabels (tils) block
+
+        :param tils_block: Instance of GSFBlock() representing a "gbhd" block
+        :returns: tils block as a dict
+        """
         tils = []
         timelabel_count = tils_block.read_uint(2)
         for i in range(0, timelabel_count):
@@ -507,6 +517,12 @@ class GSFDecoder(object):
         return tils
 
     def _decode_gbhd(self, gbhd_block):
+        """Decode grain block header ("gbhd") to get grain metadata
+
+        :param gbhd_block: Instance of GSFBlock() representing a "gbhd" block
+        :returns: Grain data dict
+        :raises GSFDecodeError: If "gbhd" block contains an unkown child block
+        """
         meta = {
             "grain": {
             }
@@ -615,6 +631,11 @@ class GSFDecoder(object):
         return meta
 
     def grains(self):
+        """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
+
+        :yields: (Grain, local_id) tuple for each grain
+        :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
+        """
         while True:
             try:
                 with GSFBlock(self.file_data) as grai_block:
@@ -645,8 +666,11 @@ class GSFDecoder(object):
                 return  # We ran out of grains to read and hit EOF
 
     def decode(self, s):
-        """Decode a GSF formatted bytes object, returning a dictionary mapping
-        sequence ids to lists of GRAIN objects (or subclasses of such)."""
+        """Decode a GSF formatted bytes object
+
+        :param s: GSF-formatted bytes object
+        :returns: A dictionary mapping sequence ids to lists of GRAIN objects (or subclasses of such).
+        """
         if (s):
             self.file_data = BytesIO(s)
 
