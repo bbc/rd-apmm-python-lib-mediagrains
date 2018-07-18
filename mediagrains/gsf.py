@@ -403,52 +403,44 @@ class GSFDecoder(object):
 
         return (major, minor)
 
-    def _decode_head(self):
-        """Find the "head" block and decode it
+    def _decode_head(self, head_block):
+        """Decode the "head" block and extract ID, created date, segments and tags
 
-        Searches the file looking for the "head" block; once found parses it and the segments within
-
+        :param head_block: GSFBlock representing the "head" block
         :returns: Head block as a dict
-        :raises GSFDecodeError: If the head block was not found
         """
-        try:
-            with GSFBlock(self.file_data, want_tag="head") as block:
-                # Read head block data
-                head = {}
-                head['id'] = block.read_uuid()
-                head['created'] = block.read_timestamp()
+        head = {}
+        head['id'] = head_block.read_uuid()
+        head['created'] = head_block.read_timestamp()
 
-                head['segments'] = []
-                head['tags'] = []
+        head['segments'] = []
+        head['tags'] = []
 
-                # Read rest of head block, parsing children
-                while block.has_child_block():
-                    with GSFBlock(self.file_data) as head_child:
-                        # Parse a segment block
-                        if head_child.tag == "segm":
-                            segm = {}
-                            segm['local_id'] = head_child.read_uint(2)
-                            segm['id'] = head_child.read_uuid()
-                            segm['count'] = head_child.read_sint(8)
-                            segm['tags'] = []
+        # Read head block children
+        for head_child in head_block.child_blocks():
+            # Parse a segment block
+            if head_child.tag == "segm":
+                segm = {}
+                segm['local_id'] = head_child.read_uint(2)
+                segm['id'] = head_child.read_uuid()
+                segm['count'] = head_child.read_sint(8)
+                segm['tags'] = []
 
-                            # Segment blocks can have child tags as well
-                            while head_child.has_child_block():
-                                with GSFBlock(self.file_data) as segm_tag:
-                                    if segm_tag.tag == "tag ":
-                                        key = segm_tag.read_varstring()
-                                        value = segm_tag.read_varstring()
-                                        segm['tags'].append((key, value))
+                # Segment blocks can have child tags as well
+                while head_child.has_child_block():
+                    with GSFBlock(self.file_data) as segm_tag:
+                        if segm_tag.tag == "tag ":
+                            key = segm_tag.read_varstring()
+                            value = segm_tag.read_varstring()
+                            segm['tags'].append((key, value))
 
-                            head['segments'].append(segm)
+                head['segments'].append(segm)
 
-                        # Parse a tag block
-                        elif head_child.tag == "tag ":
-                            key = head_child.read_varstring()
-                            value = head_child.read_varstring()
-                            head['tags'].append((key, value))
-        except EOFError:
-            raise GSFDecodeError("No head block found in file", self.file_data.tell())
+            # Parse a tag block
+            elif head_child.tag == "tag ":
+                key = head_child.read_varstring()
+                value = head_child.read_varstring()
+                head['tags'].append((key, value))
 
         return head
 
@@ -588,6 +580,24 @@ class GSFDecoder(object):
 
         return meta
 
+    def decode_file_headers(self):
+        """Verify the file is a supported version, and get the file header
+
+        :returns: File header data (segments and tags) as a dict
+        :raises GSFDecodeBadVersionError: If the file version is not supported
+        :raises GSFDecodeBadFileTypeError: If this isn't a GSF file
+        :raises GSFDecodeError: If the file doesn't have a "head" block
+        """
+        (major, minor) = self._decode_ssb_header()
+        if (major, minor) != (7, 0):
+            raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
+
+        try:
+            with GSFBlock(self.file_data, want_tag="head") as head_block:
+                return self._decode_head(head_block)
+        except EOFError:
+            raise GSFDecodeError("No head block found in file", self.file_data.tell())
+
     def grains(self):
         """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
 
@@ -623,11 +633,8 @@ class GSFDecoder(object):
         if (s):
             self.file_data = BytesIO(s)
 
-        (major, minor) = self._decode_ssb_header()
-        if (major, minor) != (7, 0):
-            raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
+        head = self.decode_file_headers()
 
-        head = self._decode_head()
         segments = {}
 
         for (grain, local_id) in self.grains():
