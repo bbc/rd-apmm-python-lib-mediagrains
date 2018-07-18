@@ -431,7 +431,7 @@ class GSFDecoder(object):
                 return ("", 0, start)
         return ("", 0, start)
 
-    def _decode_head(self, i):
+    def _decode_head(self):
         """Find the "head" block and decode it
 
         Searches the file looking for the "head" block; once found parses it and the segments within
@@ -485,159 +485,163 @@ class GSFDecoder(object):
             except EOFError:
                 raise GSFDecodeError("No head block found in file", self.file_data.tell())
 
-        return (head, i + block.size)
+        return head
 
-    def _decode_tils(self, b, i):
+    def _decode_tils(self, tils_block):
         tils = []
-        (n, i) = self._read_uint(b, i, 2)
-        for k in range(0, n):
-            (tag, i) = self._read_string(b, i, 16)
-            tag = tag.strip('\x00')
-            (count, i) = self._read_uint(b, i, 4)
-            (rate, i) = self._read_rational(b, i)
-            (drop, i) = self._read_bool(b, i)
+        timelabel_count = tils_block.read_uint(2)
+        for i in range(0, timelabel_count):
+            tag = tils_block.read_string(16)
+            tag = tag.strip("\x00")
+            count = tils_block.read_uint(4)
+            rate = tils_block.read_rational()
+            drop = tils_block.read_bool()
+
             tils.append({'tag': tag,
                          'timelabel': {'frames_since_midnight': count,
                                        'frame_rate_numerator': rate.numerator,
                                        'frame_rate_denominator': rate.denominator,
                                        'drop_frame': drop}})
-        return (tils, i)
 
-    def _decode_gbhd(self, b, i):
-        start = i
+        return tils
+
+    def _decode_gbhd(self, gbhd_block):
         meta = {
             "grain": {
             }
         }
-        (_, size, i) = self._decode_block_header(b, i, ["gbhd"])
-        gbhd_end = start + size
-        (meta['grain']['source_id'], i) = self._read_uuid(b, i)
-        (meta['grain']['flow_id'], i) = self._read_uuid(b, i)
-        i += 16
-        (meta['grain']['origin_timestamp'], i) = self._read_ippts(b, i)
-        (meta['grain']['sync_timestamp'], i) = self._read_ippts(b, i)
-        (meta['grain']['rate'], i) = self._read_rational(b, i)
-        (meta['grain']['duration'], i) = self._read_rational(b, i)
 
-        block_start = i
-        (tag, size, i) = self._decode_block_header(b, i, ["tils"], optional=True)
-        block_end = block_start + size
-        if size != 0:
-            (meta['grain']['timelabels'], i) = self._decode_tils(b, i)
+        meta['grain']['source_id'] = gbhd_block.read_uuid()
+        meta['grain']['flow_id'] = gbhd_block.read_uuid()
+        self.file_data.seek(16, 1)  # Skip over deprecated byte array
+        meta['grain']['origin_timestamp'] = gbhd_block.read_ippts()
+        meta['grain']['sync_timestamp'] = gbhd_block.read_ippts()
+        meta['grain']['rate'] = gbhd_block.read_rational()
+        meta['grain']['duration'] = gbhd_block.read_rational()
 
-        if i == gbhd_end:
-            meta['grain']['grain_type'] = 'empty'
-            block_end = i
-        else:
-            (tag, size, i) = self._decode_block_header(b, i, ['vghd', 'cghd', 'aghd', 'cahd', 'eghd'])
-            block_start = i - 8
-            block_end = block_start + size
+        while gbhd_block.has_child_block():
+            with GSFBlock(self.file_data) as gbhd_child:
+                if gbhd_child.tag == "tils":
+                    meta['grain']['timelabels'] = self._decode_tils(gbhd_child)
+                elif gbhd_child.tag == "vghd":
+                    meta['grain']['grain_type'] = 'video'
+                    meta['grain']['cog_frame'] = {}
+                    meta['grain']['cog_frame']['format'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_frame']['layout'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_frame']['width'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_frame']['height'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_frame']['extension'] = gbhd_child.read_uint(4)
 
-            if tag == "vghd":
-                meta['grain']['grain_type'] = 'video'
-                meta['grain']['cog_frame'] = {}
-                (meta['grain']['cog_frame']['format'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_frame']['layout'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_frame']['width'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_frame']['height'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_frame']['extension'], i) = self._read_uint(b, i, 4)
-                (ar, i) = self._read_rational(b, i)
-                if ar != 0:
-                    meta['grain']['cog_frame']['source_aspect_ratio'] = {'numerator': ar.numerator,
-                                                                         'denominator': ar.denominator}
-                (ar, i) = self._read_rational(b, i)
-                if ar != 0:
-                    meta['grain']['cog_frame']['pixel_aspect_ratio'] = {'numerator': ar.numerator,
-                                                                        'denominator': ar.denominator}
-                meta['grain']['cog_frame']['components'] = []
-                if i < block_end:
-                    comp_start = i
-                    (tag, size, i) = self._decode_block_header(b, i, ["comp"], optional=True)
-                    comp_end = comp_start + size
-                    if size != 0:
-                        (n_comps, i) = self._read_uint(b, i, 2)
-                        offset = 0
-                        for c in range(0, n_comps):
-                            comp = {}
-                            (comp['width'], i) = self._read_uint(b, i, 4)
-                            (comp['height'], i) = self._read_uint(b, i, 4)
-                            (comp['stride'], i) = self._read_uint(b, i, 4)
-                            (comp['length'], i) = self._read_uint(b, i, 4)
-                            comp['offset'] = offset
-                            offset += comp['length']
-                            meta['grain']['cog_frame']['components'].append(comp)
-                    i = comp_end
-            elif tag == 'cghd':
-                meta['grain']['grain_type'] = "coded_video"
-                meta['grain']['cog_coded_frame'] = {}
-                (meta['grain']['cog_coded_frame']['format'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_frame']['layout'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_frame']['origin_width'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_frame']['origin_height'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_frame']['coded_width'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_frame']['coded_height'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_frame']['is_key_frame'], i) = self._read_bool(b, i)
-                (meta['grain']['cog_coded_frame']['temporal_offset'], i) = self._read_sint(b, i, 4)
+                    src_aspect_ratio = gbhd_child.read_rational()
+                    if src_aspect_ratio != 0:
+                        meta['grain']['cog_frame']['source_aspect_ratio'] = {
+                            'numerator': src_aspect_ratio.numerator,
+                            'denominator': src_aspect_ratio.denominator
+                        }
 
-                if i < block_end:
-                    (tag, size, i) = self._decode_block_header(b, i, ["unof"], optional=True)
+                    pixel_aspect_ratio = gbhd_child.read_rational()
+                    if pixel_aspect_ratio != 0:
+                        meta['grain']['cog_frame']['pixel_aspect_ratio'] = {
+                            'numerator': pixel_aspect_ratio.numerator,
+                            'denominator': pixel_aspect_ratio.denominator
+                        }
 
-                    if size != 0:
-                        meta['grain']['cog_coded_frame']['unit_offsets'] = []
-                        (num, i) = self._read_uint(b, i, 2)
-                        for u in range(0, num):
-                            (offset, i) = self._read_uint(b, i, 4)
-                            meta['grain']['cog_coded_frame']['unit_offsets'].append(offset)
-            elif tag == "aghd":
-                meta['grain']['grain_type'] = "audio"
-                meta['grain']['cog_audio'] = {}
-                (meta['grain']['cog_audio']['format'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_audio']['channels'], i) = self._read_uint(b, i, 2)
-                (meta['grain']['cog_audio']['samples'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_audio']['sample_rate'], i) = self._read_uint(b, i, 4)
-            elif tag == "cahd":
-                meta['grain']['grain_type'] = "coded_audio"
-                meta['grain']['cog_coded_audio'] = {}
-                (meta['grain']['cog_coded_audio']['format'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_audio']['channels'], i) = self._read_uint(b, i, 2)
-                (meta['grain']['cog_coded_audio']['samples'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_audio']['priming'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_audio']['remainder'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_audio']['sample_rate'], i) = self._read_uint(b, i, 4)
-            elif tag == "eghd":
-                meta['grain']['grain_type'] = "event"
-            else:
-                raise GSFDecodeError("Unknown type {} at offset {}".format(tag, i), start, length=gbhd_end - start)
-        i = block_end
-        return (meta, gbhd_end)
+                    meta['grain']['cog_frame']['components'] = []
+                    if gbhd_child.has_child_block():
+                        with GSFBlock(self.file_data) as comp_block:
+                            if comp_block.tag != "comp":
+                                continue  # Skip unknown/unexpected block
 
-    def _decode_grdt(self, b, i):
-        (_, size, i) = self._decode_block_header(b, i, ["grdt"])
-        if size <= 8:
-            return (None, i)
-        start = i - 8
-        return (b[i:start+size], start + size)
+                            comp_count = comp_block.read_uint(2)
+                            offset = 0
+                            for i in range(0, comp_count):
+                                comp = {}
+                                comp['width'] = comp_block.read_uint(4)
+                                comp['height'] = comp_block.read_uint(4)
+                                comp['stride'] = comp_block.read_uint(4)
+                                comp['length'] = comp_block.read_uint(4)
+                                comp['offset'] = offset
+                                offset += comp['length']
+                                meta['grain']['cog_frame']['components'].append(comp)
 
-    def _decode_grai(self, b, i):
-        start = i
-        (tag, size, i) = self._decode_block_header(b, i, ["grai"])
-        if tag == "":
-            return (None, None, start)
-        if size > 0:
-            start = i - 8
-            end = start + size
-            if i <= end - 2:
-                (local_id, i) = self._read_uint(b, i, 2)
+                elif gbhd_child.tag == 'cghd':
+                    meta['grain']['grain_type'] = "coded_video"
+                    meta['grain']['cog_coded_frame'] = {}
+                    meta['grain']['cog_coded_frame']['format'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_coded_frame']['layout'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_coded_frame']['origin_width'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_coded_frame']['origin_height'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_coded_frame']['coded_width'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_coded_frame']['coded_height'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_coded_frame']['is_key_frame'] = gbhd_child.read_bool()
+                    meta['grain']['cog_coded_frame']['temporal_offset'] = gbhd_child.read_sint(4)
 
-                if i <= end - 8:
-                    (meta, i) = self._decode_gbhd(b, i)
-                    data = None
-                    if i <= end - 8:
-                        (data, i) = self._decode_grdt(b, i)
+                    if gbhd_child.has_child_block():
+                        with GSFBlock(self.file_data) as unof_block:
+                            meta['grain']['cog_coded_frame']['unit_offsets'] = []
 
-                    return (self.Grain(meta, data), local_id, start + size)
-            return (None, None, end)
-        return (None, None, start + 8)
+                            unit_offsets = unof_block.read_uint(2)
+                            for i in range(0, unit_offsets):
+                                meta['grain']['cog_coded_frame']['unit_offsets'].append(unof_block.read_uint(4))
+
+                elif gbhd_child.tag == "aghd":
+                    meta['grain']['grain_type'] = "audio"
+                    meta['grain']['cog_audio'] = {}
+                    meta['grain']['cog_audio']['format'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_audio']['channels'] = gbhd_child.read_uint(2)
+                    meta['grain']['cog_audio']['samples'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_audio']['sample_rate'] = gbhd_child.read_uint(4)
+
+                elif gbhd_child.tag == "cahd":
+                    meta['grain']['grain_type'] = "coded_audio"
+                    meta['grain']['cog_coded_audio'] = {}
+                    meta['grain']['cog_coded_audio']['format'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_coded_audio']['channels'] = gbhd_child.read_uint(2)
+                    meta['grain']['cog_coded_audio']['samples'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_coded_audio']['priming'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_coded_audio']['remainder'] = gbhd_child.read_uint(4)
+                    meta['grain']['cog_coded_audio']['sample_rate'] = gbhd_child.read_uint(4)
+
+                elif gbhd_child.tag == "eghd":
+                    meta['grain']['grain_type'] = "event"
+                else:
+                    raise GSFDecodeError(
+                        "Unknown type {} at offset {}".format(gbhd_child.tag, gbhd_child.block_start),
+                        gbhd_child.block_start,
+                        length=gbhd_child.size
+                    )
+
+        return meta
+
+    def grains(self):
+        while True:
+            try:
+                with GSFBlock(self.file_data) as grai_block:
+                    if grai_block.tag != "grai":
+                        continue  # This wasn't a grain, and we can't parse this. Skip it.
+
+                    if grai_block.size == 0:
+                        return  # Terminator block reached
+
+                    local_id = grai_block.read_uint(2)
+                    with GSFBlock(self.file_data) as gbhd_block:
+                        if gbhd_block.tag != "gbhd":
+                            raise GSFDecodeError("gbhd block not found in grain", gbhd_block.block_start)
+                        else:
+                            meta = self._decode_gbhd(gbhd_block)
+
+                    if grai_block.has_child_block():
+                        with GSFBlock(self.file_data) as grdt_block:
+                            if grdt_block.get_remaining() > 0:
+                                data = self.file_data.read(grdt_block.get_remaining())
+                            else:
+                                data = None
+                    else:
+                        data = None
+
+                    yield (self.Grain(meta, data), local_id)
+            except EOFError:
+                return  # We ran out of grains to read and hit EOF
 
     def decode(self, s):
         """Decode a GSF formatted bytes object, returning a dictionary mapping
@@ -645,22 +649,14 @@ class GSFDecoder(object):
         if (s):
             self.file_data = BytesIO(s)
 
-        b = None
-        i = 12
-
         (major, minor) = self._decode_ssb_header()
         if (major, minor) != (7, 0):
             raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
 
-        (head, i) = self._decode_head(i)
+        head = self._decode_head()
         segments = {}
 
-        while i < len(b):
-            (grain, local_id, i) = self._decode_grai(b, i)
-
-            if grain is None:
-                break
-
+        for (grain, local_id) in self.grains():
             if local_id not in segments:
                 segments[local_id] = []
             segments[local_id].append(grain)
