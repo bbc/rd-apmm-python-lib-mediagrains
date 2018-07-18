@@ -19,22 +19,11 @@ to create a redistributable source tarball call
 
 ## Running tests
 
-To run the tests for python2 run
-
-> make test2
-
-to run the tests for python3 run
-
-> make test3
-
-to run both run
+To run the tests for Python 2 and 3 (with tox)
 
 > make test
 
-All tests are run inside a virtual environment so as to avoid
-polluting the global python environment.
-
-## prerequisites
+## Prerequisites
 
 The nmoscommon library used to provide the Timestamp class is
 needed during testing. This library is available here:
