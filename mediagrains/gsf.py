@@ -213,7 +213,7 @@ class GSFBlock():
     def has_child_block(self, strict_blocks=True):
         """Checks if there is space for another child block in this block
 
-        Returns true if there is space for another child block (i.e. > 8 bytes) in this block.
+        Returns true if there is space for another child block (i.e. >= 8 bytes) in this block.
         If strict_blocks=True, this block only contains other blocks rather than any other data. As a result, if there
         are bytes left, but not enough for another block, raise a GSFDecodeError.
         Must be used in a context manager.
