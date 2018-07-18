@@ -1,5 +1,9 @@
 # Mediagrains Library Changelog
 
+## 0.2.2
+- Added Jenkinsfile for CI
+- Changed Makefile to use library template example, add more Debian build options
+
 ## 0.2.1
 - Added step option to testsignalgenerator
 
