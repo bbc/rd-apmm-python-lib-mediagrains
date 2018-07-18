@@ -1084,7 +1084,7 @@ class TestGSFLoads(TestCase):
     def test_loads_raises_when_head_too_small(self):
         with self.assertRaises(GSFDecodeError) as cm:
             (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
-                                     (b"head\x27\x00\x00\x00" +
+                                     (b"head\x29\x00\x00\x00" +
                                       b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
                                       b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
                                       (b"dumy\x08\x00\x00\x00") +
