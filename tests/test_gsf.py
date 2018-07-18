@@ -21,7 +21,7 @@ from unittest import TestCase
 from uuid import UUID
 from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
-from mediagrains.gsf import loads, load, dumps, GSFEncoder, GSFBlock
+from mediagrains.gsf import loads, load, dumps, GSFEncoder, GSFDecoder, GSFBlock
 from mediagrains.gsf import GSFDecodeError
 from mediagrains.gsf import GSFEncodeError
 from mediagrains.gsf import GSFDecodeBadVersionError
@@ -884,6 +884,40 @@ class TestGSFBlock(TestCase):
 
             # Did we seek on exit from each loop iteration
             self.assertEqual(child_bytes_consumed + UUT.block_start + 8, test_stream.tell())
+
+
+class TestGSFDecoder(TestCase):
+    """Tests for the GSFDecoder in its more object-oriented mode
+
+    Note that very little testing of the decoded data happens here, that's handled by TestGSFLoads()
+    """
+    def test_decode_headers(self):
+        video_data_stream = BytesIO(VIDEO_DATA)
+
+        UUT = GSFDecoder(file_data=video_data_stream)
+        head = UUT.decode_file_headers()
+
+        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 22))
+        self.assertEqual(head['id'], UUID('163fd9b7-bef4-4d92-8488-31f3819be008'))
+        self.assertEqual(len(head['segments']), 1)
+        self.assertEqual(head['segments'][0]['id'], UUID('c6a3d3ff-74c0-446d-b59e-de1041f27e8a'))
+
+    def test_generate_grains(self):
+        """Test that the generator yields each grain"""
+        video_data_stream = BytesIO(VIDEO_DATA)
+
+        UUT = GSFDecoder(file_data=video_data_stream)
+        UUT.decode_file_headers()
+
+        grain_count = 0
+        for (grain, local_id) in UUT.grains():
+            self.assertIsInstance(grain, VIDEOGRAIN)
+            self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
+            self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
+
+            grain_count += 1
+
+        self.assertEqual(10, grain_count)  # There are 10 grains in the file
 
 
 class TestGSFLoads(TestCase):

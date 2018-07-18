@@ -374,16 +374,19 @@ class GSFBlock():
 class GSFDecoder(object):
     """A decoder for GSF format.
 
-    Constructor takes a single optional argument parse_grain,
-    which should be a function which takes a metadata dictionary
-    and a buffer object and returns some sort of object representing
-    a grain. The default is to use the function Grain.
+    Provides methods to decode the header of a GSF file, followed by a generator to get each grain, wrapped in some
+    grain method (mediagrains.Grain by default.)
 
-    The only public method is "decode", which takes a string (or similar)
-    as an argument and returns a pair of a dictionary of file metadata and a
-    dictionary mapping numeric segment ids to lists of grain objects."""
-    def __init__(self, parse_grain=Grain, **kwargs):
+    Can also be used to make a one-off decode of a GSF file from a bytes-like object by calling `decode(bytes_like)`.
+    """
+    def __init__(self, parse_grain=Grain, file_data=None, **kwargs):
+        """Constructor
+
+        :param parse_grain: Function that takes a (metadata dict, buffer) and returns a grain representation
+        :param file_data: BufferedReader (or similar) containing GSF data to decode
+        """
         self.Grain = parse_grain
+        self.file_data = file_data
 
     def _decode_ssb_header(self):
         """Find and read the SSB header in the GSF file
