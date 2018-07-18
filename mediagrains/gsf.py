@@ -601,9 +601,10 @@ class GSFDecoder(object):
         except EOFError:
             raise GSFDecodeError("No head block found in file", self.file_data.tell())
 
-    def grains(self):
+    def grains(self, skip_data=False):
         """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
 
+        :param skip_data: If True, grain data blocks will be seeked over and only grain headers will be read
         :yields: (Grain, local_id) tuple for each grain
         :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
         """
@@ -618,7 +619,8 @@ class GSFDecoder(object):
                         meta = self._decode_gbhd(gbhd_block)
 
                     data = None
-                    if grai_block.has_child_block():
+
+                    if grai_block.has_child_block() and not skip_data:
                         with GSFBlock(self.file_data, want_tag="grdt") as grdt_block:
                             if grdt_block.get_remaining() > 0:
                                 data = self.file_data.read(grdt_block.get_remaining())

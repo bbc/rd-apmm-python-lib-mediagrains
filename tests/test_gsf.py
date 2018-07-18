@@ -919,6 +919,33 @@ class TestGSFDecoder(TestCase):
 
         self.assertEqual(10, grain_count)  # There are 10 grains in the file
 
+    def test_skip_grain_data(self):
+        """Test that the `skip_data` parameter causes grain data to be seeked over"""
+        grain_size = 194612  # Parsed from examples/video.gsf hex dump
+        grdt_block_size = 194408  # Parsed from examples/video.gsf hex dump
+        grain_header_size = grain_size - grdt_block_size
+
+        video_data_stream = BytesIO(VIDEO_DATA)
+
+        UUT = GSFDecoder(file_data=video_data_stream)
+        UUT.decode_file_headers()
+
+        reader_mock = mock.MagicMock(side_effect=video_data_stream.read)
+        with mock.patch.object(video_data_stream, "read", new=reader_mock):
+            for (grain, local_id) in UUT.grains(skip_data=True):
+                self.assertEqual(0, len(grain.data))
+
+                # Add up the bytes read for this grain, then reset the read counter
+                bytes_read = 0
+                for args, _ in reader_mock.call_args_list:
+                    bytes_read += args[0]
+
+                reader_mock.reset_mock()
+
+                # No more than the number of bytes in the header should have been read
+                # However some header bytes may be seeked over instead
+                self.assertLessEqual(bytes_read, grain_header_size)
+
 
 class TestGSFLoads(TestCase):
     def test_loads_video(self):
