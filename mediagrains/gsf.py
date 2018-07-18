@@ -357,54 +357,6 @@ class GSFDecoder(object):
     def __init__(self, parse_grain=Grain, **kwargs):
         self.Grain = parse_grain
 
-    def _read_uint(self, b, i, l):
-        r = 0
-        for n in range(0, l):
-            r += (indexbytes(b, i+n) << (n*8))
-        return (r, i+l)
-
-    def _read_bool(self, b, i):
-        (n, i) = self._read_uint(b, i, 1)
-        return ((n != 0), i)
-
-    def _read_sint(self, b, i, l):
-        (r, i) = self._read_uint(b, i, l)
-        if (r >> ((8*l) - 1)) == 1:
-            r -= (1 << (8*l))
-        return (r, i)
-
-    def _read_string(self, b, i, l):
-        return (b[i:i+l].decode(encoding='utf-8'), i+l)
-
-    def _read_varstring(self, b, i):
-        (l, i) = self._read_uint(b, i, 2)
-        return (self._read_string(b, i, l)[0], i+l)
-
-    def _read_uuid(self, b, i):
-        return (UUID(bytes=b[i:i+16]), i+16)
-
-    def _read_timestamp(self, b, i):
-        (year, i) = self._read_sint(b, i, 2)
-        (month, i) = self._read_uint(b, i, 1)
-        (day, i) = self._read_uint(b, i, 1)
-        (hour, i) = self._read_uint(b, i, 1)
-        (minute, i) = self._read_uint(b, i, 1)
-        (second, i) = self._read_uint(b, i, 1)
-        return (datetime(year, month, day, hour, minute, second), i)
-
-    def _read_ippts(self, b, i):
-        (secs, i) = self._read_uint(b, i, 6)
-        (nano, i) = self._read_uint(b, i, 4)
-        return (Timestamp(secs, nano), i)
-
-    def _read_rational(self, b, i):
-        (numerator, i) = self._read_uint(b, i, 4)
-        (denominator, i) = self._read_uint(b, i, 4)
-        if numerator == 0:
-            return (Fraction(0), i)
-        else:
-            return (Fraction(numerator, denominator), i)
-
     def _decode_ssb_header(self):
         """Find and read the SSB header in the GSF file
 
@@ -422,20 +374,6 @@ class GSFDecoder(object):
         minor = ssb_block.read_uint(2)
 
         return (major, minor)
-
-    def _decode_block_header(self, b, i, allowed=None, optional=False):
-        start = i
-        while i <= len(b) - 8:
-            try:
-                (tag, i) = self._read_string(b, i, 4)
-            except UnicodeDecodeError:
-                raise GSFDecodeError("Bytes {!r} at location {} do not make a valid tag for a block".format(b[i:i+4], i), i, 4)
-            (size, i) = self._read_uint(b, i, 4)
-            if allowed is None or tag in allowed:
-                return (tag, size, i)
-            elif optional:
-                return ("", 0, start)
-        return ("", 0, start)
 
     def _decode_head(self):
         """Find the "head" block and decode it
