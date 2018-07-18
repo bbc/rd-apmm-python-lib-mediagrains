@@ -851,6 +851,22 @@ class TestGSFBlock(TestCase):
 
             self.assertFalse(UUT.has_child_block(strict_blocks=False))
 
+    def test_contextmanager_child_blocks_generator(self):
+        """Ensure the child blocks generator returns a block, and seeks afterwards"""
+        test_stream = self._make_sample_stream()
+        with GSFBlock(test_stream) as UUT:
+            loop_count = 0
+            child_bytes_consumed = 0
+            for block in UUT.child_blocks():
+                child_bytes_consumed += block.size
+                loop_count += 1
+
+            # Did we get both child blocks?
+            self.assertEqual(2, loop_count)
+
+            # Did we seek on exit from each loop iteration
+            self.assertEqual(child_bytes_consumed + UUT.block_start + 8, test_stream.tell())
+
 
 class TestGSFLoads(TestCase):
     def test_loads_video(self):

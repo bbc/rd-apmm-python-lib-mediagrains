@@ -219,6 +219,19 @@ class GSFBlock():
         else:
             return False
 
+    def child_blocks(self, strict_blocks=True):
+        """Generator for each child block - each yielded block sits within the context manager
+
+        Must be used in a context manager.
+
+        :param strict_blocks: Set to True to raise if a partial block is found
+        :yields: GSFBlock for child (already acting as a context manager)
+        :raises GSFDecodeError: If there is a partial block and strict=True
+        """
+        while self.has_child_block(strict_blocks=strict_blocks):
+            with GSFBlock(self.file_data) as child_block:
+                yield child_block
+
     def get_remaining(self):
         """Get the number of bytes left in this block
 
