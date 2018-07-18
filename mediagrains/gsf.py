@@ -185,16 +185,15 @@ class GSFBlock():
         :raises GSFDecodeError: If the block tag failed to decode as UTF-8, or an unwanted tag was found
         """
         while True:
+            tag_bytes = self.file_data.read(4)
+
             try:
-                self.tag = self.read_string(4)
+                self.tag = tag_bytes.decode(encoding="utf-8")
             except UnicodeDecodeError:
-                self.file_data.seek(-4, SEEK_CUR)
-                position = self.file_data.tell()
-                bad_bytes = self.file_data.read(4)
                 raise GSFDecodeError(
-                    "Bytes {!r} at location {} do not make a valid tag for a block".format(
-                        bad_bytes, position),
-                    position)
+                    "Bytes {!r} at location {} do not make a valid tag for a block".format(tag_bytes, self.block_start),
+                    self.block_start
+                )
 
             self.size = self.read_uint(4)
 
