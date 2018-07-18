@@ -1,5 +1,11 @@
 # Mediagrains Library Changelog
 
+## 0.3.0
+- Rewrote GSFDecoder to use a BytesIO (or similar) to read the GSF data from,
+  be more object-oriented and make heavy use of grain context managers (while
+  preserving original behaviour)
+- Added `grains()` generator to GSFDecoder, with an option to skip grain data.
+
 ## 0.2.2
 - Added Jenkinsfile for CI
 - Changed Makefile to use library template example, add more Debian build options
