@@ -439,7 +439,10 @@ class GSFDecoder(object):
     def decode(self, s):
         """Decode a GSF formatted bytes object, returning a dictionary mapping
         sequence ids to lists of GRAIN objects (or subclasses of such)."""
-        b = bytes(s)
+        if (s):
+            self.file_data = BytesIO(s)
+
+        b = None
         i = 0
 
         (major, minor, i) = self._decode_ssb_header(b, i)
