@@ -1093,7 +1093,7 @@ class TestGSFLoads(TestCase):
                                        b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
                                        b"\x00\x00\x00\x00\x00\x00\x00\x00")))
 
-        self.assertEqual(cm.exception.offset, 12)
+        self.assertEqual(cm.exception.offset, 51)
 
     def test_loads_raises_when_segm_too_small(self):
         with self.assertRaises(GSFDecodeError) as cm:
@@ -1106,7 +1106,7 @@ class TestGSFLoads(TestCase):
                                        b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
                                        b"\x00\x00\x00\x00\x00\x00\x00\x00")))
 
-        self.assertEqual(cm.exception.offset, 43)
+        self.assertEqual(cm.exception.offset, 77)
 
     def test_loads_decodes_tils(self):
         src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
@@ -1174,7 +1174,7 @@ class TestGSFLoads(TestCase):
                                        b"\x00\x00\x00\x00\x00\x00\x00\x00" +
                                        (b"dumy\x08\x00\x00\x00"))))
 
-        self.assertEqual(cm.exception.offset, 87)
+        self.assertEqual(cm.exception.offset, 179)
 
     def test_loads_decodes_empty_grains(self):
         src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
