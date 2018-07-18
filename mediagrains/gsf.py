@@ -29,6 +29,7 @@ from nmoscommon.timestamp import Timestamp
 from fractions import Fraction
 from frozendict import frozendict
 from six import BytesIO, PY3
+from os import SEEK_SET
 
 __all__ = ["GSFDecoder", "load", "loads", "GSFError", "GSFDecodeError",
            "GSFDecodeBadFileTypeError", "GSFDecodeBadVersionError",
@@ -179,7 +180,7 @@ class GSFBlock():
         try:
             self.tag = self.read_string(4)
         except UnicodeDecodeError:
-            self.file_data.seek(-4, 1)
+            self.file_data.seek(-4, SEEK_CUR)
             bad_bytes = self.file_data.read(4)
             position = self.file_data.tell() - 4
             raise GSFDecodeError(
@@ -192,7 +193,7 @@ class GSFBlock():
 
     def __exit__(self, *args):
         """When used as a context manager, exiting context should seek to the block end"""
-        self.file_data.seek(self.block_start + self.size, 0)  # TODO: Real constant
+        self.file_data.seek(self.block_start + self.size, SEEK_SET)
 
     def has_child_block(self, strict_blocks=True):
         """Checks if there is space for another child block in this block
