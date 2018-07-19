@@ -257,20 +257,20 @@ class GSFBlock():
         assert self.size is not None, "get_remaining() only works in a context manager"
         return (self.block_start + self.size) - self.file_data.tell()
 
-    def read_uint(self, l):
-        """Read an unsigned integer of length l
+    def read_uint(self, length):
+        """Read an unsigned integer of length `length`
 
-        :param l: Number of bytes used to store the integer
+        :param length: Number of bytes used to store the integer
         :returns: Unsigned integer
-        :raises EOFError: If there are fewer than l bytes left in the source
+        :raises EOFError: If there are fewer than `length` bytes left in the source
         """
         r = 0
-        uint_bytes = bytes(self.file_data.read(l))
+        uint_bytes = bytes(self.file_data.read(length))
 
-        if len(uint_bytes) != l:
+        if len(uint_bytes) != length:
             raise EOFError("Unable to read enough bytes from source")
 
-        for n in range(0, l):
+        for n in range(0, length):
             r += (indexbytes(uint_bytes, n) << (n*8))
         return r
 
@@ -282,27 +282,27 @@ class GSFBlock():
         n = self.read_uint(1)
         return (n != 0)
 
-    def read_sint(self, l):
+    def read_sint(self, length):
         """Read a 2's complement signed integer
 
-        :param l: Number of bytes used to store the integer
+        :param length: Number of bytes used to store the integer
         :returns: Signed integer
-        :raises EOFError: If there are fewer than l bytes left in the source
+        :raises EOFError: If there are fewer than `length` bytes left in the source
         """
-        r = self.read_uint(l)
-        if (r >> ((8*l) - 1)) == 1:
-            r -= (1 << (8*l))
+        r = self.read_uint(length)
+        if (r >> ((8*length) - 1)) == 1:
+            r -= (1 << (8*length))
         return r
 
-    def read_string(self, l):
+    def read_string(self, length):
         """Read a fixed-length string, treating it as UTF-8
 
-        :param l: Number of bytes in the string
+        :param length: Number of bytes in the string
         :returns: String
-        :raises EOFError: If there are fewer than l bytes left in the source
+        :raises EOFError: If there are fewer than `length` bytes left in the source
         """
-        string_data = self.file_data.read(l)
-        if (len(string_data) != l):
+        string_data = self.file_data.read(length)
+        if (len(string_data) != length):
             raise EOFError("Unable to read enough bytes from source")
 
         return string_data.decode(encoding='utf-8')
