@@ -29,6 +29,7 @@ from nmoscommon.timestamp import Timestamp
 from fractions import Fraction
 from frozendict import frozendict
 from six import BytesIO, PY3
+from os import SEEK_SET
 
 __all__ = ["GSFDecoder", "load", "loads", "GSFError", "GSFDecodeError",
            "GSFDecodeBadFileTypeError", "GSFDecodeBadVersionError",
@@ -151,310 +152,497 @@ class GSFDecodeBadVersionError(GSFDecodeError):
         self.minor = minor
 
 
+class GSFBlock():
+    """A single block in a GSF file
+
+    Has methods to read various types from the block.
+    Can also be used as a context manager, in which case it will automatically decode the block tag and size, exposed
+    by the `tag` and `size` attributes.
+    """
+    def __init__(self, file_data, want_tag=None, raise_on_wrong_tag=False):
+        """Constructor. Records the start byte of the block in `block_start`
+
+        :param file_data: An instance of io.BufferedReader positioned at the start of the block
+        :param want_tag: If set to a tag string, and in a context manager, skip any block without that tag
+        :param raise_on_wrong_tag: Set to True to raise a GSFDecodeError if the next block isn't `want_tag`
+        """
+        self.file_data = file_data
+        self.want_tag = want_tag
+        self.raise_on_wrong_tag = raise_on_wrong_tag
+
+        self.size = None
+        self.block_start = self.file_data.tell()  # In binary mode, this should always be in bytes
+
+    def __enter__(self):
+        """When used as a context manager, read block size and tag on entry
+
+        - When entering a block, tag and size should be read
+        - If tag doesn't decode, a GSFDecodeError should be raised
+        - If want_tag was supplied to the constructor, skip blocks that don't have that tag
+        - Unless raise_on_wrong_tag was also supplied, in which case raise
+
+        :returns: Instance of GSFBlock
+        :raises GSFDecodeError: If the block tag failed to decode as UTF-8, or an unwanted tag was found
+        """
+        while True:
+            tag_bytes = self.file_data.read(4)
+
+            try:
+                self.tag = tag_bytes.decode(encoding="utf-8")
+            except UnicodeDecodeError:
+                raise GSFDecodeError(
+                    "Bytes {!r} at location {} do not make a valid tag for a block".format(tag_bytes, self.block_start),
+                    self.block_start
+                )
+
+            self.size = self.read_uint(4)
+
+            if self.want_tag is None or self.tag == self.want_tag:
+                return self
+            elif self.tag != self.want_tag and self.raise_on_wrong_tag:
+                raise GSFDecodeError("Wanted tag {} but got {} at {}".format(self.want_tag, self.tag, self.block_start),
+                                     self.block_start)
+            else:
+                self.file_data.seek(self.block_start + self.size, SEEK_SET)
+                self.block_start = self.file_data.tell()
+
+    def __exit__(self, *args):
+        """When used as a context manager, exiting context should seek to the block end"""
+        self.file_data.seek(self.block_start + self.size, SEEK_SET)
+
+    def has_child_block(self, strict_blocks=True):
+        """Checks if there is space for another child block in this block
+
+        Returns true if there is space for another child block (i.e. >= 8 bytes) in this block.
+        If strict_blocks=True, this block only contains other blocks rather than any other data. As a result, if there
+        are bytes left, but not enough for another block, raise a GSFDecodeError.
+        Must be used in a context manager.
+
+        :param strict_blocks: Set to True to raise if a partial block is found
+        :returns: True if there is spaces for another block
+        :raises GSFDecodeError: If there is a partial block and strict=True
+        """
+        assert self.size is not None, "has_child_block() only works in a context manager"
+
+        bytes_remaining = self.get_remaining()
+        if bytes_remaining >= 8:
+            return True
+        elif bytes_remaining != 0 and strict_blocks:
+            position = self.file_data.tell()
+            raise GSFDecodeError("Found a partial block (or parent too small) in '{}' at {}".format(self.tag, position),
+                                 position)
+        else:
+            return False
+
+    def child_blocks(self, strict_blocks=True):
+        """Generator for each child block - each yielded block sits within the context manager
+
+        Must be used in a context manager.
+
+        :param strict_blocks: Set to True to raise if a partial block is found
+        :yields: GSFBlock for child (already acting as a context manager)
+        :raises GSFDecodeError: If there is a partial block and strict=True
+        """
+        while self.has_child_block(strict_blocks=strict_blocks):
+            with GSFBlock(self.file_data) as child_block:
+                yield child_block
+
+    def get_remaining(self):
+        """Get the number of bytes left in this block
+
+        Only works in a context manager, will raise an AssertionError if not
+
+        :returns: Number of bytes left in the block
+        """
+        assert self.size is not None, "get_remaining() only works in a context manager"
+        return (self.block_start + self.size) - self.file_data.tell()
+
+    def read_uint(self, length):
+        """Read an unsigned integer of length `length`
+
+        :param length: Number of bytes used to store the integer
+        :returns: Unsigned integer
+        :raises EOFError: If there are fewer than `length` bytes left in the source
+        """
+        r = 0
+        uint_bytes = bytes(self.file_data.read(length))
+
+        if len(uint_bytes) != length:
+            raise EOFError("Unable to read enough bytes from source")
+
+        for n in range(0, length):
+            r += (indexbytes(uint_bytes, n) << (n*8))
+        return r
+
+    def read_bool(self):
+        """Read a boolean value
+
+        :returns: Boolean value
+        :raises EOFError: If there are no more bytes left in the source"""
+        n = self.read_uint(1)
+        return (n != 0)
+
+    def read_sint(self, length):
+        """Read a 2's complement signed integer
+
+        :param length: Number of bytes used to store the integer
+        :returns: Signed integer
+        :raises EOFError: If there are fewer than `length` bytes left in the source
+        """
+        r = self.read_uint(length)
+        if (r >> ((8*length) - 1)) == 1:
+            r -= (1 << (8*length))
+        return r
+
+    def read_string(self, length):
+        """Read a fixed-length string, treating it as UTF-8
+
+        :param length: Number of bytes in the string
+        :returns: String
+        :raises EOFError: If there are fewer than `length` bytes left in the source
+        """
+        string_data = self.file_data.read(length)
+        if (len(string_data) != length):
+            raise EOFError("Unable to read enough bytes from source")
+
+        return string_data.decode(encoding='utf-8')
+
+    def read_varstring(self):
+        """Read a variable length string
+
+        Reads a 2 byte uint to get the string length, then reads a string of that length
+
+        :returns: String
+        :raises EOFError: If there are too few bytes left in the source
+        """
+        length = self.read_uint(2)
+        return self.read_string(length)
+
+    def read_uuid(self):
+        """Read a UUID
+
+        :returns: UUID
+        :raises EOFError: If there are fewer than l bytes left in the source
+        """
+        uuid_data = self.file_data.read(16)
+
+        if (len(uuid_data) != 16):
+            raise EOFError("Unable to read enough bytes from source")
+
+        return UUID(bytes=uuid_data)
+
+    def read_timestamp(self):
+        """Read a date-time (with seconds resolution) stored in 7 bytes
+
+        :returns: Datetime
+        :raises EOFError: If there are fewer than 7 bytes left in the source
+        """
+        year = self.read_sint(2)
+        month = self.read_uint(1)
+        day = self.read_uint(1)
+        hour = self.read_uint(1)
+        minute = self.read_uint(1)
+        second = self.read_uint(1)
+        return datetime(year, month, day, hour, minute, second)
+
+    def read_ippts(self):
+        """Read a mediatimestamp.Timestamp
+
+        :returns: Timestamp
+        :raises EOFError: If there are fewer than 10 bytes left in the source
+        """
+        secs = self.read_uint(6)
+        nano = self.read_uint(4)
+        return Timestamp(secs, nano)
+
+    def read_rational(self):
+        """Read a rational (fraction)
+
+        If numerator or denominator is 0, returns Fraction(0)
+
+        :returns: fraction.Fraction
+        :raises EOFError: If there are fewer than 8 bytes left in the source
+        """
+        numerator = self.read_uint(4)
+        denominator = self.read_uint(4)
+        if numerator == 0 or denominator == 0:
+            return Fraction(0)
+        else:
+            return Fraction(numerator, denominator)
+
+
 class GSFDecoder(object):
     """A decoder for GSF format.
 
-    Constructor takes a single optional argument parse_grain,
-    which should be a function which takes a metadata dictionary
-    and a buffer object and returns some sort of object representing
-    a grain. The default is to use the function Grain.
+    Provides methods to decode the header of a GSF file, followed by a generator to get each grain, wrapped in some
+    grain method (mediagrains.Grain by default.)
 
-    The only public method is "decode", which takes a string (or similar)
-    as an argument and returns a pair of a dictionary of file metadata and a
-    dictionary mapping numeric segment ids to lists of grain objects."""
-    def __init__(self, parse_grain=Grain, **kwargs):
+    Can also be used to make a one-off decode of a GSF file from a bytes-like object by calling `decode(bytes_like)`.
+    """
+    def __init__(self, parse_grain=Grain, file_data=None, **kwargs):
+        """Constructor
+
+        :param parse_grain: Function that takes a (metadata dict, buffer) and returns a grain representation
+        :param file_data: BufferedReader (or similar) containing GSF data to decode
+        """
         self.Grain = parse_grain
+        self.file_data = file_data
 
-    def _read_uint(self, b, i, l):
-        r = 0
-        for n in range(0, l):
-            r += (indexbytes(b, i+n) << (n*8))
-        return (r, i+l)
+    def _decode_ssb_header(self):
+        """Find and read the SSB header in the GSF file
 
-    def _read_bool(self, b, i):
-        (n, i) = self._read_uint(b, i, 1)
-        return ((n != 0), i)
+        :returns: (major, minor) version tuple
+        :raises GSFDecodeBadFileTypeError: If the SSB tag shows this isn't a GSF file
+        """
+        ssb_block = GSFBlock(self.file_data)
 
-    def _read_sint(self, b, i, l):
-        (r, i) = self._read_uint(b, i, l)
-        if (r >> ((8*l) - 1)) == 1:
-            r -= (1 << (8*l))
-        return (r, i)
+        tag = ssb_block.read_string(8)
 
-    def _read_string(self, b, i, l):
-        return (b[i:i+l].decode(encoding='utf-8'), i+l)
-
-    def _read_varstring(self, b, i):
-        (l, i) = self._read_uint(b, i, 2)
-        return (self._read_string(b, i, l)[0], i+l)
-
-    def _read_uuid(self, b, i):
-        return (UUID(bytes=b[i:i+16]), i+16)
-
-    def _read_timestamp(self, b, i):
-        (year, i) = self._read_sint(b, i, 2)
-        (month, i) = self._read_uint(b, i, 1)
-        (day, i) = self._read_uint(b, i, 1)
-        (hour, i) = self._read_uint(b, i, 1)
-        (minute, i) = self._read_uint(b, i, 1)
-        (second, i) = self._read_uint(b, i, 1)
-        return (datetime(year, month, day, hour, minute, second), i)
-
-    def _read_ippts(self, b, i):
-        (secs, i) = self._read_uint(b, i, 6)
-        (nano, i) = self._read_uint(b, i, 4)
-        return (Timestamp(secs, nano), i)
-
-    def _read_rational(self, b, i):
-        (numerator, i) = self._read_uint(b, i, 4)
-        (denominator, i) = self._read_uint(b, i, 4)
-        if numerator == 0:
-            return (Fraction(0), i)
-        else:
-            return (Fraction(numerator, denominator), i)
-
-    def _decode_ssb_header(self, b, i):
-        start = i
-        (tag, i) = self._read_string(b, i, 8)
         if tag != "SSBBgrsg":
-            raise GSFDecodeBadFileTypeError("File lacks correct header", start, tag)
-        (major, i) = self._read_uint(b, i,  2)
-        (minor, i) = self._read_uint(b, i, 2)
-        return (major, minor, i)
+            raise GSFDecodeBadFileTypeError("File lacks correct header", ssb_block.block_start, tag)
 
-    def _decode_block_header(self, b, i, allowed=None, optional=False):
-        start = i
-        while i <= len(b) - 8:
-            try:
-                (tag, i) = self._read_string(b, i, 4)
-            except UnicodeDecodeError:
-                raise GSFDecodeError("Bytes {!r} at location {} do not make a valid tag for a block".format(b[i:i+4], i), i, 4)
-            (size, i) = self._read_uint(b, i, 4)
-            if allowed is None or tag in allowed:
-                return (tag, size, i)
-            elif optional:
-                return ("", 0, start)
-        return ("", 0, start)
+        major = ssb_block.read_uint(2)
+        minor = ssb_block.read_uint(2)
 
-    def _decode_head(self, b, i):
-        start = i
+        return (major, minor)
+
+    def _decode_head(self, head_block):
+        """Decode the "head" block and extract ID, created date, segments and tags
+
+        :param head_block: GSFBlock representing the "head" block
+        :returns: Head block as a dict
+        """
         head = {}
+        head['id'] = head_block.read_uuid()
+        head['created'] = head_block.read_timestamp()
 
-        (tag, size, i) = self._decode_block_header(b, i, ["head"])
-        if tag == "":
-            raise GSFDecodeError("No head block found in file", i)
-        head_start = i - 8
-        (head['id'], i) = self._read_uuid(b, i)
-        (head['created'], i) = self._read_timestamp(b, i)
         head['segments'] = []
         head['tags'] = []
 
-        head_end = head_start + size
-        while i < head_end:
-            (tag, size, i) = self._decode_block_header(b, i, ["segm", "tag "])
-            if tag == "":
-                i = head_end
-                break
-            segm_start = i - 8
-            segm_end = segm_start + size
-            if tag == "tag ":
-                (key, i) = self._read_varstring(b, i)
-                (val, i) = self._read_varstring(b, i)
-                head['tags'].append((key, val))
-            else:
+        # Read head block children
+        for head_child in head_block.child_blocks():
+            # Parse a segment block
+            if head_child.tag == "segm":
                 segm = {}
-                (segm['local_id'], i) = self._read_uint(b, i, 2)
-                (segm['id'], i) = self._read_uuid(b, i)
-                (segm['count'], i) = self._read_sint(b, i, 8)
+                segm['local_id'] = head_child.read_uint(2)
+                segm['id'] = head_child.read_uuid()
+                segm['count'] = head_child.read_sint(8)
                 segm['tags'] = []
 
-                while i < segm_end:
-                    (tag, size, i) = self._decode_block_header(b, i, ["tag "])
-                    if tag != "":
-                        (key, i) = self._read_varstring(b, i)
-                        (val, i) = self._read_varstring(b, i)
-                        segm['tags'].append((key, val))
+                # Segment blocks can have child tags as well
+                while head_child.has_child_block():
+                    with GSFBlock(self.file_data) as segm_tag:
+                        if segm_tag.tag == "tag ":
+                            key = segm_tag.read_varstring()
+                            value = segm_tag.read_varstring()
+                            segm['tags'].append((key, value))
+
                 head['segments'].append(segm)
 
-            if i > segm_end:
-                raise GSFDecodeError("Size of segm block not large enough to contain its contents", segm_start, length=segm_end - segm_start)
+            # Parse a tag block
+            elif head_child.tag == "tag ":
+                key = head_child.read_varstring()
+                value = head_child.read_varstring()
+                head['tags'].append((key, value))
 
-        if i != head_end:
-            raise GSFDecodeError("Size of head block not large enough to contain its contents", start, length=head_end - start)
+        return head
 
-        return (head, i)
+    def _decode_tils(self, tils_block):
+        """Decode timelabels (tils) block
 
-    def _decode_tils(self, b, i):
+        :param tils_block: Instance of GSFBlock() representing a "gbhd" block
+        :returns: tils block as a dict
+        """
         tils = []
-        (n, i) = self._read_uint(b, i, 2)
-        for k in range(0, n):
-            (tag, i) = self._read_string(b, i, 16)
-            tag = tag.strip('\x00')
-            (count, i) = self._read_uint(b, i, 4)
-            (rate, i) = self._read_rational(b, i)
-            (drop, i) = self._read_bool(b, i)
+        timelabel_count = tils_block.read_uint(2)
+        for i in range(0, timelabel_count):
+            tag = tils_block.read_string(16)
+            tag = tag.strip("\x00")
+            count = tils_block.read_uint(4)
+            rate = tils_block.read_rational()
+            drop = tils_block.read_bool()
+
             tils.append({'tag': tag,
                          'timelabel': {'frames_since_midnight': count,
                                        'frame_rate_numerator': rate.numerator,
                                        'frame_rate_denominator': rate.denominator,
                                        'drop_frame': drop}})
-        return (tils, i)
 
-    def _decode_gbhd(self, b, i):
-        start = i
+        return tils
+
+    def _decode_gbhd(self, gbhd_block):
+        """Decode grain block header ("gbhd") to get grain metadata
+
+        :param gbhd_block: Instance of GSFBlock() representing a "gbhd" block
+        :returns: Grain data dict
+        :raises GSFDecodeError: If "gbhd" block contains an unkown child block
+        """
         meta = {
             "grain": {
             }
         }
-        (_, size, i) = self._decode_block_header(b, i, ["gbhd"])
-        gbhd_end = start + size
-        (meta['grain']['source_id'], i) = self._read_uuid(b, i)
-        (meta['grain']['flow_id'], i) = self._read_uuid(b, i)
-        i += 16
-        (meta['grain']['origin_timestamp'], i) = self._read_ippts(b, i)
-        (meta['grain']['sync_timestamp'], i) = self._read_ippts(b, i)
-        (meta['grain']['rate'], i) = self._read_rational(b, i)
-        (meta['grain']['duration'], i) = self._read_rational(b, i)
 
-        block_start = i
-        (tag, size, i) = self._decode_block_header(b, i, ["tils"], optional=True)
-        block_end = block_start + size
-        if size != 0:
-            (meta['grain']['timelabels'], i) = self._decode_tils(b, i)
+        meta['grain']['source_id'] = gbhd_block.read_uuid()
+        meta['grain']['flow_id'] = gbhd_block.read_uuid()
+        self.file_data.seek(16, 1)  # Skip over deprecated byte array
+        meta['grain']['origin_timestamp'] = gbhd_block.read_ippts()
+        meta['grain']['sync_timestamp'] = gbhd_block.read_ippts()
+        meta['grain']['rate'] = gbhd_block.read_rational()
+        meta['grain']['duration'] = gbhd_block.read_rational()
 
-        if i == gbhd_end:
-            meta['grain']['grain_type'] = 'empty'
-            block_end = i
-        else:
-            (tag, size, i) = self._decode_block_header(b, i, ['vghd', 'cghd', 'aghd', 'cahd', 'eghd'])
-            block_start = i - 8
-            block_end = block_start + size
-
-            if tag == "vghd":
+        for gbhd_child in gbhd_block.child_blocks():
+            if gbhd_child.tag == "tils":
+                meta['grain']['timelabels'] = self._decode_tils(gbhd_child)
+            elif gbhd_child.tag == "vghd":
                 meta['grain']['grain_type'] = 'video'
                 meta['grain']['cog_frame'] = {}
-                (meta['grain']['cog_frame']['format'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_frame']['layout'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_frame']['width'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_frame']['height'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_frame']['extension'], i) = self._read_uint(b, i, 4)
-                (ar, i) = self._read_rational(b, i)
-                if ar != 0:
-                    meta['grain']['cog_frame']['source_aspect_ratio'] = {'numerator': ar.numerator,
-                                                                         'denominator': ar.denominator}
-                (ar, i) = self._read_rational(b, i)
-                if ar != 0:
-                    meta['grain']['cog_frame']['pixel_aspect_ratio'] = {'numerator': ar.numerator,
-                                                                        'denominator': ar.denominator}
+                meta['grain']['cog_frame']['format'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_frame']['layout'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_frame']['width'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_frame']['height'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_frame']['extension'] = gbhd_child.read_uint(4)
+
+                src_aspect_ratio = gbhd_child.read_rational()
+                if src_aspect_ratio != 0:
+                    meta['grain']['cog_frame']['source_aspect_ratio'] = {
+                        'numerator': src_aspect_ratio.numerator,
+                        'denominator': src_aspect_ratio.denominator
+                    }
+
+                pixel_aspect_ratio = gbhd_child.read_rational()
+                if pixel_aspect_ratio != 0:
+                    meta['grain']['cog_frame']['pixel_aspect_ratio'] = {
+                        'numerator': pixel_aspect_ratio.numerator,
+                        'denominator': pixel_aspect_ratio.denominator
+                    }
+
                 meta['grain']['cog_frame']['components'] = []
-                if i < block_end:
-                    comp_start = i
-                    (tag, size, i) = self._decode_block_header(b, i, ["comp"], optional=True)
-                    comp_end = comp_start + size
-                    if size != 0:
-                        (n_comps, i) = self._read_uint(b, i, 2)
+                if gbhd_child.has_child_block():
+                    with GSFBlock(self.file_data) as comp_block:
+                        if comp_block.tag != "comp":
+                            continue  # Skip unknown/unexpected block
+
+                        comp_count = comp_block.read_uint(2)
                         offset = 0
-                        for c in range(0, n_comps):
+                        for i in range(0, comp_count):
                             comp = {}
-                            (comp['width'], i) = self._read_uint(b, i, 4)
-                            (comp['height'], i) = self._read_uint(b, i, 4)
-                            (comp['stride'], i) = self._read_uint(b, i, 4)
-                            (comp['length'], i) = self._read_uint(b, i, 4)
+                            comp['width'] = comp_block.read_uint(4)
+                            comp['height'] = comp_block.read_uint(4)
+                            comp['stride'] = comp_block.read_uint(4)
+                            comp['length'] = comp_block.read_uint(4)
                             comp['offset'] = offset
                             offset += comp['length']
                             meta['grain']['cog_frame']['components'].append(comp)
-                    i = comp_end
-            elif tag == 'cghd':
+
+            elif gbhd_child.tag == 'cghd':
                 meta['grain']['grain_type'] = "coded_video"
                 meta['grain']['cog_coded_frame'] = {}
-                (meta['grain']['cog_coded_frame']['format'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_frame']['layout'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_frame']['origin_width'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_frame']['origin_height'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_frame']['coded_width'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_frame']['coded_height'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_frame']['is_key_frame'], i) = self._read_bool(b, i)
-                (meta['grain']['cog_coded_frame']['temporal_offset'], i) = self._read_sint(b, i, 4)
+                meta['grain']['cog_coded_frame']['format'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_frame']['layout'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_frame']['origin_width'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_frame']['origin_height'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_frame']['coded_width'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_frame']['coded_height'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_frame']['is_key_frame'] = gbhd_child.read_bool()
+                meta['grain']['cog_coded_frame']['temporal_offset'] = gbhd_child.read_sint(4)
 
-                if i < block_end:
-                    (tag, size, i) = self._decode_block_header(b, i, ["unof"], optional=True)
-
-                    if size != 0:
+                if gbhd_child.has_child_block():
+                    with GSFBlock(self.file_data) as unof_block:
                         meta['grain']['cog_coded_frame']['unit_offsets'] = []
-                        (num, i) = self._read_uint(b, i, 2)
-                        for u in range(0, num):
-                            (offset, i) = self._read_uint(b, i, 4)
-                            meta['grain']['cog_coded_frame']['unit_offsets'].append(offset)
-            elif tag == "aghd":
+
+                        unit_offsets = unof_block.read_uint(2)
+                        for i in range(0, unit_offsets):
+                            meta['grain']['cog_coded_frame']['unit_offsets'].append(unof_block.read_uint(4))
+
+            elif gbhd_child.tag == "aghd":
                 meta['grain']['grain_type'] = "audio"
                 meta['grain']['cog_audio'] = {}
-                (meta['grain']['cog_audio']['format'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_audio']['channels'], i) = self._read_uint(b, i, 2)
-                (meta['grain']['cog_audio']['samples'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_audio']['sample_rate'], i) = self._read_uint(b, i, 4)
-            elif tag == "cahd":
+                meta['grain']['cog_audio']['format'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_audio']['channels'] = gbhd_child.read_uint(2)
+                meta['grain']['cog_audio']['samples'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_audio']['sample_rate'] = gbhd_child.read_uint(4)
+
+            elif gbhd_child.tag == "cahd":
                 meta['grain']['grain_type'] = "coded_audio"
                 meta['grain']['cog_coded_audio'] = {}
-                (meta['grain']['cog_coded_audio']['format'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_audio']['channels'], i) = self._read_uint(b, i, 2)
-                (meta['grain']['cog_coded_audio']['samples'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_audio']['priming'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_audio']['remainder'], i) = self._read_uint(b, i, 4)
-                (meta['grain']['cog_coded_audio']['sample_rate'], i) = self._read_uint(b, i, 4)
-            elif tag == "eghd":
+                meta['grain']['cog_coded_audio']['format'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_audio']['channels'] = gbhd_child.read_uint(2)
+                meta['grain']['cog_coded_audio']['samples'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_audio']['priming'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_audio']['remainder'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_audio']['sample_rate'] = gbhd_child.read_uint(4)
+
+            elif gbhd_child.tag == "eghd":
                 meta['grain']['grain_type'] = "event"
             else:
-                raise GSFDecodeError("Unknown type {} at offset {}".format(tag, i), start, length=gbhd_end - start)
-        i = block_end
-        return (meta, gbhd_end)
+                raise GSFDecodeError(
+                    "Unknown type {} at offset {}".format(gbhd_child.tag, gbhd_child.block_start),
+                    gbhd_child.block_start,
+                    length=gbhd_child.size
+                )
 
-    def _decode_grdt(self, b, i):
-        (_, size, i) = self._decode_block_header(b, i, ["grdt"])
-        if size <= 8:
-            return (None, i)
-        start = i - 8
-        return (b[i:start+size], start + size)
+        return meta
 
-    def _decode_grai(self, b, i):
-        start = i
-        (tag, size, i) = self._decode_block_header(b, i, ["grai"])
-        if tag == "":
-            return (None, None, start)
-        if size > 0:
-            start = i - 8
-            end = start + size
-            if i <= end - 2:
-                (local_id, i) = self._read_uint(b, i, 2)
+    def decode_file_headers(self):
+        """Verify the file is a supported version, and get the file header
 
-                if i <= end - 8:
-                    (meta, i) = self._decode_gbhd(b, i)
-                    data = None
-                    if i <= end - 8:
-                        (data, i) = self._decode_grdt(b, i)
-
-                    return (self.Grain(meta, data), local_id, start + size)
-            return (None, None, end)
-        return (None, None, start + 8)
-
-    def decode(self, s):
-        """Decode a GSF formatted bytes object, returning a dictionary mapping
-        sequence ids to lists of GRAIN objects (or subclasses of such)."""
-        b = bytes(s)
-        i = 0
-
-        (major, minor, i) = self._decode_ssb_header(b, i)
+        :returns: File header data (segments and tags) as a dict
+        :raises GSFDecodeBadVersionError: If the file version is not supported
+        :raises GSFDecodeBadFileTypeError: If this isn't a GSF file
+        :raises GSFDecodeError: If the file doesn't have a "head" block
+        """
+        (major, minor) = self._decode_ssb_header()
         if (major, minor) != (7, 0):
             raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
 
-        (head, i) = self._decode_head(b, i)
+        try:
+            with GSFBlock(self.file_data, want_tag="head") as head_block:
+                return self._decode_head(head_block)
+        except EOFError:
+            raise GSFDecodeError("No head block found in file", self.file_data.tell())
+
+    def grains(self, skip_data=False):
+        """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
+
+        :param skip_data: If True, grain data blocks will be seeked over and only grain headers will be read
+        :yields: (Grain, local_id) tuple for each grain
+        :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
+        """
+        while True:
+            try:
+                with GSFBlock(self.file_data, want_tag="grai") as grai_block:
+                    if grai_block.size == 0:
+                        return  # Terminator block reached
+
+                    local_id = grai_block.read_uint(2)
+                    with GSFBlock(self.file_data, want_tag="gbhd", raise_on_wrong_tag=True) as gbhd_block:
+                        meta = self._decode_gbhd(gbhd_block)
+
+                    data = None
+
+                    if grai_block.has_child_block() and not skip_data:
+                        with GSFBlock(self.file_data, want_tag="grdt") as grdt_block:
+                            if grdt_block.get_remaining() > 0:
+                                data = self.file_data.read(grdt_block.get_remaining())
+
+                    yield (self.Grain(meta, data), local_id)
+            except EOFError:
+                return  # We ran out of grains to read and hit EOF
+
+    def decode(self, s):
+        """Decode a GSF formatted bytes object
+
+        :param s: GSF-formatted bytes object
+        :returns: A dictionary mapping sequence ids to lists of GRAIN objects (or subclasses of such).
+        """
+        if (s):
+            self.file_data = BytesIO(s)
+
+        head = self.decode_file_headers()
+
         segments = {}
 
-        while i < len(b):
-            (grain, local_id, i) = self._decode_grai(b, i)
-
-            if grain is None:
-                break
-
+        for (grain, local_id) in self.grains():
             if local_id not in segments:
                 segments[local_id] = []
             segments[local_id].append(grain)
