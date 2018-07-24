@@ -27,7 +27,7 @@ from __future__ import absolute_import
 from six import string_types
 
 from uuid import UUID
-from nmoscommon.timestamp import Timestamp
+from nmoscommon.timestamp import Timestamp, TimeOffset
 from collections import Sequence, MutableSequence, Mapping
 from fractions import Fraction
 from copy import copy, deepcopy
@@ -95,6 +95,14 @@ length
 
 expected_length
     How long the data would be expected to be based on what's listed in the metadata
+
+
+In addition there is a method provided for convenience:
+
+
+final_origin_timestamp()
+    The origin timestamp of the final sample in the grain. For most grain types this is the same as
+    origin_timestamp, but not for audio grains.
     """
     def __init__(self, meta, data):
         self.meta = meta
@@ -209,6 +217,9 @@ expected_length
         if isinstance(value, Timestamp):
             value = value.to_tai_sec_nsec()
         self.meta['grain']['origin_timestamp'] = value
+
+    def final_origin_timestamp(self):
+        return self.origin_timestamp
 
     @property
     def sync_timestamp(self):
@@ -1223,6 +1234,9 @@ sample_rate
                 self.meta['grain']['cog_audio'][key] = 0
         self.meta['grain']['cog_audio']['format'] = int(self.meta['grain']['cog_audio']['format'])
 
+    def final_origin_timestamp(self):
+        return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, 1, self.sample_rate))
+
     @property
     def format(self):
         return CogAudioFormat(self.meta['grain']['cog_audio']['format'])
@@ -1350,6 +1364,9 @@ remainder
             if key not in self.meta['grain']['cog_coded_audio']:
                 self.meta['grain']['cog_coded_audio'][key] = DEF
         self.meta['grain']['cog_coded_audio']['format'] = int(self.meta['grain']['cog_coded_audio']['format'])
+
+    def final_origin_timestamp(self):
+        return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, 1, self.sample_rate))
 
     @property
     def format(self):
