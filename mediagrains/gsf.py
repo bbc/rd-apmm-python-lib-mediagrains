@@ -629,13 +629,13 @@ class GSFDecoder(object):
             except EOFError:
                 return  # We ran out of grains to read and hit EOF
 
-    def decode(self, s):
+    def decode(self, s=None):
         """Decode a GSF formatted bytes object
 
-        :param s: GSF-formatted bytes object
+        :param s: GSF-formatted bytes object, optional if `file_data` supplied to constructor
         :returns: A dictionary mapping sequence ids to lists of GRAIN objects (or subclasses of such).
         """
-        if (s):
+        if (s is not None):
             self.file_data = BytesIO(s)
 
         head = self.decode_file_headers()

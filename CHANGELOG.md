@@ -1,5 +1,9 @@
 # Mediagrains Library Changelog
 
+## 0.3.1
+- Fix GSFDecoder.decode() to not require a parameter when used with `file_data`
+  in constructor.
+
 ## 0.3.0
 - Rewrote GSFDecoder to use a BytesIO (or similar) to read the GSF data from,
   be more object-oriented and make heavy use of grain context managers (while
