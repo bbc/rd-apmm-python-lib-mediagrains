@@ -26,7 +26,7 @@ from __future__ import absolute_import
 from six import string_types
 
 from uuid import UUID
-from nmoscommon.timestamp import Timestamp
+from mediatimestamp import Timestamp
 from fractions import Fraction
 
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
@@ -61,9 +61,9 @@ A properly formated metadata dictionary for a Grain should look like:
                 "grain_type": "empty",
                 "source_id": src_id, # str or uuid.UUID
                 "flow_id": flow_id, # str or uuid.UUID
-                "origin_timestamp": origin_timestamp, # str or nmoscommon.timestamps.Timestamp
-                "sync_timestamp": sync_timestamp, # str or nmoscommon.timestamps.Timestamp
-                "creation_timestamp": creation_timestamp, # str or nmoscommon.timestamps.Timestamp
+                "origin_timestamp": origin_timestamp, # str or mediatimestamps.Timestamp
+                "sync_timestamp": sync_timestamp, # str or mediatimestamps.Timestamp
+                "creation_timestamp": creation_timestamp, # str or mediatimestamps.Timestamp
                 "rate": {
                     "numerator": 0, # int
                     "denominator": 1, # int
@@ -182,9 +182,9 @@ A properly formated metadata dictionary for an Audio Grain should look like:
                 "grain_type": "audio",
                 "source_id": src_id, # str or uuid.UUID
                 "flow_id": flow_id, # str or uuid.UUID
-                "origin_timestamp": origin_timestamp, # str or nmoscommon.timestamps.Timestamp
-                "sync_timestamp": sync_timestamp, # str or nmoscommon.timestamps.Timestamp
-                "creation_timestamp": creation_timestamp, # str or nmoscommon.timestamps.Timestamp
+                "origin_timestamp": origin_timestamp, # str or mediatimestamps.Timestamp
+                "sync_timestamp": sync_timestamp, # str or mediatimestamps.Timestamp
+                "creation_timestamp": creation_timestamp, # str or mediatimestamps.Timestamp
                 "rate": {
                     "numerator": 0, # int
                     "denominator": 1, # int
@@ -306,9 +306,9 @@ A properly formated metadata dictionary for a Coded Audio Grain should look like
                 "grain_type": "audio",
                 "source_id": src_id, # str or uuid.UUID
                 "flow_id": flow_id, # str or uuid.UUID
-                "origin_timestamp": origin_timestamp, # str or nmoscommon.timestamps.Timestamp
-                "sync_timestamp": sync_timestamp, # str or nmoscommon.timestamps.Timestamp
-                "creation_timestamp": creation_timestamp, # str or nmoscommon.timestamps.Timestamp
+                "origin_timestamp": origin_timestamp, # str or mediatimestamps.Timestamp
+                "sync_timestamp": sync_timestamp, # str or mediatimestamps.Timestamp
+                "creation_timestamp": creation_timestamp, # str or mediatimestamps.Timestamp
                 "rate": {
                     "numerator": 0, # int
                     "denominator": 1, # int
@@ -437,9 +437,9 @@ A properly formated metadata dictionary for a Video Grain should look like:
                 "grain_type": "audio",
                 "source_id": src_id, # str or uuid.UUID
                 "flow_id": flow_id, # str or uuid.UUID
-                "origin_timestamp": origin_timestamp, # str or nmoscommon.timestamps.Timestamp
-                "sync_timestamp": sync_timestamp, # str or nmoscommon.timestamps.Timestamp
-                "creation_timestamp": creation_timestamp, # str or nmoscommon.timestamps.Timestamp
+                "origin_timestamp": origin_timestamp, # str or mediatimestamps.Timestamp
+                "sync_timestamp": sync_timestamp, # str or mediatimestamps.Timestamp
+                "creation_timestamp": creation_timestamp, # str or mediatimestamps.Timestamp
                 "rate": {
                     "numerator": 0, # int
                     "denominator": 1, # int
@@ -714,9 +714,9 @@ A properly formated metadata dictionary for a Video Grain should look like:
                 "grain_type": "audio",
                 "source_id": src_id, # str or uuid.UUID
                 "flow_id": flow_id, # str or uuid.UUID
-                "origin_timestamp": origin_timestamp, # str or nmoscommon.timestamps.Timestamp
-                "sync_timestamp": sync_timestamp, # str or nmoscommon.timestamps.Timestamp
-                "creation_timestamp": creation_timestamp, # str or nmoscommon.timestamps.Timestamp
+                "origin_timestamp": origin_timestamp, # str or mediatimestamps.Timestamp
+                "sync_timestamp": sync_timestamp, # str or mediatimestamps.Timestamp
+                "creation_timestamp": creation_timestamp, # str or mediatimestamps.Timestamp
                 "rate": {
                     "numerator": 0, # int
                     "denominator": 1, # int
@@ -859,9 +859,9 @@ A properly formated metadata dictionary for an Event Grain should look like:
                 "grain_type": "audio",
                 "source_id": src_id, # str or uuid.UUID
                 "flow_id": flow_id, # str or uuid.UUID
-                "origin_timestamp": origin_timestamp, # str or nmoscommon.timestamps.Timestamp
-                "sync_timestamp": sync_timestamp, # str or nmoscommon.timestamps.Timestamp
-                "creation_timestamp": creation_timestamp, # str or nmoscommon.timestamps.Timestamp
+                "origin_timestamp": origin_timestamp, # str or mediatimestamps.Timestamp
+                "sync_timestamp": sync_timestamp, # str or mediatimestamps.Timestamp
+                "creation_timestamp": creation_timestamp, # str or mediatimestamps.Timestamp
                 "rate": {
                     "numerator": 0, # int
                     "denominator": 1, # int

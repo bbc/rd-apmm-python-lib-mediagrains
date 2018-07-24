@@ -46,7 +46,7 @@ packages = find_packages(".")
 package_names = packages.keys()
 
 packages_required = [
-    "nmoscommon >=0.1.1",
+    "mediatimestamp >= 1.0.0-dev3",
     "enum34 >= 1.1.6",
     "six >= 1.10.0",
     "frozendict >= 1.2",
@@ -55,7 +55,7 @@ packages_required = [
 deps_required = []
 
 setup(name="mediagrains",
-      version="0.3.1",
+      version="0.4.0",
       description="Simple utility for grain-based media",
       url='https://github.com/bbc/rd-apmm-python-lib-mediagrains',
       author='James Weaver',

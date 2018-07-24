@@ -27,7 +27,7 @@ from __future__ import absolute_import
 from six import string_types
 
 from uuid import UUID
-from nmoscommon.timestamp import Timestamp, TimeOffset
+from mediatimestamp import Timestamp, TimeOffset
 from collections import Sequence, MutableSequence, Mapping
 from fractions import Fraction
 from copy import copy, deepcopy
@@ -70,15 +70,15 @@ flow_id
     A uuid.UUID object representing the flow_id in the grain
 
 origin_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the origin timestamp
+    An mediatimestamp.Timestamp object representing the origin timestamp
     of this grain.
 
 sync_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the sync timestamp
+    An mediatimestamp.Timestamp object representing the sync timestamp
     of this grain.
 
 creation_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the creation timestamp
+    An mediatimestamp.Timestamp object representing the creation timestamp
     of this grain.
 
 rate
@@ -433,15 +433,15 @@ flow_id
     A uuid.UUID object representing the flow_id in the grain
 
 origin_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the origin timestamp
+    An mediatimestamp.Timestamp object representing the origin timestamp
     of this grain.
 
 sync_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the sync timestamp
+    An mediatimestamp.Timestamp object representing the sync timestamp
     of this grain.
 
 creation_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the creation timestamp
+    An mediatimestamp.Timestamp object representing the creation timestamp
     of this grain.
 
 rate
@@ -660,15 +660,15 @@ flow_id
     A uuid.UUID object representing the flow_id in the grain
 
 origin_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the origin timestamp
+    An mediatimestamp.Timestamp object representing the origin timestamp
     of this grain.
 
 sync_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the sync timestamp
+    An mediatimestamp.Timestamp object representing the sync timestamp
     of this grain.
 
 creation_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the creation timestamp
+    An mediatimestamp.Timestamp object representing the creation timestamp
     of this grain.
 
 rate
@@ -947,15 +947,15 @@ flow_id
     A uuid.UUID object representing the flow_id in the grain
 
 origin_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the origin timestamp
+    An mediatimestamp.Timestamp object representing the origin timestamp
     of this grain.
 
 sync_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the sync timestamp
+    An mediatimestamp.Timestamp object representing the sync timestamp
     of this grain.
 
 creation_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the creation timestamp
+    An mediatimestamp.Timestamp object representing the creation timestamp
     of this grain.
 
 rate
@@ -1183,15 +1183,15 @@ flow_id
     A uuid.UUID object representing the flow_id in the grain
 
 origin_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the origin timestamp
+    An mediatimestamp.Timestamp object representing the origin timestamp
     of this grain.
 
 sync_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the sync timestamp
+    An mediatimestamp.Timestamp object representing the sync timestamp
     of this grain.
 
 creation_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the creation timestamp
+    An mediatimestamp.Timestamp object representing the creation timestamp
     of this grain.
 
 rate
@@ -1304,15 +1304,15 @@ flow_id
     A uuid.UUID object representing the flow_id in the grain
 
 origin_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the origin timestamp
+    An mediatimestamp.Timestamp object representing the origin timestamp
     of this grain.
 
 sync_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the sync timestamp
+    An mediatimestamp.Timestamp object representing the sync timestamp
     of this grain.
 
 creation_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the creation timestamp
+    An mediatimestamp.Timestamp object representing the creation timestamp
     of this grain.
 
 rate

@@ -20,7 +20,7 @@ from unittest import TestCase
 import uuid
 from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
-from nmoscommon.timestamp import Timestamp, TimeOffset
+from mediatimestamp import Timestamp, TimeOffset
 import mock
 from fractions import Fraction
 import json

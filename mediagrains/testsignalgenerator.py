@@ -26,7 +26,7 @@ from __future__ import absolute_import
 __all__ = ["LumaSteps"]
 
 from fractions import Fraction
-from nmoscommon.timestamp import TimeOffset
+from mediatimestamp import TimeOffset
 from copy import deepcopy
 
 from . import VideoGrain
