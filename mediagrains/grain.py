@@ -1235,7 +1235,7 @@ sample_rate
         self.meta['grain']['cog_audio']['format'] = int(self.meta['grain']['cog_audio']['format'])
 
     def final_origin_timestamp(self):
-        return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, 1, self.sample_rate))
+        return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, self.sample_rate, 1))
 
     @property
     def format(self):
@@ -1366,7 +1366,7 @@ remainder
         self.meta['grain']['cog_coded_audio']['format'] = int(self.meta['grain']['cog_coded_audio']['format'])
 
     def final_origin_timestamp(self):
-        return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, 1, self.sample_rate))
+        return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, self.sample_rate, 1))
 
     @property
     def format(self):
