@@ -27,7 +27,7 @@ from __future__ import absolute_import
 from six import string_types
 
 from uuid import UUID
-from nmoscommon.timestamp import Timestamp
+from mediatimestamp import Timestamp, TimeOffset
 from collections import Sequence, MutableSequence, Mapping
 from fractions import Fraction
 from copy import copy, deepcopy
@@ -70,15 +70,15 @@ flow_id
     A uuid.UUID object representing the flow_id in the grain
 
 origin_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the origin timestamp
+    An mediatimestamp.Timestamp object representing the origin timestamp
     of this grain.
 
 sync_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the sync timestamp
+    An mediatimestamp.Timestamp object representing the sync timestamp
     of this grain.
 
 creation_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the creation timestamp
+    An mediatimestamp.Timestamp object representing the creation timestamp
     of this grain.
 
 rate
@@ -95,6 +95,14 @@ length
 
 expected_length
     How long the data would be expected to be based on what's listed in the metadata
+
+
+In addition there is a method provided for convenience:
+
+
+final_origin_timestamp()
+    The origin timestamp of the final sample in the grain. For most grain types this is the same as
+    origin_timestamp, but not for audio grains.
     """
     def __init__(self, meta, data):
         self.meta = meta
@@ -209,6 +217,9 @@ expected_length
         if isinstance(value, Timestamp):
             value = value.to_tai_sec_nsec()
         self.meta['grain']['origin_timestamp'] = value
+
+    def final_origin_timestamp(self):
+        return self.origin_timestamp
 
     @property
     def sync_timestamp(self):
@@ -422,15 +433,15 @@ flow_id
     A uuid.UUID object representing the flow_id in the grain
 
 origin_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the origin timestamp
+    An mediatimestamp.Timestamp object representing the origin timestamp
     of this grain.
 
 sync_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the sync timestamp
+    An mediatimestamp.Timestamp object representing the sync timestamp
     of this grain.
 
 creation_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the creation timestamp
+    An mediatimestamp.Timestamp object representing the creation timestamp
     of this grain.
 
 rate
@@ -649,15 +660,15 @@ flow_id
     A uuid.UUID object representing the flow_id in the grain
 
 origin_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the origin timestamp
+    An mediatimestamp.Timestamp object representing the origin timestamp
     of this grain.
 
 sync_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the sync timestamp
+    An mediatimestamp.Timestamp object representing the sync timestamp
     of this grain.
 
 creation_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the creation timestamp
+    An mediatimestamp.Timestamp object representing the creation timestamp
     of this grain.
 
 rate
@@ -936,15 +947,15 @@ flow_id
     A uuid.UUID object representing the flow_id in the grain
 
 origin_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the origin timestamp
+    An mediatimestamp.Timestamp object representing the origin timestamp
     of this grain.
 
 sync_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the sync timestamp
+    An mediatimestamp.Timestamp object representing the sync timestamp
     of this grain.
 
 creation_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the creation timestamp
+    An mediatimestamp.Timestamp object representing the creation timestamp
     of this grain.
 
 rate
@@ -1172,15 +1183,15 @@ flow_id
     A uuid.UUID object representing the flow_id in the grain
 
 origin_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the origin timestamp
+    An mediatimestamp.Timestamp object representing the origin timestamp
     of this grain.
 
 sync_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the sync timestamp
+    An mediatimestamp.Timestamp object representing the sync timestamp
     of this grain.
 
 creation_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the creation timestamp
+    An mediatimestamp.Timestamp object representing the creation timestamp
     of this grain.
 
 rate
@@ -1222,6 +1233,9 @@ sample_rate
             if key not in self.meta['grain']['cog_audio']:
                 self.meta['grain']['cog_audio'][key] = 0
         self.meta['grain']['cog_audio']['format'] = int(self.meta['grain']['cog_audio']['format'])
+
+    def final_origin_timestamp(self):
+        return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, self.sample_rate, 1))
 
     @property
     def format(self):
@@ -1290,15 +1304,15 @@ flow_id
     A uuid.UUID object representing the flow_id in the grain
 
 origin_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the origin timestamp
+    An mediatimestamp.Timestamp object representing the origin timestamp
     of this grain.
 
 sync_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the sync timestamp
+    An mediatimestamp.Timestamp object representing the sync timestamp
     of this grain.
 
 creation_timestamp
-    An nmoscommon.timestamp.Timestamp object representing the creation timestamp
+    An mediatimestamp.Timestamp object representing the creation timestamp
     of this grain.
 
 rate
@@ -1350,6 +1364,9 @@ remainder
             if key not in self.meta['grain']['cog_coded_audio']:
                 self.meta['grain']['cog_coded_audio'][key] = DEF
         self.meta['grain']['cog_coded_audio']['format'] = int(self.meta['grain']['cog_coded_audio']['format'])
+
+    def final_origin_timestamp(self):
+        return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, self.sample_rate, 1))
 
     @property
     def format(self):

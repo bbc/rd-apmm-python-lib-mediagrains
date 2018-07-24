@@ -1,5 +1,10 @@
 # Mediagrains Library Changelog
 
+## 0.4.0
+- Add new `final_origin_timestamp` method to grains to make some logic
+   simpler.
+- Changed dependencies for timestamps to `mediatimestamp`.
+
 ## 0.3.1
 - Fix GSFDecoder.decode() to not require a parameter when used with `file_data`
   in constructor.

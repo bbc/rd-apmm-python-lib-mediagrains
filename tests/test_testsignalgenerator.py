@@ -21,7 +21,7 @@ from __future__ import absolute_import
 from unittest import TestCase
 
 from uuid import UUID
-from nmoscommon.timestamp import Timestamp
+from mediatimestamp import Timestamp
 from fractions import Fraction
 from six import next
 
