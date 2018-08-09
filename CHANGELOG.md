@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 1.0.0
+- Initial Release version
+
 ## 0.4.0
 - Add new `final_origin_timestamp` method to grains to make some logic
    simpler.

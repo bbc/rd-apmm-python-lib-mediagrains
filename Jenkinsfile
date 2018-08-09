@@ -64,10 +64,8 @@ pipeline {
                                     env.py27_result = "FAILURE"
                                 }
                                 bbcGithubNotify(context: "tests/py27", status: "PENDING")
-                                withBBCRDPythonArtifactory {
-                                    // Use a workdirectory in /tmp to avoid shebang length limitation
-                                    sh 'tox -e py27 --recreate --workdir /tmp/$(basename ${WORKSPACE})/tox-py27'
-                                }
+                                // Use a workdirectory in /tmp to avoid shebang length limitation
+                                sh 'tox -e py27 --recreate --workdir /tmp/$(basename ${WORKSPACE})/tox-py27'
                                 script {
                                     env.py27_result = "SUCCESS" // This will only run if the sh above succeeded
                                 }
@@ -84,10 +82,8 @@ pipeline {
                                     env.py3_result = "FAILURE"
                                 }
                                 bbcGithubNotify(context: "tests/py3", status: "PENDING")
-                                withBBCRDPythonArtifactory {
-                                    // Use a workdirectory in /tmp to avoid shebang length limitation
-                                    sh 'tox -e py3 --recreate --workdir /tmp/$(basename ${WORKSPACE})/tox-py3'
-                                }
+                                // Use a workdirectory in /tmp to avoid shebang length limitation
+                                sh 'tox -e py3 --recreate --workdir /tmp/$(basename ${WORKSPACE})/tox-py3'
                                 script {
                                     env.py3_result = "SUCCESS" // This will only run if the sh above succeeded
                                 }
@@ -125,44 +121,6 @@ pipeline {
         }
         stage ("Build Packages") {
             parallel{
-                stage ("Build wheels") {
-                    stages {
-                        stage ("Build py2.7 wheel") {
-                            steps {
-                                script {
-                                    env.py27wheel_result = "FAILURE"
-                                }
-                                bbcGithubNotify(context: "wheelBuild/py2.7", status: "PENDING")
-                                bbcMakeWheel("py27")
-                                script {
-                                    env.py27wheel_result = "SUCCESS" // This will only run if the steps above succeeded
-                                }
-                            }
-                            post {
-                                always {
-                                    bbcGithubNotify(context: "wheelBuild/py2.7", status: env.py27wheel_result)
-                                }
-                            }
-                        }
-                        stage ("Build py3 wheel") {
-                            steps {
-                                script {
-                                    env.py3wheel_result = "FAILURE"
-                                }
-                                bbcGithubNotify(context: "wheelBuild/py3", status: "PENDING")
-                                bbcMakeWheel("py3")
-                                script {
-                                    env.py3wheel_result = "SUCCESS" // This will only run if the steps above succeeded
-                                }
-                            }
-                            post {
-                                always {
-                                    bbcGithubNotify(context: "wheelBuild/py3", status: env.py3wheel_result)
-                                }
-                            }
-                        }
-                    }
-                }
                 stage ("Build Deb with pbuilder") {
                     steps {
                         script {
@@ -201,7 +159,7 @@ pipeline {
                 }
             }
             parallel {
-                stage ("Upload to Artifactory") {
+                stage ("Upload to PyPi") {
                     when {
                         anyOf {
                             expression { return params.FORCE_PYUPLOAD }
@@ -212,17 +170,20 @@ pipeline {
                     }
                     steps {
                         script {
-                            env.artifactoryUpload_result = "FAILURE"
+                            env.pypiUpload_result = "FAILURE"
                         }
-                        bbcGithubNotify(context: "artifactory/upload", status: "PENDING")
-                        bbcTwineUpload(toxenv: "py3")
+                        bbcGithubNotify(context: "pypi/upload", status: "PENDING")
+                        sh 'rm -rf dist/*'
+                        bbcMakeGlobalWheel("py27")
+                        bbcMakeGlobalWheel("py3")
+                        bbcTwineUpload(toxenv: "py3", pypi: true)
                         script {
-                            env.artifactoryUpload_result = "SUCCESS" // This will only run if the steps above succeeded
+                            env.pypiUpload_result = "SUCCESS" // This will only run if the steps above succeeded
                         }
                     }
                     post {
                         always {
-                            bbcGithubNotify(context: "artifactory/upload", status: env.artifactoryUpload_result)
+                            bbcGithubNotify(context: "pypi/upload", status: env.pypiUpload_result)
                         }
                     }
                 }
