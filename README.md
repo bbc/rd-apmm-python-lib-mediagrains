@@ -165,7 +165,7 @@ See [CHANGELOG.md](CHANGELOG.md)
 
 ## Contributing
 
-All contributions are welcome, and must be released to the BBC under the Apache 2 license.
+All contributions are welcome, before submitting you must read and sign a copy of the [Individual Contributor License Agreement](ICLA.md)
 
 Please ensure you have run the test suite before submitting a Pull Request, and include a version bump in line with our [Versioning](#versioning) policy.
 

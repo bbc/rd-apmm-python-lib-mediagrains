@@ -3,3 +3,6 @@ include tox.ini
 include COPYING
 recursive-include examples *.gsf
 recursive-include tests *.py
+include ICLA.md
+include ICLA.pdf
+include LICENSE.md
