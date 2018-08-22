@@ -604,6 +604,8 @@ class GSFDecoder(object):
     def grains(self, skip_data=False):
         """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
 
+        The file_data will be positioned after the `grai` block.
+
         :param skip_data: If True, grain data blocks will be seeked over and only grain headers will be read
         :yields: (Grain, local_id) tuple for each grain
         :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
@@ -625,7 +627,7 @@ class GSFDecoder(object):
                             if grdt_block.get_remaining() > 0 and not skip_data:
                                 data = self.file_data.read(grdt_block.get_remaining())
 
-                    yield (self.Grain(meta, data), local_id)
+                yield (self.Grain(meta, data), local_id)
             except EOFError:
                 return  # We ran out of grains to read and hit EOF
 
