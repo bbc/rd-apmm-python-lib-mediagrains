@@ -620,9 +620,9 @@ class GSFDecoder(object):
 
                     data = None
 
-                    if grai_block.has_child_block() and not skip_data:
+                    if grai_block.has_child_block():
                         with GSFBlock(self.file_data, want_tag="grdt") as grdt_block:
-                            if grdt_block.get_remaining() > 0:
+                            if grdt_block.get_remaining() > 0 and not skip_data:
                                 data = self.file_data.read(grdt_block.get_remaining())
 
                     yield (self.Grain(meta, data), local_id)
