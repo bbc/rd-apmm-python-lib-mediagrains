@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 1.1.0
+- GSFDecoder.grains() with skip_data=True positions stream pointer after data before yielding
+
 ## 1.0.0
 - Initial Release version
 
