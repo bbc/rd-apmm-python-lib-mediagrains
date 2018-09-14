@@ -1,41 +1,39 @@
-# rd-apmm-python-lib-mediagrains
+# mediagrains
 
 A python library for handling grain-based media in a python-native
-style. Please read the pydoc documentation for more details.
+style.
+
+## Introduction
 
 Provides constructor functions for various types of grains and classes
 that nicely wrap those grains, as well as a full serialisation and
-deserialisation library for GSF format.
+deserialisation library for GSF format. Please read the pydoc
+documentation for more details.
 
-## Installing with Python and make
+## Installation
 
-To run the installer run
+### Requirements
 
-> make install
+* A working Python 2.7 or Python 3.x installation
+* BBC R&D's internal deb repository set up as a source for apt (if installing via apt-get)
+* The tool [tox](https://tox.readthedocs.io/en/latest/) is needed to run the unittests, but not required to use the library.
 
-to create a redistributable source tarball call
+### Steps
 
-> make source
+```bash
+# Install from pip
+$ pip install mediagrains
 
-## Running tests
+# Install via apt-get
+$ apt-get install python-mediagrains python3-mediagrains
 
-To run the tests for Python 2 and 3 (with tox)
+# Install directly from source repo
+$ git clone git@github.com:bbc/rd-apmm-python-lib-mediagrains.git
+$ cd rd-apmm-python-lib-mediagrains
+$ pip install -e .
+```
 
-> make test
-
-## Prerequisites
-
-The nmoscommon library used to provide the Timestamp class is
-needed during testing. This library is available here:
-
-< git+https://github.com/jamesba/nmos-common/@python3 >
-
-to install this package that one must be installed, to run the tests
-it must be available in a repository that pip will look at during
-package instalation (if you don't have such a repo you can set one up
-quickly using devpi).
-
-## Examples
+## Usage
 
 As an example of using this in your own code the following is a simple
 program to load the contents of a GSF file and print the timestamp of
@@ -119,3 +117,65 @@ and will be written to the output file as they are added.
 
 If the underlying file is seekable then the end_dump call will upade all segment
 metadata to list the correct grain count, otherwise the counts will be left at -1.
+
+## Documentation
+
+The API is well documented in the docstrings of the module mediagrains, to view:
+
+```bash
+pydoc mediagrains
+```
+
+## Development
+### Testing
+
+To run the unittests for this package in a virtual environment follow these steps:
+
+```bash
+$ git clone git@github.com:bbc/rd-apmm-python-lib-mediagrains.git
+$ cd rd-apmm-python-lib-mediagrains
+$ make test
+```
+### Packaging
+
+Debian and RPM packages can be built using:
+
+```bash
+# Debian packaging
+$ make deb
+
+# RPM packageing
+$ make rpm
+```
+
+### Continuous Integration
+
+This repository includes a Jenkinsfile which makes use of custom steps defined in a BBC internal
+library for use on our own Jenkins instances. As such it will not be immediately useable outside
+of a BBC environment, but may still serve as inspiration and an example of how to implement CI
+for this package.
+
+## Versioning
+
+We use [Semantic Versioning](https://semver.org/) for this repository
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md)
+
+## Contributing
+
+All contributions are welcome, before submitting you must read and sign a copy of the [Individual Contributor License Agreement](ICLA.md)
+
+Please ensure you have run the test suite before submitting a Pull Request, and include a version bump in line with our [Versioning](#versioning) policy.
+
+## Authors
+
+* James Weaver (james.barrett@bbc.co.uk)
+* Philip deNier (philip.denier@bbc.co.uk)
+* Sam Nicholson (sam.nicholson@bbc.co.uk)
+* Alex Rawcliffe (alex.rawcliffe@bbc.co.uk)
+
+## License
+
+See [LICENSE.md](LICENSE.md)
