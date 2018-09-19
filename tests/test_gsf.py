@@ -640,7 +640,7 @@ class TestGSFDumps(TestCase):
 
         enc.add_grain(grain0, segment_local_id=2)
 
-        self.assertEqual(enc.segments[2].grains[0], grain0)
+        self.assertEqual(enc.segments[2]._grains[0], grain0)
 
 
 class TestGSFBlock(TestCase):
