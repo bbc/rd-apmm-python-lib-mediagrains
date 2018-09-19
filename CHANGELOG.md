@@ -1,5 +1,9 @@
 # Mediagrains Library Changelog
 
+## 2.0.0
+- GSFEncoder does not buffer grains once they have been written
+- GSFEncoderSegment does not provide access to buffered grains
+
 ## 1.1.1
 - Updated README.md
 
