@@ -926,7 +926,7 @@ class GSFEncoderSegment(object):
     def __init__(self, id, local_id, tags=None):
         self.id = id
         self.local_id = local_id
-        self.count = 0
+        self._write_count = 0
         self._count_pos = -1
         self._file = None
         self._tags = []
@@ -938,6 +938,10 @@ class GSFEncoderSegment(object):
                     self.add_tag(tag[0], tag[1])
                 except (TypeError, IndexError):
                     raise GSFEncodeError("No idea how to turn {!r} into a tag".format(tag))
+
+    @property
+    def count(self):
+        return len(self._grains) + self._write_count
 
     @property
     def segm_block_size(self):
@@ -955,7 +959,7 @@ class GSFEncoderSegment(object):
         _write_uint(file, self.local_id, 2)
         _write_uuid(file, self.id)
         if all_at_once:
-            _write_sint(file, self.count + len(self._grains), 8)
+            _write_sint(file, self.count, 8)
         else:
             if seekable(file):
                 self._count_pos = file.tell()
@@ -1021,7 +1025,7 @@ class GSFEncoderSegment(object):
         if grain.data is not None:
             self._file.write(grain.data)
 
-        self.count += 1
+        self._write_count += 1
 
     def _gbhd_size_for_grain(self, grain):
         size = 92
@@ -1147,7 +1151,7 @@ class GSFEncoderSegment(object):
         if seekable(self._file) and self._count_pos != -1:
             curpos = self._file.tell()
             self._file.seek(self._count_pos)
-            _write_sint(self._file, self.count, 8)
+            _write_sint(self._file, self._write_count, 8)
             self._file.seek(curpos)
 
         self._file = None
