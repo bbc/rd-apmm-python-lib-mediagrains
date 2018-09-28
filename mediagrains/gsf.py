@@ -926,6 +926,7 @@ class GSFEncoderSegment(object):
     def __init__(self, id, local_id, tags=None):
         self.id = id
         self.local_id = local_id
+        self._write_count = 0
         self._count_pos = -1
         self._file = None
         self._tags = []
@@ -940,7 +941,7 @@ class GSFEncoderSegment(object):
 
     @property
     def count(self):
-        return len(self.grains)
+        return len(self._grains) + self._write_count
 
     @property
     def segm_block_size(self):
@@ -949,10 +950,6 @@ class GSFEncoderSegment(object):
     @property
     def tags(self):
         return tuple(self._tags)
-
-    @property
-    def grains(self):
-        return tuple(self._grains)
 
     def write_to(self, file, all_at_once=False):
         self._file = file
@@ -974,6 +971,7 @@ class GSFEncoderSegment(object):
     def write_all_grains(self):
         for grain in self._grains:
             self._write_grain(grain)
+        self._grains = []
 
     def _write_grain(self, grain):
         gbhd_size = self._gbhd_size_for_grain(grain)
@@ -1026,6 +1024,8 @@ class GSFEncoderSegment(object):
 
         if grain.data is not None:
             self._file.write(grain.data)
+
+        self._write_count += 1
 
     def _gbhd_size_for_grain(self, grain):
         size = 92
@@ -1151,7 +1151,7 @@ class GSFEncoderSegment(object):
         if seekable(self._file) and self._count_pos != -1:
             curpos = self._file.tell()
             self._file.seek(self._count_pos)
-            _write_sint(self._file, self.count, 8)
+            _write_sint(self._file, self._write_count, 8)
             self._file.seek(curpos)
 
         self._file = None
@@ -1165,9 +1165,10 @@ class GSFEncoderSegment(object):
 
     def add_grain(self, grain):
         """Add a grain to the segment, which should be a Grain object"""
-        self._grains.append(grain)
         if self._file is not None:
             self._write_grain(grain)
+        else:
+            self._grains.append(grain)
 
     def add_grains(self, grains):
         """Add several grains to the segment, the parameter should be an
