@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.1.0
+- Added support for comparison of grains in a fairly broad fashion
+
 ## 2.0.1
 - Accept TimeOffsets as grain timestamps, to work around oddities in JSON
   parsing behaviour.
