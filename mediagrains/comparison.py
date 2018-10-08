@@ -239,10 +239,39 @@ class GrainComparisonResult(ComparisonResult):
                                                              exclude_paths=self._exclude_paths,
                                                              comparison_class=MappingContainerComparisonResult))
 
+        if a.grain_type == "event" and b.grain_type == "event":
+            # We are comparing event grains, so compare their event grain specific features
+            for key in ['event_type',
+                        'topic']:
+                path = self._identifier + '.' + key
+                children.append(EqualityComparisonResult(path, getattr(a, key), getattr(b, key), exclude_paths=self._exclude_paths))
+            for key in ['event_data']:
+                path = self._identifier + '.' + key
+                children.append(OrderedContainerComparisonResult(self._identifier + '.' + key, getattr(a, key), getattr(b, key),
+                                                                 exclude_paths=self._exclude_paths,
+                                                                 comparison_class=MappingContainerComparisonResult))
+
         if len(children) > 0 and all(c or c.excluded() for c in children):
             return (True, "Grains match", children)
         else:
             return (False, "Grains do not match", children)
+
+
+class Exclude(object):
+    grain_type = "{}.grain_type"
+    source_id = "{}.source_id"
+    flow_id = "{}.flow_id"
+    rate = "{}.rate"
+    duration = "{}.duration"
+    length = "{}.length"
+    origin_timestamp = "{}.origin_timestamp"
+    sync_timestamp = "{}.sync_timestamp"
+    creation_timestamp = "{}.creation_timestamp"
+    timelabels = "{}.timelabels"
+
+
+def compare_grain(a, b, *options):
+    return GrainComparisonResult(a, b, exclude_paths=options)
 
 
 if __name__ == "__main__":
@@ -258,8 +287,9 @@ if __name__ == "__main__":
     a.add_timelabel('tmp', 3, Fraction(25, 1))
     b.add_timelabel('tmp', 3, Fraction(25, 1))
 
-    m = GrainComparisonResult(a, b, exclude_paths=['{}.origin_timestamp',
-                                                   '{}.sync_timestamp',
-                                                   '{}.creation_timestamp'])
-    print(str(m))
+    m = compare_grain(a, b,
+                      Exclude.origin_timestamp,
+                      Exclude.sync_timestamp,
+                      Exclude.creation_timestamp)
+    print(m)
     print(m.msg)
