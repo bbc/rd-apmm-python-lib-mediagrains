@@ -26,10 +26,10 @@ itself.
 from __future__ import print_function
 from __future__ import absolute_import
 
-from .grain import GRAIN
-
 from fractions import Fraction
 from mediatimestamp import TimeOffset
+
+__all__ = ["compare_grain", "Exclude"]
 
 
 class ComparisonResult (object):
@@ -257,21 +257,31 @@ class GrainComparisonResult(ComparisonResult):
             return (False, "Grains do not match", children)
 
 
+class ComparisonOption(object):
+    def __init__(self, path):
+        self.path = path
+
+
+class ComparisonExclude(ComparisonOption):
+    pass
+
+
 class Exclude(object):
-    grain_type = "{}.grain_type"
-    source_id = "{}.source_id"
-    flow_id = "{}.flow_id"
-    rate = "{}.rate"
-    duration = "{}.duration"
-    length = "{}.length"
-    origin_timestamp = "{}.origin_timestamp"
-    sync_timestamp = "{}.sync_timestamp"
-    creation_timestamp = "{}.creation_timestamp"
-    timelabels = "{}.timelabels"
+    grain_type = ComparisonExclude("{}.grain_type")
+    source_id = ComparisonExclude("{}.source_id")
+    flow_id = ComparisonExclude("{}.flow_id")
+    rate = ComparisonExclude("{}.rate")
+    duration = ComparisonExclude("{}.duration")
+    length = ComparisonExclude("{}.length")
+    origin_timestamp = ComparisonExclude("{}.origin_timestamp")
+    sync_timestamp = ComparisonExclude("{}.sync_timestamp")
+    creation_timestamp = ComparisonExclude("{}.creation_timestamp")
+    timelabels = ComparisonExclude("{}.timelabels")
 
 
 def compare_grain(a, b, *options):
-    return GrainComparisonResult(a, b, exclude_paths=options)
+    exclude_paths = [option.path for option in options if isinstance(option, ComparisonExclude)]
+    return GrainComparisonResult(a, b, exclude_paths=exclude_paths)
 
 
 if __name__ == "__main__":

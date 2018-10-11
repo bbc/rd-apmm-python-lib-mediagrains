@@ -36,7 +36,7 @@ __all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain", "CodedAudioGr
 
 
 def Grain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
-          sync_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
+          sync_timestamp=None, creation_timestamp=None, rate=Fraction(0, 1), duration=Fraction(0, 1),
           flow_id=None, data=None, src_id=None, meta=None):
     """\
 Function called to construct a grain either from existing data or with new data.
@@ -97,12 +97,16 @@ class mediagrains.grain.GRAIN
             if data is None:
                 data = flow_id_or_data
         else:
-            src_id = src_id_or_meta
+            if src_id is None:
+                src_id = src_id_or_meta
             if flow_id is None:
                 flow_id = flow_id_or_data
 
     if meta is None:
-        cts = Timestamp.get_time()
+        if creation_timestamp is None:
+            cts = Timestamp.get_time()
+        else:
+            cts = creation_timestamp
         ots = origin_timestamp
         sts = sync_timestamp
 
@@ -132,12 +136,12 @@ class mediagrains.grain.GRAIN
                 "sync_timestamp": str(sts),
                 "creation_timestamp": str(cts),
                 "rate": {
-                    "numerator": 0,
-                    "denominator": 1,
+                    "numerator": Fraction(rate).numerator,
+                    "denominator": Fraction(rate).denominator,
                     },
                 "duration": {
-                    "numerator": 0,
-                    "denominator": 1,
+                    "numerator": Fraction(duration).numerator,
+                    "denominator": Fraction(duration).denominator,
                     },
                 }
             }
