@@ -841,10 +841,10 @@ class mediagrains.grain.CODEDVIDEOGRAIN
     return CODEDVIDEOGRAIN(meta, data)
 
 
-def EventGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
-               sync_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
+def EventGrain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
+               sync_timestamp=None, creation_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
                event_type='', topic='',
-               flow_id=None, data=None):
+               src_id=None, flow_id=None, meta=None, data=None):
     """\
 Function called to construct an event grain either from existing data or with new data.
 
@@ -860,7 +860,7 @@ A properly formated metadata dictionary for an Event Grain should look like:
         {
             "@_ns": "urn:x-ipstudio:ns:0.1",
             "grain": {
-                "grain_type": "audio",
+                "grain_type": "event",
                 "source_id": src_id, # str or uuid.UUID
                 "flow_id": flow_id, # str or uuid.UUID
                 "origin_timestamp": origin_timestamp, # str or mediatimestamps.Timestamp
@@ -912,15 +912,14 @@ dictionary at the key "event_payload". If no data object is provided then the
 In either case the value returned by this function will be an instance of the
 class mediagrains.grain.EVENTGRAIN
 """
-    meta = None
-    src_id = None
-
     if isinstance(src_id_or_meta, dict):
-        meta = src_id_or_meta
+        if meta is None:
+            meta = src_id_or_meta
         if data is None:
             data = flow_id_or_data
     else:
-        src_id = src_id_or_meta
+        if src_id is None:
+            src_id = src_id_or_meta
         if flow_id is None:
             flow_id = flow_id_or_data
 
@@ -928,7 +927,9 @@ class mediagrains.grain.EVENTGRAIN
         if src_id is None or flow_id is None:
             raise AttributeError("Must include either metadata, or src_id, and flow_id")
 
-        cts = Timestamp.get_time()
+        cts = creation_timestamp
+        if cts is None:
+            cts = Timestamp.get_time()
         if origin_timestamp is None:
             origin_timestamp = cts
         if sync_timestamp is None:

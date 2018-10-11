@@ -168,6 +168,9 @@ final_origin_timestamp()
     def __eq__(self, other):
         return tuple(self) == other
 
+    def __ne__(self, other):
+        return not (self == other)
+
     def __copy__(self):
         from .grain_constructors import Grain
         return Grain(copy(self.meta), self.data)

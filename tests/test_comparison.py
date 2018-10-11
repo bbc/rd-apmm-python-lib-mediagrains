@@ -20,9 +20,9 @@ from __future__ import absolute_import
 
 from cloudfit_fixtures import APMMTestCase
 
-from hypothesis import given, assume
-from hypothesis.strategies import uuids
-from mediagrains.hypothesis.strategies import empty_grains, grains_varying_entries
+from hypothesis import given, assume, reproduce_failure
+from hypothesis.strategies import uuids, from_regex
+from mediagrains.hypothesis.strategies import empty_grains, event_grains, grains_varying_entries, attributes_for_grain_strategy, strategy_for_grain_attribute
 from mediatimestamp.hypothesis.strategies import timestamps
 
 from mediatimestamp import Timestamp
@@ -33,64 +33,59 @@ from copy import deepcopy
 
 
 class TestCompareGrain(APMMTestCase):
-    @given(empty_grains())
-    def test_empty_grains_equal(self, a):
-        b = deepcopy(a)
-        c = compare_grain(a, b)
-        self.assertTrue(c, msg="Comparison of {!r} and {!r} was unequal when equality was expected:\n\n{}".format(a, b, str(c)))
+    def test_equal_grains_compare_as_equal(self):
+        def _check(self, a):
+            b = deepcopy(a)
+            c = compare_grain(a, b)
+            self.assertTrue(c, msg="Comparison of {!r} and {!r} was unequal when equality was expected:\n\n{}".format(a, b, str(c)))
+            self.assertEqual(c.failing_attributes(), [])
 
-    @given(empty_grains(),
-           empty_grains())
-    def test_empty_grains_unequal(self, a, b):
-        assume(not ((a.source_id == b.source_id) and
-                    (a.flow_id == b.flow_id) and
-                    (a.origin_timestamp == b.origin_timestamp) and
-                    (a.sync_timestamp == b.sync_timestamp) and
-                    (a.creation_timestamp == b.creation_timestamp)))
-        c = compare_grain(a, b)
-        self.assertFalse(c, msg="Comparison of {!r} and {!r} was equal when inequality was expected:\n\n{}".format(a, b, str(c)))
+        for grains in [empty_grains, event_grains]:
+            given(grains())(_check)(self)
 
-    def test_empty_grains_compare_as_equal_with_exclusions_when_not_actually_equal(self):
+    def test_unequal_grains_compare_as_unequal(self):
+        def _check(self, a, b):
+            assume(a != b)
+            c = compare_grain(a, b)
+            self.assertFalse(c, msg="Comparison of {!r} and {!r} was equal when inequality was expected:\n\n{}".format(a, b, str(c)))
+            self.assertNotEqual(c.failing_attributes(), [])
+
+        for grains in [empty_grains, event_grains]:
+            given(grains(), grains())(_check)(self)
+
+    def test_unequal_grains_compare_as_equal_with_exclusions_when_difference_is_excluded(self):
         def _check(self, excl, grains):
             (a, b) = grains
             assume(getattr(a, excl) != getattr(b, excl))
             c = compare_grain(a, b, getattr(Exclude, excl))
             self.assertTrue(c, msg="Comparison of {!r} and {!r} excluding {} was unequal when equality was expected:\n\n{}".format(a, b, excl, str(c)))
+            self.assertIn(excl, c.failing_attributes())
+            self.assertFalse(getattr(c, excl), msg="Expected {!r} to evaluate as false when comparing {!r} and {!r} excluding {}".format(getattr(c, excl), a, b, excl))
 
-        for excl in ['source_id',
-                     'flow_id']:
-            given(grains_varying_entries(empty_grains(), {excl: uuids()}, max_size=2))(_check)(self, excl)
+        for grains in [empty_grains, event_grains]:
+            for excl in attributes_for_grain_strategy(grains):
+                given(grains_varying_entries(grains(), {excl: strategy_for_grain_attribute(excl)}, max_size=2))(_check)(self, excl)
 
-        for excl in ['origin_timestamp',
-                     'sync_timestamp',
-                     'creation_timestamp']:
-            given(grains_varying_entries(empty_grains(), {excl: timestamps()}, max_size=2))(_check)(self, excl)
-
-    @given(empty_grains())
-    def test_empty_grains_equal_with_exclusions(self, a):
-        b = deepcopy(a)
-        for excl in ['source_id',
-                     'flow_id',
-                     'origin_timestamp',
-                     'sync_timestamp',
-                     'creation_timestamp']:
+    def test_equal_grains_compare_as_equal_with_exclusions(self):
+        def _check(self, excl, a):
+            b = deepcopy(a)
             c = compare_grain(a, b, getattr(Exclude, excl))
             self.assertTrue(c, msg="Comparison of {!r} and {!r} excluding {} was unequal when equality was expected:\n\n{}".format(a, b, excl, str(c)))
+            self.assertEqual(c.failing_attributes(), [])
 
-    def test_empty_grains_unequal_with_exclusions_if_inequality_outside_exclusions(self):
-        @given(empty_grains(), empty_grains())
-        def _check(self, excl, a, b):
-            assume(any(getattr(a, key) != getattr(b, key) for key in ['source_id',
-                                                                      'flow_id',
-                                                                      'origin_timestamp',
-                                                                      'sync_timestamp',
-                                                                      'creation_timestamp'] if key != excl))
+        for grains in [empty_grains, event_grains]:
+            for excl in attributes_for_grain_strategy(grains):
+                given(grains())(_check)(self, excl)
+
+    def test_unequal_grains_compare_as_unequal_with_exclusions_when_difference_is_not_excluded(self):
+        def _check(self, excl, attrs, a, b):
+            assume(any(getattr(a, key) != getattr(b, key) for key in attrs if key != excl))
             c = compare_grain(a, b, getattr(Exclude, excl))
             self.assertFalse(c, msg="Comparison of {!r} and {!r} excluding {} was equal when inequality was expected:\n\n{}".format(a, b, excl, str(c)))
+            self.assertNotEqual(c.failing_attributes(), [])
+            self.assertNotEqual(c.failing_attributes(), [excl])
 
-        for excl in ['source_id',
-                     'flow_id',
-                     'origin_timestamp',
-                     'sync_timestamp',
-                     'creation_timestamp']:
-            _check(self, excl)
+        for grains in [empty_grains, event_grains]:
+            attrs = attributes_for_grain_strategy(grains)
+            for excl in attrs:
+                given(grains(), grains())(_check)(self, excl, attrs)

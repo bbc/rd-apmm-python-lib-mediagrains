@@ -39,6 +39,7 @@ class ComparisonResult (object):
     public interface, attributes, all read only:
 
     identifier -- an identifier identifing what was being compared, will contain a single {} for substituting the name of the top level object
+    attr -- an attribute name which identifies this within it's immedaite parent. Sometimes is None
     a -- the first object that was compared
     b -- the second object that was compared
     children -- a list of ComparisonResult objects for sub-comparisons
@@ -49,17 +50,27 @@ class ComparisonResult (object):
     in addition the object itself is truthy if the comparison of a and b match,
     and falsy if they do not.
     """
-    def __init__(self, identifier, a, b, exclude_paths=[]):
+    def __init__(self, identifier, a, b, exclude_paths=[], attr=None, key=None):
         self._a = a
         self._b = b
         self._identifier = identifier
         self._exclude_paths = exclude_paths
+        self._attr = attr
+        self._key = key
         (self._equal, self._msg, self._children) = self.compare(a, b)
 
     def __bool__(self):
         return self._equal
 
     __nonzero__ = __bool__
+
+    @property
+    def attr(self):
+        return self._attr
+
+    @property
+    def key(self):
+        return self._key
 
     @property
     def identifier(self):
@@ -102,6 +113,20 @@ class ComparisonResult (object):
         """
         return (False, "A generic comparison always fails", [])
 
+    def failing_attributes(self):
+        """Call to determine which attributes of the compared objects failed to match
+
+        :returns: a list of strings, which are attribute names in the compared objects
+        """
+        return [c.attr for c in self.children if not c and c.attr is not None]
+
+    def failing_keys(self):
+        """Call to determine which keys of the compared containers failed to match
+
+        :returns: a list of strings, which are keys names in the compared containers
+        """
+        return [c.key for c in self.children if not c and c.key is not None]
+
     def _str(self, prefix=""):
         r = prefix
         if self._identifier in self._exclude_paths:
@@ -124,6 +149,29 @@ class ComparisonResult (object):
     def __repr__(self):
         return "{}(identifier={!r}, a={!r}, b={!r}, exclude_paths={!r})".format(self.__class__.__name__, self._identifier, self._a, self._b, self._exclude_paths)
 
+    def subcomparison_for_attribute(self, key):
+        results = [c for c in self.children if c.attr == key]
+        if len(results) == 0:
+            raise KeyError
+        else:
+            return results[0]
+
+    def __getattr__(self, key):
+        try:
+            return self.subcomparison_for_attribute(key)
+        except KeyError:
+            raise AttributeError
+
+    def subcomparison_for_key(self, key):
+        results = [c for c in self.children if c.key == key]
+        if len(results) == 0:
+            raise KeyError
+        else:
+            return results[0]
+
+    def __getitem__(self, key):
+        return self.subcomparison_for_key(key)
+
 
 class EqualityComparisonResult(ComparisonResult):
     def compare(self, a, b):
@@ -134,9 +182,9 @@ class EqualityComparisonResult(ComparisonResult):
 
 
 class DifferenceComparisonResult(ComparisonResult):
-    def __init__(self, identifier, a, b, exclude_paths=[], expected_difference=0):
+    def __init__(self, identifier, a, b, expected_difference=0, **kwargs):
         self._expected_difference = expected_difference
-        super(DifferenceComparisonResult, self).__init__(identifier, a, b, exclude_paths=exclude_paths)
+        super(DifferenceComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
     def compare(self, a, b):
         diff = a - b
@@ -147,43 +195,43 @@ class DifferenceComparisonResult(ComparisonResult):
 
 
 class TimestampDifferanceComparisonResult(DifferenceComparisonResult):
-    def __init__(self, identifier, a, b, exclude_paths=[], expected_difference=TimeOffset(0)):
-        super(TimestampDifferanceComparisonResult, self).__init__(identifier, a, b, expected_difference=expected_difference, exclude_paths=exclude_paths)
+    def __init__(self, identifier, a, b, expected_difference=TimeOffset(0), **kwargs):
+        super(TimestampDifferanceComparisonResult, self).__init__(identifier, a, b, expected_difference=expected_difference, **kwargs)
 
 
 class AOnlyComparisonResult(ComparisonResult):
-    def __init__(self, identifier, a, exclude_paths=[]):
-        super(AOnlyComparisonResult, self).__init__(identifier, a, None, exclude_paths=exclude_paths)
+    def __init__(self, identifier, a, **kwargs):
+        super(AOnlyComparisonResult, self).__init__(identifier, a, None, **kwargs)
 
     def compare(self, a, b):
         return (False, "{} == {!r} but {} does not exist".format(self._identifier.format('a'), a, self._identifier.format('b')), [])
 
 
 class BOnlyComparisonResult(ComparisonResult):
-    def __init__(self, identifier, b, exclude_paths=[]):
-        super(BOnlyComparisonResult, self).__init__(identifier, None, b, exclude_paths=exclude_paths)
+    def __init__(self, identifier, b, **kwargs):
+        super(BOnlyComparisonResult, self).__init__(identifier, None, b, **kwargs)
 
     def compare(self, a, b):
         return (False, "{} does not exist, but {} == {!r}".format(self._identifier.format('a'), self._identifier.format('b'), b), [])
 
 
 class OrderedContainerComparisonResult(ComparisonResult):
-    def __init__(self, identifier, a, b, exclude_paths=[], comparison_class=EqualityComparisonResult):
+    def __init__(self, identifier, a, b, comparison_class=EqualityComparisonResult, **kwargs):
         self._comparison_class = comparison_class
-        super(OrderedContainerComparisonResult, self).__init__(identifier, a, b, exclude_paths=exclude_paths)
+        super(OrderedContainerComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
     def compare(self, a, b):
         children = []
 
         children.append(EqualityComparisonResult('len({})'.format(self._identifier), len(a), len(b), exclude_paths=self._exclude_paths))
         for n in range(0, min(len(a), len(b))):
-            children.append(self._comparison_class(self.identifier + "[{}]".format(n), a[n], b[n], exclude_paths=self._exclude_paths))
+            children.append(self._comparison_class(self.identifier + "[{}]".format(n), a[n], b[n], exclude_paths=self._exclude_paths, key=n))
         if len(a) > len(b):
             for n in range(len(b), len(a)):
-                children.append(AOnlyComparisonResult(self.identifier + "[{}]".format(n), a[n], exclude_paths=self._exclude_paths))
+                children.append(AOnlyComparisonResult(self.identifier + "[{}]".format(n), a[n], exclude_paths=self._exclude_paths, key=n))
         if len(b) > len(a):
             for n in range(len(a), len(b)):
-                children.append(BOnlyComparisonResult(self.identifier + "[{}]".format(n), b[n], exclude_paths=self._exclude_paths))
+                children.append(BOnlyComparisonResult(self.identifier + "[{}]".format(n), b[n], exclude_paths=self._exclude_paths, key=n))
 
         if all(c or c.excluded() for c in children):
             return (True, "Lists match", children)
@@ -192,20 +240,19 @@ class OrderedContainerComparisonResult(ComparisonResult):
 
 
 class MappingContainerComparisonResult(ComparisonResult):
-    def __init__(self, identifier, a, b, exclude_paths=[], comparison_class=EqualityComparisonResult):
+    def __init__(self, identifier, a, b, comparison_class=EqualityComparisonResult, **kwargs):
         self._comparison_class = comparison_class
-        super(MappingContainerComparisonResult, self).__init__(identifier, a, b, exclude_paths=exclude_paths)
+        super(MappingContainerComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
     def compare(self, a, b):
         children = []
 
-        children.append(OrderedContainerComparisonResult('list({}.keys())'.format(self._identifier), list(a.keys()), list(b.keys()), exclude_paths=self._exclude_paths))
         for key in [k for k in a.keys() if k in b.keys()]:
-            children.append(self._comparison_class(self.identifier + "[{!r}]".format(key), a[key], b[key], exclude_paths=self._exclude_paths))
+            children.append(self._comparison_class(self.identifier + "[{!r}]".format(key), a[key], b[key], exclude_paths=self._exclude_paths, key=key))
         for key in [k for k in a.keys() if k not in b.keys()]:
-            children.append(AOnlyComparisonResult(self.identifier + "[{!r}]".format(key), a[key], exclude_paths=self._exclude_paths))
+            children.append(AOnlyComparisonResult(self.identifier + "[{!r}]".format(key), a[key], exclude_paths=self._exclude_paths, key=key))
         for key in [k for k in b.keys() if k not in a.keys()]:
-            children.append(BOnlyComparisonResult(self.identifier + "[{!r}]".format(key), b[key], exclude_paths=self._exclude_paths))
+            children.append(BOnlyComparisonResult(self.identifier + "[{!r}]".format(key), b[key], exclude_paths=self._exclude_paths, key=key))
 
         if all(c or c.excluded() for c in children):
             return (True, "Mappings match", children)
@@ -214,11 +261,18 @@ class MappingContainerComparisonResult(ComparisonResult):
 
 
 class GrainComparisonResult(ComparisonResult):
-    def __init__(self, a, b, exclude_paths=[]):
-        super(GrainComparisonResult, self).__init__("{}", a, b, exclude_paths=exclude_paths)
+    def __init__(self, a, b, **kwargs):
+        super(GrainComparisonResult, self).__init__("{}", a, b, **kwargs)
 
     def compare(self, a, b):
         children = []
+
+        if a.grain_type == "event" and b.grain_type == "event":
+            # We are comparing event grains, so we should make sure that payload length is ignored if anything in the payload is ignored:
+            if((Exclude.event_type.path in self._exclude_paths) or
+               (Exclude.topic.path in self._exclude_paths) or
+               (Exclude.event_data.path in self._exclude_paths)):
+                self._exclude_paths.append(Exclude.length.path)
 
         for key in ['grain_type',
                     'source_id',
@@ -227,29 +281,30 @@ class GrainComparisonResult(ComparisonResult):
                     'duration',
                     'length']:
             path = self._identifier + '.' + key
-            children.append(EqualityComparisonResult(path, getattr(a, key), getattr(b, key), exclude_paths=self._exclude_paths))
+            children.append(EqualityComparisonResult(path, getattr(a, key), getattr(b, key), exclude_paths=self._exclude_paths, attr=key))
         for key in ['origin_timestamp',
                     'sync_timestamp',
                     'creation_timestamp']:
             path = self._identifier + '.' + key
-            children.append(TimestampDifferanceComparisonResult(path, getattr(a, key), getattr(b, key), exclude_paths=self._exclude_paths))
+            children.append(TimestampDifferanceComparisonResult(path, getattr(a, key), getattr(b, key), exclude_paths=self._exclude_paths, attr=key))
 
-        if self._identifier + '.' + 'timelabels' not in self._exclude_paths:
-            children.append(OrderedContainerComparisonResult(self._identifier + '.' + 'timelabels', a.timelabels, b.timelabels,
-                                                             exclude_paths=self._exclude_paths,
-                                                             comparison_class=MappingContainerComparisonResult))
+        children.append(OrderedContainerComparisonResult(self._identifier + '.' + 'timelabels', a.timelabels, b.timelabels,
+                                                         exclude_paths=self._exclude_paths,
+                                                         comparison_class=MappingContainerComparisonResult,
+                                                         attr='timelabels'))
 
         if a.grain_type == "event" and b.grain_type == "event":
             # We are comparing event grains, so compare their event grain specific features
             for key in ['event_type',
                         'topic']:
                 path = self._identifier + '.' + key
-                children.append(EqualityComparisonResult(path, getattr(a, key), getattr(b, key), exclude_paths=self._exclude_paths))
+                children.append(EqualityComparisonResult(path, getattr(a, key), getattr(b, key), exclude_paths=self._exclude_paths, attr=key))
             for key in ['event_data']:
                 path = self._identifier + '.' + key
                 children.append(OrderedContainerComparisonResult(self._identifier + '.' + key, getattr(a, key), getattr(b, key),
                                                                  exclude_paths=self._exclude_paths,
-                                                                 comparison_class=MappingContainerComparisonResult))
+                                                                 comparison_class=MappingContainerComparisonResult,
+                                                                 attr=key))
 
         if len(children) > 0 and all(c or c.excluded() for c in children):
             return (True, "Grains match", children)
@@ -266,17 +321,12 @@ class ComparisonExclude(ComparisonOption):
     pass
 
 
-class Exclude(object):
-    grain_type = ComparisonExclude("{}.grain_type")
-    source_id = ComparisonExclude("{}.source_id")
-    flow_id = ComparisonExclude("{}.flow_id")
-    rate = ComparisonExclude("{}.rate")
-    duration = ComparisonExclude("{}.duration")
-    length = ComparisonExclude("{}.length")
-    origin_timestamp = ComparisonExclude("{}.origin_timestamp")
-    sync_timestamp = ComparisonExclude("{}.sync_timestamp")
-    creation_timestamp = ComparisonExclude("{}.creation_timestamp")
-    timelabels = ComparisonExclude("{}.timelabels")
+class _Exclude(object):
+    def __getattr__(self, attr):
+        return ComparisonExclude("{}." + attr)
+
+
+Exclude = _Exclude()
 
 
 def compare_grain(a, b, *options):
