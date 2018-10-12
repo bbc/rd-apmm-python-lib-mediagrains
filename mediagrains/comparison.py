@@ -305,6 +305,14 @@ class GrainComparisonResult(ComparisonResult):
                                                                  exclude_paths=self._exclude_paths,
                                                                  comparison_class=MappingContainerComparisonResult,
                                                                  attr=key))
+        if a.grain_type == "audio" and b.grain_type == "audio":
+            # We are comparing audio grains, so compare their audio grain specific features
+            for key in ['format',
+                        'samples',
+                        'channels',
+                        'sample_rate']:
+                path = self._identifier + '.' + key
+                children.append(EqualityComparisonResult(path, getattr(a, key), getattr(b, key), exclude_paths=self._exclude_paths, attr=key))
 
         if len(children) > 0 and all(c or c.excluded() for c in children):
             return (True, "Grains match", children)

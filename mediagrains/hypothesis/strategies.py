@@ -24,14 +24,17 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 from mediatimestamp.hypothesis.strategies import timestamps
-from hypothesis.strategies import integers, from_regex, booleans, uuids, just, tuples, fractions, binary, lists, fixed_dictionaries, one_of, SearchStrategy, builds
+from hypothesis.strategies import integers, from_regex, booleans, uuids, just, tuples, fractions, binary, lists, fixed_dictionaries, one_of, SearchStrategy, builds, sampled_from
+from hypothesis.strategies import data as data_strategy
 
 from uuid import UUID
 from mediatimestamp import Timestamp
 from fractions import Fraction
-from copy import deepcopy
+from copy import copy, deepcopy
 
-from .. import Grain, EventGrain
+from ..grain import size_for_audio_format
+from ..cogenums import CogAudioFormat
+from .. import Grain, EventGrain, AudioGrain, CodedAudioGrain, CodedVideoGrain, VideoGrain
 
 
 __all__ = ["DONOTSET", "empty_grains", "event_grains", "attributes_for_grain_strategy", "strategy_for_grain_attribute"]
@@ -58,6 +61,8 @@ def attributes_for_grain_type(grain_type):
 
     if grain_type == "event":
         return COMMON_ATTRS + ["event_type", "topic", "event_data"]
+    if grain_type == "audio":
+        return COMMON_ATTRS + ["format", "samples", "channels", "sample_rate"]
     else:
         return COMMON_ATTRS
 
@@ -75,14 +80,25 @@ def attributes_for_grain_strategy(strat):
         return attributes_for_grain_type("event")
     elif strat == empty_grains:
         return attributes_for_grain_type("empty")
+    elif strat == audio_grains:
+        return attributes_for_grain_type("audio")
     else:
         return attributes_for_grain_type(strat.example().grain_type)
 
 
-def strategy_for_grain_attribute(attr):
+def _format_strategy(grain_type):
+    if grain_type == "audio":
+        # Uncompressed audio formats
+        return sampled_from(CogAudioFormat).filter(lambda x: x < 0x200)
+    return ValueError("Cannot generate formats for grain type: {!r}".format(grain_type))
+
+
+def strategy_for_grain_attribute(attr, grain_type=None):
     """Returns a default strategy for generating data compatible with a particular attribute of a particular grain_type
 
-    :param attr: a string, the name of an attribute of one of the GRAIN subclasses"""
+    :param attr: a string, the name of an attribute of one of the GRAIN subclasses
+    :param grain_type: some grains types have attributes of the same name, but which require different strategies
+    :returns: a strategy."""
 
     strats = {'source_id': shrinking_uuids(),
               'flow_id': shrinking_uuids(),
@@ -95,22 +111,28 @@ def strategy_for_grain_attribute(attr):
               'topic': from_regex(r'^[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-/]*$'),
               'event_data': lists(fixed_dictionaries({'path': from_regex(r'^[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-/]*$'),
                                                       'pre': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str)),
-                                                      'post': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str))}))}
+                                                      'post': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str))})),
+              'format': _format_strategy(grain_type),
+              'samples': integers(min_value=1, max_value=4096),
+              'channels': integers(min_value=1, max_value=16),
+              'sample_rate': sampled_from((48000, 44100))}
     if attr not in strats:
         raise ValueError("No strategy known for grain attribute: {!r}".format(attr))
+    if isinstance(strats[attr], Exception):
+        raise strats[attr]
     return strats[attr]
 
 
 def _grain_strategy(builder, grain_type, **kwargs):
     for attr in attributes_for_grain_type(grain_type):
         if attr not in kwargs or kwargs[attr] is None:
-            kwargs[attr] = strategy_for_grain_attribute(attr)
+            kwargs[attr] = strategy_for_grain_attribute(attr, grain_type=grain_type)
         elif kwargs[attr] is DONOTSET:
             kwargs[attr] = just(None)
         else:
             kwargs[attr] = just(kwargs[attr])
 
-    return builds(builder, **kwargs)    
+    return builds(builder, **kwargs)
 
 
 def empty_grains(src_id=None,
@@ -159,6 +181,101 @@ def empty_grains(src_id=None,
                            sync_timestamp=sync_timestamp,
                            rate=rate,
                            duration=duration)
+
+
+def audio_grains(src_id=None,
+                 flow_id=None,
+                 creation_timestamp=None,
+                 origin_timestamp=None,
+                 sync_timestamp=None,
+                 rate=DONOTSET,
+                 duration=DONOTSET,
+                 format=None,
+                 samples=None,
+                 channels=None,
+                 sample_rate=None,
+                 data=DONOTSET):
+    """Draw from this strategy to get audio grains.
+
+    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on hypothesis.strategies.integers
+                   which shrinks towards smaller numerical values will be used.
+    :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on hypothesis.strategies.integers which
+                    shrinks towards smaller numerical values will be used.
+    :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
+                               mediagrains.hypothesis.strategies.timestamps will be used (the default), if DONOTSET is passed then the creation_timestamp will
+                               be the time when drawing occured (this is unlikely to be what you want).
+    :param origin_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
+                             mediagrains.hypothesis.strategies.timestamps will be used  (the default), if DONOTSET is passed then the origin_timestamp of each
+                             grain drawn will be set to be equal to the creation_timestamp.
+    :param sync_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
+                           mediagrains.hypothesis.strategies.timestamps will be used (the default), if DONOTSET is passed then the sync_timestamp will be set
+                           equal to the origin_timestamp on all drawn grains.
+    :param rate: something that can be passed to the constructor of fractions.Fraction or a strategy that generates them, or the value DONOTSET (the default)
+                 which causes the default rate to be used for all grains, or the value None in which case hypothesis.strategies.fractions will be used with
+                 min_value set to 0.
+    :param duration: something that can be passed to the constructor of fractions.Fraction or a strategy that generates them, or the value DONOTSET (the
+                     default) which causes the default rate to be used for all grains, or the value None in which case hypothesis.strategies.fractions will be
+                     used with min_value set to 0.
+    :param format: either a member of cogenums.CogAudioFormat or a strategy that generates them. The default strategy will not produce encoded or unknown
+                   formats.
+    :param samples: either a positive integer or a strategy that generates them, the default strategy is integers(min_value=1).
+    :param channels: either a positive integer or a strategy that generates them, the default strategy is integers(min_value=1).
+    :param sample_rate: either a positive integer or a strategy that generates them, the default strategy will always generate either 48000 or 44100.
+    :param data: By default the grain's data will be left at the deault (ie. all 0s). If this is set to a callable which takes a grain as a parameter and
+                 returns a strategy that produces a bytes-like object then that will be used, otherwise if this is set to a truthy value then a default strategy
+                 that uses random binary data of the expected length for the format is used.
+    """
+
+    if rate is DONOTSET:
+        rate = Fraction(25, 1)
+    if duration is DONOTSET:
+        duration = Fraction(1, 25)
+
+    def audio_grain(source_id, flow_id, origin_timestamp, sync_timestamp, rate, duration, creation_timestamp, format, samples, channels, sample_rate):
+        return AudioGrain(src_id=source_id, flow_id=flow_id, creation_timestamp=creation_timestamp, origin_timestamp=origin_timestamp,
+                          sync_timestamp=sync_timestamp, rate=rate, duration=duration, cog_audio_format=format, samples=samples, channels=channels,
+                          sample_rate=sample_rate)
+
+    grains = _grain_strategy(audio_grain, "audio",
+                             source_id=src_id,
+                             flow_id=flow_id,
+                             origin_timestamp=origin_timestamp,
+                             sync_timestamp=sync_timestamp,
+                             rate=rate,
+                             duration=duration,
+                             format=format,
+                             samples=samples,
+                             channels=channels,
+                             sample_rate=sample_rate)
+    if data is DONOTSET or not data:
+        return grains
+
+    def _data(grain):
+        return binary(min_size=grain.expected_length, max_size=grain.expected_length)
+
+    if not callable(data):
+        data = _data
+
+    return grains.flatmap(lambda g: builds(grain_with_data, just(g), data(g)))
+
+
+def grains(grain_type, **kwargs):
+    """A strategy that generates grains of the specified type."""
+
+    if grain_type == "empty":
+        return empty_grains(**kwargs)
+    elif grain_type == "audio":
+        return audio_grains(**kwargs)
+    elif grain_type == "event":
+        return event_grains(**kwargs)
+
+    raise ValueError("Cannot find a strategy to generate grains of type: {}".format(grain_type))
+
+
+def grain_with_data(grain, data):
+    grain = copy(grain)
+    grain.data = data
+    return grain
 
 
 def event_grains(src_id=None,
