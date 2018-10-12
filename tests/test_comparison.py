@@ -18,6 +18,7 @@
 from __future__ import print_function
 from __future__ import absolute_import
 
+import unittest
 from cloudfit_fixtures import APMMTestCase
 
 from hypothesis import given, assume, reproduce_failure
@@ -89,3 +90,7 @@ class TestCompareGrain(APMMTestCase):
             attrs = attributes_for_grain_strategy(grains)
             for excl in attrs:
                 given(grains(), grains())(_check)(self, excl, attrs)
+
+
+if __name__ == "__main__":
+    unittest.main()

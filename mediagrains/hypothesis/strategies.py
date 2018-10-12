@@ -34,7 +34,7 @@ from copy import deepcopy
 from .. import Grain, EventGrain
 
 
-__all__ = ["DONOTSET", "empty_grains"]
+__all__ = ["DONOTSET", "empty_grains", "event_grains", "attributes_for_grain_strategy", "strategy_for_grain_attribute"]
 
 
 class DONOTSET(object):
@@ -53,6 +53,7 @@ def fraction_dicts(*args, **kwargs):
 
 
 def attributes_for_grain_type(grain_type):
+    # We don't include length because it's calculated from other things.
     COMMON_ATTRS = ['source_id', 'flow_id', 'origin_timestamp', 'sync_timestamp', 'creation_timestamp', 'rate', 'duration']
 
     if grain_type == "event":
@@ -62,10 +63,20 @@ def attributes_for_grain_type(grain_type):
 
 
 def attributes_for_grain_strategy(strat):
+    """Different strategies produce different kinds of grains, this method conveniently helps determine what the writeable attributes
+    for the grains from a strategy will be.
+
+    WARNING: Do not pass in a strategy that can generate multiple types of grains. Results are unpredictable.
+
+    :param strat: A strategy that generates a single type of grains
+    :returns: A list of strings containing attribute names for the type of grain the strategy generates.
+    """
     if strat == event_grains:
         return attributes_for_grain_type("event")
-    else:
+    elif strat == empty_grains:
         return attributes_for_grain_type("empty")
+    else:
+        return attributes_for_grain_type(strat.example().grain_type)
 
 
 def strategy_for_grain_attribute(attr):
@@ -85,7 +96,21 @@ def strategy_for_grain_attribute(attr):
               'event_data': lists(fixed_dictionaries({'path': from_regex(r'^[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-/]*$'),
                                                       'pre': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str)),
                                                       'post': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str))}))}
-    return strats.get(attr, None)
+    if attr not in strats:
+        raise ValueError("No strategy known for grain attribute: {!r}".format(attr))
+    return strats[attr]
+
+
+def _grain_strategy(builder, grain_type, **kwargs):
+    for attr in attributes_for_grain_type(grain_type):
+        if attr not in kwargs or kwargs[attr] is None:
+            kwargs[attr] = strategy_for_grain_attribute(attr)
+        elif kwargs[attr] is DONOTSET:
+            kwargs[attr] = just(None)
+        else:
+            kwargs[attr] = just(kwargs[attr])
+
+    return builds(builder, **kwargs)    
 
 
 def empty_grains(src_id=None,
@@ -97,7 +122,7 @@ def empty_grains(src_id=None,
                  duration=DONOTSET):
     """Draw from this strategy to get empty grains.
 
-    :param src_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on hypothesis.strategies.integers
+    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on hypothesis.strategies.integers
                    which shrinks towards smaller numerical values will be used.
     :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on hypothesis.strategies.integers which
                     shrinks towards smaller numerical values will be used.
@@ -118,56 +143,22 @@ def empty_grains(src_id=None,
                      used with min_value set to 0.
     """
 
-    if src_id is None:
-        src_id = shrinking_uuids()
-    elif isinstance(src_id, UUID):
-        src_id = just(src_id)
+    if rate is DONOTSET:
+        rate = Fraction(0, 1)
+    if duration is DONOTSET:
+        duration = Fraction(0, 1)
 
-    if flow_id is None:
-        flow_id = shrinking_uuids()
-    elif isinstance(flow_id, UUID):
-        flow_id = just(flow_id)
-
-    if origin_timestamp is None:
-        origin_timestamp = timestamps()
-    elif origin_timestamp is DONOTSET:
-        origin_timestamp = just(None)
-    elif isinstance(origin_timestamp, Timestamp):
-        origin_timestamp = just(origin_timestamp)
-
-    if sync_timestamp is None:
-        sync_timestamp = timestamps()
-    elif sync_timestamp is DONOTSET:
-        sync_timestamp = just(None)
-    elif isinstance(sync_timestamp, Timestamp):
-        sync_timestamp = just(sync_timestamp)
-
-    if creation_timestamp is None:
-        creation_timestamp = timestamps()
-    elif creation_timestamp is DONOTSET:
-        creation_timestamp = just(None)
-    elif isinstance(creation_timestamp, Timestamp):
-        creation_timestamp = just(creation_timestamp)
-
-    if rate is None:
-        rate = fractions(min_value=0)
-    elif rate is DONOTSET:
-        rate = just(Fraction(0, 1))
-    elif not isinstance(rate, SearchStrategy):
-        rate = just(rate)
-
-    if duration is None:
-        duration = fractions(min_value=0)
-    elif duration is DONOTSET:
-        duration = just(Fraction(0, 1))
-    elif not isinstance(duration, SearchStrategy):
-        duration = just(duration)
-
-    def empty_grain(src_id, flow_id, origin_timestamp, sync_timestamp, rate, duration, creation_timestamp):
-        return Grain(src_id=src_id, flow_id=flow_id, creation_timestamp=creation_timestamp, origin_timestamp=origin_timestamp, sync_timestamp=sync_timestamp,
+    def empty_grain(source_id, flow_id, origin_timestamp, sync_timestamp, rate, duration, creation_timestamp):
+        return Grain(src_id=source_id, flow_id=flow_id, creation_timestamp=creation_timestamp, origin_timestamp=origin_timestamp, sync_timestamp=sync_timestamp,
                      rate=rate, duration=duration)
 
-    return builds(empty_grain, src_id, flow_id, origin_timestamp, sync_timestamp, rate, duration, creation_timestamp)
+    return _grain_strategy(empty_grain, "empty",
+                           source_id=src_id,
+                           flow_id=flow_id,
+                           origin_timestamp=origin_timestamp,
+                           sync_timestamp=sync_timestamp,
+                           rate=rate,
+                           duration=duration)
 
 
 def event_grains(src_id=None,
@@ -210,87 +201,30 @@ def event_grains(src_id=None,
                                                           'pre': one_of(integers(), booleans(), fraction_dicts(), timestamps()),
                                                           'post': one_of(integers(), booleans(), fraction_dicts(), timestamps())}))
     """
-    if src_id is None:
-        src_id = shrinking_uuids()
-    elif isinstance(src_id, UUID):
-        src_id = just(src_id)
+    if rate is DONOTSET:
+        rate = Fraction(25, 1)
+    if duration is DONOTSET:
+        duration = Fraction(1, 25)
 
-    if flow_id is None:
-        flow_id = shrinking_uuids()
-    elif isinstance(flow_id, UUID):
-        flow_id = just(flow_id)
-
-    if origin_timestamp is None:
-        origin_timestamp = timestamps()
-    elif origin_timestamp is DONOTSET:
-        origin_timestamp = just(None)
-    elif isinstance(origin_timestamp, Timestamp):
-        origin_timestamp = just(origin_timestamp)
-
-    if sync_timestamp is None:
-        sync_timestamp = timestamps()
-    elif sync_timestamp is DONOTSET:
-        sync_timestamp = just(None)
-    elif isinstance(sync_timestamp, Timestamp):
-        sync_timestamp = just(sync_timestamp)
-
-    if creation_timestamp is None:
-        creation_timestamp = timestamps()
-    elif creation_timestamp is DONOTSET:
-        creation_timestamp = just(None)
-    elif isinstance(creation_timestamp, Timestamp):
-        creation_timestamp = just(creation_timestamp)
-
-    if rate is None:
-        rate = fractions(min_value=0)
-    elif rate is DONOTSET:
-        rate = just(Fraction(25, 1))
-    elif not isinstance(rate, SearchStrategy):
-        rate = just(rate)
-
-    if duration is None:
-        duration = fractions(min_value=0)
-    elif duration is DONOTSET:
-        duration = just(Fraction(1, 25))
-    elif not isinstance(duration, SearchStrategy):
-        duration = just(duration)
-
-    if event_type is None:
-        event_type = from_regex(r"^urn:[a-z0-9][a-z0-9-]{0,31}:[a-z0-9()+,\-.:=@;$_!*'%/?#]+$")
-    elif not isinstance(event_type, SearchStrategy):
-        event_type = just(event_type)
-
-    if topic is None:
-        topic = from_regex(r'^[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-/]*$')
-    elif not isinstance(topic, SearchStrategy):
-        topic = just(topic)
-
-    if event_data is None:
-        event_data = lists(fixed_dictionaries({'path': from_regex(r'^[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-/]*$'),
-                                               'pre': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str)),
-                                               'post': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str))}))
-    elif not isinstance(event_data, SearchStrategy):
-        event_data = just(event_data)
-
-    def event_grain(src_id, flow_id, origin_timestamp, sync_timestamp, rate, duration, creation_timestamp, event_type, topic, event_data):
-        grain = EventGrain(src_id=src_id, flow_id=flow_id, creation_timestamp=creation_timestamp, origin_timestamp=origin_timestamp,
+    def event_grain(source_id, flow_id, origin_timestamp, sync_timestamp, rate, duration, creation_timestamp, event_type, topic, event_data):
+        grain = EventGrain(src_id=source_id, flow_id=flow_id, creation_timestamp=creation_timestamp, origin_timestamp=origin_timestamp,
                            sync_timestamp=sync_timestamp, rate=rate, duration=duration,
                            event_type=event_type, topic=topic)
         for datum in event_data:
             grain.append(datum['path'], datum['pre'], datum['post'])
         return grain
 
-    return builds(event_grain,
-                  src_id,
-                  flow_id,
-                  origin_timestamp,
-                  sync_timestamp,
-                  rate,
-                  duration,
-                  creation_timestamp,
-                  event_type,
-                  topic,
-                  event_data)
+    return _grain_strategy(event_grain, "event",
+                           source_id=src_id,
+                           flow_id=flow_id,
+                           origin_timestamp=origin_timestamp,
+                           sync_timestamp=sync_timestamp,
+                           rate=rate,
+                           duration=duration,
+                           creation_timestamp=creation_timestamp,
+                           event_type=event_type,
+                           topic=topic,
+                           event_data=event_data)
 
 
 def grains_varying_entries(grains, entry_strategies, min_size=2, average_size=None, max_size=None):
