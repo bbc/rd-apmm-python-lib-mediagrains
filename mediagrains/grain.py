@@ -215,7 +215,9 @@ final_origin_timestamp()
     @origin_timestamp.setter
     def origin_timestamp(self, value):
         if isinstance(value, TimeOffset):
-            value = value.to_tai_sec_nsec()
+            if value.sign < 0:
+                raise ValueError("Grain timestamps cannot be negative")
+            value = value.to_sec_nsec()
         self.meta['grain']['origin_timestamp'] = value
 
     def final_origin_timestamp(self):
@@ -228,7 +230,9 @@ final_origin_timestamp()
     @sync_timestamp.setter
     def sync_timestamp(self, value):
         if isinstance(value, TimeOffset):
-            value = value.to_tai_sec_nsec()
+            if value.sign < 0:
+                raise ValueError("Grain timestamps cannot be negative")
+            value = value.to_sec_nsec()
         self.meta['grain']['sync_timestamp'] = value
 
     @property
@@ -238,7 +242,9 @@ final_origin_timestamp()
     @creation_timestamp.setter
     def creation_timestamp(self, value):
         if isinstance(value, TimeOffset):
-            value = value.to_tai_sec_nsec()
+            if value.sign < 0:
+                raise ValueError("Grain timestamps cannot be negative")
+            value = value.to_sec_nsec()
         self.meta['grain']['creation_timestamp'] = value
 
     @property
