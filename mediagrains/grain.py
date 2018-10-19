@@ -214,7 +214,7 @@ final_origin_timestamp()
 
     @origin_timestamp.setter
     def origin_timestamp(self, value):
-        if isinstance(value, Timestamp):
+        if isinstance(value, TimeOffset):
             value = value.to_tai_sec_nsec()
         self.meta['grain']['origin_timestamp'] = value
 
@@ -227,7 +227,7 @@ final_origin_timestamp()
 
     @sync_timestamp.setter
     def sync_timestamp(self, value):
-        if isinstance(value, Timestamp):
+        if isinstance(value, TimeOffset):
             value = value.to_tai_sec_nsec()
         self.meta['grain']['sync_timestamp'] = value
 
@@ -237,7 +237,7 @@ final_origin_timestamp()
 
     @creation_timestamp.setter
     def creation_timestamp(self, value):
-        if isinstance(value, Timestamp):
+        if isinstance(value, TimeOffset):
             value = value.to_tai_sec_nsec()
         self.meta['grain']['creation_timestamp'] = value
 
