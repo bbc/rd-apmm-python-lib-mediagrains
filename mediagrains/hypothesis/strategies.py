@@ -113,7 +113,7 @@ def strategy_for_grain_attribute(attr, grain_type=None):
                                                       'pre': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str)),
                                                       'post': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str))})),
               'format': _format_strategy(grain_type),
-              'samples': integers(min_value=1, max_value=4096),
+              'samples': integers(min_value=1, max_value=16),
               'channels': integers(min_value=1, max_value=16),
               'sample_rate': sampled_from((48000, 44100))}
     if attr not in strats:
@@ -193,9 +193,8 @@ def audio_grains(src_id=None,
                  format=None,
                  samples=None,
                  channels=None,
-                 sample_rate=None,
-                 data=DONOTSET):
-    """Draw from this strategy to get audio grains.
+                 sample_rate=None):
+    """Draw from this strategy to get audio grains. The data element of these grains will always be all 0s.
 
     :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on hypothesis.strategies.integers
                    which shrinks towards smaller numerical values will be used.
@@ -221,9 +220,6 @@ def audio_grains(src_id=None,
     :param samples: either a positive integer or a strategy that generates them, the default strategy is integers(min_value=1).
     :param channels: either a positive integer or a strategy that generates them, the default strategy is integers(min_value=1).
     :param sample_rate: either a positive integer or a strategy that generates them, the default strategy will always generate either 48000 or 44100.
-    :param data: By default the grain's data will be left at the deault (ie. all 0s). If this is set to a callable which takes a grain as a parameter and
-                 returns a strategy that produces a bytes-like object then that will be used, otherwise if this is set to a truthy value then a default strategy
-                 that uses random binary data of the expected length for the format is used.
     """
 
     if rate is DONOTSET:
@@ -236,27 +232,17 @@ def audio_grains(src_id=None,
                           sync_timestamp=sync_timestamp, rate=rate, duration=duration, cog_audio_format=format, samples=samples, channels=channels,
                           sample_rate=sample_rate)
 
-    grains = _grain_strategy(audio_grain, "audio",
-                             source_id=src_id,
-                             flow_id=flow_id,
-                             origin_timestamp=origin_timestamp,
-                             sync_timestamp=sync_timestamp,
-                             rate=rate,
-                             duration=duration,
-                             format=format,
-                             samples=samples,
-                             channels=channels,
-                             sample_rate=sample_rate)
-    if data is DONOTSET or not data:
-        return grains
-
-    def _data(grain):
-        return binary(min_size=grain.expected_length, max_size=grain.expected_length)
-
-    if not callable(data):
-        data = _data
-
-    return grains.flatmap(lambda g: builds(grain_with_data, just(g), data(g)))
+    return _grain_strategy(audio_grain, "audio",
+                           source_id=src_id,
+                           flow_id=flow_id,
+                           origin_timestamp=origin_timestamp,
+                           sync_timestamp=sync_timestamp,
+                           rate=rate,
+                           duration=duration,
+                           format=format,
+                           samples=samples,
+                           channels=channels,
+                           sample_rate=sample_rate)
 
 
 def grains(grain_type, **kwargs):
@@ -272,10 +258,24 @@ def grains(grain_type, **kwargs):
     raise ValueError("Cannot find a strategy to generate grains of type: {}".format(grain_type))
 
 
-def grain_with_data(grain, data):
-    grain = copy(grain)
-    grain.data = data
-    return grain
+def grains_from_template_with_data(grain, data=None):
+    """A strategy that produces grains which are identical to the input grain but with randomised data based on the format:
+
+    :param grain: A grain to use as a template
+    :param data: either a strategy that generates bytes of the correct size, or a bytestring of the right size, or None, in which case random data based on the
+                 format will be used.
+    """
+    if data is None:
+        data = binary(min_size=grain.expected_length, max_size=grain.expected_length)
+    elif not isinstance(data, SearchStrategy):
+        data = just(data)
+
+    def grain_with_data(grain, data):
+        grain = copy(grain)
+        grain.data = data
+        return grain
+
+    return builds(grain_with_data, just(grain), data)
 
 
 def event_grains(src_id=None,

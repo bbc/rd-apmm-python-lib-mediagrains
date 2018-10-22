@@ -28,6 +28,9 @@ from __future__ import absolute_import
 
 from fractions import Fraction
 from mediatimestamp import TimeOffset
+from difflib import SequenceMatcher
+
+from six import indexbytes
 
 __all__ = ["compare_grain", "Exclude"]
 
@@ -181,6 +184,74 @@ class EqualityComparisonResult(ComparisonResult):
             return (False, "{} == {!r}, {} == {!r} no match".format(self._identifier.format('a'), a, self._identifier.format('b'), b), [])
 
 
+class DataEqualityComparisonResult(ComparisonResult):
+    """This comparison result is used for comparing long data strings to each other, and provides useful information like the first byte at which they differ"""
+    def compare(self, a, b):
+        self.d = SequenceMatcher(None, a, b)
+
+        if self.d.ratio() == 1.0:
+            return (True, "Binary data {} are equal".format(self._identifier.format('<a/b>')), [])
+        else:
+            first_op = [x for x in self.d.get_opcodes() if x[0] is not 'equal'][0]
+            i = first_op[1]
+            if i < len(a) and i < len(b):
+                msg = ("Binary data {} has similarity {} to {}, " +
+                       "first different bytes are {}[{}] == {} and {}[{}] == {}").format(self._identifier.format('a'),
+                                                                                         self.d.ratio(),
+                                                                                         self._identifier.format('b'),
+                                                                                         self._identifier.format('a'),
+                                                                                         i,
+                                                                                         hex(indexbytes(a, i)),
+                                                                                         self._identifier.format('b'),
+                                                                                         i,
+                                                                                         hex(indexbytes(b, i)))
+            elif i < len(a):
+                msg = ("Binary data {} has similarity {} to {}, " +
+                       "{} has {} extra bytes, starting with {}[{}] = {}").format(self._identifier.format('a'),
+                                                                                  self.d.ratio(),
+                                                                                  self._identifier.format('b'),
+                                                                                  self._identifier.format('a'),
+                                                                                  len(b) - len(a),
+                                                                                  self._identifier.format('a'),
+                                                                                  i,
+                                                                                  hex(indexbytes(a, i)))
+            else:
+                msg = ("Binary data {} has similarity {} to {}, " +
+                       "{} has {} extra bytes, starting with {}[{}] = {}").format(self._identifier.format('a'),
+                                                                                  self.d.ratio(),
+                                                                                  self._identifier.format('b'),
+                                                                                  self._identifier.format('b'),
+                                                                                  len(a) - len(b),
+                                                                                  self._identifier.format('b'),
+                                                                                  i,
+                                                                                  hex(indexbytes(b, i)))
+            return (False, msg, [])
+
+    def _str(self, prefix=""):
+        r = prefix
+        if self._identifier in self._exclude_paths:
+            r += '\u25EF   '
+        elif self.__bool__():
+            r += '\u2705   '
+        else:
+            r += '\u274c   '
+        r += self._msg
+        if self.d.ratio() < 1.0:
+            prefix += "  "
+            opstrings = [prefix + "{:7}   a[{}:{}] --> b[{}:{}] {!r:>8} --> {!r}".format(tag, i1, i2, j1, j2, self.a[i1:i2], self.b[i1:i2])
+                         for (tag, i1, i2, j1, j2) in self.d.get_opcodes()]
+            r += '\n' + opstrings[0]
+            if len(opstrings) > 1:
+                r += '\n' + opstrings[1]
+            if len(opstrings) > 2:
+                r += '\n' + opstrings[2]
+            if len(opstrings) > 3:
+                r += '\n' + opstrings[3]
+            if len(opstrings) > 4:
+                r += '\n' + prefix + 'etc ...'
+        return r
+
+
 class DifferenceComparisonResult(ComparisonResult):
     def __init__(self, identifier, a, b, expected_difference=0, **kwargs):
         self._expected_difference = expected_difference
@@ -313,6 +384,12 @@ class GrainComparisonResult(ComparisonResult):
                         'sample_rate']:
                 path = self._identifier + '.' + key
                 children.append(EqualityComparisonResult(path, getattr(a, key), getattr(b, key), exclude_paths=self._exclude_paths, attr=key))
+
+            children.append(DataEqualityComparisonResult(self._identifier + ".data",
+                                                         a.data,
+                                                         b.data,
+                                                         exclude_paths=self._exclude_paths,
+                                                         attr="data"))
 
         if len(children) > 0 and all(c or c.excluded() for c in children):
             return (True, "Grains match", children)
