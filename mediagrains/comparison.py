@@ -32,6 +32,9 @@ from difflib import SequenceMatcher
 
 from six.moves import reduce
 import struct
+import sys
+
+from .cogenums import CogAudioFormat
 
 __all__ = ["compare_grain", "Exclude"]
 
@@ -192,16 +195,40 @@ class EqualityComparisonResult(ComparisonResult):
 
 class DataEqualityComparisonResult(ComparisonResult):
     """This comparison result is used for comparing long data strings to each other, and provides useful information like the first byte at which they differ"""
-    def __init__(self, identifier, a, b, bytes_per_sample=1, active_bits=None, alignment='@', **kwargs):
-        """:param bytes_per_sample: The number of bytes in each sample, default is 1
-        :param active_bits: The number of active bits (defaults to 8*bytes_per_sample)"""
-        self.bytes_per_sample = bytes_per_sample
-        if active_bits is None:
-            active_bits = 8*bytes_per_sample
-        self.active_bits = active_bits
+    def __init__(self, identifier, a, b, words_per_sample=1, alignment='@', word_code='B', force_signed=False, **kwargs):
+        """:param words_per_sample: The number of words read from the file in each sample, default is 1
+        :param alignment: One of the strings used by struct to indicate word endianness, default is system endianness
+        :param word_code: The character code used by struct to indicate the word format and size, by default is unsigned bytes.
+        :param force_signed: If set to True the final assembled value will be forced to be signed even if it was read from unsigned values"""
+        self.words_per_sample = words_per_sample
+        self.alignment = alignment
+        self.word_code = word_code
 
-        a = [reduce(lambda x, y: (x << 8) + y, reversed(v)) for v in chunkwise(struct.unpack(alignment + ('B'*(len(a))), a), bytes_per_sample)]
-        b = [reduce(lambda x, y: (x << 8) + y, reversed(v)) for v in chunkwise(struct.unpack(alignment + ('B'*(len(b))), b), bytes_per_sample)]
+        if words_per_sample == 1:
+            a = struct.unpack(alignment + (self.word_code*(len(a)//struct.calcsize(word_code))), a)
+            b = struct.unpack(alignment + (self.word_code*(len(b)//struct.calcsize(word_code))), b)
+        else:
+            if alignment == ">" or alignment == "!" or (alignment in ['@', '='] and sys.byteorder != 'little'):
+                aligner = lambda x: x  # noqa: E731
+            else:
+                aligner = reversed
+
+            def _signer(n):
+                OFL = 1 << (words_per_sample*8)
+                MAX = OFL >> 1
+                if n >= MAX:
+                    n -= OFL
+                return n
+
+            if force_signed:
+                signer = _signer
+            else:
+                signer = lambda x: x  # noqa: E731
+
+            a = [signer(reduce(lambda x, y: (x << 8) + y, aligner(v)))
+                 for v in chunkwise(struct.unpack(alignment + ('B'*(len(a))), a), words_per_sample)]
+            b = [signer(reduce(lambda x, y: (x << 8) + y, aligner(v)))
+                 for v in chunkwise(struct.unpack(alignment + ('B'*(len(b))), b), words_per_sample)]
 
         super(DataEqualityComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
@@ -220,10 +247,10 @@ class DataEqualityComparisonResult(ComparisonResult):
                                                                                           self._identifier.format('b'),
                                                                                           self._identifier.format('a'),
                                                                                           i,
-                                                                                          hex(a[i]),
+                                                                                          a[i],
                                                                                           self._identifier.format('b'),
                                                                                           i,
-                                                                                          hex(b[i]))
+                                                                                          b[i])
             elif i < len(a):
                 msg = ("Binary data {} has similarity {} to {}, " +
                        "{} has {} extra values, starting with {}[{}] = {}").format(self._identifier.format('a'),
@@ -233,7 +260,7 @@ class DataEqualityComparisonResult(ComparisonResult):
                                                                                    len(a) - len(b),
                                                                                    self._identifier.format('a'),
                                                                                    i,
-                                                                                   hex(a[i]))
+                                                                                   a[i])
             else:
                 msg = ("Binary data {} has similarity {} to {}, " +
                        "{} has {} extra values, starting with {}[{}] = {}").format(self._identifier.format('a'),
@@ -243,7 +270,7 @@ class DataEqualityComparisonResult(ComparisonResult):
                                                                                    len(b) - len(a),
                                                                                    self._identifier.format('b'),
                                                                                    i,
-                                                                                   hex(b[i]))
+                                                                                   b[i])
             return (False, msg, [])
 
     def _str(self, prefix=""):
@@ -258,9 +285,9 @@ class DataEqualityComparisonResult(ComparisonResult):
         if self.d.ratio() < 1.0:
             prefix += "  "
             opstrings = [prefix + "{:7}   a[{}:{}] --> b[{}:{}] {:>8} --> {}".format(tag, i1, i2, j1, j2,
-                                                                                     '(' + ', '.join(hex(x) for x in self.a[i1:i2]) + ')',
-                                                                                     '(' + ', '.join(hex(x) for x in self.b[i1:i2]) + ')')
-                         for (tag, i1, i2, j1, j2) in self.d.get_opcodes()]
+                                                                                     '(' + ', '.join(str(x) for x in self.a[i1:i2]) + ')',
+                                                                                     '(' + ', '.join(str(x) for x in self.b[i1:i2]) + ')')
+                         for (tag, i1, i2, j1, j2) in self.d.get_opcodes()[:5]]
             r += '\n' + opstrings[0]
             if len(opstrings) > 1:
                 r += '\n' + opstrings[1]
@@ -407,22 +434,44 @@ class GrainComparisonResult(ComparisonResult):
                 children.append(EqualityComparisonResult(path, getattr(a, key), getattr(b, key), exclude_paths=self._exclude_paths, attr=key))
 
             if a.format == b.format:
-                if (a.format & 0xC) == 0x0:
-                    bps = 2
-                elif (a.format & 0xC) == 0x4:
-                    bps = 3
-                elif (a.format & 0xC) == 0x8:
-                    bps = 4
-                elif (a.format & 0xC) == 0xC:
-                    bps = 8
+                wps = 1
+                s = False
+                if a.format in [CogAudioFormat.S16_PLANES,
+                                CogAudioFormat.S16_PAIRS,
+                                CogAudioFormat.S16_INTERLEAVED]:
+                    wc = 'h'
+                elif a.format in [CogAudioFormat.S24_PLANES,
+                                  CogAudioFormat.S24_PAIRS,
+                                  CogAudioFormat.S24_INTERLEAVED]:
+                    wc = 'B'
+                    wps = 3
+                    s = True
+                elif a.format in [CogAudioFormat.S32_PLANES,
+                                  CogAudioFormat.S32_PAIRS,
+                                  CogAudioFormat.S32_INTERLEAVED]:
+                    wc = 'i'
+                elif a.format in [CogAudioFormat.S64_INVALID]:
+                    wc = 'l'
+                elif a.format in [CogAudioFormat.FLOAT_PLANES,
+                                  CogAudioFormat.FLOAT_PAIRS,
+                                  CogAudioFormat.FLOAT_INTERLEAVED]:
+                    wc = 'f'
+                elif a.format in [CogAudioFormat.DOUBLE_PLANES,
+                                  CogAudioFormat.DOUBLE_PAIRS,
+                                  CogAudioFormat.DOUBLE_INTERLEAVED]:
+                    wc = 'd'
                 else:
-                    bps = 1
+                    wc = 'B'
+
                 children.append(DataEqualityComparisonResult(self._identifier + ".data",
                                                              a.data,
                                                              b.data,
                                                              exclude_paths=self._exclude_paths,
                                                              attr="data",
-                                                             bytes_per_sample=bps))
+                                                             alignment="@",
+                                                             word_code=wc,
+                                                             words_per_sample=wps,
+                                                             force_signed=s))
 
         if len(children) > 0 and all(c or c.excluded() for c in children):
             return (True, "Grains match", children)

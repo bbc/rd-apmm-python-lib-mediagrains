@@ -24,8 +24,10 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 from mediatimestamp.hypothesis.strategies import timestamps
-from hypothesis.strategies import integers, from_regex, booleans, uuids, just, tuples, fractions, binary, lists, fixed_dictionaries, one_of, SearchStrategy, builds, sampled_from
+from hypothesis.strategies import integers, from_regex, booleans, uuids, just, tuples, fractions, binary, lists, fixed_dictionaries, one_of, SearchStrategy, builds, sampled_from, floats
 from hypothesis.strategies import data as data_strategy
+
+import struct
 
 from uuid import UUID
 from mediatimestamp import Timestamp
@@ -266,7 +268,28 @@ def grains_from_template_with_data(grain, data=None):
                  format will be used.
     """
     if data is None:
-        data = binary(min_size=grain.expected_length, max_size=grain.expected_length)
+        if grain.grain_type == "audio":
+            if grain.format in [CogAudioFormat.FLOAT_PLANES,
+                                CogAudioFormat.FLOAT_PAIRS,
+                                CogAudioFormat.FLOAT_INTERLEAVED]:
+                ln = grain.expected_length//4
+                data = lists(floats(width=32,
+                                    allow_nan=False,
+                                    allow_infinity=False),
+                             min_size=ln,
+                             max_size=ln).map(lambda x: struct.pack('@' + ('f'*ln), *x))
+            elif grain.format in [CogAudioFormat.DOUBLE_PLANES,
+                                  CogAudioFormat.DOUBLE_PAIRS,
+                                  CogAudioFormat.DOUBLE_INTERLEAVED]:
+                ln = grain.expected_length//8
+                data = lists(floats(width=64,
+                                    allow_nan=False,
+                                    allow_infinity=False),
+                             min_size=ln,
+                             max_size=ln).map(lambda x: struct.pack('@' + ('d'*ln), *x))
+            else:
+                data = binary(min_size=grain.expected_length, max_size=grain.expected_length)
+                
     elif not isinstance(data, SearchStrategy):
         data = just(data)
 
