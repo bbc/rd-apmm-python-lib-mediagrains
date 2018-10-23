@@ -284,7 +284,7 @@ class mediagrains.grain.AUDIOGRAIN
     return AUDIOGRAIN(meta, data)
 
 
-def CodedAudioGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
+def CodedAudioGrain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
                     sync_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
                     cog_audio_format=CogAudioFormat.INVALID,
                     samples=0,
@@ -293,6 +293,7 @@ def CodedAudioGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
                     remainder=0,
                     sample_rate=48000,
                     length=None,
+                    src_id=None,
                     flow_id=None, data=None):
     """\
 Function called to construct a coded audio grain either from existing data or with new data.
@@ -360,14 +361,14 @@ class mediagrains.grain.CODEDAUDIOGRAIN
 """
 
     meta = None
-    src_id = None
 
     if isinstance(src_id_or_meta, dict):
         meta = src_id_or_meta
         if data is None:
             data = flow_id_or_data
     else:
-        src_id = src_id_or_meta
+        if src_id is None:
+            src_id = src_id_or_meta
         if flow_id is None:
             flow_id = flow_id_or_data
 
@@ -420,11 +421,11 @@ class mediagrains.grain.CODEDAUDIOGRAIN
     return CODEDAUDIOGRAIN(meta, data)
 
 
-def VideoGrain(src_id_or_meta, flow_id_or_data=None, origin_timestamp=None,
+def VideoGrain(src_id_or_meta=None, flow_id_or_data=None, creation_timestamp=None, origin_timestamp=None,
                sync_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
                cog_frame_format=CogFrameFormat.UNKNOWN, width=1920,
                height=1080, cog_frame_layout=CogFrameLayout.UNKNOWN,
-               flow_id=None, data=None):
+               src_id=None, flow_id=None, data=None):
     """\
 Function called to construct a video grain either from existing data or with new data.
 
@@ -508,14 +509,14 @@ In either case the value returned by this function will be an instance of the
 class mediagrains.grain.VIDEOGRAIN
 """
     meta = None
-    src_id = None
 
     if isinstance(src_id_or_meta, dict):
         meta = src_id_or_meta
         if data is None:
             data = flow_id_or_data
     else:
-        src_id = src_id_or_meta
+        if src_id is None:
+            src_id = src_id_or_meta
         if flow_id is None:
             flow_id = flow_id_or_data
 
@@ -523,7 +524,9 @@ class mediagrains.grain.VIDEOGRAIN
         if src_id is None or flow_id is None:
             raise AttributeError("Must include either metadata, or src_id, and flow_id")
 
-        cts = Timestamp.get_time()
+        cts = creation_timestamp
+        if cts is None:
+            cts = Timestamp.get_time()
         if origin_timestamp is None:
             origin_timestamp = cts
         if sync_timestamp is None:

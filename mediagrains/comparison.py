@@ -34,7 +34,7 @@ from six.moves import reduce
 import struct
 import sys
 
-from .cogenums import CogAudioFormat
+from .cogenums import CogAudioFormat, CogFrameFormat
 
 __all__ = ["compare_grain", "Exclude"]
 
@@ -42,6 +42,23 @@ __all__ = ["compare_grain", "Exclude"]
 def chunkwise(t, size=2):
     it = iter(t)
     return zip(*[it]*size)
+
+
+def COG_FRAME_IS_PACKED(fmt):
+    return ((fmt >> 8) & 0x1) != 0
+
+
+def COG_FRAME_IS_COMPRESSED(fmt):
+    return ((fmt >> 9) & 0x1) != 0
+
+
+def COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt):
+    if ((fmt) & 0xc) == 0:
+        return 1
+    elif ((fmt) & 0xc) == 4:
+        return 2
+    else:
+        return 4
 
 
 class ComparisonResult (object):
@@ -472,6 +489,40 @@ class GrainComparisonResult(ComparisonResult):
                                                              word_code=wc,
                                                              words_per_sample=wps,
                                                              force_signed=s))
+
+        elif a.grain_type == "video" and b.grain_type == "video":
+            # We are comparing video grains, so compare their video grain specific features
+            for key in ['format',
+                        'width',
+                        'height',
+                        'layout']:
+                path = self._identifier + '.' + key
+                children.append(EqualityComparisonResult(path, getattr(a, key), getattr(b, key), exclude_paths=self._exclude_paths, attr=key))
+
+            if a.format == b.format:
+                if COG_FRAME_IS_COMPRESSED(a.format):
+                    wc = 'B'
+                elif a.format == CogFrameFormat.v210:
+                    wc = 'I'
+                elif a.format == CogFrameFormat.v216:
+                    wc = 'H'
+                elif COG_FRAME_IS_PACKED(a.format):
+                    wc = 'B'
+                else:
+                    if COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 1:
+                        wc = 'B'
+                    elif COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 2:
+                        wc = 'H'
+                    elif COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 4:
+                        wc = 'I'
+
+                children.append(DataEqualityComparisonResult(self._identifier + ".data",
+                                                             a.data,
+                                                             b.data,
+                                                             exclude_paths=self._exclude_paths,
+                                                             attr="data",
+                                                             alignment="@",
+                                                             word_code=wc))
 
         if len(children) > 0 and all(c or c.excluded() for c in children):
             return (True, "Grains match", children)

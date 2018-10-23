@@ -35,7 +35,7 @@ from fractions import Fraction
 from copy import copy, deepcopy
 
 from ..grain import size_for_audio_format
-from ..cogenums import CogAudioFormat
+from ..cogenums import CogAudioFormat, CogFrameFormat, CogFrameLayout
 from .. import Grain, EventGrain, AudioGrain, CodedAudioGrain, CodedVideoGrain, VideoGrain
 
 
@@ -63,8 +63,10 @@ def attributes_for_grain_type(grain_type):
 
     if grain_type == "event":
         return COMMON_ATTRS + ["event_type", "topic", "event_data"]
-    if grain_type == "audio":
+    elif grain_type == "audio":
         return COMMON_ATTRS + ["format", "samples", "channels", "sample_rate"]
+    elif grain_type == "video":
+        return COMMON_ATTRS + ["format", "width", "height", "layout"]
     else:
         return COMMON_ATTRS
 
@@ -84,6 +86,8 @@ def attributes_for_grain_strategy(strat):
         return attributes_for_grain_type("empty")
     elif strat == audio_grains:
         return attributes_for_grain_type("audio")
+    elif strat == video_grains:
+        return attributes_for_grain_type("video")
     else:
         return attributes_for_grain_type(strat.example().grain_type)
 
@@ -92,7 +96,10 @@ def _format_strategy(grain_type):
     if grain_type == "audio":
         # Uncompressed audio formats
         return sampled_from(CogAudioFormat).filter(lambda x: x < 0x200)
-    return ValueError("Cannot generate formats for grain type: {!r}".format(grain_type))
+    elif grain_type == "video":
+        return sampled_from(CogFrameFormat).filter(lambda x: ((x >> 9) & 0x1) == 0)
+    else:
+        return ValueError("Cannot generate formats for grain type: {!r}".format(grain_type))
 
 
 def strategy_for_grain_attribute(attr, grain_type=None):
@@ -117,7 +124,10 @@ def strategy_for_grain_attribute(attr, grain_type=None):
               'format': _format_strategy(grain_type),
               'samples': integers(min_value=1, max_value=16),
               'channels': integers(min_value=1, max_value=16),
-              'sample_rate': sampled_from((48000, 44100))}
+              'sample_rate': sampled_from((48000, 44100)),
+              'width': just(240),
+              'height': just(135),
+              'layout': sampled_from(CogFrameLayout).filter(lambda x: x != CogFrameLayout.UNKNOWN)}
     if attr not in strats:
         raise ValueError("No strategy known for grain attribute: {!r}".format(attr))
     if isinstance(strats[attr], Exception):
@@ -247,6 +257,68 @@ def audio_grains(src_id=None,
                            sample_rate=sample_rate)
 
 
+def video_grains(src_id=None,
+                 flow_id=None,
+                 creation_timestamp=None,
+                 origin_timestamp=None,
+                 sync_timestamp=None,
+                 rate=DONOTSET,
+                 duration=DONOTSET,
+                 format=None,
+                 width=None,
+                 height=None,
+                 layout=None):
+    """Draw from this strategy to get audio grains. The data element of these grains will always be all 0s.
+
+    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on hypothesis.strategies.integers
+                   which shrinks towards smaller numerical values will be used.
+    :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on hypothesis.strategies.integers which
+                    shrinks towards smaller numerical values will be used.
+    :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
+                               mediagrains.hypothesis.strategies.timestamps will be used (the default), if DONOTSET is passed then the creation_timestamp will
+                               be the time when drawing occured (this is unlikely to be what you want).
+    :param origin_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
+                             mediagrains.hypothesis.strategies.timestamps will be used  (the default), if DONOTSET is passed then the origin_timestamp of each
+                             grain drawn will be set to be equal to the creation_timestamp.
+    :param sync_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
+                           mediagrains.hypothesis.strategies.timestamps will be used (the default), if DONOTSET is passed then the sync_timestamp will be set
+                           equal to the origin_timestamp on all drawn grains.
+    :param rate: something that can be passed to the constructor of fractions.Fraction or a strategy that generates them, or the value DONOTSET (the default)
+                 which causes the default rate to be used for all grains, or the value None in which case hypothesis.strategies.fractions will be used with
+                 min_value set to 0.
+    :param duration: something that can be passed to the constructor of fractions.Fraction or a strategy that generates them, or the value DONOTSET (the
+                     default) which causes the default rate to be used for all grains, or the value None in which case hypothesis.strategies.fractions will be
+                     used with min_value set to 0.
+    :param format: either a member of cogenums.CogFrameFormat or a strategy that generates them. The default strategy will not produce encoded or unknown
+                   formats.
+    :param width: either a positive integer or a strategy that generates them, the default strategy is just(240).
+    :param height: either a positive integer or a strategy that generates them, the default strategy is just(135).
+    :param layout: either a member of cogenums.CogFrameLayout or a strategy that generates them, the default strategy will not generate UNKNOWN layout.
+    """
+
+    if rate is DONOTSET:
+        rate = Fraction(25, 1)
+    if duration is DONOTSET:
+        duration = Fraction(1, 25)
+
+    def video_grain(source_id, flow_id, origin_timestamp, sync_timestamp, rate, duration, creation_timestamp, format, width, height, layout):
+        return VideoGrain(src_id=source_id, flow_id=flow_id, creation_timestamp=creation_timestamp, origin_timestamp=origin_timestamp,
+                          sync_timestamp=sync_timestamp, rate=rate, duration=duration, cog_frame_format=format, width=width, height=height,
+                          cog_frame_layout=layout)
+
+    return _grain_strategy(video_grain, "video",
+                           source_id=src_id,
+                           flow_id=flow_id,
+                           origin_timestamp=origin_timestamp,
+                           sync_timestamp=sync_timestamp,
+                           rate=rate,
+                           duration=duration,
+                           format=format,
+                           width=width,
+                           height=height,
+                           layout=layout)
+
+
 def grains(grain_type, **kwargs):
     """A strategy that generates grains of the specified type."""
 
@@ -256,6 +328,8 @@ def grains(grain_type, **kwargs):
         return audio_grains(**kwargs)
     elif grain_type == "event":
         return event_grains(**kwargs)
+    elif grain_type == "video":
+        return video_grains(**kwargs)
 
     raise ValueError("Cannot find a strategy to generate grains of type: {}".format(grain_type))
 
@@ -289,6 +363,8 @@ def grains_from_template_with_data(grain, data=None):
                              max_size=ln).map(lambda x: struct.pack('@' + ('d'*ln), *x))
             else:
                 data = binary(min_size=grain.expected_length, max_size=grain.expected_length)
+        else:
+            data = binary(min_size=grain.length, max_size=grain.length)
                 
     elif not isinstance(data, SearchStrategy):
         data = just(data)

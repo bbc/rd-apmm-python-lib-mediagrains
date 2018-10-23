@@ -65,7 +65,7 @@ def grains_with_data(grain_type):
         return grains(grain_type)
 
 
-GRAIN_TYPES_TO_TEST = ["empty", "event", "audio"]
+GRAIN_TYPES_TO_TEST = ["empty", "event", "audio", "video"]
 
 settings.register_profile("ci", max_examples=1000)
 settings.load_profile("ci")
