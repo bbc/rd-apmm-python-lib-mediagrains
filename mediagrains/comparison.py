@@ -489,6 +489,36 @@ class GrainComparisonResult(ComparisonResult):
                                                              word_code=wc,
                                                              words_per_sample=wps,
                                                              force_signed=s))
+            else:
+                self._exclude_paths.append(self._identifier + ".data")
+                children.append(FailingComparisonResult(self._identifier + ".data",
+                                                        "payload formats do not match",
+                                                        attr="data",
+                                                        exclude_paths=self._exclude_paths))
+
+        if a.grain_type == "coded_audio" and b.grain_type == "coded_audio":
+            # We are comparing coded_audio grains, so compare their coded_audio grain specific features
+            for key in ['format',
+                        'samples',
+                        'channels',
+                        'sample_rate',
+                        'priming',
+                        'remainder']:
+                path = self._identifier + '.' + key
+                children.append(EqualityComparisonResult(path, getattr(a, key), getattr(b, key), exclude_paths=self._exclude_paths, attr=key))
+
+            if a.format == b.format:
+                children.append(DataEqualityComparisonResult(self._identifier + ".data",
+                                                             a.data,
+                                                             b.data,
+                                                             exclude_paths=self._exclude_paths,
+                                                             attr="data"))
+            else:
+                self._exclude_paths.append(self._identifier + ".data")
+                children.append(FailingComparisonResult(self._identifier + ".data",
+                                                        "payload formats do not match",
+                                                        attr="data",
+                                                        exclude_paths=self._exclude_paths))
 
         elif a.grain_type == "video" and b.grain_type == "video":
             # We are comparing video grains, so compare their video grain specific features
@@ -523,11 +553,62 @@ class GrainComparisonResult(ComparisonResult):
                                                              attr="data",
                                                              alignment="@",
                                                              word_code=wc))
+            else:
+                self._exclude_paths.append(self._identifier + ".data")
+                children.append(FailingComparisonResult(self._identifier + ".data",
+                                                        "payload formats do not match",
+                                                        attr="data",
+                                                        exclude_paths=self._exclude_paths))
+
+        elif a.grain_type == "coded_video" and b.grain_type == "coded_video":
+            # We are comparing coded_video grains, so compare their coded_video grain specific features
+            for key in ['format',
+                        'coded_width',
+                        'coded_height',
+                        'origin_width',
+                        'origin_height',
+                        'is_key_frame',
+                        'temporal_offset',
+                        'layout']:
+                path = self._identifier + '.' + key
+                children.append(EqualityComparisonResult(path, getattr(a, key), getattr(b, key), exclude_paths=self._exclude_paths, attr=key))
+
+            for key in ['unit_offsets']:
+                path = self._identifier + '.' + key
+                children.append(OrderedContainerComparisonResult(path,
+                                                                 getattr(a, key),
+                                                                 getattr(b, key),
+                                                                 comparison_class=DifferenceComparisonResult,
+                                                                 exclude_paths=self._exclude_paths, attr=key))
+
+            if a.format == b.format:
+                children.append(DataEqualityComparisonResult(self._identifier + ".data",
+                                                             a.data,
+                                                             b.data,
+                                                             exclude_paths=self._exclude_paths,
+                                                             attr="data"))
+            else:
+                self._exclude_paths.append(self._identifier + ".data")
+                children.append(FailingComparisonResult(self._identifier + ".data",
+                                                        "payload formats do not match",
+                                                        attr="data",
+                                                        exclude_paths=self._exclude_paths))
 
         if len(children) > 0 and all(c or c.excluded() for c in children):
             return (True, "Grains match", children)
         else:
             return (False, "Grains do not match", children)
+
+
+class FailingComparisonResult(ComparisonResult):
+    def __init__(self, identifier, reason, **kwargs):
+        self.reason = reason
+        super(FailingComparisonResult, self).__init__(identifier, None, None, **kwargs)
+
+    def compare(self, a, b):
+        return (False, "Cannot compare {} and {} because: {}".format(self._identifier.format('a'),
+                                                                     self._identifier.format('b'),
+                                                                     self.reason), [])
 
 
 class ComparisonOption(object):
@@ -542,6 +623,12 @@ class ComparisonExclude(ComparisonOption):
 class _Exclude(object):
     def __getattr__(self, attr):
         return ComparisonExclude("{}." + attr)
+
+
+class ComparisonExpectDifferenceMatches(ComparisonOption):
+    def __init__(self, path, matcher):
+        self.matcher = matcher
+        super(ComparisonExpectDifferenceMatches, self).__init__(path)
 
 
 Exclude = _Exclude()
