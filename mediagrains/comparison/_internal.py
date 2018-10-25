@@ -242,11 +242,15 @@ class DataEqualityComparisonResult(ComparisonResult):
         elif a is None:
             return (False, "{} is not set, but {} is binary data with length {}".format(self._identifier.format('a'),
                                                                                         self._identifier.format('b'),
-                                                                                        len(b)))
+                                                                                        len(b)), [])
         elif b is None:
             return (False, "{} is not set, but {} is binary data with length {}".format(self._identifier.format('b'),
                                                                                         self._identifier.format('a'),
-                                                                                        len(a)))
+                                                                                        len(a)), [])
+
+        if self.excluded():
+            return (False, "For speed reasons not comparing {} and {} when this would be excluded".format(self._identifier.format('a'),
+                                                                                                          self._identifier.format('b')), [])
 
         self.d = SequenceMatcher(None, a, b)
         if self.d.ratio() == 1.0:
@@ -383,6 +387,47 @@ class OrderedContainerComparisonResult(ComparisonResult):
             return (False, "Lists do not match", children)
 
 
+class GrainIteratorComparisonResult(ComparisonResult):
+    def __init__(self, identifier, a, b, **kwargs):
+        super(GrainIteratorComparisonResult, self).__init__(identifier, a, b, **kwargs)
+
+    def compare(self, a, b):
+        a = iter(a)
+        b = iter(b)
+
+        n = 0
+
+        children = []
+
+        while True:
+            A = next(a, None)
+            B = next(b, None)
+
+            if A is None and B is None:
+                break
+            elif A is None:
+                children.append(BOnlyComparisonResult("{}", B, options=self._options, key=n))
+                break
+            elif B is None:
+                children.append(AOnlyComparisonResult("{}", A, options=self._options, key=n))
+                break
+            else:
+                comp = GrainComparisonResult("{}", A, B, options=self._options, key=n)
+                children.append(comp)
+                if not comp:
+                    break
+
+                n += 1
+
+        if all(c or c.excluded() for c in children):
+            return (True, "Iterators Match with length {}".format(len(children)), children)
+        else:
+            return (False, "Iterators differ first at entry {}".format(len(children)), children)
+
+    def __len__(self):
+        return len(self.children)
+
+
 class MappingContainerComparisonResult(ComparisonResult):
     def __init__(self, identifier, a, b, comparison_class=EqualityComparisonResult, **kwargs):
         self._comparison_class = comparison_class
@@ -406,9 +451,6 @@ class MappingContainerComparisonResult(ComparisonResult):
 
 class GrainComparisonResult(ComparisonResult):
     """A ComparisonResult class for comparing grains, this is where almost all of the grain comparison logic is contained."""
-    def __init__(self, a, b, **kwargs):
-        super(GrainComparisonResult, self).__init__("{}", a, b, **kwargs)
-
     def compare(self, a, b):
         children = {}
 

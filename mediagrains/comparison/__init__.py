@@ -28,7 +28,7 @@ The main interface is via the compare_grain function.
 from __future__ import print_function
 from __future__ import absolute_import
 
-from ._internal import GrainComparisonResult
+from ._internal import GrainComparisonResult, GrainIteratorComparisonResult
 
 __all__ = ["compare_grain"]
 
@@ -61,4 +61,22 @@ def compare_grain(a, b, *options):
     in the tree can be tested as a boolean and can also have .excluded() called on it, which will return True iff the original comparison
     excluded that attribute.
     """
-    return GrainComparisonResult(a, b, options=options)
+    return GrainComparisonResult("{}", a, b, options=options)
+
+
+def compare_grains_pairwise(a, b, *options):
+    """
+    Compare two iterators which produce grains pairwise. Each grain from iterator a will be compared against the corresponding grain in iterator b. The
+    comparison will end when any grain fails to match. If one iterator runs out of grains the comparison will end. If both run out at the same time and
+    all grains matches then this is considered a succesful match, any other situation is an unsuccessful match.
+
+    :param a: An iterator that generates grains
+    :param b: An iterator that generates grains
+    :param *options: Additional arguments are passed to the grain comparison mechanism exactly as for compare_grains.
+
+    :returns: An object which will evaluate as True if the iterators matched, and False if they did not. In addition it has a rich description of the
+    comparisons performed which is accesstible by calling str on it. A call to first_failing_index() will return the index of the first entry that does not
+    match. The object itself is an ordered container containing matcher objects representing the differences between the grains, and these can be accessed
+    via the standard [n] index notation, and len() will return the number of such result objects are present.
+    """
+    return GrainIteratorComparisonResult("{}", a, b, options=options)
