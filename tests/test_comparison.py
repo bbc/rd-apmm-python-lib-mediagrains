@@ -19,7 +19,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 import unittest
-from cloudfit_fixtures import APMMTestCase
+from unittest import TestCase
 
 from hypothesis import given, assume, settings, HealthCheck
 from hypothesis.strategies import sampled_from, just, tuples
@@ -41,7 +41,7 @@ settings.register_profile("ci", max_examples=1000)
 settings.load_profile("ci")
 
 
-class TestCompareGrain(APMMTestCase):
+class TestCompareGrain(TestCase):
     @settings(suppress_health_check=[HealthCheck.too_slow])
     @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains_with_data))
     def test_equal_grains_compare_as_equal(self, a):
