@@ -24,90 +24,63 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 from mediatimestamp.hypothesis.strategies import timestamps
-from hypothesis.strategies import integers, from_regex, booleans, uuids, just, tuples, fractions, binary, lists, fixed_dictionaries, one_of, SearchStrategy, builds, sampled_from, floats
-from hypothesis.strategies import data as data_strategy
+from hypothesis.strategies import (
+    integers,
+    from_regex,
+    booleans,
+    just,
+    fractions,
+    binary,
+    lists,
+    fixed_dictionaries,
+    one_of,
+    SearchStrategy,
+    builds,
+    sampled_from,
+    floats
+)
 
 import struct
 
 from uuid import UUID
-from mediatimestamp import Timestamp
 from fractions import Fraction
-from copy import copy, deepcopy
+from copy import copy
 
-from ..grain import size_for_audio_format
+from ..grain import attributes_for_grain_type
 from ..cogenums import CogAudioFormat, CogFrameFormat, CogFrameLayout
 from .. import Grain, EventGrain, AudioGrain, CodedAudioGrain, CodedVideoGrain, VideoGrain
 
 
-__all__ = ["DONOTSET", "empty_grains", "event_grains", "attributes_for_grain_strategy", "strategy_for_grain_attribute"]
+__all__ = ["DONOTSET",
+           "empty_grains",
+           "event_grains",
+           "audio_grains",
+           "video_grains",
+           "coded_audio_grains",
+           "coded_video_grains",
+           "grains",
+           "grains_from_template_with_data",
+           "strategy_for_grain_attribute",
+           "shrinking_uuids",
+           "fraction_dicts",
+           "grains_with_data"]
 
 
-class DONOTSET(object):
-    pass
+DONOTSET = object()
 
 
 def shrinking_uuids():
+    """A strategy that produces uuids, but shrinks towards 0, unlike the standard hypothesis one."""
     return binary(min_size=16, max_size=16).map(lambda b: UUID(bytes=b))
 
 
 def fraction_dicts(*args, **kwargs):
+    """A strategy that produces dictionaries of the form {'numerator': n, 'denominator': d} for fractions generated using the fractions strategy.
+    All arguments are passed through to the underlying call to fractions."""
     def _fraction_to_dict(f):
         return {'numerator': f.numerator,
                 'denominator': f.denominator}
     return builds(_fraction_to_dict, fractions(*args, **kwargs))
-
-
-def attributes_for_grain_type(grain_type):
-    # We don't include length because it's calculated from other things.
-    COMMON_ATTRS = ['source_id', 'flow_id', 'origin_timestamp', 'sync_timestamp', 'creation_timestamp', 'rate', 'duration']
-
-    if grain_type == "event":
-        return COMMON_ATTRS + ["event_type", "topic", "event_data"]
-    elif grain_type == "audio":
-        return COMMON_ATTRS + ["format", "samples", "channels", "sample_rate"]
-    elif grain_type == "coded_audio":
-        return COMMON_ATTRS + ["format", "samples", "channels", "sample_rate", "priming", "remainder"]
-    elif grain_type == "video":
-        return COMMON_ATTRS + ["format", "width", "height", "layout"]
-    elif grain_type == "coded_video":
-        return COMMON_ATTRS + ["format", "coded_width", "coded_height", "layout", "origin_width", "origin_height", "is_key_frame", "temporal_offset", "unit_offsets"]
-    else:
-        return COMMON_ATTRS
-
-
-def attributes_for_grain_strategy(strat):
-    """Different strategies produce different kinds of grains, this method conveniently helps determine what the writeable attributes
-    for the grains from a strategy will be.
-
-    WARNING: Do not pass in a strategy that can generate multiple types of grains. Results are unpredictable.
-
-    :param strat: A strategy that generates a single type of grains
-    :returns: A list of strings containing attribute names for the type of grain the strategy generates.
-    """
-    if strat == event_grains:
-        return attributes_for_grain_type("event")
-    elif strat == empty_grains:
-        return attributes_for_grain_type("empty")
-    elif strat == audio_grains:
-        return attributes_for_grain_type("audio")
-    elif strat == video_grains:
-        return attributes_for_grain_type("video")
-    else:
-        return attributes_for_grain_type(strat.example().grain_type)
-
-
-def _format_strategy(grain_type):
-    if grain_type == "audio":
-        # Uncompressed audio formats
-        return sampled_from(CogAudioFormat).filter(lambda x: x < 0x200)
-    elif grain_type == "coded_audio":
-        return sampled_from(CogAudioFormat).filter(lambda x: (x & 0x200) != 0 and x != CogAudioFormat.INVALID)
-    elif grain_type == "video":
-        return sampled_from(CogFrameFormat).filter(lambda x: ((x >> 9) & 0x1) == 0)
-    elif grain_type == "coded_video":
-        return sampled_from(CogFrameFormat).filter(lambda x: (x & 0x200) != 0 and x != CogFrameFormat.INVALID)
-    else:
-        return ValueError("Cannot generate formats for grain type: {!r}".format(grain_type))
 
 
 def strategy_for_grain_attribute(attr, grain_type=None):
@@ -116,6 +89,19 @@ def strategy_for_grain_attribute(attr, grain_type=None):
     :param attr: a string, the name of an attribute of one of the GRAIN subclasses
     :param grain_type: some grains types have attributes of the same name, but which require different strategies
     :returns: a strategy."""
+
+    def _format_strategy(grain_type):
+        if grain_type == "audio":
+            # Uncompressed audio formats
+            return sampled_from(CogAudioFormat).filter(lambda x: x < 0x200)
+        elif grain_type == "coded_audio":
+            return sampled_from(CogAudioFormat).filter(lambda x: (x & 0x200) != 0 and x != CogAudioFormat.INVALID)
+        elif grain_type == "video":
+            return sampled_from(CogFrameFormat).filter(lambda x: ((x >> 9) & 0x1) == 0)
+        elif grain_type == "coded_video":
+            return sampled_from(CogFrameFormat).filter(lambda x: (x & 0x200) != 0 and x != CogFrameFormat.INVALID)
+        else:
+            return ValueError("Cannot generate formats for grain type: {!r}".format(grain_type))
 
     strats = {'source_id': shrinking_uuids(),
               'flow_id': shrinking_uuids(),
@@ -176,8 +162,8 @@ def empty_grains(src_id=None,
                  duration=DONOTSET):
     """Draw from this strategy to get empty grains.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on hypothesis.strategies.integers
-                   which shrinks towards smaller numerical values will be used.
+    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
+                      hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
     :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on hypothesis.strategies.integers which
                     shrinks towards smaller numerical values will be used.
     :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
@@ -219,8 +205,8 @@ def audio_grains(src_id=None,
                  sample_rate=None):
     """Draw from this strategy to get audio grains. The data element of these grains will always be all 0s.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on hypothesis.strategies.integers
-                   which shrinks towards smaller numerical values will be used.
+    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
+                      hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
     :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on hypothesis.strategies.integers which
                     shrinks towards smaller numerical values will be used.
     :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
@@ -273,8 +259,8 @@ def coded_audio_grains(src_id=None,
                        sample_rate=None):
     """Draw from this strategy to get coded audio grains. The data element of these grains will always be all 0s.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on hypothesis.strategies.integers
-                   which shrinks towards smaller numerical values will be used.
+    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
+                      hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
     :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on hypothesis.strategies.integers which
                     shrinks towards smaller numerical values will be used.
     :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
@@ -296,8 +282,10 @@ def coded_audio_grains(src_id=None,
                    formats.
     :param samples: either a positive integer or a strategy that generates them, the default strategy is integers(min_value=1).
     :param channels: either a positive integer or a strategy that generates them, the default strategy is integers(min_value=1).
-    :param priming: either a positive integer or a strategy that generates them, by default this value is left unset, and so defaults to 0 on all generated grains
-    :param remainder: either a positive integer or a strategy that generates them, by default this value is left unset, and so defaults to 0 on all generated grains
+    :param priming: either a positive integer or a strategy that generates them, by default this value is left unset, and so defaults to 0 on all generated
+                    grains
+    :param remainder: either a positive integer or a strategy that generates them, by default this value is left unset, and so defaults to 0 on all generated
+                      grains
     :param sample_rate: either a positive integer or a strategy that generates them, the default strategy will always generate either 48000 or 44100.
     """
     return _grain_strategy(CodedAudioGrain, "coded_audio",
@@ -328,8 +316,8 @@ def video_grains(src_id=None,
                  layout=None):
     """Draw from this strategy to get video grains. The data element of these grains will always be all 0s.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on hypothesis.strategies.integers
-                   which shrinks towards smaller numerical values will be used.
+    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
+                      hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
     :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on hypothesis.strategies.integers which
                     shrinks towards smaller numerical values will be used.
     :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
@@ -385,8 +373,8 @@ def coded_video_grains(src_id=None,
                        unit_offsets=None):
     """Draw from this strategy to get coded video grains. The data element of these grains will always be all 0s.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on hypothesis.strategies.integers
-                   which shrinks towards smaller numerical values will be used.
+    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
+                      hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
     :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on hypothesis.strategies.integers which
                     shrinks towards smaller numerical values will be used.
     :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
@@ -451,6 +439,16 @@ def grains(grain_type, **kwargs):
         return coded_video_grains(**kwargs)
 
     raise ValueError("Cannot find a strategy to generate grains of type: {}".format(grain_type))
+
+
+def grains_with_data(grain_type):
+    """Strategy giving grains which have data payloads filled out using an appropriate strategy for the grain type.
+
+    :param grain_type: The type of grains to generate"""
+    if grain_type in ("audio", "video", "coded_audio", "coded_video"):
+        return grains(grain_type).flatmap(lambda g: grains_from_template_with_data(g))
+    else:
+        return grains(grain_type)
 
 
 def grains_from_template_with_data(grain, data=None):
@@ -560,25 +558,3 @@ def event_grains(src_id=None,
                            event_type=event_type,
                            topic=topic,
                            event_data=event_data)
-
-
-def grains_varying_entries(grains, entry_strategies, min_size=2, average_size=None, max_size=None):
-    """A strategy which generates a list of grains that differ only in the specified features.
-
-    :param grains: a strategy that produces grains to use as the initial template
-    :param entry_strategies: a dictionary mapping grain attribute names to strategies for generating them
-    :param min_size: The minimum size of the generated list (default is 2)
-    :param average_size: The average size of the generated list (default is None)
-    :param max_size: The max size of the generated list (default is None)
-    """
-
-    def _grain_adjusting_entries(grain, entries):
-        g = deepcopy(grain)
-        for key in entries:
-            setattr(g, key, entries[key])
-        return g
-
-    return grains.flatmap(lambda grain: lists(fixed_dictionaries(entry_strategies),
-                                              min_size=min_size,
-                                              average_size=average_size,
-                                              max_size=max_size).map(lambda dicts: [_grain_adjusting_entries(grain, entries) for entries in dicts]))

@@ -36,7 +36,27 @@ from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
 import json
 
-__all__ = ["GRAIN", "VIDEOGRAIN", "AUDIOGRAIN", "CODEDVIDEOGRAIN", "CODEDAUDIOGRAIN", "EVENTGRAIN"]
+__all__ = ["GRAIN", "VIDEOGRAIN", "AUDIOGRAIN", "CODEDVIDEOGRAIN", "CODEDAUDIOGRAIN", "EVENTGRAIN", "attributes_for_grain_type"]
+
+
+def attributes_for_grain_type(grain_type):
+    """Returns a list of attributes for a particular grain type. Useful for testing."""
+
+    COMMON_ATTRS = ['source_id', 'flow_id', 'origin_timestamp', 'sync_timestamp', 'creation_timestamp', 'rate', 'duration']
+
+    if grain_type == "event":
+        return COMMON_ATTRS + ["event_type", "topic", "event_data"]
+    elif grain_type == "audio":
+        return COMMON_ATTRS + ["format", "samples", "channels", "sample_rate"]
+    elif grain_type == "coded_audio":
+        return COMMON_ATTRS + ["format", "samples", "channels", "sample_rate", "priming", "remainder"]
+    elif grain_type == "video":
+        return COMMON_ATTRS + ["format", "width", "height", "layout"]
+    elif grain_type == "coded_video":
+        return COMMON_ATTRS + ["format", "coded_width", "coded_height", "layout", "origin_width", "origin_height", "is_key_frame", "temporal_offset",
+                               "unit_offsets"]
+    else:
+        return COMMON_ATTRS
 
 
 class GRAIN(Sequence):

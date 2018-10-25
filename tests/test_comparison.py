@@ -21,48 +21,18 @@ from __future__ import absolute_import
 import unittest
 from cloudfit_fixtures import APMMTestCase
 
-from hypothesis import given, assume, reproduce_failure, seed, settings, HealthCheck
-from hypothesis.strategies import uuids, from_regex, one_of, lists, builds, sampled_from, just, tuples
-from mediagrains.hypothesis.strategies import grains, empty_grains, event_grains, audio_grains, grains_varying_entries, attributes_for_grain_type, strategy_for_grain_attribute, grains_from_template_with_data
-from mediatimestamp.hypothesis.strategies import timestamps
+from hypothesis import given, assume, settings, HealthCheck
+from hypothesis.strategies import sampled_from, just, tuples
+from mediagrains.hypothesis.strategies import grains_with_data
 
-from mediatimestamp import Timestamp
+from mediagrains.comparison import compare_grain
+from mediagrains.comparison.options import Exclude
 
-from mediagrains.comparison import compare_grain, Exclude
+from mediagrains.grain import attributes_for_grain_type
 
 from copy import deepcopy
 
-
-def pairs_of(strategy):
-    return lists(strategy, min_size=2, max_size=2).map(tuple)
-
-
-def pairs_of_grains_of_type_differing_only_at_specified_attribute(grain_type, attr):
-    """Strategy giving pairs of grains of the specified type that differ from each other only in the specified attribute"""
-    return grains_varying_entries(grains(grain_type), {attr: strategy_for_grain_attribute(attr, grain_type=grain_type)}, max_size=2).map(tuple)
-
-
-def attribute_and_pairs_of_grains_of_type_differing_only_in_one_attribute(grain_type):
-    """Strategy giving a tuple of an attribute name and a pair of grains of the specified type that differ only in the drawn attribute.
-
-    For some types of grain the attribute drawn can include "data" which is generated a little differently from other types of attribute as befits its unusual
-    nature"""
-
-    attr_strat = attributes_for_grain_type(grain_type)
-    grain_strat = sampled_from(attr_strat).flatmap(lambda attr: tuples(just(attr),
-                                                                       pairs_of_grains_of_type_differing_only_at_specified_attribute(grain_type, attr)))
-
-    if grain_type in ("audio", "video", "coded_audio", "coded_video"):
-        return grain_strat | grains(grain_type).flatmap(lambda g: tuples(just("data"), pairs_of(grains_from_template_with_data(g))))
-    else:
-        return grain_strat
-
-
-def grains_with_data(grain_type):
-    if grain_type in ("audio", "video", "coded_audio", "coded_video"):
-        return grains(grain_type).flatmap(lambda g: grains_from_template_with_data(g))
-    else:
-        return grains(grain_type)
+from fixtures import pairs_of, attribute_and_pairs_of_grains_of_type_differing_only_in_one_attribute
 
 
 GRAIN_TYPES_TO_TEST = ["empty", "event", "audio", "video", "coded_audio", "coded_video"]
@@ -104,9 +74,13 @@ class TestCompareGrain(APMMTestCase):
         c = compare_grain(a, b, getattr(Exclude, excl))
         self.assertTrue(c, msg="Comparison of {!r} and {!r} excluding {} was unequal when equality was expected:\n\n{}".format(a, b, excl, str(c)))
         self.assertIn(excl, c.failing_attributes())
-        self.assertFalse(getattr(c, excl), msg="Expected {!r} to evaluate as false when comparing {!r} and {!r} excluding {}".format(getattr(c, excl), a, b, excl))
+        self.assertFalse(getattr(c, excl), msg="Expected {!r} to evaluate as false when comparing {!r} and {!r} excluding {}".format(getattr(c, excl),
+                                                                                                                                     a,
+                                                                                                                                     b,
+                                                                                                                                     excl))
 
-    @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains_with_data).flatmap(lambda g: tuples(just(g), sampled_from(attributes_for_grain_type(g.grain_type)))))
+    @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains_with_data).flatmap(lambda g: tuples(just(g),
+                                                                                                sampled_from(attributes_for_grain_type(g.grain_type)))))
     def test_equal_grains_compare_as_equal_with_exclusions(self, data_in):
         (a, excl) = data_in
         b = deepcopy(a)

@@ -15,39 +15,9 @@
 # limitations under the License.
 #
 
-"""\
-The submodule which gives comparison capabilities.
-
-Contains a fairly complex set of methods for comparing grains in ways that
-are more nuanced than the simple equality comparison provided by the grain class
-itself.
-
-The main interface is via the compare_grain function.
-
-Options can be passed to comparisons which are constructed using the objects Exclude and ExpectedDifference.
-These two objects provide a convenient (and similar) interface. By accessing attributes of these objects that have
-the same names as attributes of the objects to be compared you can identify which attributes to refer to.
-
-eg.
-
-Exclude.creation_timestamp
-
-is an option that causes the comparison operation to ignore any differences in the creation_timestamp member of the compared
-objects.
-
-For ExpectedDifference there is an additional step, which is to apply comparison operations, so:
-
-(ExpectedDifference.creation_timestamp > TimeOffset(0, 64))
-
-is an option that requires (a.creation_timestamp - b.creation_timestamp) to be greater than 64 nanoseconds.
-
-This mechanism may be expanded for further option types in the future.
-"""
-
 from __future__ import print_function
 from __future__ import absolute_import
 
-from fractions import Fraction
 from mediatimestamp import TimeOffset
 from difflib import SequenceMatcher
 
@@ -55,105 +25,10 @@ from six.moves import reduce
 import struct
 import sys
 
-from .cogenums import CogAudioFormat, CogFrameFormat, COG_FRAME_IS_PACKED, COG_FRAME_IS_COMPRESSED, COG_FRAME_FORMAT_BYTES_PER_VALUE
+from ..cogenums import CogAudioFormat, CogFrameFormat, COG_FRAME_IS_PACKED, COG_FRAME_IS_COMPRESSED, COG_FRAME_FORMAT_BYTES_PER_VALUE
 
-__all__ = ["compare_grain", "Exclude", "ExpectedDifference"]
+from .options import Exclude, ComparisonExclude, ComparisonExpectDifferenceMatches
 
-
-#
-# The compare_grain method is the main actual interface for this module
-#
-def compare_grain(a, b, *options):
-    """
-    Compare two grains.
-
-    :param a: the first grain
-    :param b: the second grain
-    :param *options: Additional arguments are options to pass to this comparison. Currently only two types of options are supported:
-    Exclude.<attribute name> causes the named attribute to be excluded from the comparison. Whereas for integer and timestamp attributes
-    it is also possible to use a second type of option: ExpectedDifference.<attribute_name> == <value> (or >=, <, <=, >, !=) will set a criteria
-    for succesful comparison on that attribute that is less strict that the standard requirement that the values be equal to each other.
-
-    Eg.
-
-    compare(a, b, Exclude.data, ExpectedDifference.sync_timestamp >= TimeOffset(64, 0))
-
-    will compare the grains, ignoring differences in their data payloads, but requiring that instead of being equal the difference between their sync_timestamps
-    must be greater than or equal to 64 seconds.
-
-    :return: an object which is truthy if the comparison matched and falsy if it didn't, in addition the object has a detailed
-    human readable summary of the differences between the grains obrainable by calling str on it. In addition any access to an
-    attribute of this object that is possessed by grains (eg. .creation_timestamp, .data, .length) will provide another object
-    that behaves similarly but represents only that attribute and any attributes/entries it contains. Each such object at any level
-    in the tree can be tested as a boolean and can also have .excluded() called on it, which will return True iff the original comparison
-    excluded that attribute.
-    """
-    return GrainComparisonResult(a, b, options=options)
-
-
-#
-# Primarily as syntactic sugar the Exclude and ExpectedDifference objects
-# are exported to make it easier to construct ComparisonOptions in a simple fashion
-#
-class _Exclude(object):
-    def __getattr__(self, attr):
-        return ComparisonExclude("{}." + attr)
-
-
-class _ExpectedDifference(object):
-    def __init__(self, path):
-        self.path = path
-
-    def __repr__(self):
-        return self.path.format("ExpectedDifference")
-
-    def __eq__(self, other):
-        return ComparisonExpectDifferenceMatches(self.path, lambda x: x == other, "{} == {!r}".format(self.path.format('ExpectedDifference'), other))
-
-    def __ne__(self, other):
-        return ComparisonExpectDifferenceMatches(self.path, lambda x: x != other, "{} != {!r}".format('ExpectedDifference', other))
-
-    def __lt__(self, other):
-        return ComparisonExpectDifferenceMatches(self.path, lambda x: x < other, "{} < {!r}".format('ExpectedDifference', other))
-
-    def __le__(self, other):
-        return ComparisonExpectDifferenceMatches(self.path, lambda x: x <= other, "{} <= {!r}".format('ExpectedDifference', other))
-
-    def __gt__(self, other):
-        return ComparisonExpectDifferenceMatches(self.path, lambda x: x > other, "{} > {!r}".format('ExpectedDifference', other))
-
-    def __ge__(self, other):
-        return ComparisonExpectDifferenceMatches(self.path, lambda x: x >= other, "{} >= {!r}".format('ExpectedDifference', other))
-
-    def __and__(self, other):
-        if not isinstance(other, ComparisonExpectDifferenceMatches):
-            raise ValueError("{!r} & {!r} is not a valid operation".format(self, other))
-        elif other.path != self.path:
-            raise ValueError("{!r} & {!r} is not a valid operation: When combining ExpectedDifference operations with & they must refer to the same attribute".format(self, other))
-        else:
-            return ComparisonExpectDifferenceMatches(self.path, lambda x: self.matcher(x) and other.matcher(x), "{!r} & {!r}".format(self, other))
-
-    def __or__(self, other):
-        if not isinstance(other, ComparisonExpectDifferenceMatches):
-            raise ValueError("{!r} | {!r} is not a valid operation".format(self, other))
-        elif other.path != self.path:
-            raise ValueError("{!r} | {!r} is not a valid operation: When combining ExpectedDifference operations with | they must refer to the same attribute".format(self, other))
-        else:
-            return ComparisonExpectDifferenceMatches(self.path, lambda x: self.matcher(x) or other.matcher(x), "{!r} | {!r}".format(self, other))
-
-    def __getattr__(self, attr):
-        return _ExpectedDifference(self.path + "." + attr)
-
-
-Exclude = _Exclude()
-
-
-ExpectedDifference = _ExpectedDifference("{}")
-
-
-#
-# EVERYTHING BELOW THIS POINT IS AN INTERNAL IMPLEMENTATION DETAIL AND NOT EXPECTED TO BE USED DIRECTLY
-#
 
 #
 # The ComparisonResult class and its desscendents implement most of the actual comparison logic
@@ -374,11 +249,6 @@ class DataEqualityComparisonResult(ComparisonResult):
                                                                                         len(a)))
 
         self.d = SequenceMatcher(None, a, b)
-        print("!!!!!!!! {} !!!!!!!!\n\n".format(repr(self.d)))
-
-        if self.d is None:
-            print("SequenceMatcher failed to construct a diff for {!r}, and {!r}".format(a, b))
-
         if self.d.ratio() == 1.0:
             return (True, "Binary data {} are equal".format(self._identifier.format('<a/b>')), [])
         else:
@@ -458,12 +328,14 @@ class DifferenceComparisonResult(ComparisonResult):
             if diff == self._expected_difference:
                 return (True, "{} - {} == {!r} as expected".format(self._identifier.format('a'), self._identifier.format('b'), diff), [])
             else:
-                return (False, "{} - {} == {!r}, not the expected {!r}".format(self._identifier.format('a'), self._identifier.format('b'), diff, self._expected_difference), [])
+                return (False, "{} - {} == {!r}, not the expected {!r}".format(self._identifier.format('a'), self._identifier.format('b'), diff,
+                                                                               self._expected_difference), [])
         else:
             if all(opt.matcher(diff) for opt in opts):
                 return (True, "{} - {} == {!r}, meets requirements set in options".format(self._identifier.format('a'), self._identifier.format('b'), diff), [])
             else:
-                return (False, "{} - {} == {!r}, does not meet requirements set in options".format(self._identifier.format('a'), self._identifier.format('b'), diff), [])
+                return (False, "{} - {} == {!r}, does not meet requirements set in options".format(self._identifier.format('a'), self._identifier.format('b'),
+                                                                                                   diff), [])
 
 
 class TimestampDifferanceComparisonResult(DifferenceComparisonResult):
@@ -759,54 +631,3 @@ class FailingComparisonResult(ComparisonResult):
         return (False, "Cannot compare {} and {} because: {}".format(self._identifier.format('a'),
                                                                      self._identifier.format('b'),
                                                                      self.reason), [])
-
-
-#
-# The ComparisonOption class and its descendents represent options that can be passed to the comparison mechanism to
-# change how it behaves.
-#
-class ComparisonOption(object):
-    def __init__(self, path):
-        self.path = path
-
-    def __ne__(self, other):
-        return not (self == other)
-
-
-class ComparisonExclude(ComparisonOption):
-    def __repr__(self):
-        return "Exclude" + self.path[2:]
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.path == other.path
-
-
-class ComparisonExpectDifferenceMatches(ComparisonOption):
-    def __init__(self, path, matcher, _repr):
-        self.matcher = matcher
-        self._repr = _repr
-        super(ComparisonExpectDifferenceMatches, self).__init__(path)
-
-    def __repr__(self):
-        return self._repr
-
-
-if __name__ == "__main__":
-    from .testsignalgenerator import LumaSteps
-    from uuid import uuid1
-
-    src_id = uuid1()
-    flow_id = uuid1()
-
-    a = next(LumaSteps(src_id, flow_id, 1920, 1080))
-    b = next(LumaSteps(src_id, flow_id, 1920, 1080))
-
-    a.add_timelabel('tmp', 3, Fraction(25, 1))
-    b.add_timelabel('tmp', 3, Fraction(25, 1))
-
-    m = compare_grain(a, b,
-                      Exclude.origin_timestamp,
-                      Exclude.sync_timestamp,
-                      Exclude.creation_timestamp)
-    print(m)
-    print(m.msg)
