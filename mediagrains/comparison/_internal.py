@@ -27,7 +27,7 @@ import sys
 
 from ..cogenums import CogAudioFormat, CogFrameFormat, COG_FRAME_IS_PACKED, COG_FRAME_IS_COMPRESSED, COG_FRAME_FORMAT_BYTES_PER_VALUE
 
-from .options import Exclude, ComparisonExclude, ComparisonExpectDifferenceMatches
+from .options import Exclude, Include, ComparisonExclude, ComparisonExpectDifferenceMatches
 
 
 #
@@ -453,6 +453,9 @@ class GrainComparisonResult(ComparisonResult):
     """A ComparisonResult class for comparing grains, this is where almost all of the grain comparison logic is contained."""
     def compare(self, a, b):
         children = {}
+
+        if Include.creation_timestamp not in self._options:
+            self._options.append(Exclude.creation_timestamp)
 
         for key in ['grain_type',
                     'source_id',

@@ -15,16 +15,19 @@
 # limitations under the License.
 #
 
-"""Options can be passed to comparisons which are constructed using the objects Exclude and ExpectedDifference.
-These two objects provide a convenient (and similar) interface. By accessing attributes of these objects that have
+"""Options can be passed to comparisons which are constructed using the objects Exclude, Include, and ExpectedDifference.
+These three objects provide a convenient (and similar) interface. By accessing attributes of these objects that have
 the same names as attributes of the objects to be compared you can identify which attributes to refer to.
 
 eg.
 
-options.Exclude.creation_timestamp
+options.Include.creation_timestamp
 
-is an option that causes the comparison operation to ignore any differences in the creation_timestamp member of the compared
+is an option that causes the comparison operation to not ignore any differences in the creation_timestamp member of the compared
 objects.
+
+If an Include and an Exclude are used for the same attribute then the Exclude takes precedence. At present the only real use for Include is
+to override the default behaviour that ignores creation_timestamp differences.
 
 For options.ExpectedDifference there is an additional step, which is to apply comparison operations, so:
 
@@ -32,13 +35,16 @@ For options.ExpectedDifference there is an additional step, which is to apply co
 
 is an option that requires (a.creation_timestamp - b.creation_timestamp) to be greater than 64 nanoseconds.
 
-This mechanism may be expanded for further option types in the future."""
+This mechanism may be expanded for further option types in the future.
+
+
+CompareOnlyMetadata is a convenience name for Exclude.data"""
 
 from __future__ import print_function
 from __future__ import absolute_import
 
 
-__all__ = ["Exclude", "ExpectedDifference"]
+__all__ = ["Exclude", "Include", "ExpectedDifference", "CompareOnlyMetadata"]
 
 
 #
@@ -48,6 +54,11 @@ __all__ = ["Exclude", "ExpectedDifference"]
 class _Exclude(object):
     def __getattr__(self, attr):
         return ComparisonExclude("{}." + attr)
+
+
+class _Include(object):
+    def __getattr__(self, attr):
+        return ComparisonInclude("{}." + attr)
 
 
 class _ExpectedDifference(object):
@@ -97,19 +108,6 @@ class _ExpectedDifference(object):
         return _ExpectedDifference(self.path + "." + attr)
 
 
-Exclude = _Exclude()
-
-
-ExpectedDifference = _ExpectedDifference("{}")
-
-
-#
-# EVERYTHING BELOW THIS POINT IS AN INTERNAL IMPLEMENTATION DETAIL AND NOT EXPECTED TO BE USED DIRECTLY
-#
-#
-# The ComparisonOption class and its descendents represent options that can be passed to the comparison mechanism to
-# change how it behaves.
-#
 class ComparisonOption(object):
     def __init__(self, path):
         self.path = path
@@ -126,6 +124,14 @@ class ComparisonExclude(ComparisonOption):
         return type(self) == type(other) and self.path == other.path
 
 
+class ComparisonInclude(ComparisonOption):
+    def __repr__(self):
+        return "Include" + self.path[2:]
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.path == other.path
+
+
 class ComparisonExpectDifferenceMatches(ComparisonOption):
     def __init__(self, path, matcher, _repr):
         self.matcher = matcher
@@ -134,3 +140,15 @@ class ComparisonExpectDifferenceMatches(ComparisonOption):
 
     def __repr__(self):
         return self._repr
+
+
+Exclude = _Exclude()
+
+
+Include = _Include()
+
+
+ExpectedDifference = _ExpectedDifference("{}")
+
+
+CompareOnlyMetadata = Exclude.data

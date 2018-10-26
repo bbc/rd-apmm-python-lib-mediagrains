@@ -26,7 +26,7 @@ from hypothesis.strategies import sampled_from, just, tuples
 from mediagrains.hypothesis.strategies import grains_with_data
 
 from mediagrains.comparison import compare_grain
-from mediagrains.comparison.options import Exclude
+from mediagrains.comparison.options import Exclude, Include
 
 from mediagrains.grain import attributes_for_grain_type
 
@@ -46,7 +46,7 @@ class TestCompareGrain(TestCase):
     @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains_with_data))
     def test_equal_grains_compare_as_equal(self, a):
         b = deepcopy(a)
-        c = compare_grain(a, b)
+        c = compare_grain(a, b, Include.creation_timestamp)
         self.assertTrue(c, msg="Comparison of {!r} and {!r} was unequal when equality was expected:\n\n{}".format(a, b, str(c)))
         self.assertEqual(c.failing_attributes(), [])
 
@@ -54,7 +54,7 @@ class TestCompareGrain(TestCase):
     def test_unequal_grains_compare_as_unequal(self, pair):
         (a, b) = pair
         assume(a != b)
-        c = compare_grain(a, b)
+        c = compare_grain(a, b, Include.creation_timestamp)
         self.assertFalse(c, msg="Comparison of {!r} and {!r} was equal when inequality was expected:\n\n{}".format(a, b, str(c)))
         self.assertNotEqual(c.failing_attributes(), [])
 
@@ -62,7 +62,7 @@ class TestCompareGrain(TestCase):
     def test_unequal_grains_that_differ_at_specific_points_compare_as_unequal(self, data_in):
         (excl, (a, b)) = data_in
         assume(getattr(a, excl) != getattr(b, excl))
-        c = compare_grain(a, b)
+        c = compare_grain(a, b, Include.creation_timestamp)
         self.assertFalse(c, msg="Comparison of {!r} and {!r} was equal when inequality was expected:\n\n{}".format(a, b, str(c)))
         self.assertNotEqual(c.failing_attributes(), [])
         self.assertIn(excl, c.failing_attributes())
@@ -71,7 +71,7 @@ class TestCompareGrain(TestCase):
     def test_unequal_grains_compare_as_equal_with_exclusions_when_difference_is_excluded(self, data_in):
         (excl, (a, b)) = data_in
         assume(getattr(a, excl) != getattr(b, excl))
-        c = compare_grain(a, b, getattr(Exclude, excl))
+        c = compare_grain(a, b, Include.creation_timestamp, getattr(Exclude, excl))
         self.assertTrue(c, msg="Comparison of {!r} and {!r} excluding {} was unequal when equality was expected:\n\n{}".format(a, b, excl, str(c)))
         self.assertIn(excl, c.failing_attributes())
         self.assertFalse(getattr(c, excl), msg="Expected {!r} to evaluate as false when comparing {!r} and {!r} excluding {}".format(getattr(c, excl),
@@ -84,7 +84,7 @@ class TestCompareGrain(TestCase):
     def test_equal_grains_compare_as_equal_with_exclusions(self, data_in):
         (a, excl) = data_in
         b = deepcopy(a)
-        c = compare_grain(a, b, getattr(Exclude, excl))
+        c = compare_grain(a, b, Include.creation_timestamp, getattr(Exclude, excl))
         self.assertTrue(c, msg="Comparison of {!r} and {!r} excluding {} was unequal when equality was expected:\n\n{}".format(a, b, excl, str(c)))
         self.assertEqual(c.failing_attributes(), [])
 
@@ -94,7 +94,7 @@ class TestCompareGrain(TestCase):
     def test_unequal_grains_compare_as_unequal_with_exclusions_when_difference_is_not_excluded(self, data_in):
         (excl, attrs, (a, b)) = data_in
         assume(any(getattr(a, key) != getattr(b, key) for key in attrs if key != excl))
-        c = compare_grain(a, b, getattr(Exclude, excl))
+        c = compare_grain(a, b, Include.creation_timestamp, getattr(Exclude, excl))
         self.assertFalse(c, msg="Comparison of {!r} and {!r} excluding {} was equal when inequality was expected:\n\n{}".format(a, b, excl, str(c)))
         self.assertNotEqual(c.failing_attributes(), [])
         self.assertNotEqual(c.failing_attributes(), [excl])
