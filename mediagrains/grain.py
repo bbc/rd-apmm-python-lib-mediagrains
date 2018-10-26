@@ -36,7 +36,27 @@ from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
 import json
 
-__all__ = ["GRAIN", "VIDEOGRAIN", "AUDIOGRAIN", "CODEDVIDEOGRAIN", "CODEDAUDIOGRAIN", "EVENTGRAIN"]
+__all__ = ["GRAIN", "VIDEOGRAIN", "AUDIOGRAIN", "CODEDVIDEOGRAIN", "CODEDAUDIOGRAIN", "EVENTGRAIN", "attributes_for_grain_type"]
+
+
+def attributes_for_grain_type(grain_type):
+    """Returns a list of attributes for a particular grain type. Useful for testing."""
+
+    COMMON_ATTRS = ['source_id', 'flow_id', 'origin_timestamp', 'sync_timestamp', 'creation_timestamp', 'rate', 'duration']
+
+    if grain_type == "event":
+        return COMMON_ATTRS + ["event_type", "topic", "event_data"]
+    elif grain_type == "audio":
+        return COMMON_ATTRS + ["format", "samples", "channels", "sample_rate"]
+    elif grain_type == "coded_audio":
+        return COMMON_ATTRS + ["format", "samples", "channels", "sample_rate", "priming", "remainder"]
+    elif grain_type == "video":
+        return COMMON_ATTRS + ["format", "width", "height", "layout"]
+    elif grain_type == "coded_video":
+        return COMMON_ATTRS + ["format", "coded_width", "coded_height", "layout", "origin_width", "origin_height", "is_key_frame", "temporal_offset",
+                               "unit_offsets"]
+    else:
+        return COMMON_ATTRS
 
 
 class GRAIN(Sequence):
@@ -167,6 +187,9 @@ final_origin_timestamp()
 
     def __eq__(self, other):
         return tuple(self) == other
+
+    def __ne__(self, other):
+        return not (self == other)
 
     def __copy__(self):
         from .grain_constructors import Grain
@@ -326,6 +349,9 @@ final_origin_timestamp()
         def __eq__(self, other):
             return dict(self) == other
 
+        def __ne__(self, other):
+            return not (self == other)
+
         @property
         def tag(self):
             return self.meta['tag']
@@ -394,6 +420,9 @@ final_origin_timestamp()
 
         def __eq__(self, other):
             return list(self) == other
+
+        def __ne__(self, other):
+            return not (self == other)
 
     @property
     def length(self):
@@ -583,6 +612,9 @@ post
         def __eq__(self, other):
             return dict(self) == other
 
+        def __ne__(self, other):
+            return not (self == other)
+
         @property
         def path(self):
             return self.meta['path']
@@ -767,6 +799,9 @@ length
         def __eq__(self, other):
             return dict(self) == other
 
+        def __ne__(self, other):
+            return not (self == other)
+
         @property
         def stride(self):
             return self.meta['stride']
@@ -828,6 +863,9 @@ length
 
         def __eq__(self, other):
             return list(self) == other
+
+        def __ne__(self, other):
+            return not (self == other)
 
     def __init__(self, meta, data):
         super(VIDEOGRAIN, self).__init__(meta, data)
@@ -1014,7 +1052,7 @@ unit_offsets
             self.meta['grain']['cog_coded_frame']['format'] = int(CogFrameFormat.UNKNOWN)
         if 'layout' not in self.meta['grain']['cog_coded_frame']:
             self.meta['grain']['cog_coded_frame']['layout'] = int(CogFrameLayout.UNKNOWN)
-        for key in ['origin_width', 'origin_height', 'coded_width', 'coded_height', 'temportal_offset', 'length']:
+        for key in ['origin_width', 'origin_height', 'coded_width', 'coded_height', 'temporal_offset', 'length']:
             if key not in self.meta['grain']['cog_coded_frame']:
                 self.meta['grain']['cog_coded_frame'][key] = 0
         if 'is_key_frame' not in self.meta['grain']['cog_coded_frame']:
@@ -1127,8 +1165,14 @@ unit_offsets
         def __eq__(self, other):
             return list(self) == other
 
+        def __ne__(self, other):
+            return not (self == other)
+
         def __repr__(self):
-            return repr(self.parent.meta['grain']['cog_coded_frame']['unit_offsets'])
+            if 'unit_offsets' not in self.parent.meta['grain']['cog_coded_frame']:
+                return repr([])
+            else:
+                return repr(self.parent.meta['grain']['cog_coded_frame']['unit_offsets'])
 
     @property
     def unit_offsets(self):
@@ -1136,7 +1180,7 @@ unit_offsets
 
     @unit_offsets.setter
     def unit_offsets(self, value):
-        if len(value) != 0:
+        if value is not None and len(value) != 0:
             self.meta['grain']['cog_coded_frame']['unit_offsets'] = value
         elif 'unit_offsets' in self.meta['grain']['cog_coded_frame']:
             del self.meta['grain']['cog_coded_frame']['unit_offsets']

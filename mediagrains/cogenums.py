@@ -25,7 +25,7 @@
 
 from enum import IntEnum
 
-__all__ = ['CogFrameFormat', 'CogFrameLayout', 'CogAudioFormat']
+__all__ = ['CogFrameFormat', 'CogFrameLayout', 'CogAudioFormat', 'COG_FRAME_IS_PACKED', 'COG_FRAME_IS_COMPRESSED', 'COG_FRAME_FORMAT_BYTES_PER_VALUE']
 
 
 class CogFrameFormat(IntEnum):
@@ -107,3 +107,20 @@ class CogAudioFormat(IntEnum):
     AAC = 0x201
     OPUS = 0x202
     INVALID = 0xffffffff
+
+
+def COG_FRAME_IS_PACKED(fmt):
+    return ((fmt >> 8) & 0x1) != 0
+
+
+def COG_FRAME_IS_COMPRESSED(fmt):
+    return ((fmt >> 9) & 0x1) != 0
+
+
+def COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt):
+    if ((fmt) & 0xc) == 0:
+        return 1
+    elif ((fmt) & 0xc) == 4:
+        return 2
+    else:
+        return 4

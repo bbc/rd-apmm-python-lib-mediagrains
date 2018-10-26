@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 """\
 The submodule of mediagrains which contains code for generating test video
 grains.
@@ -23,8 +22,6 @@ grains.
 from __future__ import print_function
 from __future__ import absolute_import
 
-__all__ = ["LumaSteps"]
-
 from fractions import Fraction
 from mediatimestamp import TimeOffset
 from copy import deepcopy
@@ -32,6 +29,7 @@ from copy import deepcopy
 from . import VideoGrain
 from .cogenums import CogFrameFormat, CogFrameLayout
 
+__all__ = ["LumaSteps"]
 
 # information about formats
 # in the order:
