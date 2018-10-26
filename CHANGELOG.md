@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.2.0
+- Added 1K Tone to test signal generation
+
 ## 2.1.0
 - Added support for comparison of grains against other grains with a
   variety of options and detailed output when there are differences.
