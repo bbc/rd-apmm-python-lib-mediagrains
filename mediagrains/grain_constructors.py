@@ -89,8 +89,11 @@ no sync_timestamp is provided then it will be set to the origin_timestamp.
 
 In either case the value returned by this function will be an instance of the
 class mediagrains.grain.GRAIN
+
+(the parameters "source_id" and "src_id" are aliases for each other. source_id is probably prefered,
+but src_id is kept avaialble for backwards compatibility)
 """
-    if src_id is None:
+    if source_id is not None:
         src_id = source_id
 
     if meta is None:
@@ -233,12 +236,15 @@ specified.
 
 In either case the value returned by this function will be an instance of the
 class mediagrains.grain.AUDIOGRAIN
+
+(the parameters "source_id" and "src_id" are aliases for each other. source_id is probably prefered,
+but src_id is kept avaialble for backwards compatibility)
 """
     meta = None
 
     if cog_audio_format is None:
         cog_audio_format = format
-    if src_id is None:
+    if source_id is not None:
         src_id = source_id
 
     if isinstance(src_id_or_meta, dict):
@@ -376,11 +382,14 @@ length argument.
 
 In either case the value returned by this function will be an instance of the
 class mediagrains.grain.CODEDAUDIOGRAIN
+
+(the parameters "source_id" and "src_id" are aliases for each other. source_id is probably prefered,
+but src_id is kept avaialble for backwards compatibility)
 """
 
     meta = None
 
-    if src_id is None:
+    if source_id is not None:
         src_id = source_id
 
     if cog_audio_format is None:
@@ -531,12 +540,15 @@ data for the format and size specified.
 
 In either case the value returned by this function will be an instance of the
 class mediagrains.grain.VIDEOGRAIN
+
+(the parameters "source_id" and "src_id" are aliases for each other. source_id is probably prefered,
+but src_id is kept avaialble for backwards compatibility)
 """
     meta = None
 
     if cog_frame_format is None:
         cog_frame_format = format
-    if src_id is None:
+    if source_id is not None:
         src_id = source_id
     if cog_frame_layout is None:
         cog_frame_layout = layout
@@ -805,12 +817,15 @@ then a new bytearray object will be constructed with size equal to length.
 
 In either case the value returned by this function will be an instance of the
 class mediagrains.grain.CODEDVIDEOGRAIN
+
+(the parameters "source_id" and "src_id" are aliases for each other. source_id is probably prefered,
+but src_id is kept avaialble for backwards compatibility)
 """
     meta = None
 
     if cog_frame_format is None:
         cog_frame_format = format
-    if src_id is None:
+    if source_id is not None:
         src_id = source_id
     if cog_frame_layout is None:
         cog_frame_layout = layout
@@ -890,7 +905,7 @@ class mediagrains.grain.CODEDVIDEOGRAIN
 def EventGrain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
                sync_timestamp=None, creation_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
                event_type='', topic='',
-               src_id=None, flow_id=None, meta=None, data=None):
+               src_id=None, source_id=None, flow_id=None, meta=None, data=None):
     """\
 Function called to construct an event grain either from existing data or with new data.
 
@@ -957,7 +972,13 @@ dictionary at the key "event_payload". If no data object is provided then the
 
 In either case the value returned by this function will be an instance of the
 class mediagrains.grain.EVENTGRAIN
+
+(the parameters "source_id" and "src_id" are aliases for each other. source_id is probably prefered,
+but src_id is kept avaialble for backwards compatibility)
 """
+    if source_id is not None:
+        src_id = source_id
+
     if isinstance(src_id_or_meta, dict):
         if meta is None:
             meta = src_id_or_meta

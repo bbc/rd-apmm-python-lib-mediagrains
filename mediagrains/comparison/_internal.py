@@ -31,7 +31,7 @@ from .options import Exclude, Include, ComparisonExclude, ComparisonExpectDiffer
 
 
 #
-# The ComparisonResult class and its desscendents implement most of the actual comparison logic
+# The ComparisonResult class and its descendents implement most of the actual comparison logic
 #
 class ComparisonResult (object):
     """

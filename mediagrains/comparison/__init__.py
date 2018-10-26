@@ -61,7 +61,8 @@ def compare_grain(a, b, *options):
     in the tree can be tested as a boolean and can also have .excluded() called on it, which will return True iff the original comparison
     excluded that attribute.
 
-    By default all comparisons ignore differences in creation_timestamp, to force this timestamp to be checked use the options.Include.creation_timestamp option.
+    By default all comparisons ignore differences in creation_timestamp, to force this timestamp to be checked use the options.Include.creation_timestamp
+    option.
     """
     return GrainComparisonResult("{}", a, b, options=options)
 
@@ -81,6 +82,7 @@ def compare_grains_pairwise(a, b, *options):
     match. The object itself is an ordered container containing matcher objects representing the differences between the grains, and these can be accessed
     via the standard [n] index notation, and len() will return the number of such result objects are present.
 
-    By default all comparisons ignore differences in creation_timestamp, to force this timestamp to be checked use the options.Include.creation_timestamp option.
+    By default all comparisons ignore differences in creation_timestamp, to force this timestamp to be checked use the options.Include.creation_timestamp
+    option.
     """
     return GrainIteratorComparisonResult("{}", a, b, options=options)
