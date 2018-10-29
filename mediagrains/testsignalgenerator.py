@@ -186,7 +186,7 @@ def Tone1K(src_id, flow_id,
                     samples=samples,
                     channels=channels)
     origin_timestamp = deepcopy(ag.origin_timestamp)
-    ots = origin_timestamp
+    ots = deepcopy(origin_timestamp)
 
     offs = 0
     count = 0
@@ -214,8 +214,8 @@ def Tone1K(src_id, flow_id,
     while True:
         grain = deepcopy(ag)
 
-        grain.origin_timestamp = ots
-        grain.sync_timestamp = ots
+        grain.origin_timestamp = deepcopy(ots)
+        grain.sync_timestamp = deepcopy(ots)
 
         if offs not in tone_samples:
             tone_samples[offs] = make_tone_samples(offs, samples, channels)
@@ -226,4 +226,4 @@ def Tone1K(src_id, flow_id,
 
         offs = (offs + samples*step) % 48
         count += samples*step
-        ots = origin_timestamp + TimeOffset.from_count(samples*step*count, 48000, 1)
+        ots = origin_timestamp + TimeOffset.from_count(count, 48000, 1)

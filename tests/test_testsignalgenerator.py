@@ -66,7 +66,7 @@ class TestTone1K(TestCase):
                                  msg="Sample {} has value {} which does not match expected value of {}".format(2*n + 1,
                                                                                                                data[2*n + 1],
                                                                                                                round(sin(2.0*n*pi/48.0)*(1 << 14))))
-                ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
+            ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
 
 
 class TestLumaSteps(TestCase):
@@ -177,3 +177,9 @@ class TestLumaSteps(TestCase):
             self.assertEqual(grain.sync_timestamp, ts)
             ts = Timestamp.from_count(ts.to_count(rate.numerator, rate.denominator) + step,
                                       rate.numerator, rate.denominator)
+
+
+if __name__ == "__main__":
+    import unittest
+
+    unittest.main()
