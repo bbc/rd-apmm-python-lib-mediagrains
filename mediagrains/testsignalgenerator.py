@@ -25,11 +25,14 @@ from __future__ import absolute_import
 from fractions import Fraction
 from mediatimestamp import TimeOffset
 from copy import deepcopy
+from math import sin, pi
+import struct
+import fractions
 
-from . import VideoGrain
-from .cogenums import CogFrameFormat, CogFrameLayout
+from . import VideoGrain, AudioGrain
+from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
-__all__ = ["LumaSteps"]
+__all__ = ["LumaSteps", "Tone1K"]
 
 # information about formats
 # in the order:
@@ -119,3 +122,114 @@ def LumaSteps(src_id, flow_id, width, height,
         vg.origin_timestamp = origin_timestamp + TimeOffset.from_count(count,
                                                                        rate.numerator, rate.denominator)
         vg.sync_timestamp = vg.origin_timestamp
+
+
+def Tone1K(src_id, flow_id,
+           samples=1920,
+           channels=1,
+           origin_timestamp=None,
+           cog_audio_format=CogAudioFormat.S16_INTERLEAVED,
+           step=1):
+    tone_samples = {}
+
+    TONE_SAMPLES_1K_AT_48K = [sin(2.0*n*pi/48.0) for n in range(0, 48)]
+
+    if cog_audio_format in [CogAudioFormat.S16_PLANES,
+                            CogAudioFormat.S16_PAIRS,
+                            CogAudioFormat.S16_INTERLEAVED]:
+        TONE_SAMPLES_1K_AT_48K = [round(x*(1 << 14)) for x in TONE_SAMPLES_1K_AT_48K]
+        depth = 16
+    elif cog_audio_format in [CogAudioFormat.S24_PLANES,
+                              CogAudioFormat.S24_PAIRS,
+                              CogAudioFormat.S24_INTERLEAVED]:
+        TONE_SAMPLES_1K_AT_48K = [round(x*(1 << 22)) for x in TONE_SAMPLES_1K_AT_48K]
+        depth = 24
+    elif cog_audio_format in [CogAudioFormat.S32_PLANES,
+                              CogAudioFormat.S32_PAIRS,
+                              CogAudioFormat.S32_INTERLEAVED]:
+        TONE_SAMPLES_1K_AT_48K = [round(x*(1 << 30)) for x in TONE_SAMPLES_1K_AT_48K]
+        depth = 32
+    elif cog_audio_format in [CogAudioFormat.FLOAT_PLANES,
+                              CogAudioFormat.FLOAT_PAIRS,
+                              CogAudioFormat.FLOAT_INTERLEAVED]:
+        depth = 'f'
+    elif cog_audio_format in [CogAudioFormat.DOUBLE_PLANES,
+                              CogAudioFormat.DOUBLE_PAIRS,
+                              CogAudioFormat.DOUBLE_INTERLEAVED]:
+        depth = 'd'
+
+    planes = False
+    pairs = False
+    interleaved = False
+
+    if cog_audio_format in [CogAudioFormat.S16_PLANES,
+                            CogAudioFormat.S24_PLANES,
+                            CogAudioFormat.S32_PLANES,
+                            CogAudioFormat.FLOAT_PLANES,
+                            CogAudioFormat.DOUBLE_PLANES]:
+        planes = True
+    elif cog_audio_format in [CogAudioFormat.S16_PAIRS,
+                              CogAudioFormat.S24_PAIRS,
+                              CogAudioFormat.S32_PAIRS,
+                              CogAudioFormat.FLOAT_PAIRS,
+                              CogAudioFormat.DOUBLE_PAIRS]:
+        pairs = True
+    elif cog_audio_format in [CogAudioFormat.S16_INTERLEAVED,
+                              CogAudioFormat.S24_INTERLEAVED,
+                              CogAudioFormat.S32_INTERLEAVED,
+                              CogAudioFormat.FLOAT_INTERLEAVED,
+                              CogAudioFormat.DOUBLE_INTERLEAVED]:
+        interleaved = True
+
+    rate = fractions.Fraction(48000.0/samples)
+    duration = 1/rate
+
+    ag = AudioGrain(src_id, flow_id,
+                    origin_timestamp=origin_timestamp,
+                    cog_audio_format=cog_audio_format,
+                    samples=samples,
+                    channels=channels,
+                    rate=rate,
+                    duration=duration)
+    origin_timestamp = deepcopy(ag.origin_timestamp)
+    ots = deepcopy(origin_timestamp)
+
+    offs = 0
+    count = 0
+
+    def make_tone_samples(offs, samples, channels):
+        line = [TONE_SAMPLES_1K_AT_48K[n % 48] for n in range(offs, offs+samples)]
+        if planes:
+            line = line * channels
+        elif pairs:
+            line = [x for x in line for _ in range(0, 2)] * (channels//2)
+        elif interleaved:
+            line = [x for x in line for _ in range(0, channels)]
+
+        if depth == 16:
+            return struct.pack('@' + ('h'*samples*channels), *line)
+        elif depth == 24:
+            return b''.join(struct.pack('@i', x)[:3] for x in line)
+        elif depth == 32:
+            return struct.pack('@' + ('i'*samples*channels), *line)
+        elif depth == 'f':
+            return struct.pack('@' + ('f'*samples*channels), *line)
+        elif depth == 'd':
+            return struct.pack('@' + ('d'*samples*channels), *line)
+
+    while True:
+        grain = deepcopy(ag)
+
+        grain.origin_timestamp = deepcopy(ots)
+        grain.sync_timestamp = deepcopy(ots)
+
+        if offs not in tone_samples:
+            tone_samples[offs] = make_tone_samples(offs, samples, channels)
+
+        grain.data = bytearray(tone_samples[offs][:grain.expected_length])
+
+        yield grain
+
+        offs = (offs + samples*step) % 48
+        count += samples*step
+        ots = origin_timestamp + TimeOffset.from_count(count, 48000, 1)
