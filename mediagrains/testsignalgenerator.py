@@ -27,6 +27,7 @@ from mediatimestamp import TimeOffset
 from copy import deepcopy
 from math import sin, pi
 import struct
+import fractions
 
 from . import VideoGrain, AudioGrain
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
@@ -180,11 +181,16 @@ def Tone1K(src_id, flow_id,
                               CogAudioFormat.DOUBLE_INTERLEAVED]:
         interleaved = True
 
+    rate = fractions.Fraction(48000.0/samples)
+    duration = 1/rate
+
     ag = AudioGrain(src_id, flow_id,
                     origin_timestamp=origin_timestamp,
                     cog_audio_format=cog_audio_format,
                     samples=samples,
-                    channels=channels)
+                    channels=channels,
+                    rate=rate,
+                    duration=duration)
     origin_timestamp = deepcopy(ag.origin_timestamp)
     ots = deepcopy(origin_timestamp)
 

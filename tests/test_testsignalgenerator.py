@@ -21,7 +21,7 @@ from __future__ import absolute_import
 from unittest import TestCase
 
 from uuid import UUID
-from mediatimestamp import Timestamp
+from mediatimestamp import Timestamp, TimeOffset
 from fractions import Fraction
 from six import next
 from copy import deepcopy
@@ -67,6 +67,41 @@ class TestTone1K(TestCase):
                                                                                                                data[2*n + 1],
                                                                                                                round(sin(2.0*n*pi/48.0)*(1 << 14))))
             ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
+
+    def test_tone1k_s16_interleaved_1024samples(self):
+        """Testing that Tone1K generator produces correct audio grains when
+        channels is 2 and samples is 1024"""
+        UUT = Tone1K(src_id, flow_id, channels=2, samples=1024, origin_timestamp=deepcopy(origin_timestamp))
+
+        grains = [grain for _, grain in zip(range(10), UUT)]
+
+        ts = deepcopy(origin_timestamp)
+        offs = 0
+        N = 0
+        for grain in grains:
+            self.assertEqual(grain.source_id, src_id)
+            self.assertEqual(grain.flow_id, flow_id)
+            self.assertEqual(grain.origin_timestamp, ts)
+            self.assertEqual(grain.sync_timestamp, ts)
+            self.assertEqual(grain.format, CogAudioFormat.S16_INTERLEAVED)
+            self.assertEqual(grain.rate, Fraction(375, 8))
+            self.assertEqual(grain.length, 4*1024)
+
+            data = struct.unpack('@' + ('h' * 2 * 1024), grain.data)
+
+            for n in range(0, 1024):
+                self.assertEqual(data[2*n + 0], round(sin(2.0*offs*pi/48.0)*(1 << 14)),
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n,
+                                                                                                               data[2*n + 0],
+                                                                                                               round(sin(2.0*offs*pi/48.0)*(1 << 14))))
+                self.assertEqual(data[2*n + 1], round(sin(2.0*offs*pi/48.0)*(1 << 14)),
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n + 1,
+                                                                                                               data[2*n + 1],
+                                                                                                               round(sin(2.0*offs*pi/48.0)*(1 << 14))))
+                offs += 1
+                offs %= 48
+            N += 1
+            ts = origin_timestamp + TimeOffset.from_count(N, 375, 8)
 
 
 class TestLumaSteps(TestCase):
