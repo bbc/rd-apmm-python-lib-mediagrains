@@ -32,7 +32,7 @@ import fractions
 from . import VideoGrain, AudioGrain
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
-__all__ = ["LumaSteps", "Tone1K"]
+__all__ = ["LumaSteps", "Tone1K", "Tone", "Silence"]
 
 # information about formats
 # in the order:
@@ -129,33 +129,99 @@ def Tone1K(src_id, flow_id,
            channels=1,
            origin_timestamp=None,
            cog_audio_format=CogAudioFormat.S16_INTERLEAVED,
-           step=1):
-    tone_samples = {}
+           step=1,
+           sample_rate=48000):
+    return Tone(src_id, flow_id,
+                1000,
+                samples=samples,
+                channels=channels,
+                origin_timestamp=origin_timestamp,
+                cog_audio_format=cog_audio_format,
+                step=step,
+                sample_rate=sample_rate)
 
-    TONE_SAMPLES_1K_AT_48K = [sin(2.0*n*pi/48.0) for n in range(0, 48)]
+
+def Tone(src_id, flow_id,
+         frequency,
+         samples=1920,
+         channels=1,
+         origin_timestamp=None,
+         cog_audio_format=CogAudioFormat.S16_INTERLEAVED,
+         step=1,
+         sample_rate=48000):
+    frequency = int(frequency)
+    sample_rate = int(sample_rate)
+    looplen = sample_rate
+    if (looplen % frequency) == 0:
+        looplen //= frequency
+    TONE_SAMPLES = [sin(2.0*n*pi*float(frequency)/float(sample_rate)) for n in range(0, looplen)]
+    return AudioGrainsLoopingData(src_id, flow_id,
+                                  TONE_SAMPLES,
+                                  samples=samples,
+                                  channels=channels,
+                                  origin_timestamp=origin_timestamp,
+                                  cog_audio_format=cog_audio_format,
+                                  step=step,
+                                  sample_rate=sample_rate)
+
+
+def Silence(src_id, flow_id,
+            samples=1920,
+            channels=1,
+            origin_timestamp=None,
+            cog_audio_format=CogAudioFormat.S16_INTERLEAVED,
+            step=1,
+            sample_rate=48000):
+    return AudioGrainsLoopingData(src_id, flow_id,
+                                  [0.0],
+                                  samples=samples,
+                                  channels=channels,
+                                  origin_timestamp=origin_timestamp,
+                                  cog_audio_format=cog_audio_format,
+                                  step=step,
+                                  sample_rate=sample_rate)
+
+
+def AudioGrainsLoopingData(src_id, flow_id,
+                           sample_data,
+                           samples=1920,
+                           channels=1,
+                           origin_timestamp=None,
+                           cog_audio_format=CogAudioFormat.S16_INTERLEAVED,
+                           step=1,
+                           volume=0.5,
+                           sample_rate=48000):
+    """
+    A generator which yields audio grains of a specified format using input
+    data in the form of a list of floating point values that will be repeated
+    as samples indefinitely.
+    """
+    data_samples = {}
 
     if cog_audio_format in [CogAudioFormat.S16_PLANES,
                             CogAudioFormat.S16_PAIRS,
                             CogAudioFormat.S16_INTERLEAVED]:
-        TONE_SAMPLES_1K_AT_48K = [round(x*(1 << 14)) for x in TONE_SAMPLES_1K_AT_48K]
+        formatted_sample_data = [round(x*volume*(1 << 15)) for x in sample_data]
         depth = 16
     elif cog_audio_format in [CogAudioFormat.S24_PLANES,
                               CogAudioFormat.S24_PAIRS,
                               CogAudioFormat.S24_INTERLEAVED]:
-        TONE_SAMPLES_1K_AT_48K = [round(x*(1 << 22)) for x in TONE_SAMPLES_1K_AT_48K]
+        formatted_sample_data = [round(x*volume*(1 << 23)) for x in sample_data]
         depth = 24
     elif cog_audio_format in [CogAudioFormat.S32_PLANES,
                               CogAudioFormat.S32_PAIRS,
                               CogAudioFormat.S32_INTERLEAVED]:
-        TONE_SAMPLES_1K_AT_48K = [round(x*(1 << 30)) for x in TONE_SAMPLES_1K_AT_48K]
+        formatted_sample_data = [round(x*volume*(1 << 31)) for x in sample_data]
         depth = 32
     elif cog_audio_format in [CogAudioFormat.FLOAT_PLANES,
                               CogAudioFormat.FLOAT_PAIRS,
                               CogAudioFormat.FLOAT_INTERLEAVED]:
+        formatted_sample_data = [x*volume for x in sample_data]
         depth = 'f'
     elif cog_audio_format in [CogAudioFormat.DOUBLE_PLANES,
                               CogAudioFormat.DOUBLE_PAIRS,
                               CogAudioFormat.DOUBLE_INTERLEAVED]:
+        formatted_sample_data = [x*volume for x in sample_data]
         depth = 'd'
 
     planes = False
@@ -181,7 +247,7 @@ def Tone1K(src_id, flow_id,
                               CogAudioFormat.DOUBLE_INTERLEAVED]:
         interleaved = True
 
-    rate = fractions.Fraction(48000.0/samples)
+    rate = fractions.Fraction(sample_rate, samples)
     duration = 1/rate
 
     ag = AudioGrain(src_id, flow_id,
@@ -190,15 +256,16 @@ def Tone1K(src_id, flow_id,
                     samples=samples,
                     channels=channels,
                     rate=rate,
-                    duration=duration)
+                    duration=duration,
+                    sample_rate=sample_rate)
     origin_timestamp = deepcopy(ag.origin_timestamp)
     ots = deepcopy(origin_timestamp)
 
     offs = 0
     count = 0
 
-    def make_tone_samples(offs, samples, channels):
-        line = [TONE_SAMPLES_1K_AT_48K[n % 48] for n in range(offs, offs+samples)]
+    def make_samples(offs, samples, channels):
+        line = [formatted_sample_data[n % len(formatted_sample_data)] for n in range(offs, offs+samples)]
         if planes:
             line = line * channels
         elif pairs:
@@ -223,13 +290,13 @@ def Tone1K(src_id, flow_id,
         grain.origin_timestamp = deepcopy(ots)
         grain.sync_timestamp = deepcopy(ots)
 
-        if offs not in tone_samples:
-            tone_samples[offs] = make_tone_samples(offs, samples, channels)
+        if offs not in data_samples:
+            data_samples[offs] = make_samples(offs, samples, channels)
 
-        grain.data = bytearray(tone_samples[offs][:grain.expected_length])
+        grain.data = bytearray(data_samples[offs][:grain.expected_length])
 
         yield grain
 
-        offs = (offs + samples*step) % 48
+        offs = (offs + samples*step) % len(formatted_sample_data)
         count += samples*step
-        ots = origin_timestamp + TimeOffset.from_count(count, 48000, 1)
+        ots = origin_timestamp + TimeOffset.from_count(count, sample_rate, 1)
