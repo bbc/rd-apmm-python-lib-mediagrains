@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.3.0
+- Added Silence to test signal generation
+
 ## 2.2.0
 - Added 1K Tone to test signal generation
 

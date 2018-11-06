@@ -29,7 +29,7 @@ import struct
 from math import sin, pi
 
 from mediagrains.cogenums import CogFrameFormat, CogAudioFormat
-from mediagrains.testsignalgenerator import LumaSteps, Tone1K
+from mediagrains.testsignalgenerator import LumaSteps, Tone1K, Silence
 
 
 src_id = UUID("f2b6a9b4-2ea8-11e8-a468-878cf869cbec")
@@ -40,8 +40,8 @@ origin_timestamp = Timestamp.from_tai_sec_nsec("417798915:0")
 class TestTone1K(TestCase):
     def test_tone1k_s16_interleaved(self):
         """Testing that Tone1K generator produces correct audio grains when
-        channels is 2"""
-        UUT = Tone1K(src_id, flow_id, channels=2, origin_timestamp=deepcopy(origin_timestamp))
+        channels is 2 and sample_rate is 48000"""
+        UUT = Tone1K(src_id, flow_id, channels=2, origin_timestamp=deepcopy(origin_timestamp), sample_rate=48000)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
@@ -68,10 +68,42 @@ class TestTone1K(TestCase):
                                                                                                                round(sin(2.0*n*pi/48.0)*(1 << 14))))
             ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
 
+    def test_tone1k_s16_interleaved_at_44_1k(self):
+        """Testing that Tone1K generator produces correct audio grains when
+        channels is 2 and sample_rate is 44100Hz"""
+        UUT = Tone1K(src_id, flow_id, channels=2, samples=1764, origin_timestamp=deepcopy(origin_timestamp), sample_rate=44100)
+
+        grains = [grain for _, grain in zip(range(10), UUT)]
+
+        ts = deepcopy(origin_timestamp)
+        offs = 0
+        for grain in grains:
+            self.assertEqual(grain.source_id, src_id)
+            self.assertEqual(grain.flow_id, flow_id)
+            self.assertEqual(grain.origin_timestamp, ts)
+            self.assertEqual(grain.sync_timestamp, ts)
+            self.assertEqual(grain.format, CogAudioFormat.S16_INTERLEAVED)
+            self.assertEqual(grain.rate, Fraction(25, 1))
+            self.assertEqual(grain.length, 4*1764)
+
+            data = struct.unpack('@' + ('h' * 2 * 1764), grain.data)
+
+            for n in range(0, 1764):
+                self.assertEqual(data[2*n + 0], round(sin(2.0*offs*pi/44.1)*(1 << 14)),
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n,
+                                                                                                               data[2*n + 0],
+                                                                                                               round(sin(2.0*offs*pi/44.1)*(1 << 14))))
+                self.assertEqual(data[2*n + 1], round(sin(2.0*offs*pi/44.1)*(1 << 14)),
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n + 1,
+                                                                                                               data[2*n + 1],
+                                                                                                               round(sin(2.0*offs*pi/44.1)*(1 << 14))))
+                offs += 1
+            ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
+
     def test_tone1k_s16_interleaved_1024samples(self):
         """Testing that Tone1K generator produces correct audio grains when
         channels is 2 and samples is 1024"""
-        UUT = Tone1K(src_id, flow_id, channels=2, samples=1024, origin_timestamp=deepcopy(origin_timestamp))
+        UUT = Tone1K(src_id, flow_id, channels=2, samples=1024, origin_timestamp=deepcopy(origin_timestamp), sample_rate=48000)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
@@ -98,6 +130,105 @@ class TestTone1K(TestCase):
                                  msg="Sample {} has value {} which does not match expected value of {}".format(2*n + 1,
                                                                                                                data[2*n + 1],
                                                                                                                round(sin(2.0*offs*pi/48.0)*(1 << 14))))
+                offs += 1
+                offs %= 48
+            N += 1
+            ts = origin_timestamp + TimeOffset.from_count(N, 375, 8)
+
+
+class TestSilence(TestCase):
+    def test_silence_s16_interleaved(self):
+        """Testing that Silence generator produces correct audio grains when
+        channels is 2 and sample_rate is 48000"""
+        UUT = Silence(src_id, flow_id, channels=2, origin_timestamp=deepcopy(origin_timestamp), sample_rate=48000)
+
+        grains = [grain for _, grain in zip(range(10), UUT)]
+
+        ts = deepcopy(origin_timestamp)
+        for grain in grains:
+            self.assertEqual(grain.source_id, src_id)
+            self.assertEqual(grain.flow_id, flow_id)
+            self.assertEqual(grain.origin_timestamp, ts)
+            self.assertEqual(grain.sync_timestamp, ts)
+            self.assertEqual(grain.format, CogAudioFormat.S16_INTERLEAVED)
+            self.assertEqual(grain.rate, Fraction(25, 1))
+            self.assertEqual(grain.length, 4*1920)
+
+            data = struct.unpack('@' + ('h' * 2 * 1920), grain.data)
+
+            for n in range(0, 1920):
+                self.assertEqual(data[2*n + 0], 0,
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n,
+                                                                                                               data[2*n + 0],
+                                                                                                               0))
+                self.assertEqual(data[2*n + 1], 0,
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n + 1,
+                                                                                                               data[2*n + 1],
+                                                                                                               0))
+            ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
+
+    def test_silence_s16_interleaved_at_44_1k(self):
+        """Testing that Silence generator produces correct audio grains when
+        channels is 2 and sample_rate is 44100Hz"""
+        UUT = Silence(src_id, flow_id, channels=2, samples=1764, origin_timestamp=deepcopy(origin_timestamp), sample_rate=44100)
+
+        grains = [grain for _, grain in zip(range(10), UUT)]
+
+        ts = deepcopy(origin_timestamp)
+        offs = 0
+        for grain in grains:
+            self.assertEqual(grain.source_id, src_id)
+            self.assertEqual(grain.flow_id, flow_id)
+            self.assertEqual(grain.origin_timestamp, ts)
+            self.assertEqual(grain.sync_timestamp, ts)
+            self.assertEqual(grain.format, CogAudioFormat.S16_INTERLEAVED)
+            self.assertEqual(grain.rate, Fraction(25, 1))
+            self.assertEqual(grain.length, 4*1764)
+
+            data = struct.unpack('@' + ('h' * 2 * 1764), grain.data)
+
+            for n in range(0, 1764):
+                self.assertEqual(data[2*n + 0], 0,
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n,
+                                                                                                               data[2*n + 0],
+                                                                                                               0))
+                self.assertEqual(data[2*n + 1], 0,
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n + 1,
+                                                                                                               data[2*n + 1],
+                                                                                                               0))
+                offs += 1
+            ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
+
+    def test_silence_s16_interleaved_1024samples(self):
+        """Testing that Silence generator produces correct audio grains when
+        channels is 2 and samples is 1024"""
+        UUT = Silence(src_id, flow_id, channels=2, samples=1024, origin_timestamp=deepcopy(origin_timestamp), sample_rate=48000)
+
+        grains = [grain for _, grain in zip(range(10), UUT)]
+
+        ts = deepcopy(origin_timestamp)
+        offs = 0
+        N = 0
+        for grain in grains:
+            self.assertEqual(grain.source_id, src_id)
+            self.assertEqual(grain.flow_id, flow_id)
+            self.assertEqual(grain.origin_timestamp, ts)
+            self.assertEqual(grain.sync_timestamp, ts)
+            self.assertEqual(grain.format, CogAudioFormat.S16_INTERLEAVED)
+            self.assertEqual(grain.rate, Fraction(375, 8))
+            self.assertEqual(grain.length, 4*1024)
+
+            data = struct.unpack('@' + ('h' * 2 * 1024), grain.data)
+
+            for n in range(0, 1024):
+                self.assertEqual(data[2*n + 0], 0,
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n,
+                                                                                                               data[2*n + 0],
+                                                                                                               0))
+                self.assertEqual(data[2*n + 1], 0,
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n + 1,
+                                                                                                               data[2*n + 1],
+                                                                                                               0))
                 offs += 1
                 offs %= 48
             N += 1
