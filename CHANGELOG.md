@@ -2,6 +2,8 @@
 
 ## 2.3.0
 - Added Silence to test signal generation
+- Added sample_rate option for audio test signal generators
+- Added Tone test signal generator which can generate a vaiety of frequencies
 
 ## 2.2.0
 - Added 1K Tone to test signal generation
