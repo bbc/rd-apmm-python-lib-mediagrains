@@ -214,7 +214,7 @@ Please ensure you have run the test suite before submitting a Pull Request, and 
 
 * James Weaver (james.barrett@bbc.co.uk)
 * Philip deNier (philip.denier@bbc.co.uk)
-* Sam Nicholson (sam.nicholson@bbc.co.uk)
+* Sam Mesterton-Gibbons (sam.mesterton-gibbons@bbc.co.uk)
 * Alex Rawcliffe (alex.rawcliffe@bbc.co.uk)
 
 ## License
