@@ -168,7 +168,7 @@ pipeline {
             parallel {
                 stage ("Upload Docs") {
                     when {
-		                    anyOf {
+                        anyOf {
                             expression { return params.FORCE_DOCSUPLOAD }
                             expression {
                                 bbcShouldUploadArtifacts(branches: ["master"])

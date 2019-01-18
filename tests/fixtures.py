@@ -30,7 +30,7 @@ def pairs_of(strategy):
     return lists(strategy, min_size=2, max_size=2).map(tuple)
 
 
-def lists_of_grains_varying_entries(grains, entry_strategies, min_size=2, average_size=None, max_size=None):
+def lists_of_grains_varying_entries(grains, entry_strategies, min_size=2, max_size=None):
     def _grain_adjusting_entries(grain, entries):
         g = deepcopy(grain)
         for key in entries:
@@ -39,7 +39,6 @@ def lists_of_grains_varying_entries(grains, entry_strategies, min_size=2, averag
 
     return grains.flatmap(lambda grain: lists(fixed_dictionaries(entry_strategies),
                                               min_size=min_size,
-                                              average_size=average_size,
                                               max_size=max_size).map(lambda dicts: [_grain_adjusting_entries(grain, entries) for entries in dicts]))
 
 
