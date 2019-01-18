@@ -25,6 +25,7 @@ pipeline {
     parameters {
         booleanParam(name: "FORCE_PYUPLOAD", defaultValue: false, description: "Force Python artifact upload")
         booleanParam(name: "FORCE_DEBUPLOAD", defaultValue: false, description: "Force Debian package upload")
+        booleanParam(name: "FORCE_DOCSUPLOAD", defaultValue: false, description: "Force docs upload")
     }
     environment {
         http_proxy = "http://www-cache.rd.bbc.co.uk:8080"
@@ -55,6 +56,11 @@ pipeline {
                             bbcGithubNotify(context: "lint/flake8", status: env.lint_result)
                         }
                     }
+                }
+                stage ("Build Docs") {
+                   steps {
+                       sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-docs make docs'
+                   }
                 }
                 stage ("Unit Tests") {
                     stages {
@@ -153,12 +159,26 @@ pipeline {
                 anyOf {
                     expression { return params.FORCE_PYUPLOAD }
                     expression { return params.FORCE_DEBUPLOAD }
+                    expression { return params.FORCE_DOCSUPLOAD }
                     expression {
                         bbcShouldUploadArtifacts(branches: ["master"])
                     }
                 }
             }
             parallel {
+                stage ("Upload Docs") {
+                    when {
+                        anyOf {
+                            expression { return params.FORCE_DOCSUPLOAD }
+                            expression {
+                                bbcShouldUploadArtifacts(branches: ["master"])
+                            }
+                        }
+                    }
+                    steps {
+                        bbcAPMMDocsUpload(sourceFiles: "./docs/*.html")
+                    }
+                }
                 stage ("Upload to PyPi") {
                     when {
                         anyOf {

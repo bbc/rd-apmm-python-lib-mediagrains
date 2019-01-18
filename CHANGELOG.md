@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.3.1
+- Added upload of pydoc docs to Jenkinsfile
+
 ## 2.3.0
 - Added Silence to test signal generation
 - Added sample_rate option for audio test signal generators
