@@ -533,7 +533,7 @@ def event_grains(src_id=None,
                        will use lists(fixed_dictionaries({'path': from_regex(r'^[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-/]*$'),
                                                           'pre': one_of(integers(), booleans(), fraction_dicts(), timestamps()),
                                                           'post': one_of(integers(), booleans(), fraction_dicts(), timestamps())}))
-    """
+    """  # noqa W605 Ignore invalid escape sequence in docstring
     if rate is DONOTSET:
         rate = Fraction(25, 1)
     if duration is DONOTSET:
