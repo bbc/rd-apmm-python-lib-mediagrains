@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.3.2
+- Added Jenkins trigger to rebuild master every day.
+
 ## 2.3.1
 - Added upload of pydoc docs to Jenkinsfile
 
