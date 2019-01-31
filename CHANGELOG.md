@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.3.3
+- Allow build to run on a wider selection of agents.
+
 ## 2.3.2
 - Added Jenkins trigger to rebuild master every day.
 
