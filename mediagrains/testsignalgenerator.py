@@ -23,7 +23,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 from fractions import Fraction
-from mediatimestamp import TimeOffset
+from mediatimestamp.immutable import TimeOffset
 from copy import deepcopy
 from math import sin, pi
 import struct
@@ -258,8 +258,8 @@ def AudioGrainsLoopingData(src_id, flow_id,
                     rate=rate,
                     duration=duration,
                     sample_rate=sample_rate)
-    origin_timestamp = deepcopy(ag.origin_timestamp)
-    ots = deepcopy(origin_timestamp)
+    origin_timestamp = ag.origin_timestamp
+    ots = origin_timestamp
 
     offs = 0
     count = 0
@@ -287,8 +287,8 @@ def AudioGrainsLoopingData(src_id, flow_id,
     while True:
         grain = deepcopy(ag)
 
-        grain.origin_timestamp = deepcopy(ots)
-        grain.sync_timestamp = deepcopy(ots)
+        grain.origin_timestamp = ots
+        grain.sync_timestamp = ots
 
         if offs not in data_samples:
             data_samples[offs] = make_samples(offs, samples, channels)

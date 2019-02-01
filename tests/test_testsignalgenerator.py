@@ -21,10 +21,9 @@ from __future__ import absolute_import
 from unittest import TestCase
 
 from uuid import UUID
-from mediatimestamp import Timestamp, TimeOffset
+from mediatimestamp.immutable import Timestamp, TimeOffset
 from fractions import Fraction
 from six import next
-from copy import deepcopy
 import struct
 from math import sin, pi
 
@@ -41,11 +40,11 @@ class TestTone1K(TestCase):
     def test_tone1k_s16_interleaved(self):
         """Testing that Tone1K generator produces correct audio grains when
         channels is 2 and sample_rate is 48000"""
-        UUT = Tone1K(src_id, flow_id, channels=2, origin_timestamp=deepcopy(origin_timestamp), sample_rate=48000)
+        UUT = Tone1K(src_id, flow_id, channels=2, origin_timestamp=origin_timestamp, sample_rate=48000)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
-        ts = deepcopy(origin_timestamp)
+        ts = origin_timestamp
         for grain in grains:
             self.assertEqual(grain.source_id, src_id)
             self.assertEqual(grain.flow_id, flow_id)
@@ -71,11 +70,11 @@ class TestTone1K(TestCase):
     def test_tone1k_s16_interleaved_at_44_1k(self):
         """Testing that Tone1K generator produces correct audio grains when
         channels is 2 and sample_rate is 44100Hz"""
-        UUT = Tone1K(src_id, flow_id, channels=2, samples=1764, origin_timestamp=deepcopy(origin_timestamp), sample_rate=44100)
+        UUT = Tone1K(src_id, flow_id, channels=2, samples=1764, origin_timestamp=origin_timestamp, sample_rate=44100)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
-        ts = deepcopy(origin_timestamp)
+        ts = origin_timestamp
         offs = 0
         for grain in grains:
             self.assertEqual(grain.source_id, src_id)
@@ -103,11 +102,11 @@ class TestTone1K(TestCase):
     def test_tone1k_s16_interleaved_1024samples(self):
         """Testing that Tone1K generator produces correct audio grains when
         channels is 2 and samples is 1024"""
-        UUT = Tone1K(src_id, flow_id, channels=2, samples=1024, origin_timestamp=deepcopy(origin_timestamp), sample_rate=48000)
+        UUT = Tone1K(src_id, flow_id, channels=2, samples=1024, origin_timestamp=origin_timestamp, sample_rate=48000)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
-        ts = deepcopy(origin_timestamp)
+        ts = origin_timestamp
         offs = 0
         N = 0
         for grain in grains:
@@ -140,11 +139,11 @@ class TestSilence(TestCase):
     def test_silence_s16_interleaved(self):
         """Testing that Silence generator produces correct audio grains when
         channels is 2 and sample_rate is 48000"""
-        UUT = Silence(src_id, flow_id, channels=2, origin_timestamp=deepcopy(origin_timestamp), sample_rate=48000)
+        UUT = Silence(src_id, flow_id, channels=2, origin_timestamp=origin_timestamp, sample_rate=48000)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
-        ts = deepcopy(origin_timestamp)
+        ts = origin_timestamp
         for grain in grains:
             self.assertEqual(grain.source_id, src_id)
             self.assertEqual(grain.flow_id, flow_id)
@@ -170,11 +169,11 @@ class TestSilence(TestCase):
     def test_silence_s16_interleaved_at_44_1k(self):
         """Testing that Silence generator produces correct audio grains when
         channels is 2 and sample_rate is 44100Hz"""
-        UUT = Silence(src_id, flow_id, channels=2, samples=1764, origin_timestamp=deepcopy(origin_timestamp), sample_rate=44100)
+        UUT = Silence(src_id, flow_id, channels=2, samples=1764, origin_timestamp=origin_timestamp, sample_rate=44100)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
-        ts = deepcopy(origin_timestamp)
+        ts = origin_timestamp
         offs = 0
         for grain in grains:
             self.assertEqual(grain.source_id, src_id)
@@ -202,11 +201,11 @@ class TestSilence(TestCase):
     def test_silence_s16_interleaved_1024samples(self):
         """Testing that Silence generator produces correct audio grains when
         channels is 2 and samples is 1024"""
-        UUT = Silence(src_id, flow_id, channels=2, samples=1024, origin_timestamp=deepcopy(origin_timestamp), sample_rate=48000)
+        UUT = Silence(src_id, flow_id, channels=2, samples=1024, origin_timestamp=origin_timestamp, sample_rate=48000)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
-        ts = deepcopy(origin_timestamp)
+        ts = origin_timestamp
         offs = 0
         N = 0
         for grain in grains:
@@ -243,12 +242,12 @@ class TestLumaSteps(TestCase):
         width = 240
         height = 4
         UUT = LumaSteps(src_id, flow_id, width, height,
-                        origin_timestamp=deepcopy(origin_timestamp))
+                        origin_timestamp=origin_timestamp)
 
         # Extracts the first 10 grains from the generator
         grains = [grain for _, grain in zip(range(10), UUT)]
 
-        ts = deepcopy(origin_timestamp)
+        ts = origin_timestamp
         for grain in grains:
             self.assertEqual(grain.source_id, src_id)
             self.assertEqual(grain.flow_id, flow_id)
@@ -278,13 +277,13 @@ class TestLumaSteps(TestCase):
         width = 240
         height = 4
         UUT = LumaSteps(src_id, flow_id, width, height,
-                        origin_timestamp=deepcopy(origin_timestamp),
+                        origin_timestamp=origin_timestamp,
                         cog_frame_format=CogFrameFormat.S16_422_10BIT)
 
         # Extracts the first 10 grains from the generator
         grains = [grain for _, grain in zip(range(10), UUT)]
 
-        ts = deepcopy(origin_timestamp)
+        ts = origin_timestamp
         for grain in grains:
             self.assertEqual(grain.source_id, src_id)
             self.assertEqual(grain.flow_id, flow_id)
@@ -316,7 +315,7 @@ class TestLumaSteps(TestCase):
         height = 4
 
         UUT = LumaSteps(src_id, flow_id, width, height,
-                        origin_timestamp=deepcopy(origin_timestamp),
+                        origin_timestamp=origin_timestamp,
                         cog_frame_format=CogFrameFormat.UNKNOWN)
 
         with self.assertRaises(ValueError):
@@ -329,7 +328,7 @@ class TestLumaSteps(TestCase):
         rate = Fraction(50, 1)
         step = 2
         UUT = LumaSteps(src_id, flow_id, width, height,
-                        origin_timestamp=deepcopy(origin_timestamp),
+                        origin_timestamp=origin_timestamp,
                         cog_frame_format=CogFrameFormat.S16_422_10BIT,
                         rate=rate,
                         step=step)
@@ -337,7 +336,7 @@ class TestLumaSteps(TestCase):
         # Extracts the first 10 grains from the generator
         grains = [grain for _, grain in zip(range(10), UUT)]
 
-        ts = deepcopy(origin_timestamp)
+        ts = origin_timestamp
         for grain in grains:
             self.assertEqual(grain.origin_timestamp, ts)
             self.assertEqual(grain.sync_timestamp, ts)

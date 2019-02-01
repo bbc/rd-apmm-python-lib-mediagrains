@@ -27,7 +27,7 @@ from __future__ import absolute_import
 from six import string_types
 
 from uuid import UUID
-from mediatimestamp import Timestamp, TimeOffset
+from mediatimestamp.immutable import Timestamp, TimeOffset
 from collections import Sequence, MutableSequence, Mapping
 from fractions import Fraction
 from copy import copy, deepcopy
@@ -238,8 +238,6 @@ final_origin_timestamp()
     @origin_timestamp.setter
     def origin_timestamp(self, value):
         if isinstance(value, TimeOffset):
-            if value.sign < 0:
-                raise ValueError("Grain timestamps cannot be negative")
             value = value.to_sec_nsec()
         self.meta['grain']['origin_timestamp'] = value
 
@@ -253,8 +251,6 @@ final_origin_timestamp()
     @sync_timestamp.setter
     def sync_timestamp(self, value):
         if isinstance(value, TimeOffset):
-            if value.sign < 0:
-                raise ValueError("Grain timestamps cannot be negative")
             value = value.to_sec_nsec()
         self.meta['grain']['sync_timestamp'] = value
 
@@ -265,8 +261,6 @@ final_origin_timestamp()
     @creation_timestamp.setter
     def creation_timestamp(self, value):
         if isinstance(value, TimeOffset):
-            if value.sign < 0:
-                raise ValueError("Grain timestamps cannot be negative")
             value = value.to_sec_nsec()
         self.meta['grain']['creation_timestamp'] = value
 

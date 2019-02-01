@@ -46,7 +46,7 @@ packages = find_packages(".")
 package_names = packages.keys()
 
 packages_required = [
-    "mediatimestamp >= 1.1.0",
+    "mediatimestamp >= 1.2.0",
     "enum34 >= 1.1.6",
     "six >= 1.10.0",
     "frozendict >= 1.2",

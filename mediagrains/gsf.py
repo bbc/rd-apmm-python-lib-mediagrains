@@ -25,7 +25,7 @@ from . import Grain
 from six import indexbytes
 from uuid import UUID, uuid1
 from datetime import datetime
-from mediatimestamp import Timestamp
+from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
 from frozendict import frozendict
 from six import BytesIO, PY3
