@@ -28,7 +28,7 @@ from mediagrains.gsf import GSFDecodeBadVersionError
 from mediagrains.gsf import GSFDecodeBadFileTypeError
 from mediagrains.gsf import GSFEncodeAddToActiveDump
 from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
-from mediatimestamp import Timestamp, TimeOffset
+from mediatimestamp.immutable import Timestamp, TimeOffset
 from datetime import datetime
 from fractions import Fraction
 from six import PY2, BytesIO, int2byte

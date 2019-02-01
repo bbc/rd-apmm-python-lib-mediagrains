@@ -68,6 +68,7 @@ class TestCompareGrain(TestCase):
         self.assertIn(excl, c.failing_attributes())
 
     @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(attribute_and_pairs_of_grains_of_type_differing_only_in_one_attribute))
+    @settings(deadline=None)
     def test_unequal_grains_compare_as_equal_with_exclusions_when_difference_is_excluded(self, data_in):
         (excl, (a, b)) = data_in
         assume(getattr(a, excl) != getattr(b, excl))
