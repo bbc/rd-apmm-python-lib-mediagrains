@@ -130,7 +130,7 @@ class IOBytes (LazyLoader, Sequence):
     data to be read from the stream. The location of the stream pointer is restored to its previous location
     after this read so it should be transparent."""
 
-    _attributes = [ '_istream', '_start', '_length', '__len__']
+    _attributes = ['_istream', '_start', '_length', '__len__']
 
     def __init__(self, istream, start, length):
         """

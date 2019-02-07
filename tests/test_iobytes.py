@@ -28,7 +28,7 @@ from hypothesis.strategies import integers
 from six import int2byte, BytesIO, binary_type
 
 
-TEST_DATA = b''.join(int2byte((x//256)%256) + int2byte(x%256) for x in range(0, 65536))
+TEST_DATA = b''.join(int2byte((x//256) % 256) + int2byte(x % 256) for x in range(0, 65536))
 
 
 class IncorrectAccess (Exception):

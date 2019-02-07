@@ -982,7 +982,7 @@ class TestGSFDecoder(TestCase):
                 self.assertEqual(grain.length, grain_data_size)
                 reader_mock.assert_not_called()
 
-                x = grain.data[grain_data_size-1]
+                x = grain.data[grain_data_size-1]  # noqa: F841
                 bytes_read = 0
                 for (args, _) in reader_mock.call_args_list:
                     bytes_read += args[0]
