@@ -1,5 +1,9 @@
 # Mediagrains Library Changelog
 
+## 2.4.0
+- Added ability for GSFDecoder to return grains with lazy loading
+  bytes data
+
 ## 2.3.4
 - Switch to using immutable timestamps throughout
 
