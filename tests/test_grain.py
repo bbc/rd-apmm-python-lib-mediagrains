@@ -20,7 +20,7 @@ from unittest import TestCase
 import uuid
 from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
-from mediatimestamp import Timestamp, TimeOffset
+from mediatimestamp.immutable import Timestamp, TimeOffset
 import mock
 from fractions import Fraction
 import json
@@ -216,23 +216,6 @@ class TestGrain (TestCase):
             }
         ])
         self.assertEqual(repr(grain), "Grain({!r})".format(meta))
-
-    def test_empty_grain_negative_time_exception(self):
-        """Test that setting negative timestamps raises an exception"""
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        meta = {}
-
-        with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = Grain(meta)
-
-        with self.assertRaises(ValueError):
-            grain.origin_timestamp = TimeOffset.from_str("-200:50")
-
-        with self.assertRaises(ValueError):
-            grain.sync_timestamp = TimeOffset.from_str("-200:50")
-
-        with self.assertRaises(ValueError):
-            grain.creation_timestamp = TimeOffset.from_str("-200:50")
 
     def test_empty_grain_setters(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")

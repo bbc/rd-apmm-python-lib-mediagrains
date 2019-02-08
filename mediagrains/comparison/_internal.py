@@ -18,7 +18,7 @@
 from __future__ import print_function
 from __future__ import absolute_import
 
-from mediatimestamp import TimeOffset
+from mediatimestamp.immutable import TimeOffset
 from difflib import SequenceMatcher
 
 from six.moves import reduce
@@ -256,7 +256,7 @@ class DataEqualityComparisonResult(ComparisonResult):
         if self.d.ratio() == 1.0:
             return (True, "Binary data {} are equal".format(self._identifier.format('<a/b>')), [])
         else:
-            first_op = [x for x in self.d.get_opcodes() if x[0] is not 'equal'][0]
+            first_op = [x for x in self.d.get_opcodes() if x[0] != 'equal'][0]
             i = first_op[1]
             if i < len(a) and i < len(b):
                 msg = ("Binary data {} has similarity {} to {}, " +

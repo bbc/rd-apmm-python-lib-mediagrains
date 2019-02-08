@@ -58,7 +58,10 @@ class TestCompareGrain(TestCase):
         self.assertFalse(c, msg="Comparison of {!r} and {!r} was equal when inequality was expected:\n\n{}".format(a, b, str(c)))
         self.assertNotEqual(c.failing_attributes(), [])
 
+    # This strategy is complicated and hence quite slow, as a result we turn off the standard timeout deadline for
+    # hypothesis tests
     @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(attribute_and_pairs_of_grains_of_type_differing_only_in_one_attribute))
+    @settings(deadline=None)
     def test_unequal_grains_that_differ_at_specific_points_compare_as_unequal(self, data_in):
         (excl, (a, b)) = data_in
         assume(getattr(a, excl) != getattr(b, excl))
@@ -67,7 +70,10 @@ class TestCompareGrain(TestCase):
         self.assertNotEqual(c.failing_attributes(), [])
         self.assertIn(excl, c.failing_attributes())
 
+    # This strategy is complicated and hence quite slow, as a result we turn off the standard timeout deadline for
+    # hypothesis tests
     @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(attribute_and_pairs_of_grains_of_type_differing_only_in_one_attribute))
+    @settings(deadline=None)
     def test_unequal_grains_compare_as_equal_with_exclusions_when_difference_is_excluded(self, data_in):
         (excl, (a, b)) = data_in
         assume(getattr(a, excl) != getattr(b, excl))

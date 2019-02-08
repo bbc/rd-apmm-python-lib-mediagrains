@@ -26,7 +26,7 @@ from __future__ import absolute_import
 from six import string_types
 
 from uuid import UUID
-from mediatimestamp import Timestamp
+from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
 
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
