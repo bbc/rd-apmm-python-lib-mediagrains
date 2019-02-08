@@ -29,6 +29,7 @@ from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
 from frozendict import frozendict
 from six import BytesIO, PY3
+from .utils import IOBytes
 from os import SEEK_SET
 
 __all__ = ["GSFDecoder", "load", "loads", "GSFError", "GSFDecodeError",
@@ -601,12 +602,14 @@ class GSFDecoder(object):
         except EOFError:
             raise GSFDecodeError("No head block found in file", self.file_data.tell())
 
-    def grains(self, skip_data=False):
+    def grains(self, skip_data=False, load_lazily=False):
         """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
 
         The file_data will be positioned after the `grai` block.
 
         :param skip_data: If True, grain data blocks will be seeked over and only grain headers will be read
+        :param load_lazily: If True, the grains returned will be designed to lazily load data from the underlying stream
+                            only when it is needed. In this case the "skip_data" parameter will be ignored.
         :yields: (Grain, local_id) tuple for each grain
         :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
         """
@@ -624,8 +627,11 @@ class GSFDecoder(object):
 
                     if grai_block.has_child_block():
                         with GSFBlock(self.file_data, want_tag="grdt") as grdt_block:
-                            if grdt_block.get_remaining() > 0 and not skip_data:
-                                data = self.file_data.read(grdt_block.get_remaining())
+                            if grdt_block.get_remaining() > 0:
+                                if load_lazily:
+                                    data = IOBytes(self.file_data, self.file_data.tell(), grdt_block.get_remaining())
+                                elif not skip_data:
+                                    data = self.file_data.read(grdt_block.get_remaining())
 
                 yield (self.Grain(meta, data), local_id)
             except EOFError:

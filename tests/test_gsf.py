@@ -946,6 +946,50 @@ class TestGSFDecoder(TestCase):
                 # However some header bytes may be seeked over instead
                 self.assertLessEqual(bytes_read, grain_header_size)
 
+    def test_lazy_load_grain_data(self):
+        """Test that the `load_lazily` parameter causes grain data to be seeked over,
+        but then loaded invisibly when needed later"""
+        grain_size = 194612  # Parsed from examples/video.gsf hex dump
+        grdt_block_size = 194408  # Parsed from examples/video.gsf hex dump
+        grain_header_size = grain_size - grdt_block_size
+        grain_data_size = grdt_block_size - 8
+
+        video_data_stream = BytesIO(VIDEO_DATA)
+
+        UUT = GSFDecoder(file_data=video_data_stream)
+        UUT.decode_file_headers()
+
+        grains = []
+        reader_mock = mock.MagicMock(side_effect=video_data_stream.read)
+        with mock.patch.object(video_data_stream, "read", new=reader_mock):
+            for (grain, local_id) in UUT.grains(load_lazily=True):
+                grains.append(grain)
+                # Add up the bytes read for this grain, then reset the read counter
+                bytes_read = 0
+                for args, _ in reader_mock.call_args_list:
+                    bytes_read += args[0]
+
+                reader_mock.reset_mock()
+
+                # No more than the number of bytes in the header should have been read
+                # However some header bytes may be seeked over instead
+                self.assertGreater(bytes_read, 0)
+                self.assertLessEqual(bytes_read, grain_header_size)
+
+            for grain in grains:
+                reader_mock.reset_mock()
+
+                self.assertEqual(grain.length, grain_data_size)
+                reader_mock.assert_not_called()
+
+                x = grain.data[grain_data_size-1]  # noqa: F841
+                bytes_read = 0
+                for (args, _) in reader_mock.call_args_list:
+                    bytes_read += args[0]
+
+                self.assertEqual(bytes_read, grain_data_size)
+                self.assertEqual(grain.length, grain_data_size)
+
 
 class TestGSFLoads(TestCase):
     def test_loads_video(self):
