@@ -38,6 +38,7 @@ pipeline {
         stage("Clean Environment") {
             steps {
                 sh 'git clean -dfx'
+                sh 'rm -rf /tmp/$(basename ${WORKSPACE})/'
             }
         }
         stage ("Tests") {
