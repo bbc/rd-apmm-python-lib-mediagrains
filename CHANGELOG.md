@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.5.0
+- Added ability to filter GSFDecoder output based on local ids
+
 ## 2.4.0
 - Added ability for GSFDecoder to return grains with lazy loading
   bytes data
