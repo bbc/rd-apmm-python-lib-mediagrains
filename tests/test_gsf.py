@@ -55,6 +55,9 @@ with open('examples/coded_audio.gsf', 'rb') as f:
 with open('examples/event.gsf', 'rb') as f:
     EVENT_DATA = f.read()
 
+with open('examples/interleaved.gsf', 'rb') as f:
+    INTERLEAVED_DATA = f.read()
+
 
 class TestGSFDumps(TestCase):
     def test_dumps_no_grains(self):
@@ -918,6 +921,40 @@ class TestGSFDecoder(TestCase):
             grain_count += 1
 
         self.assertEqual(10, grain_count)  # There are 10 grains in the file
+
+    def test_local_id_filtering(self):
+        interleaved_data_stream = BytesIO(INTERLEAVED_DATA)
+
+        UUT = GSFDecoder(file_data=interleaved_data_stream)
+        UUT.decode_file_headers()
+
+        local_ids = set()
+        flow_ids = set()
+        for (grain, local_id) in UUT.grains():
+            local_ids.add(local_id)
+            flow_ids.add(grain.flow_id)
+
+        self.assertEqual(local_ids, set([1, 2]))
+        self.assertEqual(flow_ids, set([UUID('28e4e09e-3517-11e9-8da2-5065f34ed007'),
+                                        UUID('2472f38e-3517-11e9-8da2-5065f34ed007')]))
+
+        interleaved_data_stream.seek(0)
+        UUT.decode_file_headers()
+
+        for (grain, local_id) in UUT.grains(local_ids=[1]):
+            self.assertIsInstance(grain, AUDIOGRAIN)
+            self.assertEqual(grain.source_id, UUID('1f8fd27e-3517-11e9-8da2-5065f34ed007'))
+            self.assertEqual(grain.flow_id, UUID('28e4e09e-3517-11e9-8da2-5065f34ed007'))
+            self.assertEqual(local_id, 1)
+
+        interleaved_data_stream.seek(0)
+        UUT.decode_file_headers()
+
+        for (grain, local_id) in UUT.grains(local_ids=[2]):
+            self.assertIsInstance(grain, VIDEOGRAIN)
+            self.assertEqual(grain.source_id, UUID('1f8fd27e-3517-11e9-8da2-5065f34ed007'))
+            self.assertEqual(grain.flow_id, UUID('2472f38e-3517-11e9-8da2-5065f34ed007'))
+            self.assertEqual(local_id, 2)
 
     def test_skip_grain_data(self):
         """Test that the `skip_data` parameter causes grain data to be seeked over"""
