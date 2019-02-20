@@ -622,11 +622,12 @@ class GSFDecoder(object):
                         return  # Terminator block reached
 
                     local_id = grai_block.read_uint(2)
-                    with GSFBlock(self.file_data, want_tag="gbhd", raise_on_wrong_tag=True) as gbhd_block:
-                        meta = self._decode_gbhd(gbhd_block)
 
                     if local_ids is not None and local_id not in local_ids:
                         continue
+
+                    with GSFBlock(self.file_data, want_tag="gbhd", raise_on_wrong_tag=True) as gbhd_block:
+                        meta = self._decode_gbhd(gbhd_block)
 
                     data = None
 
