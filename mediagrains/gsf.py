@@ -602,11 +602,13 @@ class GSFDecoder(object):
         except EOFError:
             raise GSFDecodeError("No head block found in file", self.file_data.tell())
 
-    def grains(self, skip_data=False, load_lazily=False):
+    def grains(self, local_ids=None, skip_data=False, load_lazily=False):
         """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
 
         The file_data will be positioned after the `grai` block.
 
+        :param local_ids: A list of local-ids to include in the output. If None (the default) then all local-ids will be
+                          included
         :param skip_data: If True, grain data blocks will be seeked over and only grain headers will be read
         :param load_lazily: If True, the grains returned will be designed to lazily load data from the underlying stream
                             only when it is needed. In this case the "skip_data" parameter will be ignored.
@@ -620,6 +622,10 @@ class GSFDecoder(object):
                         return  # Terminator block reached
 
                     local_id = grai_block.read_uint(2)
+
+                    if local_ids is not None and local_id not in local_ids:
+                        continue
+
                     with GSFBlock(self.file_data, want_tag="gbhd", raise_on_wrong_tag=True) as gbhd_block:
                         meta = self._decode_gbhd(gbhd_block)
 
