@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.5.1
+- Fix restoring bytestream position when lazy loading bytes.
+
 ## 2.5.0
 - Added ability to filter GSFDecoder output based on local ids
 

@@ -40,10 +40,12 @@ class TestIOBytes (TestCase):
     @given(integers(min_value=0, max_value=65535), integers(min_value=0, max_value=65535))
     def test_read(self, start, length):
         iostream = BytesIO(TEST_DATA)
+        orig_loc = iostream.tell()
         iobytes = IOBytes(iostream, start, length)
         data = binary_type(iobytes)
         self.assertEqual(len(data), length)
         self.assertEqual(data, TEST_DATA[start:start + length])
+        self.assertEqual(orig_loc, iostream.tell())
 
     def test_noread(self):
         iostream = mock.MagicMock()

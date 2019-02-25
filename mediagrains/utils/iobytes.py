@@ -139,9 +139,12 @@ class IOBytes (LazyLoader, Sequence):
         :param start: The length of the data
         """
         def __loadbytes():
-            loc = self._istream.seek(self._start)
-            _bytes = self._istream.read(self._length)
-            self._istream.seek(loc)
+            loc = self._istream.tell()
+            try:
+                self._istream.seek(self._start)
+                _bytes = self._istream.read(self._length)
+            finally:
+                self._istream.seek(loc)
             return _bytes
 
         LazyLoader.__init__(self, __loadbytes)
