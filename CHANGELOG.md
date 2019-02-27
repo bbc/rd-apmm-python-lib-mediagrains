@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.5.2
+- Remove dependency on enum34 for versions of python >= 3.4
+
 ## 2.5.1
 - Fix restoring bytestream position when lazy loading bytes.
 
