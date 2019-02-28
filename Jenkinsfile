@@ -248,7 +248,7 @@ pipeline {
     }
     post {
         always {
-            bbcSlackNotify()
+            bbcSlackNotify(channel: "#apmm-cloudfit")
         }
     }
 }
