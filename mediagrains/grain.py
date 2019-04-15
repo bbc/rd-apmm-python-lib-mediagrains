@@ -78,7 +78,10 @@ meta
     The meta dictionary object
 
 data
-    The data bytes-like object, or None
+    Either None or an object which can be cast to bytes by passing it to the bytes
+    constructor and will in of itself respond to the python-level portions of the bytes-like
+    object protocol. It is not guaranteed that this object will always respond correctly to the
+    C buffer-protocol, but it can always be converted into something that will by calling bytes on it.
 
 grain_type
     A string containing the type of the grain, any value is possible
@@ -450,7 +453,10 @@ meta
     The meta dictionary object
 
 data
-    The data bytes-like object, containing a json representation of the data
+    Either None or an object which can be cast to bytes by passing it to the bytes
+    constructor and will in of itself respond to the python-level portions of the bytes-like
+    object protocol. It is not guaranteed that this object will always respond correctly to the
+    C buffer-protocol, but it can always be converted into something that will by calling bytes on it.
 
 grain_type
     A string containing the type of the grain, always "event"
@@ -670,8 +676,7 @@ Any grain can be freely cast to a tuple:
 
   (meta, data)
 
-where meta is a dictionary containing the grain metadata, and data is a
-bytes-like object containing the raw video data.
+where meta is a dictionary containing the grain metadata, and data is the data element described below.
 
 The Grain class provides a number of properties which can be used to access
 parts of the standard grain metadata, and this class inherits these:
@@ -680,7 +685,10 @@ meta
     The meta dictionary object
 
 data
-    The data bytes-like object, or None
+    Either None or an object which can be cast to bytes by passing it to the bytes
+    constructor and will in of itself respond to the python-level portions of the bytes-like
+    object protocol. It is not guaranteed that this object will always respond correctly to the
+    C buffer-protocol, but it can always be converted into something that will by calling bytes on it.
 
 grain_type
     A string containing the type of the grain, always "video"
@@ -963,8 +971,7 @@ Any grain can be freely cast to a tuple:
 
   (meta, data)
 
-where meta is a dictionary containing the grain metadata, and data is a
-bytes-like object containing the coded video data.
+where meta is a dictionary containing the grain metadata, and data is the data element described below.
 
 The Grain class provides a number of properties which can be used to access
 parts of the standard grain metadata, and this class inherits these:
@@ -973,7 +980,10 @@ meta
     The meta dictionary object
 
 data
-    The data bytes-like object, or None
+    Either None or an object which can be cast to bytes by passing it to the bytes
+    constructor and will in of itself respond to the python-level portions of the bytes-like
+    object protocol. It is not guaranteed that this object will always respond correctly to the
+    C buffer-protocol, but it can always be converted into something that will by calling bytes on it.
 
 grain_type
     A string containing the type of the grain, always "coded_video"
@@ -1205,8 +1215,7 @@ Any grain can be freely cast to a tuple:
 
   (meta, data)
 
-where meta is a dictionary containing the grain metadata, and data is a
-bytes-like object containing the raw audio data.
+where meta is a dictionary containing the grain metadata, and data is the data element described below..
 
 The Grain class provides a number of properties which can be used to access
 parts of the standard grain metadata, and this class inherits these:
@@ -1215,7 +1224,10 @@ meta
     The meta dictionary object
 
 data
-    The data bytes-like object, or None
+    Either None or an object which can be cast to bytes by passing it to the bytes
+    constructor and will in of itself respond to the python-level portions of the bytes-like
+    object protocol. It is not guaranteed that this object will always respond correctly to the
+    C buffer-protocol, but it can always be converted into something that will by calling bytes on it.
 
 grain_type
     A string containing the type of the grain, always "audio"
@@ -1336,7 +1348,10 @@ meta
     The meta dictionary object
 
 data
-    The data bytes-like object, or None
+    Either None or an object which can be cast to bytes by passing it to the bytes
+    constructor and will in of itself respond to the python-level portions of the bytes-like
+    object protocol. It is not guaranteed that this object will always respond correctly to the
+    C buffer-protocol, but it can always be converted into something that will by calling bytes on it.
 
 grain_type
     A string containing the type of the grain, always "coded_audio"

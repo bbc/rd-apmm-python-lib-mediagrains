@@ -123,7 +123,12 @@ class LazyLoader (object):
 
 
 class IOBytes (LazyLoader, Sequence):
-    """A Bytes-like object that is backed by a seekable IO stream.
+    """An almost Bytes-like object that is backed by a seekable IO stream.
+
+    This object can be used in almost all places where a bytes-like object is demanded, however not quite all.
+    To pass into a method that directly uses the C buffer protocol (such as struct.decode) this object is not good
+    enough. In that case a real bytes object can be created by passing this object as the sole parameter of the
+    constructor "bytes".
 
     Current behaviour is to read the whole of the data segment into a bytes-like object, but *only* the
     first time the data actually needs to be accessed. Notably calls to __len__ and __repr__ do not cause the
@@ -151,6 +156,11 @@ class IOBytes (LazyLoader, Sequence):
         self._istream = istream
         self._start = start
         self._length = length
+
+    def __bytes__(self):
+        if self._object is None:
+            self._object = object.__getattribute__(self, '_loader')()
+        return self._object
 
     def __len__(self):
         if self._object is None:

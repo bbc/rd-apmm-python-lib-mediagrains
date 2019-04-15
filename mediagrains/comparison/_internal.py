@@ -197,6 +197,12 @@ class DataEqualityComparisonResult(ComparisonResult):
         self.word_code = word_code
         self.d = None
 
+        # a and b might be various types of objects that can be converted into bytes objects, this ensures they are simple bytes objects
+        if a is not None:
+            a = bytes(a)
+        if b is not None:
+            b = bytes(b)
+
         def _signer(n):
             OFL = 1 << (words_per_sample*8)
             MAX = OFL >> 1
