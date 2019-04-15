@@ -157,6 +157,11 @@ class IOBytes (LazyLoader, Sequence):
         self._start = start
         self._length = length
 
+    def __bytes__(self):
+        if self._object is None:
+            self._object = object.__getattribute__(self, '_loader')()
+        return self._object
+
     def __len__(self):
         if self._object is None:
             return self._length
