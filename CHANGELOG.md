@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.5.3
+- BUGFIX: IOBytes doesn't quite fulfil bytes-like contracts, but can be converted to something that does
+
 ## 2.5.2
 - Remove dependency on enum34 for versions of python >= 3.4
 
