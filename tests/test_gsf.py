@@ -27,6 +27,7 @@ from mediagrains.gsf import GSFEncodeError
 from mediagrains.gsf import GSFDecodeBadVersionError
 from mediagrains.gsf import GSFDecodeBadFileTypeError
 from mediagrains.gsf import GSFEncodeAddToActiveDump
+from mediagrains.comparison import compare_grain
 from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from mediatimestamp.immutable import Timestamp, TimeOffset
 from datetime import datetime
@@ -921,6 +922,21 @@ class TestGSFDecoder(TestCase):
             grain_count += 1
 
         self.assertEqual(10, grain_count)  # There are 10 grains in the file
+
+    def test_comparison_of_lazy_loaded_grains(self):
+        video_data_stream = BytesIO(VIDEO_DATA)
+
+        UUT = GSFDecoder(file_data=video_data_stream)
+        UUT.decode_file_headers()
+
+        grains = [grain for (grain, local_id) in UUT.grains(load_lazily=False)]
+
+        # Restart the decoder
+        video_data_stream.seek(0)
+        UUT = GSFDecoder(file_data=video_data_stream)
+        UUT.decode_file_headers()
+
+        self.assertTrue(compare_grain(grains[0], next(UUT.grains(load_lazily=True))[0]))
 
     def test_local_id_filtering(self):
         interleaved_data_stream = BytesIO(INTERLEAVED_DATA)
