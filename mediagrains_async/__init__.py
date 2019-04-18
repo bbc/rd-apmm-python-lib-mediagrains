@@ -269,6 +269,8 @@ class AsyncGSFDecoder(object):
         """
         self.Grain = parse_grain
         self.file_data = file_data
+        self.head = None
+        self.start_loc = None
 
     async def _decode_ssb_header(self):
         """Find and read the SSB header in the GSF file
@@ -479,9 +481,23 @@ class AsyncGSFDecoder(object):
 
         try:
             async with AsyncGSFBlock(self.file_data, want_tag="head") as head_block:
-                return await self._decode_head(head_block)
+                self.head = await self._decode_head(head_block)
+                return self.head
         except EOFError:
             raise GSFDecodeError("No head block found in file", self.file_data.tell())
+
+    async def __aenter__(self):
+        self.start_loc = await self.file_data.tell()
+        await self.decode_file_headers()
+        return self
+
+    async def __aexit__(self, *args, **kwargs):
+        self.head = None
+        await self.file_data.seek(self.start_loc)
+        self.start_loc = None
+
+    def __aiter__(self):
+        return self.grains()
 
     async def grains(self, local_ids=None, load_lazily=True):
         """Asynchronous generator to get grains from the GSF file. Skips blocks which aren't "grai".
@@ -498,6 +514,9 @@ class AsyncGSFDecoder(object):
         :yields: (Grain, local_id) tuple for each grain
         :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
         """
+        if self.head is None:
+            await self.decode_file_headers()
+
         while True:
             try:
                 async with AsyncGSFBlock(self.file_data, want_tag="grai") as grai_block:
