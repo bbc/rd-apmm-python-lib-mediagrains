@@ -16,13 +16,13 @@
 #
 
 from __future__ import print_function
+
 from setuptools import setup
-import os
+from sys import version_info
 
 packages = {
     'mediagrains' : 'mediagrains'
 }
-package_names = packages.keys()
 
 packages_required = [
     "mediatimestamp >= 1.2.0",
@@ -32,6 +32,13 @@ packages_required = [
 ]
 
 deps_required = []
+
+
+if version_info[0] > 3 or (version_info[0] == 3 and version_info[1] >= 6):
+    packages['mediagrains_async'] = 'mediagrains_async'
+
+
+package_names = list(packages.keys())
 
 setup(name="mediagrains",
       version="2.5.3",
