@@ -23,10 +23,11 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10')) // Discard old builds
     }
     triggers {
-        cron(env.BRANCH_NAME == 'master' ? 'H H(0-8) * * *' : '') // Build master some time every morning
+        cron((env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'dev')? 'H H(0-8) * * *' : '') // Build master some time every morning
     }
     parameters {
-        booleanParam(name: "FORCE_PYUPLOAD", defaultValue: false, description: "Force Python artifact upload")
+        booleanParam(name: "FORCE_PYPIUPLOAD", defaultValue: false, description: "Force Python artifact upload to PyPi")
+        booleanParam(name: "FORCE_PYUPLOAD", defaultValue: false, description: "Force Python artifact upload to internal BBC repo")
         booleanParam(name: "FORCE_DEBUPLOAD", defaultValue: false, description: "Force Debian package upload")
         booleanParam(name: "FORCE_DOCSUPLOAD", defaultValue: false, description: "Force docs upload")
     }
@@ -162,10 +163,11 @@ pipeline {
             when {
                 anyOf {
                     expression { return params.FORCE_PYUPLOAD }
+                    expression { return params.FORCE_PYPIUPLOAD }		    
                     expression { return params.FORCE_DEBUPLOAD }
                     expression { return params.FORCE_DOCSUPLOAD }
                     expression {
-                        bbcShouldUploadArtifacts(branches: ["master"])
+                        bbcShouldUploadArtifacts(branches: ["master", "dev"])
                     }
                 }
             }
@@ -175,7 +177,7 @@ pipeline {
                         anyOf {
                             expression { return params.FORCE_DOCSUPLOAD }
                             expression {
-                                bbcShouldUploadArtifacts(branches: ["master"])
+                                bbcShouldUploadArtifacts(branches: ["master", "dev"])
                             }
                         }
                     }
@@ -186,7 +188,7 @@ pipeline {
                 stage ("Upload to PyPi") {
                     when {
                         anyOf {
-                            expression { return params.FORCE_PYUPLOAD }
+                            expression { return params.FORCE_PYPIUPLOAD }
                             expression {
                                 bbcShouldUploadArtifacts(branches: ["master"])
                             }
@@ -208,6 +210,34 @@ pipeline {
                     post {
                         always {
                             bbcGithubNotify(context: "pypi/upload", status: env.pypiUpload_result)
+                        }
+                    }
+                }
+                stage ("Upload to Artifactory") {
+                    when {
+                        anyOf {
+                            expression { return params.FORCE_PYUPLOAD }
+                            expression {
+                                bbcShouldUploadArtifacts(branches: ["dev"])
+                            }
+                        }
+                    }
+                    steps {
+                        script {
+                            env.artifactoryUpload_result = "FAILURE"
+                        }
+                        bbcGithubNotify(context: "artifactory/upload", status: "PENDING")
+                        sh 'rm -rf dist/*'
+                        bbcMakeGlobalWheel("py27")
+                        bbcMakeGlobalWheel("py3")
+                        bbcTwineUpload(toxenv: "py3", pypi: false)
+                        script {
+                            env.artifactoryUpload_result = "SUCCESS" // This will only run if the steps above succeeded
+                        }
+                    }
+                    post {
+                        always {
+                            bbcGithubNotify(context: "artifactory/upload", status: env.artifactoryUpload_result)
                         }
                     }
                 }
