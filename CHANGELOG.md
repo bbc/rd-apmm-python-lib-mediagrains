@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.6.0 (Under development)
+- Added support for async methods to gsf decoder in python 3.6+
+
 ## 2.5.3
 - BUGFIX: IOBytes doesn't quite fulfil bytes-like contracts, but can be converted to something that does
 
