@@ -17,7 +17,6 @@
 #
 
 from unittest import TestCase
-import mock
 import asyncio
 import warnings
 import aiofiles
@@ -25,7 +24,7 @@ from datetime import datetime
 from uuid import UUID
 
 from mediagrains.async import AsyncGSFDecoder, AsyncLazyLoaderUnloadedError
-from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
+from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN
 
 
 def async_test(f):

@@ -51,7 +51,7 @@ pipeline {
                         }
                         bbcGithubNotify(context: "lint/flake8", status: "PENDING")
                         // Run the linter
-                        sh 'flake8'
+                        sh 'flake8 --exclude=.svn,CVS,.bzr,.hg,.git,__pycache__,.tox,.eggs,*.egg,._*,./tests/atest_*,./mediagrains_async/*'
                         script {
                             env.lint_result = "SUCCESS" // This will only run if the sh above succeeded
                         }
