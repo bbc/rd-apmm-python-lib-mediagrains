@@ -19,19 +19,46 @@
 Library for handling mediagrains in pure python asyncio compatibility layer.
 """
 
+import asyncio
+
 from uuid import UUID
 from os import SEEK_SET
 from datetime import datetime
 from fractions import Fraction
 
-from mediatimestamp import Timestamp
+from mediatimestamp.immutable import Timestamp
 
 from .aiobytes import AsyncIOBytes, AsyncLazyLoaderUnloadedError
+from .bytesaio import BytesAIO
 
 from mediagrains import Grain
 from mediagrains.gsf import GSFDecodeBadVersionError, GSFDecodeBadFileTypeError, GSFDecodeError
 
-__all__ = ["AsyncGSFDecoder", "AsyncLazyLoaderUnloadedError"]
+__all__ = ["AsyncGSFDecoder", "AsyncLazyLoaderUnloadedError", "loads"]
+
+
+async def loads(s, cls=None, parse_grain=None, **kwargs):
+    """Deserialise a GSF file from a string (or similar) into python,
+    returns a pair of (head, segments) where head is a python dict
+    containing general metadata from the file, and segments is a dictionary
+    mapping numeric segment ids to lists of Grain objects.
+
+    If you wish to use a custom AsyncGSFDecoder subclass pass it as cls, if you
+    wish to use a custom Grain constructor pass it as parse_grain. The
+    defaults are AsyncGSFDecoder and Grain. Extra kwargs will be passed to the
+    decoder constructor.
+
+    The custome parse_grain method can be an asynchronous coroutine or a synchronous callable.
+
+    There is no real benefit to using this over the synchronous version, since access to an in-memory buffer is
+    always going to be synchronous, but this can be used for convenience where you don't want multiple code paths
+    for synchronous and asynchronous code."""
+    if cls is None:
+        cls = AsyncGSFDecoder
+    if parse_grain is None:
+        parse_grain = Grain
+    dec = cls(BytesAIO(s), parse_grain=parse_grain, **kwargs)
+    return await dec.decode()
 
 
 class AsyncGSFBlock():
@@ -255,6 +282,12 @@ class AsyncGSFBlock():
             return Fraction(numerator, denominator)
 
 
+def asynchronise(f):
+    async def __inner(*args, **kwargs):
+        return f(*args, **kwargs)
+    return __inner
+
+
 class AsyncGSFDecoder(object):
     """A decoder for GSF format that operates asynchronously.
 
@@ -264,10 +297,13 @@ class AsyncGSFDecoder(object):
     def __init__(self, file_data, parse_grain=Grain, **kwargs):
         """Constructor
 
-        :param parse_grain: Function that takes a (metadata dict, buffer) and returns a grain representation
+        :param parse_grain: Function or coroutine that takes a (metadata dict, buffer) and returns a grain
+                            representation
         :param file_data: A readable asynchronous file io-like object similar to those provided by aiofiles
         """
         self.Grain = parse_grain
+        if not asyncio.iscoroutine(self.Grain):
+            self.Grain = asynchronise(self.Grain)
         self.file_data = file_data
         self.head = None
         self.start_loc = None
@@ -278,8 +314,9 @@ class AsyncGSFDecoder(object):
         :returns: (major, minor) version tuple
         :raises GSFDecodeBadFileTypeError: If the SSB tag shows this isn't a GSF file
         """
-        ssb_block = AsyncGSFBlock(self.file_data)
 
+        ssb_block = AsyncGSFBlock(self.file_data)
+        ssb_block.block_start = await self.file_data.tell()
         tag = await ssb_block.read_string(8)
 
         if tag != "SSBBgrsg":
@@ -475,6 +512,9 @@ class AsyncGSFDecoder(object):
         :raises GSFDecodeBadFileTypeError: If this isn't a GSF file
         :raises GSFDecodeError: If the file doesn't have a "head" block
         """
+        if self.head is not None:
+            return self.head
+
         (major, minor) = await self._decode_ssb_header()
         if (major, minor) != (7, 0):
             raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
@@ -484,17 +524,18 @@ class AsyncGSFDecoder(object):
                 self.head = await self._decode_head(head_block)
                 return self.head
         except EOFError:
-            raise GSFDecodeError("No head block found in file", self.file_data.tell())
+            raise GSFDecodeError("No head block found in file", await self.file_data.tell())
 
     async def __aenter__(self):
-        self.start_loc = await self.file_data.tell()
+        if self.start_loc is None:
+            self.start_loc = await self.file_data.tell()
         await self.decode_file_headers()
         return self
 
     async def __aexit__(self, *args, **kwargs):
-        self.head = None
-        await self.file_data.seek(self.start_loc)
-        self.start_loc = None
+        if self.start_loc is not None:
+            await self.file_data.seek(self.start_loc)
+            self.start_loc = None
 
     def __aiter__(self):
         return self.grains()
@@ -514,8 +555,7 @@ class AsyncGSFDecoder(object):
         :yields: (Grain, local_id) tuple for each grain
         :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
         """
-        if self.head is None:
-            await self.decode_file_headers()
+        await self.decode_file_headers()
 
         while True:
             try:
@@ -543,6 +583,24 @@ class AsyncGSFDecoder(object):
                                 else:
                                     data = await self.file_data.read(await grdt_block.get_remaining())
 
-                yield (self.Grain(meta, data), local_id)
+                yield (await self.Grain(meta, data), local_id)
             except EOFError:
                 return  # We ran out of grains to read and hit EOF
+
+    async def decode(self, load_lazily=False):
+        """Decode a GSF formatted bytes object
+
+        :param load_lazily: If True, the grains returned will be designed to lazily load data from the underlying stream
+                            only when it is needed. These grain data elements will have an extra 'load' coroutine for
+                            triggering this load, and accessing data in their data element without first awaiting this
+                            coroutine will raise an exception.
+        :returns: A dictionary mapping sequence ids to lists of GRAIN objects (or subclasses of such).
+        """
+        segments = {}
+        async with self:
+            async for (grain, local_id) in self.grains(load_lazily=load_lazily):
+                if local_id not in segments:
+                    segments[local_id] = []
+                segments[local_id].append(grain)
+
+            return (self.head, segments)
