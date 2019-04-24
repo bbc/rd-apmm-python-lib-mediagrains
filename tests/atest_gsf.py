@@ -26,10 +26,8 @@ from uuid import UUID
 from mediagrains.async import AsyncGSFDecoder, AsyncLazyLoaderUnloadedError, loads
 from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, EVENTGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN
 from mediagrains.gsf import GSFDecodeError
-from mediagrains.gsf import GSFEncodeError
 from mediagrains.gsf import GSFDecodeBadVersionError
 from mediagrains.gsf import GSFDecodeBadFileTypeError
-from mediagrains.gsf import GSFEncodeAddToActiveDump
 from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
 from mediatimestamp.immutable import Timestamp, TimeOffset
@@ -387,23 +385,23 @@ class TestAsyncGSFLoads(TestCase):
                                          b"\x01\x00" +
                                          b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
                                          b"\x01\x00\x00\x00\x00\x00\x00\x00")) +
-                                        (b"grai\x8d\x00\x00\x00" +
-                                         b"\x01\x00" +
-                                         (b"gbhd\x83\x00\x00\x00" +
-                                          src_id.bytes +
-                                          flow_id.bytes +
-                                          b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                          b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                          b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                          b"\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                          b"\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                        (b"tils\x27\x00\x00\x00" +
-                                         b"\x01\x00" +
-                                         b"dummy timecode\x00\x00" +
-                                         b"\x07\x00\x00\x00" +
-                                         b"\x19\x00\x00\x00\x01\x00\x00\x00" +
-                                         b"\x00"))) +
-                                        (b"grai\x08\x00\x00\x00"))
+                                       (b"grai\x8d\x00\x00\x00" +
+                                        b"\x01\x00" +
+                                        (b"gbhd\x83\x00\x00\x00" +
+                                         src_id.bytes +
+                                         flow_id.bytes +
+                                         b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                         b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                         b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                         b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                         b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                                         (b"tils\x27\x00\x00\x00" +
+                                          b"\x01\x00" +
+                                          b"dummy timecode\x00\x00" +
+                                          b"\x07\x00\x00\x00" +
+                                          b"\x19\x00\x00\x00\x01\x00\x00\x00" +
+                                          b"\x00"))) +
+                                       (b"grai\x08\x00\x00\x00"))
 
         self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
         self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))

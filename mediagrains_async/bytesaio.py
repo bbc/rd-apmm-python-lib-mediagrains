@@ -19,7 +19,6 @@
 A simple wrapper class BytesAIO which is an asynchronous version of BytesIO
 """
 
-import asyncio
 from io import BytesIO
 
 
