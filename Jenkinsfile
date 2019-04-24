@@ -44,24 +44,42 @@ pipeline {
         }
         stage ("Tests") {
             parallel {
-                stage ("Linting Check") {
+                stage ("Py2.7 Linting Check") {
                     steps {
                         script {
-                            env.lint_result = "FAILURE"
+                            env.lint27_result = "FAILURE"
                         }
-                        bbcGithubNotify(context: "lint/flake8", status: "PENDING")
+                        bbcGithubNotify(context: "lint/flake8_27", status: "PENDING")
                         // Run the linter
-                        sh 'flake8 --exclude=.svn,CVS,.bzr,.hg,.git,__pycache__,.tox,.eggs,*.egg,._*,./tests/atest_*,./mediagrains_async/*'
+                        sh 'python2.7 -m flake8 --exclude=.svn,CVS,.bzr,.hg,.git,__pycache__,.tox,.eggs,*.egg,._*,./tests/atest_*,./mediagrains_async/*'
                         script {
-                            env.lint_result = "SUCCESS" // This will only run if the sh above succeeded
+                            env.lint27_result = "SUCCESS" // This will only run if the sh above succeeded
                         }
                     }
                     post {
                         always {
-                            bbcGithubNotify(context: "lint/flake8", status: env.lint_result)
+                            bbcGithubNotify(context: "lint/flake8_27", status: env.lint27_result)
                         }
                     }
                 }
+                stage ("Py3 Linting Check") {
+                    steps {
+                        script {
+                            env.lint3_result = "FAILURE"
+                        }
+                        bbcGithubNotify(context: "lint/flake8_3", status: "PENDING")
+                        // Run the linter
+                        sh 'python3 -m flake8'
+                        script {
+                            env.lint3_result = "SUCCESS" // This will only run if the sh above succeeded
+                        }
+                    }
+                    post {
+                        always {
+                            bbcGithubNotify(context: "lint/flake8_3", status: env.lint3_result)
+                        }
+                    }
+                }		
                 stage ("Build Docs") {
                    steps {
                        sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-docs make docs'
