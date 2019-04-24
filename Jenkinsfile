@@ -16,7 +16,7 @@
 
 pipeline {
     agent {
-        label "ubuntu&&apmm-slave"
+        label "ubuntu&&apmm-slave&&18.04"
     }
     options {
         ansiColor('xterm') // Add support for coloured output
