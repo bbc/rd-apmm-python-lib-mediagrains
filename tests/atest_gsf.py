@@ -23,7 +23,7 @@ import aiofiles
 from datetime import datetime
 from uuid import UUID
 
-from mediagrains.async import AsyncGSFDecoder, AsyncLazyLoaderUnloadedError, loads
+from mediagrains.asyncio import AsyncGSFDecoder, AsyncLazyLoaderUnloadedError, loads
 from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, EVENTGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN
 from mediagrains.gsf import GSFDecodeError
 from mediagrains.gsf import GSFDecodeBadVersionError
