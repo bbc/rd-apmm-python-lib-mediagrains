@@ -62,7 +62,7 @@ pipeline {
                         }
                     }
                 }
-                stage ("Py3 Linting Check") {
+                stage ("Py36 Linting Check") {
                     steps {
                         script {
                             env.lint3_result = "FAILURE"
@@ -108,18 +108,18 @@ pipeline {
                         stage ("Python 3 Unit Tests") {
                             steps {
                                 script {
-                                    env.py3_result = "FAILURE"
+                                    env.py36_result = "FAILURE"
                                 }
-                                bbcGithubNotify(context: "tests/py3", status: "PENDING")
+                                bbcGithubNotify(context: "tests/py36", status: "PENDING")
                                 // Use a workdirectory in /tmp to avoid shebang length limitation
-                                sh 'tox -e py3 --recreate --workdir /tmp/$(basename ${WORKSPACE})/tox-py3'
+                                sh 'tox -e py36 --recreate --workdir /tmp/$(basename ${WORKSPACE})/tox-py36'
                                 script {
-                                    env.py3_result = "SUCCESS" // This will only run if the sh above succeeded
+                                    env.py36_result = "SUCCESS" // This will only run if the sh above succeeded
                                 }
                             }
                             post {
                                 always {
-                                    bbcGithubNotify(context: "tests/py3", status: env.py3_result)
+                                    bbcGithubNotify(context: "tests/py36", status: env.py36_result)
                                 }
                             }
                         }
@@ -219,8 +219,8 @@ pipeline {
                         bbcGithubNotify(context: "pypi/upload", status: "PENDING")
                         sh 'rm -rf dist/*'
                         bbcMakeGlobalWheel("py27")
-                        bbcMakeGlobalWheel("py3")
-                        bbcTwineUpload(toxenv: "py3", pypi: true)
+                        bbcMakeGlobalWheel("py36")
+                        bbcTwineUpload(toxenv: "py36", pypi: true)
                         script {
                             env.pypiUpload_result = "SUCCESS" // This will only run if the steps above succeeded
                         }
@@ -247,8 +247,8 @@ pipeline {
                         bbcGithubNotify(context: "artifactory/upload", status: "PENDING")
                         sh 'rm -rf dist/*'
                         bbcMakeGlobalWheel("py27")
-                        bbcMakeGlobalWheel("py3")
-                        bbcTwineUpload(toxenv: "py3", pypi: false)
+                        bbcMakeGlobalWheel("py36")
+                        bbcTwineUpload(toxenv: "py36", pypi: false)
                         script {
                             env.artifactoryUpload_result = "SUCCESS" // This will only run if the steps above succeeded
                         }
