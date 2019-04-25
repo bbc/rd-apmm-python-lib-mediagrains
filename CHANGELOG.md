@@ -3,6 +3,7 @@
 ## 2.6.0 (Under development)
 - Added support for async methods to gsf decoder in python 3.6+
 - Added `Grain.origin_timerange` method.
+- Added `Grain.normalise_time` method.
 
 ## 2.5.3
 - BUGFIX: IOBytes doesn't quite fulfil bytes-like contracts, but can be converted to something that does

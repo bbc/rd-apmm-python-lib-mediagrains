@@ -129,6 +129,10 @@ final_origin_timestamp()
 
 origin_timerange()
     The origin time range covered by the samples in the grain.
+
+normalise_time(value)
+    Returns a normalised Timestamp, TimeOffset or TimeRange using the video frame rate or audio sample rate.
+
     """
     def __init__(self, meta, data):
         self.meta = meta
@@ -252,6 +256,9 @@ origin_timerange()
 
     def origin_timerange(self):
         return TimeRange(self.origin_timestamp, self.final_origin_timestamp(), TimeRange.INCLUSIVE)
+
+    def normalise_time(self, value):
+        return value
 
     @property
     def sync_timestamp(self):
@@ -892,6 +899,11 @@ length
         self.meta['grain']['cog_frame']['layout'] = int(self.meta['grain']['cog_frame']['layout'])
         self.components = VIDEOGRAIN.COMPONENT_LIST(self)
 
+    def normalise_time(self, value):
+        if self.rate == 0:
+            return value
+        return value.normalise(self.rate.numerator, self.rate.denominator)
+
     @property
     def format(self):
         return CogFrameFormat(self.meta['grain']['cog_frame']['format'])
@@ -1069,6 +1081,11 @@ unit_offsets
             self.meta['grain']['cog_coded_frame']['is_key_frame'] = False
         self.meta['grain']['cog_coded_frame']['format'] = int(self.meta['grain']['cog_coded_frame']['format'])
         self.meta['grain']['cog_coded_frame']['layout'] = int(self.meta['grain']['cog_coded_frame']['layout'])
+
+    def normalise_time(self, value):
+        if self.rate == 0:
+            return value
+        return value.normalise(self.rate.numerator, self.rate.denominator)
 
     @property
     def format(self):
@@ -1299,6 +1316,9 @@ sample_rate
     def final_origin_timestamp(self):
         return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, self.sample_rate, 1))
 
+    def normalise_time(self, value):
+        return value.normalise(self.sample_rate, 1)
+
     @property
     def format(self):
         return CogAudioFormat(self.meta['grain']['cog_audio']['format'])
@@ -1432,6 +1452,9 @@ remainder
 
     def final_origin_timestamp(self):
         return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, self.sample_rate, 1))
+
+    def normalise_time(self, value):
+        return value.normalise(self.sample_rate, 1)
 
     @property
     def format(self):
