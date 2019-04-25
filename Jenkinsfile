@@ -51,7 +51,7 @@ pipeline {
                         }
                         bbcGithubNotify(context: "lint/flake8_27", status: "PENDING")
                         // Run the linter
-                        sh 'python2.7 -m flake8 --exclude=.svn,CVS,.bzr,.hg,.git,__pycache__,.tox,.eggs,*.egg,._*,./tests/atest_*,./mediagrains_async/*'
+                        sh 'python2.7 -m flake8 --filename=mediagrains/*.py,tests/test_*.py'
                         script {
                             env.lint27_result = "SUCCESS" // This will only run if the sh above succeeded
                         }
@@ -69,7 +69,7 @@ pipeline {
                         }
                         bbcGithubNotify(context: "lint/flake8_3", status: "PENDING")
                         // Run the linter
-                        sh 'python3 -m flake8'
+                        sh 'python3 -m flake8 --filename=mediagrains/*.py,mediagrains_async/*.py,tests/test_*.py,tests/atest_*.py'
                         script {
                             env.lint3_result = "SUCCESS" // This will only run if the sh above succeeded
                         }
