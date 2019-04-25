@@ -16,17 +16,18 @@
 
 pipeline {
     agent {
-        label "ubuntu&&apmm-slave"
+        label "ubuntu&&apmm-slave&&18.04"
     }
     options {
         ansiColor('xterm') // Add support for coloured output
         buildDiscarder(logRotator(numToKeepStr: '10')) // Discard old builds
     }
     triggers {
-        cron(env.BRANCH_NAME == 'master' ? 'H H(0-8) * * *' : '') // Build master some time every morning
+        cron((env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'dev')? 'H H(0-8) * * *' : '') // Build master some time every morning
     }
     parameters {
-        booleanParam(name: "FORCE_PYUPLOAD", defaultValue: false, description: "Force Python artifact upload")
+        booleanParam(name: "FORCE_PYPIUPLOAD", defaultValue: false, description: "Force Python artifact upload to PyPi")
+        booleanParam(name: "FORCE_PYUPLOAD", defaultValue: false, description: "Force Python artifact upload to internal BBC repo")
         booleanParam(name: "FORCE_DEBUPLOAD", defaultValue: false, description: "Force Debian package upload")
         booleanParam(name: "FORCE_DOCSUPLOAD", defaultValue: false, description: "Force docs upload")
     }
@@ -43,24 +44,42 @@ pipeline {
         }
         stage ("Tests") {
             parallel {
-                stage ("Linting Check") {
+                stage ("Py2.7 Linting Check") {
                     steps {
                         script {
-                            env.lint_result = "FAILURE"
+                            env.lint27_result = "FAILURE"
                         }
-                        bbcGithubNotify(context: "lint/flake8", status: "PENDING")
+                        bbcGithubNotify(context: "lint/flake8_27", status: "PENDING")
                         // Run the linter
-                        sh 'flake8'
+                        sh 'python2.7 -m flake8 --exclude=.svn,CVS,.bzr,.hg,.git,__pycache__,.tox,.eggs,*.egg,._*,./tests/atest_*,./mediagrains_async/*'
                         script {
-                            env.lint_result = "SUCCESS" // This will only run if the sh above succeeded
+                            env.lint27_result = "SUCCESS" // This will only run if the sh above succeeded
                         }
                     }
                     post {
                         always {
-                            bbcGithubNotify(context: "lint/flake8", status: env.lint_result)
+                            bbcGithubNotify(context: "lint/flake8_27", status: env.lint27_result)
                         }
                     }
                 }
+                stage ("Py36 Linting Check") {
+                    steps {
+                        script {
+                            env.lint3_result = "FAILURE"
+                        }
+                        bbcGithubNotify(context: "lint/flake8_3", status: "PENDING")
+                        // Run the linter
+                        sh 'python3 -m flake8'
+                        script {
+                            env.lint3_result = "SUCCESS" // This will only run if the sh above succeeded
+                        }
+                    }
+                    post {
+                        always {
+                            bbcGithubNotify(context: "lint/flake8_3", status: env.lint3_result)
+                        }
+                    }
+                }		
                 stage ("Build Docs") {
                    steps {
                        sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-docs make docs'
@@ -89,18 +108,18 @@ pipeline {
                         stage ("Python 3 Unit Tests") {
                             steps {
                                 script {
-                                    env.py3_result = "FAILURE"
+                                    env.py36_result = "FAILURE"
                                 }
-                                bbcGithubNotify(context: "tests/py3", status: "PENDING")
+                                bbcGithubNotify(context: "tests/py36", status: "PENDING")
                                 // Use a workdirectory in /tmp to avoid shebang length limitation
-                                sh 'tox -e py3 --recreate --workdir /tmp/$(basename ${WORKSPACE})/tox-py3'
+                                sh 'tox -e py36 --recreate --workdir /tmp/$(basename ${WORKSPACE})/tox-py36'
                                 script {
-                                    env.py3_result = "SUCCESS" // This will only run if the sh above succeeded
+                                    env.py36_result = "SUCCESS" // This will only run if the sh above succeeded
                                 }
                             }
                             post {
                                 always {
-                                    bbcGithubNotify(context: "tests/py3", status: env.py3_result)
+                                    bbcGithubNotify(context: "tests/py36", status: env.py36_result)
                                 }
                             }
                         }
@@ -162,10 +181,11 @@ pipeline {
             when {
                 anyOf {
                     expression { return params.FORCE_PYUPLOAD }
+                    expression { return params.FORCE_PYPIUPLOAD }		    
                     expression { return params.FORCE_DEBUPLOAD }
                     expression { return params.FORCE_DOCSUPLOAD }
                     expression {
-                        bbcShouldUploadArtifacts(branches: ["master"])
+                        bbcShouldUploadArtifacts(branches: ["master", "dev"])
                     }
                 }
             }
@@ -175,7 +195,7 @@ pipeline {
                         anyOf {
                             expression { return params.FORCE_DOCSUPLOAD }
                             expression {
-                                bbcShouldUploadArtifacts(branches: ["master"])
+                                bbcShouldUploadArtifacts(branches: ["master", "dev"])
                             }
                         }
                     }
@@ -186,7 +206,7 @@ pipeline {
                 stage ("Upload to PyPi") {
                     when {
                         anyOf {
-                            expression { return params.FORCE_PYUPLOAD }
+                            expression { return params.FORCE_PYPIUPLOAD }
                             expression {
                                 bbcShouldUploadArtifacts(branches: ["master"])
                             }
@@ -199,8 +219,8 @@ pipeline {
                         bbcGithubNotify(context: "pypi/upload", status: "PENDING")
                         sh 'rm -rf dist/*'
                         bbcMakeGlobalWheel("py27")
-                        bbcMakeGlobalWheel("py3")
-                        bbcTwineUpload(toxenv: "py3", pypi: true)
+                        bbcMakeGlobalWheel("py36")
+                        bbcTwineUpload(toxenv: "py36", pypi: true)
                         script {
                             env.pypiUpload_result = "SUCCESS" // This will only run if the steps above succeeded
                         }
@@ -208,6 +228,34 @@ pipeline {
                     post {
                         always {
                             bbcGithubNotify(context: "pypi/upload", status: env.pypiUpload_result)
+                        }
+                    }
+                }
+                stage ("Upload to Artifactory") {
+                    when {
+                        anyOf {
+                            expression { return params.FORCE_PYUPLOAD }
+                            expression {
+                                bbcShouldUploadArtifacts(branches: ["dev"])
+                            }
+                        }
+                    }
+                    steps {
+                        script {
+                            env.artifactoryUpload_result = "FAILURE"
+                        }
+                        bbcGithubNotify(context: "artifactory/upload", status: "PENDING")
+                        sh 'rm -rf dist/*'
+                        bbcMakeGlobalWheel("py27")
+                        bbcMakeGlobalWheel("py36")
+                        bbcTwineUpload(toxenv: "py36", pypi: false)
+                        script {
+                            env.artifactoryUpload_result = "SUCCESS" // This will only run if the steps above succeeded
+                        }
+                    }
+                    post {
+                        always {
+                            bbcGithubNotify(context: "artifactory/upload", status: env.artifactoryUpload_result)
                         }
                     }
                 }
