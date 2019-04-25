@@ -41,7 +41,7 @@ if version_info[0] > 3 or (version_info[0] == 3 and version_info[1] >= 6):
 package_names = list(packages.keys())
 
 setup(name="mediagrains",
-      version="2.6.0.dev1",
+      version="2.6.0.dev2",
       description="Simple utility for grain-based media",
       url='https://github.com/bbc/rd-apmm-python-lib-mediagrains',
       author='James Weaver',
