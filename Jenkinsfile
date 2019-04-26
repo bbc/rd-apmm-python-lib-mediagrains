@@ -1,4 +1,4 @@
-@Library("rd-apmm-groovy-ci-library@jamesba-change_branch") _
+@Library("rd-apmm-groovy-ci-library@v1.x") _
 
 /*
  Runs the following steps in parallel and reports results to GitHub:
