@@ -185,7 +185,7 @@ pipeline {
                     expression { return params.FORCE_DEBUPLOAD }
                     expression { return params.FORCE_DOCSUPLOAD }
                     expression {
-                        bbcShouldUploadArtifacts(branches: ["master", "dev"])
+                        bbcShouldUploadArtifacts(branches: ["master", "dev", "sammg-test-devupload"])
                     }
                 }
             }
@@ -195,12 +195,13 @@ pipeline {
                         anyOf {
                             expression { return params.FORCE_DOCSUPLOAD }
                             expression {
-                                bbcShouldUploadArtifacts(branches: ["master", "dev"])
+                                bbcShouldUploadArtifacts(branches: ["master", "dev", "sammg-test-devupload"])
                             }
                         }
                     }
                     steps {
-                        bbcAPMMDocsUpload(sourceFiles: "./docs/*.html")
+                        // bbcAPMMDocsUpload(sourceFiles: "./docs/*.html")
+                        echo "Would upload docs"
                     }
                 }
                 stage ("Upload to PyPi") {
@@ -236,7 +237,7 @@ pipeline {
                         anyOf {
                             expression { return params.FORCE_PYUPLOAD }
                             expression {
-                                bbcShouldUploadArtifacts(branches: ["dev"])
+                                bbcShouldUploadArtifacts(branches: ["dev", "sammg-test-devupload"])
                             }
                         }
                     }
@@ -248,7 +249,8 @@ pipeline {
                         sh 'rm -rf dist/*'
                         bbcMakeGlobalWheel("py27")
                         bbcMakeGlobalWheel("py36")
-                        bbcTwineUpload(toxenv: "py36", pypi: false)
+                        // bbcTwineUpload(toxenv: "py36", pypi: false)
+                        echo "Would upload wheel"
                         script {
                             env.artifactoryUpload_result = "SUCCESS" // This will only run if the steps above succeeded
                         }
