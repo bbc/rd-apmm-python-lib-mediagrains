@@ -21,7 +21,10 @@ from setuptools import setup
 from sys import version_info
 
 packages = {
-    'mediagrains': 'mediagrains'
+    'mediagrains': 'mediagrains',
+    'mediagrains.hypothesis': 'mediagrains/hypothesis',
+    'mediagrains.comparison': 'mediagrains/comparison',
+    'mediagrains.utils': 'mediagrains/utils'
 }
 
 packages_required = [
