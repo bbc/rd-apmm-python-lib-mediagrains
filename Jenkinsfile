@@ -1,4 +1,4 @@
-@Library("rd-apmm-groovy-ci-library@v1.x") _
+@Library("rd-apmm-groovy-ci-library@sammg-fix-pr-commit-hash") _
 
 /*
  Runs the following steps in parallel and reports results to GitHub:
