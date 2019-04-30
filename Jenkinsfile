@@ -1,4 +1,4 @@
-@Library("rd-apmm-groovy-ci-library@v1.x") _
+@Library("rd-apmm-groovy-ci-library@sammg-slacknotify-on-pr") _
 
 /*
  Runs the following steps in parallel and reports results to GitHub:
@@ -296,7 +296,7 @@ pipeline {
     }
     post {
         always {
-            bbcSlackNotify(channel: "#apmm-cloudfit", branches: ["master", "dev"])
+            bbcSlackNotify(channel: "#apmm-cloudfit", branches: ["master", "dev", "sammg-slack-on-pr"])
         }
     }
 }
