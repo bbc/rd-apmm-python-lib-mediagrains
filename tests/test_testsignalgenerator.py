@@ -28,7 +28,7 @@ import struct
 from math import sin, pi
 
 from mediagrains.cogenums import CogFrameFormat, CogAudioFormat
-from mediagrains.testsignalgenerator import LumaSteps, Tone1K, Silence
+from mediagrains.testsignalgenerator import LumaSteps, Tone1K, Silence, ColourBars
 
 
 src_id = UUID("f2b6a9b4-2ea8-11e8-a468-878cf869cbec")
@@ -342,6 +342,104 @@ class TestLumaSteps(TestCase):
             self.assertEqual(grain.sync_timestamp, ts)
             ts = Timestamp.from_count(ts.to_count(rate.numerator, rate.denominator) + step,
                                       rate.numerator, rate.denominator)
+
+
+class TestColourBars(TestCase):
+    def test_colourbars100_u8_444(self):
+        """Testing that the ColourBars generator produces correct video frames
+        when the height is 4 lines and the width 240 pixels (to keep time taken
+        for testing under control"""
+        width = 240
+        height = 4
+        UUT = ColourBars(src_id, flow_id,
+                         width, height,
+                         intensity=1.0,
+                         origin_timestamp=origin_timestamp,
+                         cog_frame_format=CogFrameFormat.U8_444,
+                         rate=Fraction(25, 1),
+                         step=1)
+
+        # Extracts the first 10 grains from the generator
+        grains = [grain for _, grain in zip(range(10), UUT)]
+
+        ts = origin_timestamp
+        for grain in grains:
+            self.assertEqual(grain.source_id, src_id)
+            self.assertEqual(grain.flow_id, flow_id)
+            self.assertEqual(grain.origin_timestamp, ts)
+            self.assertEqual(grain.sync_timestamp, ts)
+            self.assertEqual(grain.format, CogFrameFormat.U8_444)
+            self.assertEqual(grain.rate, Fraction(25, 1))
+
+            Y = grain.data[grain.components[0].offset:grain.components[0].offset + grain.components[0].length]
+            U = grain.data[grain.components[1].offset:grain.components[1].offset + grain.components[1].length]
+            V = grain.data[grain.components[2].offset:grain.components[2].offset + grain.components[2].length]
+
+            expected = [
+                (0xFF, 0x80, 0x80),
+                (0xFF, 0x00, 0x94),
+                (0xB2, 0xAB, 0x00),
+                (0x95, 0x2B, 0x15),
+                (0x69, 0xD4, 0xEA),
+                (0x4C, 0x54, 0xFF),
+                (0x1D, 0xFF, 0x6B),
+                (0x00, 0x80, 0x80)]
+
+            for y in range(0, height):
+                for x in range(0, width):
+                    self.assertEqual(Y[y*grain.components[0].stride + x], expected[x//(width//8)][0])
+                    self.assertEqual(U[y*grain.components[1].stride + x], expected[x//(width//8)][1])
+                    self.assertEqual(V[y*grain.components[2].stride + x], expected[x//(width//8)][2])
+
+            ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
+
+    def test_colourbars75_u8_444(self):
+        """Testing that the ColourBars generator produces correct video frames
+        when the height is 4 lines and the width 240 pixels (to keep time taken
+        for testing under control"""
+        width = 240
+        height = 4
+        UUT = ColourBars(src_id, flow_id,
+                         width, height,
+                         intensity=1.0,
+                         origin_timestamp=origin_timestamp,
+                         cog_frame_format=CogFrameFormat.U8_444,
+                         rate=Fraction(25, 1),
+                         step=1)
+
+        # Extracts the first 10 grains from the generator
+        grains = [grain for _, grain in zip(range(10), UUT)]
+
+        ts = origin_timestamp
+        for grain in grains:
+            self.assertEqual(grain.source_id, src_id)
+            self.assertEqual(grain.flow_id, flow_id)
+            self.assertEqual(grain.origin_timestamp, ts)
+            self.assertEqual(grain.sync_timestamp, ts)
+            self.assertEqual(grain.format, CogFrameFormat.U8_444)
+            self.assertEqual(grain.rate, Fraction(25, 1))
+
+            Y = grain.data[grain.components[0].offset:grain.components[0].offset + grain.components[0].length]
+            U = grain.data[grain.components[1].offset:grain.components[1].offset + grain.components[1].length]
+            V = grain.data[grain.components[2].offset:grain.components[2].offset + grain.components[2].length]
+
+            expected = [
+                (0xFF, 0x80, 0x80),
+                (0xFF, 0x00, 0x94),
+                (0xB2, 0xAB, 0x00),
+                (0x95, 0x2B, 0x15),
+                (0x69, 0xD4, 0xEA),
+                (0x4C, 0x54, 0xFF),
+                (0x1D, 0xFF, 0x6B),
+                (0x00, 0x80, 0x80)]
+
+            for y in range(0, height):
+                for x in range(0, width):
+                    self.assertEqual(Y[y*grain.components[0].stride + x], int(0.75*expected[x//(width//8)][0]))
+                    self.assertEqual(U[y*grain.components[1].stride + x], expected[x//(width//8)][1])
+                    self.assertEqual(V[y*grain.components[2].stride + x], expected[x//(width//8)][2])
+
+            ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
 
 
 if __name__ == "__main__":
