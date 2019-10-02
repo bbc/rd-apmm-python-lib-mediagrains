@@ -32,7 +32,7 @@ import fractions
 from . import VideoGrain, AudioGrain
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
-__all__ = ["LumaSteps", "Tone1K", "Tone", "Silence"]
+__all__ = ["LumaSteps", "Tone1K", "Tone", "Silence", "ColourBars", "MovingBarOverlay"]
 
 # information about formats
 # in the order:
@@ -168,12 +168,12 @@ def ColourBars(src_id, flow_id, width, height,
     lines = [bytearray(vg.components[0].width*_bpp), bytearray(vg.components[1].width*_bpp), bytearray(vg.components[2].width*_bpp)]
     for c in range(0, 3):
         for x in range(0, vg.components[c].width):
-            pos = x//(width//_steps)
+            pos = x//(vg.components[c].width//_steps)
             if _bpp == 1:
                 lines[c][x] = values[pos][c]
             elif _bpp == 2:
                 lines[c][2*x + 0] = values[pos][c] & 0xFF
-                lines[c][2*x + 1] = (values[pos][c] >> 8) &0xFF
+                lines[c][2*x + 1] = (values[pos][c] >> 8) & 0xFF
 
 
     for c in range(0, 3):
@@ -189,6 +189,60 @@ def ColourBars(src_id, flow_id, width, height,
                                                                        rate.numerator, rate.denominator)
         vg.sync_timestamp = vg.origin_timestamp
 
+
+def MovingBarOverlay(grain_gen, height=100, speed=1.0):
+    """Call this method and pass an iterable of video grains as the first parameter. This method will overlay a moving black bar onto the grains.
+
+    :param grain_gen: An iterable which yields video grains
+    :param heigh: The height of the bar in pixels
+    :param speed: A floating point speed in pixels per frame
+
+    :returns: A generator which yields video grains
+    """
+    bar = None
+    for grain in grain_gen:
+        v_subs = (grain.components[0].height + grain.components[1].height - 1)//grain.components[1].height
+
+        if bar is None:
+            if grain.format not in pixel_ranges:
+                raise ValueError("Not a supported format for this generator")
+
+            _bpp = pixel_ranges[grain.format][0]
+
+            bar = [bytearray(grain.components[0].width*_bpp * height), bytearray(grain.components[1].width*_bpp * height // v_subs), bytearray(grain.components[2].width*_bpp * height // v_subs)]
+            for y in range(0, height):
+                for x in range(0, grain.components[0].width):
+                    bar[0][y*grain.components[0].width * _bpp + _bpp*x + 0] = pixel_ranges[grain.format][1][0] & 0xFF
+                    if _bpp > 1:
+                        bar[0][y*grain.components[0].width * _bpp + _bpp*x + 1] = pixel_ranges[grain.format][1][0] >> 8
+            for y in range(0, height // v_subs):
+                for x in range(0, grain.components[1].width):
+                    bar[1][y*grain.components[1].width * _bpp + _bpp*x + 0] = pixel_ranges[grain.format][2][0] & 0xFF
+                    if _bpp > 1:
+                        bar[1][y*grain.components[1].width * _bpp + _bpp*x + 1] = pixel_ranges[grain.format][2][0] >> 8
+                    bar[2][y*grain.components[2].width * _bpp + _bpp*x + 0] = pixel_ranges[grain.format][3][0] & 0xFF
+                    if _bpp > 1:
+                        bar[2][y*grain.components[2].width * _bpp + _bpp*x + 1] = pixel_ranges[grain.format][3][0] >> 8
+
+        fnum = int(speed*grain.origin_timestamp.to_count(grain.rate.numerator, grain.rate.denominator))
+
+        for y in range(0, height):
+            grain.data[
+                grain.components[0].offset + ((fnum + y) % grain.components[0].height)*grain.components[0].stride:
+                grain.components[0].offset + ((fnum + y) % grain.components[0].height)*grain.components[0].stride + grain.components[0].width*_bpp ] = (
+                    bar[0][y*grain.components[0].width * _bpp: (y+1)*grain.components[0].width * _bpp])
+        for y in range(0, height // v_subs):
+            grain.data[
+                grain.components[1].offset + ((fnum//v_subs + y) % grain.components[1].height)*grain.components[1].stride:
+                grain.components[1].offset + ((fnum//v_subs + y) % grain.components[1].height)*grain.components[1].stride + grain.components[1].width*_bpp ] = (
+                    bar[1][y*grain.components[1].width * _bpp: (y+1)*grain.components[1].width * _bpp])
+            grain.data[
+                grain.components[2].offset + ((fnum//v_subs + y) % grain.components[2].height)*grain.components[2].stride:
+                grain.components[2].offset + ((fnum//v_subs + y) % grain.components[2].height)*grain.components[2].stride + grain.components[2].width*_bpp ] = (
+                    bar[2][y*grain.components[2].width * _bpp: (y+1)*grain.components[2].width * _bpp])
+
+
+        yield grain
 
 
 def Tone1K(src_id, flow_id,
