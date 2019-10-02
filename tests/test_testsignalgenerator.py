@@ -441,6 +441,59 @@ class TestColourBars(TestCase):
 
             ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
 
+    def test_colourbars75_s16_422_10bit(self):
+        """Testing that the ColourBars generator produces correct video frames
+        when the height is 4 lines and the width 240 pixels (to keep time taken
+        for testing under control"""
+        width = 240
+        height = 4
+        UUT = ColourBars(src_id, flow_id,
+                         width, height,
+                         intensity=0.75,
+                         origin_timestamp=origin_timestamp,
+                         cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                         rate=Fraction(25, 1),
+                         step=1)
+
+        # Extracts the first 10 grains from the generator
+        grains = [grain for _, grain in zip(range(10), UUT)]
+
+        ts = origin_timestamp
+        for grain in grains:
+            self.assertEqual(grain.source_id, src_id)
+            self.assertEqual(grain.flow_id, flow_id)
+            self.assertEqual(grain.origin_timestamp, ts)
+            self.assertEqual(grain.sync_timestamp, ts)
+            self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
+            self.assertEqual(grain.rate, Fraction(25, 1))
+
+            Y = grain.data[grain.components[0].offset:grain.components[0].offset + grain.components[0].length]
+            U = grain.data[grain.components[1].offset:grain.components[1].offset + grain.components[1].length]
+            V = grain.data[grain.components[2].offset:grain.components[2].offset + grain.components[2].length]
+
+            expected = [
+                (0x3FF, 0x200, 0x200),
+                (0x3FF, 0x000, 0x250),
+                (0x2C8, 0x2AF, 0x000),
+                (0x257, 0x0AF, 0x057),
+                (0x1A7, 0x350, 0x3A8),
+                (0x130, 0x150, 0x3FF),
+                (0x077, 0x3FF, 0x1AF),
+                (0x000, 0x200, 0x200)]
+
+            for y in range(0, height):
+                for x in range(0, width//2):
+                    self.assertEqual(Y[y*grain.components[0].stride + 4*x + 0], int(0.75*expected[(2*x + 0)//(width//8)][0]) & 0xFF)
+                    self.assertEqual(Y[y*grain.components[0].stride + 4*x + 1], int(0.75*expected[(2*x + 0)//(width//8)][0]) >> 8)
+                    self.assertEqual(Y[y*grain.components[0].stride + 4*x + 2], int(0.75*expected[(2*x + 1)//(width//8)][0]) & 0xFF)
+                    self.assertEqual(Y[y*grain.components[0].stride + 4*x + 3], int(0.75*expected[(2*x + 1)//(width//8)][0]) >> 8)
+                    self.assertEqual(U[y*grain.components[1].stride + 2*x + 0], expected[x//(width//8)][1] & 0xFF)
+                    self.assertEqual(U[y*grain.components[1].stride + 2*x + 1], expected[x//(width//8)][1] >> 8)
+                    self.assertEqual(V[y*grain.components[2].stride + 2*x + 0], expected[x//(width//8)][2] & 0xFF)
+                    self.assertEqual(V[y*grain.components[2].stride + 2*x + 1], expected[x//(width//8)][2] >> 8)
+
+            ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
+
 
 if __name__ == "__main__":
     import unittest
