@@ -401,7 +401,7 @@ class TestColourBars(TestCase):
         height = 4
         UUT = ColourBars(src_id, flow_id,
                          width, height,
-                         intensity=1.0,
+                         intensity=0.75,
                          origin_timestamp=origin_timestamp,
                          cog_frame_format=CogFrameFormat.U8_444,
                          rate=Fraction(25, 1),
