@@ -150,7 +150,7 @@ def ColourBars(src_id, flow_id, width, height,
 
     values = [
         (int((0xFFFF >> bs) * intensity), 0x8000 >> bs, 0x8000 >> bs),
-        (int((0xFFFF >> bs) * intensity), 0x0000 >> bs, 0x9400 >> bs),
+        (int((0xE1FF >> bs) * intensity), 0x0000 >> bs, 0x9400 >> bs),
         (int((0xB200 >> bs) * intensity), 0xABFF >> bs, 0x0000 >> bs),
         (int((0x95FF >> bs) * intensity), 0x2BFF >> bs, 0x15FF >> bs),
         (int((0x69FF >> bs) * intensity), 0xD400 >> bs, 0xEA00 >> bs),

@@ -345,6 +345,26 @@ class TestLumaSteps(TestCase):
 
 
 class TestColourBars(TestCase):
+    colourbars_expected_values_8bit = [
+        (0xFF, 0x80, 0x80),
+        (0xE1, 0x00, 0x94),
+        (0xB2, 0xAB, 0x00),
+        (0x95, 0x2B, 0x15),
+        (0x69, 0xD4, 0xEA),
+        (0x4C, 0x54, 0xFF),
+        (0x1D, 0xFF, 0x6B),
+        (0x00, 0x80, 0x80)]
+
+    colourbars_expected_values_10bit = [
+        (0x3FF, 0x200, 0x200),
+        (0x387, 0x000, 0x250),
+        (0x2C8, 0x2AF, 0x000),
+        (0x257, 0x0AF, 0x057),
+        (0x1A7, 0x350, 0x3A8),
+        (0x130, 0x150, 0x3FF),
+        (0x077, 0x3FF, 0x1AF),
+        (0x000, 0x200, 0x200)]
+
     def test_colourbars100_u8_444(self):
         """Testing that the ColourBars generator produces correct video frames
         when the height is 4 lines and the width 240 pixels (to keep time taken
@@ -375,15 +395,7 @@ class TestColourBars(TestCase):
             U = grain.data[grain.components[1].offset:grain.components[1].offset + grain.components[1].length]
             V = grain.data[grain.components[2].offset:grain.components[2].offset + grain.components[2].length]
 
-            expected = [
-                (0xFF, 0x80, 0x80),
-                (0xFF, 0x00, 0x94),
-                (0xB2, 0xAB, 0x00),
-                (0x95, 0x2B, 0x15),
-                (0x69, 0xD4, 0xEA),
-                (0x4C, 0x54, 0xFF),
-                (0x1D, 0xFF, 0x6B),
-                (0x00, 0x80, 0x80)]
+            expected = self.colourbars_expected_values_8bit
 
             for y in range(0, height):
                 for x in range(0, width):
@@ -423,15 +435,7 @@ class TestColourBars(TestCase):
             U = grain.data[grain.components[1].offset:grain.components[1].offset + grain.components[1].length]
             V = grain.data[grain.components[2].offset:grain.components[2].offset + grain.components[2].length]
 
-            expected = [
-                (0xFF, 0x80, 0x80),
-                (0xFF, 0x00, 0x94),
-                (0xB2, 0xAB, 0x00),
-                (0x95, 0x2B, 0x15),
-                (0x69, 0xD4, 0xEA),
-                (0x4C, 0x54, 0xFF),
-                (0x1D, 0xFF, 0x6B),
-                (0x00, 0x80, 0x80)]
+            expected = self.colourbars_expected_values_8bit
 
             for y in range(0, height):
                 for x in range(0, width):
@@ -471,15 +475,7 @@ class TestColourBars(TestCase):
             U = grain.data[grain.components[1].offset:grain.components[1].offset + grain.components[1].length]
             V = grain.data[grain.components[2].offset:grain.components[2].offset + grain.components[2].length]
 
-            expected = [
-                (0x3FF, 0x200, 0x200),
-                (0x3FF, 0x000, 0x250),
-                (0x2C8, 0x2AF, 0x000),
-                (0x257, 0x0AF, 0x057),
-                (0x1A7, 0x350, 0x3A8),
-                (0x130, 0x150, 0x3FF),
-                (0x077, 0x3FF, 0x1AF),
-                (0x000, 0x200, 0x200)]
+            expected = self.colourbars_expected_values_10bit
 
             for y in range(0, height):
                 for x in range(0, width//2):
@@ -526,15 +522,7 @@ class TestMovingBarOverlay(TestCase):
             U = grain.data[grain.components[1].offset:grain.components[1].offset + grain.components[1].length]
             V = grain.data[grain.components[2].offset:grain.components[2].offset + grain.components[2].length]
 
-            expected = [
-                (0xFF, 0x80, 0x80),
-                (0xFF, 0x00, 0x94),
-                (0xB2, 0xAB, 0x00),
-                (0x95, 0x2B, 0x15),
-                (0x69, 0xD4, 0xEA),
-                (0x4C, 0x54, 0xFF),
-                (0x1D, 0xFF, 0x6B),
-                (0x00, 0x80, 0x80)]
+            expected = TestColourBars.colourbars_expected_values_8bit
 
             fnum = grain.origin_timestamp.to_count(grain.rate.numerator, grain.rate.denominator)
             for y in range(0, height):
@@ -581,15 +569,7 @@ class TestMovingBarOverlay(TestCase):
             U = grain.data[grain.components[1].offset:grain.components[1].offset + grain.components[1].length]
             V = grain.data[grain.components[2].offset:grain.components[2].offset + grain.components[2].length]
 
-            expected = [
-                (0xFF, 0x80, 0x80),
-                (0xFF, 0x00, 0x94),
-                (0xB2, 0xAB, 0x00),
-                (0x95, 0x2B, 0x15),
-                (0x69, 0xD4, 0xEA),
-                (0x4C, 0x54, 0xFF),
-                (0x1D, 0xFF, 0x6B),
-                (0x00, 0x80, 0x80)]
+            expected = TestColourBars.colourbars_expected_values_8bit
 
             fnum = grain.origin_timestamp.to_count(grain.rate.numerator, grain.rate.denominator)
 
@@ -637,15 +617,7 @@ class TestMovingBarOverlay(TestCase):
             U = grain.data[grain.components[1].offset:grain.components[1].offset + grain.components[1].length]
             V = grain.data[grain.components[2].offset:grain.components[2].offset + grain.components[2].length]
 
-            expected = [
-                (0x3FF, 0x200, 0x200),
-                (0x3FF, 0x000, 0x250),
-                (0x2C8, 0x2AF, 0x000),
-                (0x257, 0x0AF, 0x057),
-                (0x1A7, 0x350, 0x3A8),
-                (0x130, 0x150, 0x3FF),
-                (0x077, 0x3FF, 0x1AF),
-                (0x000, 0x200, 0x200)]
+            expected = TestColourBars.colourbars_expected_values_10bit
 
             fnum = grain.origin_timestamp.to_count(grain.rate.numerator, grain.rate.denominator)
 
