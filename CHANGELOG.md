@@ -5,6 +5,7 @@
 - Added `Grain.origin_timerange` method.
 - Added `Grain.normalise_time` method.
 - Added `Colourbars` test signal generator
+- Added `MovingBarOverlay` for test signal generators
 
 ## 2.5.3
 - BUGFIX: IOBytes doesn't quite fulfil bytes-like contracts, but can be converted to something that does
