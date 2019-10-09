@@ -793,7 +793,9 @@ height
 length
     The total length of the data for this component in bytes
 """
-        def __init__(self, meta):
+        def __init__(self, parent, index, meta):
+            self.parent = parent
+            self.index = index
             self.meta = meta
 
         def __getitem__(self, key):
@@ -862,16 +864,16 @@ length
             self.parent = parent
 
         def __getitem__(self, key):
-            return VIDEOGRAIN.COMPONENT(self.parent.meta['grain']['cog_frame']['components'][key])
+            return type(self.parent).COMPONENT(self, key, self.parent.meta['grain']['cog_frame']['components'][key])
 
         def __setitem__(self, key, value):
-            self.parent.meta['grain']['cog_frame']['components'][key] = VIDEOGRAIN.COMPONENT(value)
+            self.parent.meta['grain']['cog_frame']['components'][key] = type(self.parent).COMPONENT(self, key, value)
 
         def __delitem__(self, key):
             del self.parent.meta['grain']['cog_frame']['components'][key]
 
         def insert(self, key, value):
-            self.parent.meta['grain']['cog_frame']['components'].insert(key, VIDEOGRAIN.COMPONENT(value))
+            self.parent.meta['grain']['cog_frame']['components'].insert(key, type(self.parent).COMPONENT(self, key, value))
 
         def __len__(self):
             return len(self.parent.meta['grain']['cog_frame']['components'])

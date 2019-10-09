@@ -25,6 +25,7 @@ from mediagrains import grain_constructors as bytesgrain_constructors
 from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
 from uuid import UUID
+from copy import copy, deepcopy
 
 import numpy as np
 
@@ -34,112 +35,82 @@ from typing import Union, Optional, SupportsBytes
 __all__ = ['VideoGrain', 'VIDEOGRAIN']
 
 
+def _dtype_from_cogframeformat(fmt: CogFrameFormat) -> np.dtype:
+    if fmt in [CogFrameFormat.U8_444,
+               CogFrameFormat.U8_422,
+               CogFrameFormat.U8_420,
+               CogFrameFormat.ALPHA_U8,
+               CogFrameFormat.YUYV,
+               CogFrameFormat.UYVY,
+               CogFrameFormat.AYUV,
+               CogFrameFormat.RGB,
+               CogFrameFormat.RGBx,
+               CogFrameFormat.xRGB,
+               CogFrameFormat.BGRx,
+               CogFrameFormat.xBGR,
+               CogFrameFormat.RGBA,
+               CogFrameFormat.ARGB,
+               CogFrameFormat.BGRA,
+               CogFrameFormat.ABGR]:
+        return np.dtype(np.uint8)
+    elif fmt in [CogFrameFormat.S16_444_10BIT,
+                 CogFrameFormat.S16_422_10BIT,
+                 CogFrameFormat.S16_420_10BIT,
+                 CogFrameFormat.ALPHA_S16_10BIT,
+                 CogFrameFormat.S16_444_12BIT,
+                 CogFrameFormat.S16_422_12BIT,
+                 CogFrameFormat.S16_420_12BIT,
+                 CogFrameFormat.ALPHA_S16_12BIT,
+                 CogFrameFormat.S16_444,
+                 CogFrameFormat.S16_422,
+                 CogFrameFormat.S16_420,
+                 CogFrameFormat.ALPHA_S16]:
+        return np.dtype(np.int16)
+    elif fmt in [CogFrameFormat.S32_444,
+                 CogFrameFormat.S32_422,
+                 CogFrameFormat.S32_420,
+                 CogFrameFormat.ALPHA_S32,
+                 CogFrameFormat.v210]:
+        return np.dtype(np.int32)
+    else:
+        raise NotImplementedError("Cog Frame Format not amongst those supported for numpy array interpretation")
+
+
 class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
-    pass
+    def __init__(self, meta, data):
+        super().__init__(meta, data)
+        self._data = np.frombuffer(self._data, dtype=_dtype_from_cogframeformat(self.format))
+
+    def __copy__(self):
+        return VideoGrain(copy(self.meta), self.data)
+
+    def __deepcopy__(self, memo):
+        return VideoGrain(deepcopy(self.meta), self.data.copy())
+
+    def __repr__(self):
+        if self.data is None:
+            return "{}({!r})".format(self._factory, self.meta)
+        else:
+            return "{}({!r},< numpy data of length {} >)".format(self._factory, self.meta, len(self.data))
+
+    class COMPONENT (bytesgrain.VIDEOGRAIN.COMPONENT):
+        def __init__(self, parent, index, meta):
+            super().__init__(parent, index, meta)
+            self.data = self.parent.parent.data[self.offset//self.parent.parent.data.itemsize:(self.offset + self.length)//self.parent.parent.data.itemsize]
+            if self.parent.parent.format != CogFrameFormat.v210:
+                self.data.shape = (self.height, self.width)
+                # It's nicer to list width, then height
+                self.data = self.data.transpose()
 
 
-def VideoGrain(
-    src_id_or_meta: Optional[Union[UUID, dict]]=None,
-    flow_id_or_data: Optional[Union[UUID, SupportsBytes]]=None,
-    creation_timestamp: Optional[Timestamp]=None,
-    origin_timestamp: Optional[Timestamp]=None,
-    sync_timestamp: Optional[Timestamp]=None,
-    rate: Fraction=Fraction(25, 1),
-    duration: Fraction=Fraction(1, 25),
-    cog_frame_format: CogFrameLayout=CogFrameFormat.UNKNOWN,
-    width: int=1920,
-    height: int=1080,
-    cog_frame_layout: CogFrameLayout=CogFrameLayout.UNKNOWN,
-    src_id: Optional[UUID]=None,
-    source_id: Optional[UUID]=None,
-    format: Optional[CogFrameFormat]=None,
-    layout: Optional[CogFrameLayout]=None,
-    flow_id: Optional[UUID]=None,
-    data: Optional[SupportsBytes]=None) -> VIDEOGRAIN:
-    """\
-Function called to construct a video grain either from existing data or with new data.
+def VideoGrain(*args, **kwargs) -> VIDEOGRAIN:
+    """If the first argument is a mediagrains.VIDEOGRAIN then return a mediagrains.numpy.VIDEOGRAIN representing the same data.
 
-First method of calling:
+    Otherwise takes the same parameters as mediagrains.VideoGrain and returns the same grain converted into a mediagrains.numpy.VIDEOGRAIN
+    """
+    if len(args) == 1 and isinstance(args[0], bytesgrain.VIDEOGRAIN):
+        rawgrain = args[0]
+    else:
+        rawgrain = bytesgrain_constructors.VideoGrain(*args, **kwargs)
 
-    VideoGrain(meta, data)
-
-where meta is a dictionary containing the grain metadata, and data is a bytes-like
-object which contains the grain's payload.
-
-A properly formated metadata dictionary for a Video Grain should look like:
-
-        {
-            "@_ns": "urn:x-ipstudio:ns:0.1",
-            "grain": {
-                "grain_type": "audio",
-                "source_id": src_id, # str or uuid.UUID
-                "flow_id": flow_id, # str or uuid.UUID
-                "origin_timestamp": origin_timestamp, # str or mediatimestamps.Timestamp
-                "sync_timestamp": sync_timestamp, # str or mediatimestamps.Timestamp
-                "creation_timestamp": creation_timestamp, # str or mediatimestamps.Timestamp
-                "rate": {
-                    "numerator": 0, # int
-                    "denominator": 1, # int
-                },
-                "duration": {
-                    "numerator": 0, # int
-                    "denominator": 1, # int
-                },
-                "cog_frame": {
-                    "format": cog_frame_format, # int or CogFrameFormat
-                    "width": width, # int
-                    "height": height, # int
-                    "layout": cog_frame_layout, # int of CogFrameLayout
-                    "extension": 0, # int
-                    "components": [
-                        {
-                            "stride": luma_stride, # int
-                            "width": luma_width, # int
-                            "height": luma_height, # int
-                            "length": luma_length # int
-                        },
-                        {
-                            "stride": chroma_stride, # int
-                            "width": chroma_width, # int
-                            "height": chroma_height, # int
-                            "length": chroma_length # int
-                        },
-                        {
-                            "stride": chroma_stride, # int
-                            "width": chroma_width, # int
-                            "height": chroma_height, # int
-                            "length": chroma_length # int
-                        },
-                    ]
-                }
-            }
-        }
-
-Alternatively it may be called as:
-
-    VideoGrain(src_id, flow_id,
-               origin_timestamp=None,
-               sync_timestamp=None,
-               rate=Fraction(25, 1),
-               duration=Fraction(1, 25),
-               cog_frame_format=CogFrameFormat.UNKNOWN,
-               width=1920,
-               height=1080,
-               cog_frame_layout=CogFrameLayout.UNKNOWN,
-               data=None):
-
-in which case a new grain will be constructed with type "video" and the
-specified metadata. If the data argument is None then a new bytearray object
-will be constructed with size determined by the format, height, and width.
-The components array will similarly be filled out automatically with correct
-data for the format and size specified.
-
-
-In either case the value returned by this function will be an instance of the
-class mediagrains.grain.VIDEOGRAIN, and the data element stored within it will be an
-instance of the class numpy.ndarray.
-
-(the parameters "source_id" and "src_id" are aliases for each other. source_id is probably prefered,
-but src_id is kept avaialble for backwards compatibility)
-"""
-    pass
+    return VIDEOGRAIN(rawgrain.meta, rawgrain.data)
