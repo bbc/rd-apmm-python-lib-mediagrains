@@ -45,7 +45,15 @@ def _dtype_from_cogframeformat(fmt: CogFrameFormat) -> np.dtype:
             return np.dtype(np.int32)
     elif fmt in [CogFrameFormat.UYVY,
                  CogFrameFormat.YUYV,
-                 CogFrameFormat.RGB]:
+                 CogFrameFormat.RGB,
+                 CogFrameFormat.RGBx,
+                 CogFrameFormat.RGBA,
+                 CogFrameFormat.BGRx,
+                 CogFrameFormat.BGRx,
+                 CogFrameFormat.ARGB,
+                 CogFrameFormat.xRGB,
+                 CogFrameFormat.ABGR,
+                 CogFrameFormat.xBGR]:
         return np.dtype(np.uint8)
 
     raise NotImplementedError("Cog Frame Format not amongst those supported for numpy array interpretation")
@@ -92,6 +100,34 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
             as_strided(data[2:],
                        shape=(components[0].height, components[0].width),
                        strides=(components[0].stride, data.itemsize*3)).transpose()]
+    elif fmt in [CogFrameFormat.RGBx,
+                 CogFrameFormat.RGBA,
+                 CogFrameFormat.BGRx,
+                 CogFrameFormat.BGRx]:
+        return [
+            as_strided(data,
+                       shape=(components[0].height, components[0].width),
+                       strides=(components[0].stride, data.itemsize*4)).transpose(),
+            as_strided(data[1:],
+                       shape=(components[0].height, components[0].width),
+                       strides=(components[0].stride, data.itemsize*4)).transpose(),
+            as_strided(data[2:],
+                       shape=(components[0].height, components[0].width),
+                       strides=(components[0].stride, data.itemsize*4)).transpose()]
+    elif fmt in [CogFrameFormat.ARGB,
+                 CogFrameFormat.xRGB,
+                 CogFrameFormat.ABGR,
+                 CogFrameFormat.xBGR]:
+        return [
+            as_strided(data[1:],
+                       shape=(components[0].height, components[0].width),
+                       strides=(components[0].stride, data.itemsize*4)).transpose(),
+            as_strided(data[2:],
+                       shape=(components[0].height, components[0].width),
+                       strides=(components[0].stride, data.itemsize*4)).transpose(),
+            as_strided(data[3:],
+                       shape=(components[0].height, components[0].width),
+                       strides=(components[0].stride, data.itemsize*4)).transpose()]
 
     raise NotImplementedError("Cog Frame Format not amongst those supported for numpy array interpretation")
 

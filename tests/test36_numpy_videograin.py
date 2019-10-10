@@ -122,6 +122,25 @@ class TestGrain (TestCase):
                 self.assertEqual(grain.components[0].offset, 0)
                 self.assertEqual(grain.components[0].length, width*height*bps*3)
                 self.assertEqual(len(grain.components[0]), 5)
+            elif fmt in [CogFrameFormat.RGBx,
+                         CogFrameFormat.RGBA,
+                         CogFrameFormat.BGRx,
+                         CogFrameFormat.BGRx,
+                         CogFrameFormat.ARGB,
+                         CogFrameFormat.xRGB,
+                         CogFrameFormat.ABGR,
+                         CogFrameFormat.xBGR]:
+                bps = 1
+                hs = 0
+                vs = 0
+
+                self.assertEqual(len(grain.components), 1)
+                self.assertEqual(grain.components[0].stride, 4*width*bps)
+                self.assertEqual(grain.components[0].width, width)
+                self.assertEqual(grain.components[0].height, height)
+                self.assertEqual(grain.components[0].offset, 0)
+                self.assertEqual(grain.components[0].length, width*height*bps*4)
+                self.assertEqual(len(grain.components[0]), 5)
             else:
                 raise Exception()
 
@@ -207,6 +226,26 @@ class TestGrain (TestCase):
                         self.assertEqual(grain.data[y*width*3 + 3*x + 1], (y*16 + x) & 0x3F + 0x40)
                         self.assertEqual(grain.data[y*width*3 + 3*x + 2], (y*16 + x) & 0x3F + 0x50)
 
+            elif fmt in [CogFrameFormat.RGBx,
+                         CogFrameFormat.RGBA,
+                         CogFrameFormat.BGRx,
+                         CogFrameFormat.BGRx]:
+                for y in range(0, 16):
+                    for x in range(0, 16):
+                        self.assertEqual(grain.data[y*width*4 + 4*x + 0], (y*16 + x) & 0x3F)
+                        self.assertEqual(grain.data[y*width*4 + 4*x + 1], (y*16 + x) & 0x3F + 0x40)
+                        self.assertEqual(grain.data[y*width*4 + 4*x + 2], (y*16 + x) & 0x3F + 0x50)
+
+            elif fmt in [CogFrameFormat.ARGB,
+                         CogFrameFormat.xRGB,
+                         CogFrameFormat.ABGR,
+                         CogFrameFormat.xBGR]:
+                for y in range(0, 16):
+                    for x in range(0, 16):
+                        self.assertEqual(grain.data[y*width*4 + 4*x + 1], (y*16 + x) & 0x3F)
+                        self.assertEqual(grain.data[y*width*4 + 4*x + 2], (y*16 + x) & 0x3F + 0x40)
+                        self.assertEqual(grain.data[y*width*4 + 4*x + 3], (y*16 + x) & 0x3F + 0x50)
+
             else:
                 raise Exception()
 
@@ -237,7 +276,15 @@ class TestGrain (TestCase):
                     CogFrameFormat.S16_444_10BIT_RGB,
                     CogFrameFormat.UYVY,
                     CogFrameFormat.YUYV,
-                    CogFrameFormat.RGB]:
+                    CogFrameFormat.RGB,
+                    CogFrameFormat.RGBx,
+                    CogFrameFormat.RGBA,
+                    CogFrameFormat.BGRx,
+                    CogFrameFormat.BGRx,
+                    CogFrameFormat.ARGB,
+                    CogFrameFormat.xRGB,
+                    CogFrameFormat.ABGR,
+                    CogFrameFormat.xBGR]:
             with self.subTest(fmt=fmt):
                 with mock.patch.object(Timestamp, "get_time", return_value=cts):
                     grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
