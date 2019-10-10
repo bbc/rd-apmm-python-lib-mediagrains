@@ -19,61 +19,31 @@
 Library for handling mediagrains in numpy arrays
 """
 
-from mediagrains.cogenums import CogFrameFormat, CogFrameLayout
+from mediagrains.cogenums import (
+    CogFrameFormat,
+    COG_FRAME_IS_PACKED,
+    COG_FRAME_IS_COMPRESSED,
+    COG_FRAME_FORMAT_BYTES_PER_VALUE)
 from mediagrains import grain as bytesgrain
 from mediagrains import grain_constructors as bytesgrain_constructors
-from mediatimestamp.immutable import Timestamp
-from fractions import Fraction
-from uuid import UUID
 from copy import copy, deepcopy
 
 import numpy as np
-
-from typing import Union, Optional, SupportsBytes
 
 
 __all__ = ['VideoGrain', 'VIDEOGRAIN']
 
 
 def _dtype_from_cogframeformat(fmt: CogFrameFormat) -> np.dtype:
-    if fmt in [CogFrameFormat.U8_444,
-               CogFrameFormat.U8_422,
-               CogFrameFormat.U8_420,
-               CogFrameFormat.ALPHA_U8,
-               CogFrameFormat.YUYV,
-               CogFrameFormat.UYVY,
-               CogFrameFormat.AYUV,
-               CogFrameFormat.RGB,
-               CogFrameFormat.RGBx,
-               CogFrameFormat.xRGB,
-               CogFrameFormat.BGRx,
-               CogFrameFormat.xBGR,
-               CogFrameFormat.RGBA,
-               CogFrameFormat.ARGB,
-               CogFrameFormat.BGRA,
-               CogFrameFormat.ABGR]:
-        return np.dtype(np.uint8)
-    elif fmt in [CogFrameFormat.S16_444_10BIT,
-                 CogFrameFormat.S16_422_10BIT,
-                 CogFrameFormat.S16_420_10BIT,
-                 CogFrameFormat.ALPHA_S16_10BIT,
-                 CogFrameFormat.S16_444_12BIT,
-                 CogFrameFormat.S16_422_12BIT,
-                 CogFrameFormat.S16_420_12BIT,
-                 CogFrameFormat.ALPHA_S16_12BIT,
-                 CogFrameFormat.S16_444,
-                 CogFrameFormat.S16_422,
-                 CogFrameFormat.S16_420,
-                 CogFrameFormat.ALPHA_S16]:
-        return np.dtype(np.int16)
-    elif fmt in [CogFrameFormat.S32_444,
-                 CogFrameFormat.S32_422,
-                 CogFrameFormat.S32_420,
-                 CogFrameFormat.ALPHA_S32,
-                 CogFrameFormat.v210]:
-        return np.dtype(np.int32)
-    else:
-        raise NotImplementedError("Cog Frame Format not amongst those supported for numpy array interpretation")
+    if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+        if COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt) == 1:
+            return np.dtype(np.uint8)
+        elif COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt) == 2:
+            return np.dtype(np.int16)
+        elif COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt) == 4:
+            return np.dtype(np.int32)
+
+    raise NotImplementedError("Cog Frame Format not amongst those supported for numpy array interpretation")
 
 
 class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):

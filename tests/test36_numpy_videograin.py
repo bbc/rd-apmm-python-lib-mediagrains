@@ -19,222 +19,169 @@ from unittest import TestCase
 
 import uuid
 from mediagrains.numpy import VideoGrain
-from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
-from mediatimestamp.immutable import Timestamp, TimeOffset, TimeRange
+from mediagrains.cogenums import (
+    CogFrameFormat,
+    CogFrameLayout,
+    COG_FRAME_FORMAT_BYTES_PER_VALUE,
+    COG_FRAME_FORMAT_H_SHIFT,
+    COG_FRAME_FORMAT_V_SHIFT)
+from mediatimestamp.immutable import Timestamp, TimeRange
 import mock
 from fractions import Fraction
-import json
 from copy import copy, deepcopy
 
 import numpy as np
 
 
 class TestGrain (TestCase):
-    def test_video_grain_create_YUV422_10bit(self):
+    def assertIsVideoGrain(self,
+                           fmt,
+                           src_id=uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429"),
+                           flow_id=uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb"),
+                           ots=Timestamp.from_tai_sec_nsec("417798915:5"),
+                           sts=Timestamp.from_tai_sec_nsec("417798915:10"),
+                           cts=Timestamp.from_tai_sec_nsec("417798915:0"),
+                           rate=Fraction(25, 1),
+                           width=1920,
+                           height=1080):
+        def __inner(grain):
+            self.assertEqual(grain.grain_type, "video")
+            self.assertEqual(grain.source_id, src_id)
+            self.assertEqual(grain.flow_id, flow_id)
+            self.assertEqual(grain.origin_timestamp, ots)
+            self.assertEqual(grain.final_origin_timestamp(), ots)
+            self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
+            self.assertEqual(grain.sync_timestamp, sts)
+            self.assertEqual(grain.creation_timestamp, cts)
+            self.assertEqual(grain.rate, rate)
+            self.assertEqual(grain.duration, 1/rate)
+            self.assertEqual(grain.timelabels, [])
+            self.assertEqual(grain.format, fmt)
+            self.assertEqual(grain.width, width)
+            self.assertEqual(grain.height, height)
+            self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
+            self.assertEqual(grain.extension, 0)
+            self.assertIsNone(grain.source_aspect_ratio)
+            self.assertIsNone(grain.pixel_aspect_ratio)
+
+            bps = COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt)
+            hs = COG_FRAME_FORMAT_H_SHIFT(fmt)
+            vs = COG_FRAME_FORMAT_V_SHIFT(fmt)
+
+            self.assertEqual(len(grain.components), 3)
+            self.assertEqual(grain.components[0].stride, width*bps)
+            self.assertEqual(grain.components[0].width, width)
+            self.assertEqual(grain.components[0].height, height)
+            self.assertEqual(grain.components[0].offset, 0)
+            self.assertEqual(grain.components[0].length, width*height*bps)
+            self.assertEqual(len(grain.components[0]), 5)
+
+            self.assertEqual(grain.components[1].stride, width*bps >> hs)
+            self.assertEqual(grain.components[1].width, width >> hs)
+            self.assertEqual(grain.components[1].height, height >> vs)
+            self.assertEqual(grain.components[1].offset, width*height*bps)
+            self.assertEqual(grain.components[1].length, width*height*bps >> (hs + vs))
+            self.assertEqual(len(grain.components[1]), 5)
+
+            self.assertEqual(grain.components[2].stride, width*bps >> hs)
+            self.assertEqual(grain.components[2].width, width >> hs)
+            self.assertEqual(grain.components[2].height, height >> vs)
+            self.assertEqual(grain.components[2].offset, width*height*bps + (width*height*bps >> (hs + vs)))
+            self.assertEqual(grain.components[2].length, width*height*bps >> (hs + vs))
+            self.assertEqual(len(grain.components[2]), 5)
+
+            if bps == 1:
+                dtype = np.dtype(np.uint8)
+            else:
+                dtype = np.dtype(np.int16)
+
+            self.assertIsInstance(grain.data, np.ndarray)
+            self.assertEqual(grain.data.nbytes, width*height*bps + 2*(width*height*bps >> (hs + vs)))
+            self.assertEqual(grain.data.dtype, dtype)
+            self.assertEqual(grain.data.size, width*height + 2*(width*height >> (hs + vs)))
+            self.assertEqual(grain.data.itemsize, bps)
+            self.assertEqual(grain.data.ndim, 1)
+            self.assertEqual(grain.data.shape, (width*height + 2*(width*height >> (hs + vs)),))
+
+            self.assertEqual(repr(grain), "VideoGrain({!r},< numpy data of length {} >)".format(grain.meta, len(grain.data)))
+
+            self.assertIsInstance(grain.components[0].data, np.ndarray)
+            self.assertEqual(grain.components[0].data.nbytes, width*height*bps)
+            self.assertEqual(grain.components[0].data.dtype, dtype)
+            self.assertEqual(grain.components[0].data.size, width*height)
+            self.assertEqual(grain.components[0].data.itemsize, bps)
+            self.assertEqual(grain.components[0].data.ndim, 2)
+            self.assertEqual(grain.components[0].data.shape, (width, height))
+
+            self.assertIsInstance(grain.components[1].data, np.ndarray)
+            self.assertEqual(grain.components[1].data.nbytes, width*height*bps >> (hs + vs))
+            self.assertEqual(grain.components[1].data.dtype, dtype)
+            self.assertEqual(grain.components[1].data.size, width*height >> (hs + vs))
+            self.assertEqual(grain.components[1].data.itemsize, bps)
+            self.assertEqual(grain.components[1].data.ndim, 2)
+            self.assertEqual(grain.components[1].data.shape, (width >> hs, height >> vs))
+
+            self.assertIsInstance(grain.components[2].data, np.ndarray)
+            self.assertEqual(grain.components[2].data.nbytes, width*height*bps >> (hs + vs))
+            self.assertEqual(grain.components[2].data.dtype, dtype)
+            self.assertEqual(grain.components[2].data.size, width*height >> (hs + vs))
+            self.assertEqual(grain.components[2].data.itemsize, bps)
+            self.assertEqual(grain.components[2].data.ndim, 2)
+            self.assertEqual(grain.components[2].data.shape, (width >> hs, height >> vs))
+
+            self.assertEqual(grain.expected_length, (width*height + 2*(width >> hs)*(height >> vs))*bps)
+
+            # Test that changes to the component arrays are reflected in the main data array
+            for y in range(0, 16):
+                for x in range(0, 16):
+                    grain.components[0].data[x, y] = (y*width + x) & 0x3F
+
+            for y in range(0, 16 >> vs):
+                for x in range(0, 16 >> hs):
+                    grain.components[1].data[x, y] = (y*(width >> hs) + x) & 0x3F + 0x40
+                    grain.components[2].data[x, y] = (y*(width >> hs) + x) & 0x3F + 0x50
+
+            for y in range(0, 16):
+                for x in range(0, 16):
+                    self.assertEqual(grain.data[y*width + x], (y*width + x) & 0x3F)
+
+            for y in range(0, 16 >> vs):
+                for x in range(0, 16 >> hs):
+                    self.assertEqual(grain.data[width*height + y*(width >> hs) + x], (y*(width >> hs) + x) & 0x3F + 0x40)
+                    self.assertEqual(grain.data[width*height + (width >> hs)*(height >> vs) + y*(width >> hs) + x], (y*(width >> hs) + x) & 0x3F + 0x50)
+
+        return __inner
+
+    def test_video_grain_create(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
         flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
         cts = Timestamp.from_tai_sec_nsec("417798915:0")
         ots = Timestamp.from_tai_sec_nsec("417798915:5")
         sts = Timestamp.from_tai_sec_nsec("417798915:10")
 
-        with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
-                               cog_frame_format=CogFrameFormat.S16_422_10BIT,
-                               width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
+        for fmt in [CogFrameFormat.S16_444_10BIT,
+                    CogFrameFormat.S16_422_10BIT,
+                    CogFrameFormat.S16_420_10BIT,
+                    CogFrameFormat.S16_444_12BIT,
+                    CogFrameFormat.S16_422_12BIT,
+                    CogFrameFormat.S16_420_12BIT,
+                    CogFrameFormat.S16_444,
+                    CogFrameFormat.S16_422,
+                    CogFrameFormat.S16_420,
+                    CogFrameFormat.U8_444,
+                    CogFrameFormat.U8_422,
+                    CogFrameFormat.U8_420,
+                    CogFrameFormat.U8_444_RGB,
+                    CogFrameFormat.S16_444_RGB,
+                    CogFrameFormat.S16_444_12BIT_RGB,
+                    CogFrameFormat.S16_444_10BIT_RGB]:
+            with self.subTest(fmt=fmt):
+                with mock.patch.object(Timestamp, "get_time", return_value=cts):
+                    grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                                       cog_frame_format=fmt,
+                                       width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
-        self.assertEqual(grain.grain_type, "video")
-        self.assertEqual(grain.source_id, src_id)
-        self.assertEqual(grain.flow_id, flow_id)
-        self.assertEqual(grain.origin_timestamp, ots)
-        self.assertEqual(grain.final_origin_timestamp(), ots)
-        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
-        self.assertEqual(grain.sync_timestamp, sts)
-        self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25, 1))
-        self.assertEqual(grain.duration, Fraction(1, 25))
-        self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
-        self.assertEqual(grain.width, 1920)
-        self.assertEqual(grain.height, 1080)
-        self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
-        self.assertEqual(grain.extension, 0)
-        self.assertIsNone(grain.source_aspect_ratio)
-        self.assertIsNone(grain.pixel_aspect_ratio)
-
-        self.assertEqual(len(grain.components), 3)
-        self.assertEqual(grain.components[0].stride, 1920*2)
-        self.assertEqual(grain.components[0].width, 1920)
-        self.assertEqual(grain.components[0].height, 1080)
-        self.assertEqual(grain.components[0].offset, 0)
-        self.assertEqual(grain.components[0].length, 1920*1080*2)
-        self.assertEqual(len(grain.components[0]), 5)
-
-        self.assertEqual(grain.components[1].stride, 1920)
-        self.assertEqual(grain.components[1].width, 1920/2)
-        self.assertEqual(grain.components[1].height, 1080)
-        self.assertEqual(grain.components[1].offset, 1920*1080*2)
-        self.assertEqual(grain.components[1].length, 1920*1080)
-        self.assertEqual(len(grain.components[1]), 5)
-
-        self.assertEqual(grain.components[2].stride, 1920)
-        self.assertEqual(grain.components[2].width, 1920/2)
-        self.assertEqual(grain.components[2].height, 1080)
-        self.assertEqual(grain.components[2].offset, 1920*1080*2 + 1920*1080)
-        self.assertEqual(grain.components[2].length, 1920*1080)
-        self.assertEqual(len(grain.components[2]), 5)
-
-        self.assertIsInstance(grain.data, np.ndarray)
-        self.assertEqual(grain.data.nbytes, 1920*1080*2*2)
-        self.assertEqual(grain.data.dtype, np.dtype(np.int16))
-        self.assertEqual(grain.data.size, 1920*1080*2)
-        self.assertEqual(grain.data.itemsize, 2)
-        self.assertEqual(grain.data.ndim, 1)
-        self.assertEqual(grain.data.shape, (1920*1080*2,))
-
-        self.assertEqual(repr(grain), "VideoGrain({!r},< numpy data of length {} >)".format(grain.meta, len(grain.data)))
-
-        self.assertIsInstance(grain.components[0].data, np.ndarray)
-        self.assertEqual(grain.components[0].data.nbytes, 1920*1080*2)
-        self.assertEqual(grain.components[0].data.dtype, np.dtype(np.int16))
-        self.assertEqual(grain.components[0].data.size, 1920*1080)
-        self.assertEqual(grain.components[0].data.itemsize, 2)
-        self.assertEqual(grain.components[0].data.ndim, 2)
-        self.assertEqual(grain.components[0].data.shape, (1920, 1080))
-
-        self.assertIsInstance(grain.components[1].data, np.ndarray)
-        self.assertEqual(grain.components[1].data.nbytes, 1920*1080)
-        self.assertEqual(grain.components[1].data.dtype, np.dtype(np.int16))
-        self.assertEqual(grain.components[1].data.size, 1920*1080//2)
-        self.assertEqual(grain.components[1].data.itemsize, 2)
-        self.assertEqual(grain.components[1].data.ndim, 2)
-        self.assertEqual(grain.components[1].data.shape, (1920//2, 1080))
-
-        self.assertIsInstance(grain.components[2].data, np.ndarray)
-        self.assertEqual(grain.components[2].data.nbytes, 1920*1080)
-        self.assertEqual(grain.components[2].data.dtype, np.dtype(np.int16))
-        self.assertEqual(grain.components[2].data.size, 1920*1080//2)
-        self.assertEqual(grain.components[2].data.itemsize, 2)
-        self.assertEqual(grain.components[2].data.ndim, 2)
-        self.assertEqual(grain.components[2].data.shape, (1920//2, 1080))
-
-        self.assertEqual(grain.expected_length, 1920*1080*4)
-
-        # Test that changes to the component arrays are reflected in the main data array
-        for y in range(0, 16):
-            for x in range(0, 8):
-                grain.components[0].data[2*x + 0, y] = (y*1920 + 2*x + 0)&0xFF
-                grain.components[1].data[x, y] = (y*1920//2 + x)&0xFF + 0x100
-                grain.components[0].data[2*x + 1, y] = (y*1920 + 2*x + 1)&0xFF
-                grain.components[2].data[x, y] = (y*1920//2 + x)&0xFF + 0x200
-
-        for y in range(0, 16):
-            for x in range(0, 8):
-                self.assertEqual(grain.data[y*1920 + 2*x + 0], (y*1920 + 2*x + 0)&0xFF)
-                self.assertEqual(grain.data[y*1920 + 2*x + 1], (y*1920 + 2*x + 1)&0xFF)
-                self.assertEqual(grain.data[1920*1080 + y*1920//2 + x], (y*1920//2 + x)&0xFF + 0x100)
-                self.assertEqual(grain.data[3*1920*1080//2 + y*1920//2 + x], (y*1920//2 + x)&0xFF + 0x200)
-
-    def test_video_grain_create_YUV444_10bit(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
-        with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
-                               cog_frame_format=CogFrameFormat.S16_444_10BIT,
-                               width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
-
-        self.assertEqual(grain.grain_type, "video")
-        self.assertEqual(grain.source_id, src_id)
-        self.assertEqual(grain.flow_id, flow_id)
-        self.assertEqual(grain.origin_timestamp, ots)
-        self.assertEqual(grain.final_origin_timestamp(), ots)
-        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
-        self.assertEqual(grain.sync_timestamp, sts)
-        self.assertEqual(grain.creation_timestamp, cts)
-        self.assertEqual(grain.rate, Fraction(25, 1))
-        self.assertEqual(grain.duration, Fraction(1, 25))
-        self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogFrameFormat.S16_444_10BIT)
-        self.assertEqual(grain.width, 1920)
-        self.assertEqual(grain.height, 1080)
-        self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
-        self.assertEqual(grain.extension, 0)
-        self.assertIsNone(grain.source_aspect_ratio)
-        self.assertIsNone(grain.pixel_aspect_ratio)
-
-        self.assertEqual(len(grain.components), 3)
-        self.assertEqual(grain.components[0].stride, 1920*2)
-        self.assertEqual(grain.components[0].width, 1920)
-        self.assertEqual(grain.components[0].height, 1080)
-        self.assertEqual(grain.components[0].offset, 0)
-        self.assertEqual(grain.components[0].length, 1920*1080*2)
-        self.assertEqual(len(grain.components[0]), 5)
-
-        self.assertEqual(grain.components[1].stride, 1920*2)
-        self.assertEqual(grain.components[1].width, 1920)
-        self.assertEqual(grain.components[1].height, 1080)
-        self.assertEqual(grain.components[1].offset, 1920*1080*2)
-        self.assertEqual(grain.components[1].length, 1920*1080*2)
-        self.assertEqual(len(grain.components[1]), 5)
-
-        self.assertEqual(grain.components[2].stride, 1920*2)
-        self.assertEqual(grain.components[2].width, 1920)
-        self.assertEqual(grain.components[2].height, 1080)
-        self.assertEqual(grain.components[2].offset, 1920*1080*4)
-        self.assertEqual(grain.components[2].length, 1920*1080*2)
-        self.assertEqual(len(grain.components[2]), 5)
-
-        self.assertIsInstance(grain.data, np.ndarray)
-        self.assertEqual(grain.data.nbytes, 1920*1080*2*3)
-        self.assertEqual(grain.data.dtype, np.dtype(np.int16))
-        self.assertEqual(grain.data.size, 1920*1080*3)
-        self.assertEqual(grain.data.itemsize, 2)
-        self.assertEqual(grain.data.ndim, 1)
-        self.assertEqual(grain.data.shape, (1920*1080*3,))
-
-        self.assertEqual(repr(grain), "VideoGrain({!r},< numpy data of length {} >)".format(grain.meta, len(grain.data)))
-
-        self.assertIsInstance(grain.components[0].data, np.ndarray)
-        self.assertEqual(grain.components[0].data.nbytes, 1920*1080*2)
-        self.assertEqual(grain.components[0].data.dtype, np.dtype(np.int16))
-        self.assertEqual(grain.components[0].data.size, 1920*1080)
-        self.assertEqual(grain.components[0].data.itemsize, 2)
-        self.assertEqual(grain.components[0].data.ndim, 2)
-        self.assertEqual(grain.components[0].data.shape, (1920, 1080))
-
-        self.assertIsInstance(grain.components[1].data, np.ndarray)
-        self.assertEqual(grain.components[1].data.nbytes, 1920*1080*2)
-        self.assertEqual(grain.components[1].data.dtype, np.dtype(np.int16))
-        self.assertEqual(grain.components[1].data.size, 1920*1080)
-        self.assertEqual(grain.components[1].data.itemsize, 2)
-        self.assertEqual(grain.components[1].data.ndim, 2)
-        self.assertEqual(grain.components[1].data.shape, (1920, 1080))
-
-        self.assertIsInstance(grain.components[2].data, np.ndarray)
-        self.assertEqual(grain.components[2].data.nbytes, 1920*1080*2)
-        self.assertEqual(grain.components[2].data.dtype, np.dtype(np.int16))
-        self.assertEqual(grain.components[2].data.size, 1920*1080)
-        self.assertEqual(grain.components[2].data.itemsize, 2)
-        self.assertEqual(grain.components[2].data.ndim, 2)
-        self.assertEqual(grain.components[2].data.shape, (1920, 1080))
-
-        self.assertEqual(grain.expected_length, 1920*1080*2*3)
-
-        # Test that changes to the component arrays are reflected in the main data array
-        for y in range(0, 16):
-            for x in range(0, 16):
-                grain.components[0].data[x, y] = (y*1920 + x)&0xFF
-                grain.components[1].data[x, y] = (y*1920 + x)&0xFF + 0x100
-                grain.components[2].data[x, y] = (y*1920 + x)&0xFF + 0x200
-
-        for y in range(0, 16):
-            for x in range(0, 16):
-                self.assertEqual(grain.data[y*1920 + x], (y*1920 + x)&0xFF)
-                self.assertEqual(grain.data[1920*1080 + y*1920 + x], (y*1920 + x)&0xFF + 0x100)
-                self.assertEqual(grain.data[2*1920*1080 + y*1920 + x], (y*1920 + x)&0xFF + 0x200)
+                self.assertIsVideoGrain(fmt)(grain)
 
     def test_copy(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
