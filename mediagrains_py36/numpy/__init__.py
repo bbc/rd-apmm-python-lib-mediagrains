@@ -43,7 +43,9 @@ def _dtype_from_cogframeformat(fmt: CogFrameFormat) -> np.dtype:
             return np.dtype(np.int16)
         elif COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt) == 4:
             return np.dtype(np.int32)
-    elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.YUYV]:
+    elif fmt in [CogFrameFormat.UYVY,
+                 CogFrameFormat.YUYV,
+                 CogFrameFormat.RGB]:
         return np.dtype(np.uint8)
 
     raise NotImplementedError("Cog Frame Format not amongst those supported for numpy array interpretation")
@@ -79,6 +81,17 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
             as_strided(data[3:],
                        shape=(components[0].height, components[0].width//2),
                        strides=(components[0].stride, data.itemsize*4)).transpose()]
+    elif fmt == CogFrameFormat.RGB:
+        return [
+            as_strided(data,
+                       shape=(components[0].height, components[0].width),
+                       strides=(components[0].stride, data.itemsize*3)).transpose(),
+            as_strided(data[1:],
+                       shape=(components[0].height, components[0].width),
+                       strides=(components[0].stride, data.itemsize*3)).transpose(),
+            as_strided(data[2:],
+                       shape=(components[0].height, components[0].width),
+                       strides=(components[0].stride, data.itemsize*3)).transpose()]
 
     raise NotImplementedError("Cog Frame Format not amongst those supported for numpy array interpretation")
 

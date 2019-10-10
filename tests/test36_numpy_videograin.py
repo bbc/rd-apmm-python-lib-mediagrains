@@ -110,6 +110,20 @@ class TestGrain (TestCase):
                 self.assertEqual(len(grain.components[0]), 5)
 
                 self.assertEqual(grain.expected_length, width*height*bps*2)
+            elif fmt in [CogFrameFormat.RGB]:
+                bps = 1
+                hs = 0
+                vs = 0
+
+                self.assertEqual(len(grain.components), 1)
+                self.assertEqual(grain.components[0].stride, 3*width*bps)
+                self.assertEqual(grain.components[0].width, width)
+                self.assertEqual(grain.components[0].height, height)
+                self.assertEqual(grain.components[0].offset, 0)
+                self.assertEqual(grain.components[0].length, width*height*bps*3)
+                self.assertEqual(len(grain.components[0]), 5)
+            else:
+                raise Exception()
 
             if bps == 1:
                 dtype = np.dtype(np.uint8)
@@ -186,6 +200,16 @@ class TestGrain (TestCase):
                         self.assertEqual(grain.data[y*width*2 + 4*x + 2], (y*16 + 2*x + 1) & 0x3F)
                         self.assertEqual(grain.data[y*width*2 + 4*x + 3], (y*16 + x) & 0x3F + 0x50)
 
+            elif fmt == CogFrameFormat.RGB:
+                for y in range(0, 16):
+                    for x in range(0, 16):
+                        self.assertEqual(grain.data[y*width*3 + 3*x + 0], (y*16 + x) & 0x3F)
+                        self.assertEqual(grain.data[y*width*3 + 3*x + 1], (y*16 + x) & 0x3F + 0x40)
+                        self.assertEqual(grain.data[y*width*3 + 3*x + 2], (y*16 + x) & 0x3F + 0x50)
+
+            else:
+                raise Exception()
+
         return __inner
 
     def test_video_grain_create(self):
@@ -212,7 +236,8 @@ class TestGrain (TestCase):
                     CogFrameFormat.S16_444_12BIT_RGB,
                     CogFrameFormat.S16_444_10BIT_RGB,
                     CogFrameFormat.UYVY,
-                    CogFrameFormat.YUYV]:
+                    CogFrameFormat.YUYV,
+                    CogFrameFormat.RGB]:
             with self.subTest(fmt=fmt):
                 with mock.patch.object(Timestamp, "get_time", return_value=cts):
                     grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
