@@ -25,7 +25,15 @@
 
 from enum import IntEnum
 
-__all__ = ['CogFrameFormat', 'CogFrameLayout', 'CogAudioFormat', 'COG_FRAME_IS_PACKED', 'COG_FRAME_IS_COMPRESSED', 'COG_FRAME_FORMAT_BYTES_PER_VALUE']
+__all__ = [
+    'CogFrameFormat',
+    'CogFrameLayout',
+    'CogAudioFormat',
+    'COG_FRAME_IS_PACKED',
+    'COG_FRAME_IS_COMPRESSED',
+    'COG_FRAME_FORMAT_BYTES_PER_VALUE',
+    'COG_FRAME_FORMAT_H_SHIFT',
+    'COG_FRAME_FORMAT_V_SHIFT']
 
 
 class CogFrameFormat(IntEnum):
@@ -42,6 +50,7 @@ class CogFrameFormat(IntEnum):
     U8_444 = 0x2000
     U8_422 = 0x2001
     U8_420 = 0x2003
+    U8_444_RGB = 0x2010
     ALPHA_U8 = 0x2080
     YUYV = 0x2100
     UYVY = 0x2101
@@ -56,20 +65,24 @@ class CogFrameFormat(IntEnum):
     BGRA = 0x2116
     ABGR = 0x2117
     S16_444_10BIT = 0x2804
+    S16_444_10BIT_RGB = 0x2814
     S16_422_10BIT = 0x2805
     S16_420_10BIT = 0x2807
     ALPHA_S16_10BIT = 0x2884
     v210 = 0x2906
     S16_444_12BIT = 0x3004
+    S16_444_12BIT_RGB = 0x3014
     S16_422_12BIT = 0x3005
     S16_420_12BIT = 0x3007
     ALPHA_S16_12BIT = 0x3084
     S16_444 = 0x4004
+    S16_444_RGB = 0x4014
     S16_422 = 0x4005
     S16_420 = 0x4007
     ALPHA_S16 = 0x4084
     v216 = 0x4105
     S32_444 = 0x8008
+    S32_444_RGB = 0x8018
     S32_422 = 0x8009
     S32_420 = 0x800b
     ALPHA_S32 = 0x8088
@@ -117,6 +130,14 @@ def COG_FRAME_IS_COMPRESSED(fmt):
     return ((fmt >> 9) & 0x1) != 0
 
 
+def COG_FRAME_IS_ALPHA(fmt):
+    return ((fmt >> 7) & 0x1) != 0
+
+
+def COG_FRAME_IS_RGB(fmt):
+    return ((fmt >> 4) & 0x1) != 0
+
+
 def COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt):
     if ((fmt) & 0xc) == 0:
         return 1
@@ -124,3 +145,11 @@ def COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt):
         return 2
     else:
         return 4
+
+
+def COG_FRAME_FORMAT_H_SHIFT(fmt):
+    return (fmt & 0x1)
+
+
+def COG_FRAME_FORMAT_V_SHIFT(fmt):
+    return ((fmt >> 1) & 0x1)
