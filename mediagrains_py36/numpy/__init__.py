@@ -46,10 +46,29 @@ def _dtype_from_cogframeformat(fmt: CogFrameFormat) -> np.dtype:
     raise NotImplementedError("Cog Frame Format not amongst those supported for numpy array interpretation")
 
 
+def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, components: bytesgrain.VIDEOGRAIN.COMPONENT_LIST):
+    if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+        arrays = []
+        for component in components:
+            component_data = data[component.offset//data.itemsize:(component.offset + component.length)//data.itemsize]
+            component_data.shape = (component.height, component.width)
+            arrays.append(component_data.transpose())
+        return arrays
+
+    raise NotImplementedError("Cog Frame Format not amongst those supported for numpy array interpretation")
+
+
 class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
     def __init__(self, meta, data):
         super().__init__(meta, data)
         self._data = np.frombuffer(self._data, dtype=_dtype_from_cogframeformat(self.format))
+        self.component_data = _component_arrays_for_data_and_type(self._data, self.format, self.components)
+
+    def __array__(self):
+        return np.array(self.data)
+
+    def __bytes__(self):
+        return bytes(self.data)
 
     def __copy__(self):
         return VideoGrain(copy(self.meta), self.data)
@@ -62,15 +81,6 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
             return "{}({!r})".format(self._factory, self.meta)
         else:
             return "{}({!r},< numpy data of length {} >)".format(self._factory, self.meta, len(self.data))
-
-    class COMPONENT (bytesgrain.VIDEOGRAIN.COMPONENT):
-        def __init__(self, parent, index, meta):
-            super().__init__(parent, index, meta)
-            self.data = self.parent.parent.data[self.offset//self.parent.parent.data.itemsize:(self.offset + self.length)//self.parent.parent.data.itemsize]
-            if self.parent.parent.format != CogFrameFormat.v210:
-                self.data.shape = (self.height, self.width)
-                # It's nicer to list width, then height
-                self.data = self.data.transpose()
 
 
 def VideoGrain(*args, **kwargs) -> VIDEOGRAIN:
