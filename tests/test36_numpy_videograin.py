@@ -155,13 +155,30 @@ class TestGrain (TestCase):
                 self.assertEqual(grain.components[0].length, width*height*bps*2)
                 self.assertEqual(len(grain.components[0]), 5)
 
+            elif fmt == CogFrameFormat.v210:
+                bps = 4
+                hs = 1
+                vs = 0
+
+                self.assertEqual(len(grain.components), 1)
+                self.assertEqual(grain.components[0].stride, (((width + 47) // 48) * 128))
+                self.assertEqual(grain.components[0].width, width)
+                self.assertEqual(grain.components[0].height, height)
+                self.assertEqual(grain.components[0].offset, 0)
+                self.assertEqual(grain.components[0].length, height*(((width + 47) // 48) * 128))
+                self.assertEqual(len(grain.components[0]), 5)
+
             else:
                 raise Exception()
 
             if bps == 1:
                 dtype = np.dtype(np.uint8)
-            else:
+            elif bps == 2:
                 dtype = np.dtype(np.int16)
+            elif bps == 4:
+                dtype = np.dtype(np.int32)
+            else:
+                raise Exception()
 
             self.assertIsInstance(grain.data, np.ndarray)
             self.assertEqual(grain.data.nbytes, grain.expected_length)
@@ -173,95 +190,99 @@ class TestGrain (TestCase):
 
             self.assertEqual(repr(grain), "VideoGrain({!r},< numpy data of length {} >)".format(grain.meta, len(grain.data)))
 
-            self.assertIsInstance(grain.component_data[0], np.ndarray)
-            self.assertEqual(grain.component_data[0].nbytes, width*height*bps)
-            self.assertEqual(grain.component_data[0].dtype, dtype)
-            self.assertEqual(grain.component_data[0].size, width*height)
-            self.assertEqual(grain.component_data[0].itemsize, bps)
-            self.assertEqual(grain.component_data[0].ndim, 2)
-            self.assertEqual(grain.component_data[0].shape, (width, height))
+            if fmt == CogFrameFormat.v210:
+                # V210 is barely supported. Convert it to something else to actually use it!
+                self.assertEqual(len(grain.component_data), 0)
+            else:
+                self.assertIsInstance(grain.component_data[0], np.ndarray)
+                self.assertEqual(grain.component_data[0].nbytes, width*height*bps)
+                self.assertEqual(grain.component_data[0].dtype, dtype)
+                self.assertEqual(grain.component_data[0].size, width*height)
+                self.assertEqual(grain.component_data[0].itemsize, bps)
+                self.assertEqual(grain.component_data[0].ndim, 2)
+                self.assertEqual(grain.component_data[0].shape, (width, height))
 
-            self.assertIsInstance(grain.component_data[1], np.ndarray)
-            self.assertEqual(grain.component_data[1].nbytes, width*height*bps >> (hs + vs))
-            self.assertEqual(grain.component_data[1].dtype, dtype)
-            self.assertEqual(grain.component_data[1].size, width*height >> (hs + vs))
-            self.assertEqual(grain.component_data[1].itemsize, bps)
-            self.assertEqual(grain.component_data[1].ndim, 2)
-            self.assertEqual(grain.component_data[1].shape, (width >> hs, height >> vs))
+                self.assertIsInstance(grain.component_data[1], np.ndarray)
+                self.assertEqual(grain.component_data[1].nbytes, width*height*bps >> (hs + vs))
+                self.assertEqual(grain.component_data[1].dtype, dtype)
+                self.assertEqual(grain.component_data[1].size, width*height >> (hs + vs))
+                self.assertEqual(grain.component_data[1].itemsize, bps)
+                self.assertEqual(grain.component_data[1].ndim, 2)
+                self.assertEqual(grain.component_data[1].shape, (width >> hs, height >> vs))
 
-            self.assertIsInstance(grain.component_data[2], np.ndarray)
-            self.assertEqual(grain.component_data[2].nbytes, width*height*bps >> (hs + vs))
-            self.assertEqual(grain.component_data[2].dtype, dtype)
-            self.assertEqual(grain.component_data[2].size, width*height >> (hs + vs))
-            self.assertEqual(grain.component_data[2].itemsize, bps)
-            self.assertEqual(grain.component_data[2].ndim, 2)
-            self.assertEqual(grain.component_data[2].shape, (width >> hs, height >> vs))
+                self.assertIsInstance(grain.component_data[2], np.ndarray)
+                self.assertEqual(grain.component_data[2].nbytes, width*height*bps >> (hs + vs))
+                self.assertEqual(grain.component_data[2].dtype, dtype)
+                self.assertEqual(grain.component_data[2].size, width*height >> (hs + vs))
+                self.assertEqual(grain.component_data[2].itemsize, bps)
+                self.assertEqual(grain.component_data[2].ndim, 2)
+                self.assertEqual(grain.component_data[2].shape, (width >> hs, height >> vs))
 
-            # Test that changes to the component arrays are reflected in the main data array
-            for y in range(0, 16):
-                for x in range(0, 16):
-                    grain.component_data[0][x, y] = (y*16 + x) & 0x3F
-
-            for y in range(0, 16 >> vs):
-                for x in range(0, 16 >> hs):
-                    grain.component_data[1][x, y] = (y*16 + x) & 0x3F + 0x40
-                    grain.component_data[2][x, y] = (y*16 + x) & 0x3F + 0x50
-
-            if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+                # Test that changes to the component arrays are reflected in the main data array
                 for y in range(0, 16):
                     for x in range(0, 16):
-                        self.assertEqual(grain.data[y*width + x], (y*16 + x) & 0x3F)
+                        grain.component_data[0][x, y] = (y*16 + x) & 0x3F
 
                 for y in range(0, 16 >> vs):
                     for x in range(0, 16 >> hs):
-                        self.assertEqual(grain.data[width*height + y*(width >> hs) + x], (y*16 + x) & 0x3F + 0x40)
-                        self.assertEqual(grain.data[width*height + (width >> hs)*(height >> vs) + y*(width >> hs) + x], (y*16 + x) & 0x3F + 0x50)
+                        grain.component_data[1][x, y] = (y*16 + x) & 0x3F + 0x40
+                        grain.component_data[2][x, y] = (y*16 + x) & 0x3F + 0x50
 
-            elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.v216]:
-                for y in range(0, 16):
-                    for x in range(0, 8):
-                        self.assertEqual(grain.data[y*width*2 + 4*x + 0], (y*16 + x) & 0x3F + 0x40)
-                        self.assertEqual(grain.data[y*width*2 + 4*x + 1], (y*16 + 2*x + 0) & 0x3F)
-                        self.assertEqual(grain.data[y*width*2 + 4*x + 2], (y*16 + x) & 0x3F + 0x50)
-                        self.assertEqual(grain.data[y*width*2 + 4*x + 3], (y*16 + 2*x + 1) & 0x3F)
+                if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+                    for y in range(0, 16):
+                        for x in range(0, 16):
+                            self.assertEqual(grain.data[y*width + x], (y*16 + x) & 0x3F)
 
-            elif fmt == CogFrameFormat.YUYV:
-                for y in range(0, 16):
-                    for x in range(0, 8):
-                        self.assertEqual(grain.data[y*width*2 + 4*x + 0], (y*16 + 2*x + 0) & 0x3F)
-                        self.assertEqual(grain.data[y*width*2 + 4*x + 1], (y*16 + x) & 0x3F + 0x40)
-                        self.assertEqual(grain.data[y*width*2 + 4*x + 2], (y*16 + 2*x + 1) & 0x3F)
-                        self.assertEqual(grain.data[y*width*2 + 4*x + 3], (y*16 + x) & 0x3F + 0x50)
+                    for y in range(0, 16 >> vs):
+                        for x in range(0, 16 >> hs):
+                            self.assertEqual(grain.data[width*height + y*(width >> hs) + x], (y*16 + x) & 0x3F + 0x40)
+                            self.assertEqual(grain.data[width*height + (width >> hs)*(height >> vs) + y*(width >> hs) + x], (y*16 + x) & 0x3F + 0x50)
 
-            elif fmt == CogFrameFormat.RGB:
-                for y in range(0, 16):
-                    for x in range(0, 16):
-                        self.assertEqual(grain.data[y*width*3 + 3*x + 0], (y*16 + x) & 0x3F)
-                        self.assertEqual(grain.data[y*width*3 + 3*x + 1], (y*16 + x) & 0x3F + 0x40)
-                        self.assertEqual(grain.data[y*width*3 + 3*x + 2], (y*16 + x) & 0x3F + 0x50)
+                elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.v216]:
+                    for y in range(0, 16):
+                        for x in range(0, 8):
+                            self.assertEqual(grain.data[y*width*2 + 4*x + 0], (y*16 + x) & 0x3F + 0x40)
+                            self.assertEqual(grain.data[y*width*2 + 4*x + 1], (y*16 + 2*x + 0) & 0x3F)
+                            self.assertEqual(grain.data[y*width*2 + 4*x + 2], (y*16 + x) & 0x3F + 0x50)
+                            self.assertEqual(grain.data[y*width*2 + 4*x + 3], (y*16 + 2*x + 1) & 0x3F)
 
-            elif fmt in [CogFrameFormat.RGBx,
-                         CogFrameFormat.RGBA,
-                         CogFrameFormat.BGRx,
-                         CogFrameFormat.BGRx]:
-                for y in range(0, 16):
-                    for x in range(0, 16):
-                        self.assertEqual(grain.data[y*width*4 + 4*x + 0], (y*16 + x) & 0x3F)
-                        self.assertEqual(grain.data[y*width*4 + 4*x + 1], (y*16 + x) & 0x3F + 0x40)
-                        self.assertEqual(grain.data[y*width*4 + 4*x + 2], (y*16 + x) & 0x3F + 0x50)
+                elif fmt == CogFrameFormat.YUYV:
+                    for y in range(0, 16):
+                        for x in range(0, 8):
+                            self.assertEqual(grain.data[y*width*2 + 4*x + 0], (y*16 + 2*x + 0) & 0x3F)
+                            self.assertEqual(grain.data[y*width*2 + 4*x + 1], (y*16 + x) & 0x3F + 0x40)
+                            self.assertEqual(grain.data[y*width*2 + 4*x + 2], (y*16 + 2*x + 1) & 0x3F)
+                            self.assertEqual(grain.data[y*width*2 + 4*x + 3], (y*16 + x) & 0x3F + 0x50)
 
-            elif fmt in [CogFrameFormat.ARGB,
-                         CogFrameFormat.xRGB,
-                         CogFrameFormat.ABGR,
-                         CogFrameFormat.xBGR]:
-                for y in range(0, 16):
-                    for x in range(0, 16):
-                        self.assertEqual(grain.data[y*width*4 + 4*x + 1], (y*16 + x) & 0x3F)
-                        self.assertEqual(grain.data[y*width*4 + 4*x + 2], (y*16 + x) & 0x3F + 0x40)
-                        self.assertEqual(grain.data[y*width*4 + 4*x + 3], (y*16 + x) & 0x3F + 0x50)
+                elif fmt == CogFrameFormat.RGB:
+                    for y in range(0, 16):
+                        for x in range(0, 16):
+                            self.assertEqual(grain.data[y*width*3 + 3*x + 0], (y*16 + x) & 0x3F)
+                            self.assertEqual(grain.data[y*width*3 + 3*x + 1], (y*16 + x) & 0x3F + 0x40)
+                            self.assertEqual(grain.data[y*width*3 + 3*x + 2], (y*16 + x) & 0x3F + 0x50)
 
-            else:
-                raise Exception()
+                elif fmt in [CogFrameFormat.RGBx,
+                             CogFrameFormat.RGBA,
+                             CogFrameFormat.BGRx,
+                             CogFrameFormat.BGRx]:
+                    for y in range(0, 16):
+                        for x in range(0, 16):
+                            self.assertEqual(grain.data[y*width*4 + 4*x + 0], (y*16 + x) & 0x3F)
+                            self.assertEqual(grain.data[y*width*4 + 4*x + 1], (y*16 + x) & 0x3F + 0x40)
+                            self.assertEqual(grain.data[y*width*4 + 4*x + 2], (y*16 + x) & 0x3F + 0x50)
+
+                elif fmt in [CogFrameFormat.ARGB,
+                             CogFrameFormat.xRGB,
+                             CogFrameFormat.ABGR,
+                             CogFrameFormat.xBGR]:
+                    for y in range(0, 16):
+                        for x in range(0, 16):
+                            self.assertEqual(grain.data[y*width*4 + 4*x + 1], (y*16 + x) & 0x3F)
+                            self.assertEqual(grain.data[y*width*4 + 4*x + 2], (y*16 + x) & 0x3F + 0x40)
+                            self.assertEqual(grain.data[y*width*4 + 4*x + 3], (y*16 + x) & 0x3F + 0x50)
+
+                else:
+                    raise Exception()
 
         return __inner
 
@@ -272,7 +293,10 @@ class TestGrain (TestCase):
         ots = Timestamp.from_tai_sec_nsec("417798915:5")
         sts = Timestamp.from_tai_sec_nsec("417798915:10")
 
-        for fmt in [CogFrameFormat.S16_444_10BIT,
+        for fmt in [CogFrameFormat.S32_444,
+                    CogFrameFormat.S32_422,
+                    CogFrameFormat.S32_420,
+                    CogFrameFormat.S16_444_10BIT,
                     CogFrameFormat.S16_422_10BIT,
                     CogFrameFormat.S16_420_10BIT,
                     CogFrameFormat.S16_444_12BIT,
@@ -299,7 +323,8 @@ class TestGrain (TestCase):
                     CogFrameFormat.xRGB,
                     CogFrameFormat.ABGR,
                     CogFrameFormat.xBGR,
-                    CogFrameFormat.v216]:
+                    CogFrameFormat.v216,
+                    CogFrameFormat.v210]:
             with self.subTest(fmt=fmt):
                 with mock.patch.object(Timestamp, "get_time", return_value=cts):
                     grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
