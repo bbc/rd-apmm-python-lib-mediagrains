@@ -29,6 +29,7 @@ from mediagrains import grain_constructors as bytesgrain_constructors
 from copy import copy, deepcopy
 
 import numpy as np
+from numpy.lib.stride_tricks import as_strided
 
 
 __all__ = ['VideoGrain', 'VIDEOGRAIN']
@@ -51,7 +52,7 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
         arrays = []
         for component in components:
             component_data = data[component.offset//data.itemsize:(component.offset + component.length)//data.itemsize]
-            component_data.shape = (component.height, component.width)
+            component_data = as_strided(component_data, shape=(component.height, component.width), strides=(component.stride, component_data.itemsize))
             arrays.append(component_data.transpose())
         return arrays
 

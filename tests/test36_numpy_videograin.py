@@ -17,6 +17,8 @@
 
 from unittest import TestCase
 
+from pdb import set_trace
+
 import uuid
 from mediagrains.numpy import VideoGrain
 from mediagrains.cogenums import (
@@ -182,6 +184,82 @@ class TestGrain (TestCase):
                                        width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
                 self.assertIsVideoGrain(fmt)(grain)
+
+    def test_video_grain_create_discontiguous(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        data = bytearray(11*1024*1024)
+
+        grain = VideoGrain({
+            "grain": {
+                "grain_type": "video",
+                "source_id": src_id,
+                "flow_id": flow_id,
+                "origin_timestamp": ots,
+                "sync_timestamp": sts,
+                "creation_timestamp": cts,
+                "rate": {
+                    "numerator": 25,
+                    "denominator": 1,
+                },
+                "duration": {
+                    "numerator": 1,
+                    "denominator": 25,
+                },
+                "cog_frame": {
+                    "format": CogFrameFormat.S16_422_10BIT,
+                    "width": 1920,
+                    "height": 1080,
+                    "layout": CogFrameLayout.FULL_FRAME,
+                    "extension": 0,
+                    "components": [
+                        {
+                            "stride": 4096,
+                            "width": 1920,
+                            "height": 1080,
+                            "length": 4423680,
+                            "offset": 0
+                        },
+                        {
+                            "stride": 2048,
+                            "width": 960,
+                            "height": 1080,
+                            "length": 2211840,
+                            "offset": 5*1024*1024
+                        },
+                        {
+                            "stride": 2048,
+                            "width": 960,
+                            "height": 1080,
+                            "length": 2211840,
+                            "offset": 8*1024*1024
+                        },
+                    ]
+                }
+            }
+        }, data)
+
+        for y in range(0, 16):
+            for x in range(0, 16):
+                grain.component_data[0][x, y] = (y*1920 + x) & 0x3F
+
+        for y in range(0, 16):
+            for x in range(0, 8):
+                grain.component_data[1][x, y] = (y*960 + x) & 0x3F + 0x40
+                grain.component_data[2][x, y] = (y*960 + x) & 0x3F + 0x50
+
+        for y in range(0, 16):
+            for x in range(0, 16):
+                self.assertEqual(grain.data[y*grain.components[0].stride//2 + x], (y*1920 + x) & 0x3F)
+
+        for y in range(0, 16):
+            for x in range(0, 8):
+                self.assertEqual(grain.data[grain.components[1].offset//2 + y*grain.components[1].stride//2 + x], (y*960 + x) & 0x3F + 0x40)
+                self.assertEqual(grain.data[grain.components[2].offset//2 + y*grain.components[2].stride//2 + x], (y*960 + x) & 0x3F + 0x50)
 
     def test_copy(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
