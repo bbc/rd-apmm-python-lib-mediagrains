@@ -141,6 +141,20 @@ class TestGrain (TestCase):
                 self.assertEqual(grain.components[0].offset, 0)
                 self.assertEqual(grain.components[0].length, width*height*bps*4)
                 self.assertEqual(len(grain.components[0]), 5)
+
+            elif fmt == CogFrameFormat.v216:
+                bps = 2
+                hs = 1
+                vs = 0
+
+                self.assertEqual(len(grain.components), 1)
+                self.assertEqual(grain.components[0].stride, 2*width*bps)
+                self.assertEqual(grain.components[0].width, width)
+                self.assertEqual(grain.components[0].height, height)
+                self.assertEqual(grain.components[0].offset, 0)
+                self.assertEqual(grain.components[0].length, width*height*bps*2)
+                self.assertEqual(len(grain.components[0]), 5)
+
             else:
                 raise Exception()
 
@@ -203,7 +217,7 @@ class TestGrain (TestCase):
                         self.assertEqual(grain.data[width*height + y*(width >> hs) + x], (y*16 + x) & 0x3F + 0x40)
                         self.assertEqual(grain.data[width*height + (width >> hs)*(height >> vs) + y*(width >> hs) + x], (y*16 + x) & 0x3F + 0x50)
 
-            elif fmt == CogFrameFormat.UYVY:
+            elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.v216]:
                 for y in range(0, 16):
                     for x in range(0, 8):
                         self.assertEqual(grain.data[y*width*2 + 4*x + 0], (y*16 + x) & 0x3F + 0x40)
@@ -284,7 +298,8 @@ class TestGrain (TestCase):
                     CogFrameFormat.ARGB,
                     CogFrameFormat.xRGB,
                     CogFrameFormat.ABGR,
-                    CogFrameFormat.xBGR]:
+                    CogFrameFormat.xBGR,
+                    CogFrameFormat.v216]:
             with self.subTest(fmt=fmt):
                 with mock.patch.object(Timestamp, "get_time", return_value=cts):
                     grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,

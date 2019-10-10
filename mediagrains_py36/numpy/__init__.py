@@ -55,6 +55,8 @@ def _dtype_from_cogframeformat(fmt: CogFrameFormat) -> np.dtype:
                  CogFrameFormat.ABGR,
                  CogFrameFormat.xBGR]:
         return np.dtype(np.uint8)
+    elif fmt == CogFrameFormat.v216:
+        return np.dtype(np.int16)
 
     raise NotImplementedError("Cog Frame Format not amongst those supported for numpy array interpretation")
 
@@ -67,7 +69,7 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
             component_data = as_strided(component_data, shape=(component.height, component.width), strides=(component.stride, component_data.itemsize))
             arrays.append(component_data.transpose())
         return arrays
-    elif fmt == CogFrameFormat.UYVY:
+    elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.v216]:
         return [
             as_strided(data[1:],
                        shape=(components[0].height, components[0].width),
