@@ -209,6 +209,9 @@ normalise_time(value)
         from .grain_constructors import Grain
         return Grain(deepcopy(self.meta), deepcopy(self.data))
 
+    def __bytes__(self):
+        return bytes(self._data)
+
     @property
     def data(self):
         return self._data

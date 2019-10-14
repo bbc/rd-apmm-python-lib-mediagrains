@@ -33,7 +33,8 @@ __all__ = [
     'COG_FRAME_IS_COMPRESSED',
     'COG_FRAME_FORMAT_BYTES_PER_VALUE',
     'COG_FRAME_FORMAT_H_SHIFT',
-    'COG_FRAME_FORMAT_V_SHIFT']
+    'COG_FRAME_FORMAT_V_SHIFT',
+    'COG_FRAME_FORMAT_ACTIVE_BITS']
 
 
 class CogFrameFormat(IntEnum):
@@ -153,3 +154,7 @@ def COG_FRAME_FORMAT_H_SHIFT(fmt):
 
 def COG_FRAME_FORMAT_V_SHIFT(fmt):
     return ((fmt >> 1) & 0x1)
+
+
+def COG_FRAME_FORMAT_ACTIVE_BITS(fmt):
+    return (((int(fmt)) >> 10) & 0x3F)

@@ -17,8 +17,6 @@
 
 from unittest import TestCase
 
-from pdb import set_trace
-
 import uuid
 from mediagrains.numpy import VideoGrain
 from mediagrains.cogenums import (
@@ -28,7 +26,9 @@ from mediagrains.cogenums import (
     COG_FRAME_FORMAT_H_SHIFT,
     COG_FRAME_FORMAT_V_SHIFT,
     COG_FRAME_IS_PACKED,
-    COG_FRAME_IS_COMPRESSED)
+    COG_FRAME_IS_COMPRESSED,
+    COG_FRAME_IS_RGB,
+    COG_FRAME_FORMAT_ACTIVE_BITS)
 from mediatimestamp.immutable import Timestamp, TimeRange
 import mock
 from fractions import Fraction
@@ -38,6 +38,144 @@ import numpy as np
 
 
 class TestGrain (TestCase):
+    def _get_bitdepth(self, fmt):
+        if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+            return COG_FRAME_FORMAT_ACTIVE_BITS(fmt)
+        elif fmt in [CogFrameFormat.UYVY,
+                     CogFrameFormat.YUYV,
+                     CogFrameFormat.RGB,
+                     CogFrameFormat.RGBx,
+                     CogFrameFormat.RGBA,
+                     CogFrameFormat.BGRx,
+                     CogFrameFormat.BGRx,
+                     CogFrameFormat.ARGB,
+                     CogFrameFormat.xRGB,
+                     CogFrameFormat.ABGR,
+                     CogFrameFormat.xBGR]:
+            return 8
+        elif fmt == CogFrameFormat.v216:
+            return 16
+        elif fmt == CogFrameFormat.v210:
+            return 10
+        else:
+            raise Exception()
+
+    def _get_hs_vs_and_bps(self, fmt):
+        if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+            return (COG_FRAME_FORMAT_H_SHIFT(fmt), COG_FRAME_FORMAT_V_SHIFT(fmt), COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt))
+        elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.YUYV]:
+            return (1, 0, 1)
+        elif fmt in [CogFrameFormat.RGB,
+                     CogFrameFormat.RGBx,
+                     CogFrameFormat.RGBA,
+                     CogFrameFormat.BGRx,
+                     CogFrameFormat.BGRx,
+                     CogFrameFormat.ARGB,
+                     CogFrameFormat.xRGB,
+                     CogFrameFormat.ABGR,
+                     CogFrameFormat.xBGR]:
+            return (0, 0, 1)
+        elif fmt == CogFrameFormat.v216:
+            return (1, 0, 2)
+        elif fmt == CogFrameFormat.v210:
+            return (1, 0, 4)
+        else:
+            raise Exception()
+
+    def _is_rgb(self, fmt):
+        if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+            return COG_FRAME_IS_RGB(fmt)
+        elif fmt in [CogFrameFormat.UYVY,
+                     CogFrameFormat.YUYV,
+                     CogFrameFormat.v216,
+                     CogFrameFormat.v210]:
+            return False
+        elif fmt in [CogFrameFormat.RGB,
+                     CogFrameFormat.RGBx,
+                     CogFrameFormat.RGBA,
+                     CogFrameFormat.BGRx,
+                     CogFrameFormat.BGRx,
+                     CogFrameFormat.ARGB,
+                     CogFrameFormat.xRGB,
+                     CogFrameFormat.ABGR,
+                     CogFrameFormat.xBGR]:
+            return True
+        else:
+            raise Exception()
+
+    def assertComponentsAreModifiable(self, grain):
+        width = grain.width
+        height = grain.height
+        fmt = grain.format
+
+        (hs, vs, _) = self._get_hs_vs_and_bps(fmt)
+
+        # Test that changes to the component arrays are reflected in the main data array
+        for y in range(0, 16):
+            for x in range(0, 16):
+                grain.component_data[0][x, y] = (y*16 + x) & 0x3F
+
+        for y in range(0, 16 >> vs):
+            for x in range(0, 16 >> hs):
+                grain.component_data[1][x, y] = (y*16 + x) & 0x3F + 0x40
+                grain.component_data[2][x, y] = (y*16 + x) & 0x3F + 0x50
+
+        if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+            for y in range(0, 16):
+                for x in range(0, 16):
+                    self.assertEqual(grain.data[y*width + x], (y*16 + x) & 0x3F)
+
+            for y in range(0, 16 >> vs):
+                for x in range(0, 16 >> hs):
+                    self.assertEqual(grain.data[width*height + y*(width >> hs) + x], (y*16 + x) & 0x3F + 0x40)
+                    self.assertEqual(grain.data[width*height + (width >> hs)*(height >> vs) + y*(width >> hs) + x], (y*16 + x) & 0x3F + 0x50)
+
+        elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.v216]:
+            for y in range(0, 16):
+                for x in range(0, 8):
+                    self.assertEqual(grain.data[y*width*2 + 4*x + 0], (y*16 + x) & 0x3F + 0x40)
+                    self.assertEqual(grain.data[y*width*2 + 4*x + 1], (y*16 + 2*x + 0) & 0x3F)
+                    self.assertEqual(grain.data[y*width*2 + 4*x + 2], (y*16 + x) & 0x3F + 0x50)
+                    self.assertEqual(grain.data[y*width*2 + 4*x + 3], (y*16 + 2*x + 1) & 0x3F)
+
+        elif fmt == CogFrameFormat.YUYV:
+            for y in range(0, 16):
+                for x in range(0, 8):
+                    self.assertEqual(grain.data[y*width*2 + 4*x + 0], (y*16 + 2*x + 0) & 0x3F)
+                    self.assertEqual(grain.data[y*width*2 + 4*x + 1], (y*16 + x) & 0x3F + 0x40)
+                    self.assertEqual(grain.data[y*width*2 + 4*x + 2], (y*16 + 2*x + 1) & 0x3F)
+                    self.assertEqual(grain.data[y*width*2 + 4*x + 3], (y*16 + x) & 0x3F + 0x50)
+
+        elif fmt == CogFrameFormat.RGB:
+            for y in range(0, 16):
+                for x in range(0, 16):
+                    self.assertEqual(grain.data[y*width*3 + 3*x + 0], (y*16 + x) & 0x3F)
+                    self.assertEqual(grain.data[y*width*3 + 3*x + 1], (y*16 + x) & 0x3F + 0x40)
+                    self.assertEqual(grain.data[y*width*3 + 3*x + 2], (y*16 + x) & 0x3F + 0x50)
+
+        elif fmt in [CogFrameFormat.RGBx,
+                     CogFrameFormat.RGBA,
+                     CogFrameFormat.BGRx,
+                     CogFrameFormat.BGRx]:
+            for y in range(0, 16):
+                for x in range(0, 16):
+                    self.assertEqual(grain.data[y*width*4 + 4*x + 0], (y*16 + x) & 0x3F)
+                    self.assertEqual(grain.data[y*width*4 + 4*x + 1], (y*16 + x) & 0x3F + 0x40)
+                    self.assertEqual(grain.data[y*width*4 + 4*x + 2], (y*16 + x) & 0x3F + 0x50)
+
+        elif fmt in [CogFrameFormat.ARGB,
+                     CogFrameFormat.xRGB,
+                     CogFrameFormat.ABGR,
+                     CogFrameFormat.xBGR]:
+            for y in range(0, 16):
+                for x in range(0, 16):
+                    self.assertEqual(grain.data[y*width*4 + 4*x + 1], (y*16 + x) & 0x3F)
+                    self.assertEqual(grain.data[y*width*4 + 4*x + 2], (y*16 + x) & 0x3F + 0x40)
+                    self.assertEqual(grain.data[y*width*4 + 4*x + 3], (y*16 + x) & 0x3F + 0x50)
+
+        else:
+            raise Exception()
+
     def assertIsVideoGrain(self,
                            fmt,
                            src_id=uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429"),
@@ -68,11 +206,9 @@ class TestGrain (TestCase):
             self.assertIsNone(grain.source_aspect_ratio)
             self.assertIsNone(grain.pixel_aspect_ratio)
 
-            if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
-                bps = COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt)
-                hs = COG_FRAME_FORMAT_H_SHIFT(fmt)
-                vs = COG_FRAME_FORMAT_V_SHIFT(fmt)
+            (hs, vs, bps) = self._get_hs_vs_and_bps(fmt)
 
+            if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
                 self.assertEqual(len(grain.components), 3)
                 self.assertEqual(grain.components[0].stride, width*bps)
                 self.assertEqual(grain.components[0].width, width)
@@ -97,10 +233,6 @@ class TestGrain (TestCase):
 
                 self.assertEqual(grain.expected_length, (width*height + 2*(width >> hs)*(height >> vs))*bps)
             elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.YUYV]:
-                bps = 1
-                hs = 1
-                vs = 0
-
                 self.assertEqual(len(grain.components), 1)
                 self.assertEqual(grain.components[0].stride, width*bps + 2*(width >> hs)*bps)
                 self.assertEqual(grain.components[0].width, width)
@@ -111,10 +243,6 @@ class TestGrain (TestCase):
 
                 self.assertEqual(grain.expected_length, width*height*bps*2)
             elif fmt in [CogFrameFormat.RGB]:
-                bps = 1
-                hs = 0
-                vs = 0
-
                 self.assertEqual(len(grain.components), 1)
                 self.assertEqual(grain.components[0].stride, 3*width*bps)
                 self.assertEqual(grain.components[0].width, width)
@@ -130,10 +258,6 @@ class TestGrain (TestCase):
                          CogFrameFormat.xRGB,
                          CogFrameFormat.ABGR,
                          CogFrameFormat.xBGR]:
-                bps = 1
-                hs = 0
-                vs = 0
-
                 self.assertEqual(len(grain.components), 1)
                 self.assertEqual(grain.components[0].stride, 4*width*bps)
                 self.assertEqual(grain.components[0].width, width)
@@ -143,10 +267,6 @@ class TestGrain (TestCase):
                 self.assertEqual(len(grain.components[0]), 5)
 
             elif fmt == CogFrameFormat.v216:
-                bps = 2
-                hs = 1
-                vs = 0
-
                 self.assertEqual(len(grain.components), 1)
                 self.assertEqual(grain.components[0].stride, 2*width*bps)
                 self.assertEqual(grain.components[0].width, width)
@@ -156,10 +276,6 @@ class TestGrain (TestCase):
                 self.assertEqual(len(grain.components[0]), 5)
 
             elif fmt == CogFrameFormat.v210:
-                bps = 4
-                hs = 1
-                vs = 0
-
                 self.assertEqual(len(grain.components), 1)
                 self.assertEqual(grain.components[0].stride, (((width + 47) // 48) * 128))
                 self.assertEqual(grain.components[0].width, width)
@@ -332,6 +448,9 @@ class TestGrain (TestCase):
                                        width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
                 self.assertIsVideoGrain(fmt)(grain)
+
+                if fmt is not CogFrameFormat.v210:
+                    self.assertComponentsAreModifiable(grain)
 
     def test_video_grain_create_discontiguous(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
