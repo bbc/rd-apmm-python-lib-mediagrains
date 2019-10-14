@@ -218,6 +218,15 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
         else:
             return "{}({!r},< numpy data of length {} >)".format(self._factory, self.meta, len(self.data))
 
+    def convert(self, fmt: CogFrameFormat) -> "VIDEOGRAIN":
+        """Used to convert this grain to a different cog format.
+
+        :param fmt: The format to convert to
+        :returns: A new grain of the specified format. Notably converting to the same format is the same as a deepcopy
+        :raises: NotImplementedError if the requested conversion is not possible
+        """
+        return deepcopy(self)
+
 
 def VideoGrain(*args, **kwargs) -> VIDEOGRAIN:
     """If the first argument is a mediagrains.VIDEOGRAIN then return a mediagrains.numpy.VIDEOGRAIN representing the same data.
