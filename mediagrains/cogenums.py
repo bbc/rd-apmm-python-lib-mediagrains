@@ -31,7 +31,8 @@ __all__ = [
     'CogAudioFormat',
     'COG_FRAME_IS_PACKED',
     'COG_FRAME_IS_COMPRESSED',
-    'COG_FRAME_IS_RGB',
+    'COG_FRAME_IS_PLANAR',
+    'COG_FRAME_IS_PLANAR_RGB',
     'COG_FRAME_FORMAT_BYTES_PER_VALUE',
     'COG_FRAME_FORMAT_H_SHIFT',
     'COG_FRAME_FORMAT_V_SHIFT',
@@ -132,12 +133,16 @@ def COG_FRAME_IS_COMPRESSED(fmt):
     return ((fmt >> 9) & 0x1) != 0
 
 
+def COG_FRAME_IS_PLANAR(fmt):
+    return ((fmt >> 8) & 0x3) == 0
+
+
 def COG_FRAME_IS_ALPHA(fmt):
     return ((fmt >> 7) & 0x1) != 0
 
 
-def COG_FRAME_IS_RGB(fmt):
-    return ((fmt >> 4) & 0x1) != 0
+def COG_FRAME_IS_PLANAR_RGB(fmt):
+    return ((fmt >> 4) & 0x31) == 1
 
 
 def COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt):

@@ -27,7 +27,8 @@ from mediagrains.cogenums import (
     COG_FRAME_FORMAT_V_SHIFT,
     COG_FRAME_IS_PACKED,
     COG_FRAME_IS_COMPRESSED,
-    COG_FRAME_IS_RGB,
+    COG_FRAME_IS_PLANAR,
+    COG_FRAME_IS_PLANAR_RGB,
     COG_FRAME_FORMAT_ACTIVE_BITS)
 from mediatimestamp.immutable import Timestamp, TimeRange
 import mock
@@ -39,7 +40,7 @@ import numpy as np
 
 class TestGrain (TestCase):
     def _get_bitdepth(self, fmt):
-        if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+        if COG_FRAME_IS_PLANAR(fmt):
             return COG_FRAME_FORMAT_ACTIVE_BITS(fmt)
         elif fmt in [CogFrameFormat.UYVY,
                      CogFrameFormat.YUYV,
@@ -61,7 +62,7 @@ class TestGrain (TestCase):
             raise Exception()
 
     def _get_hs_vs_and_bps(self, fmt):
-        if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+        if COG_FRAME_IS_PLANAR(fmt):
             return (COG_FRAME_FORMAT_H_SHIFT(fmt), COG_FRAME_FORMAT_V_SHIFT(fmt), COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt))
         elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.YUYV]:
             return (1, 0, 1)
@@ -83,8 +84,8 @@ class TestGrain (TestCase):
             raise Exception()
 
     def _is_rgb(self, fmt):
-        if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
-            return COG_FRAME_IS_RGB(fmt)
+        if COG_FRAME_IS_PLANAR(fmt):
+            return COG_FRAME_IS_PLANAR_RGB(fmt)
         elif fmt in [CogFrameFormat.UYVY,
                      CogFrameFormat.YUYV,
                      CogFrameFormat.v216,
@@ -120,7 +121,7 @@ class TestGrain (TestCase):
                 grain.component_data[1][x, y] = (y*16 + x) & 0x3F + 0x40
                 grain.component_data[2][x, y] = (y*16 + x) & 0x3F + 0x50
 
-        if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+        if COG_FRAME_IS_PLANAR(fmt):
             for y in range(0, 16):
                 for x in range(0, 16):
                     self.assertEqual(grain.data[y*width + x], (y*16 + x) & 0x3F)
@@ -208,7 +209,7 @@ class TestGrain (TestCase):
 
             (hs, vs, bps) = self._get_hs_vs_and_bps(fmt)
 
-            if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+            if COG_FRAME_IS_PLANAR(fmt):
                 self.assertEqual(len(grain.components), 3)
                 self.assertEqual(grain.components[0].stride, width*bps)
                 self.assertEqual(grain.components[0].width, width)
@@ -344,7 +345,7 @@ class TestGrain (TestCase):
                         grain.component_data[1][x, y] = (y*16 + x) & 0x3F + 0x40
                         grain.component_data[2][x, y] = (y*16 + x) & 0x3F + 0x50
 
-                if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+                if COG_FRAME_IS_PLANAR(fmt):
                     for y in range(0, 16):
                         for x in range(0, 16):
                             self.assertEqual(grain.data[y*width + x], (y*16 + x) & 0x3F)

@@ -23,8 +23,9 @@ from mediagrains.cogenums import (
     CogFrameFormat,
     COG_FRAME_IS_PACKED,
     COG_FRAME_IS_COMPRESSED,
+    COG_FRAME_IS_PLANAR,
     COG_FRAME_FORMAT_BYTES_PER_VALUE,
-    COG_FRAME_IS_RGB)
+    COG_FRAME_IS_PLANAR_RGB)
 from mediagrains import grain as bytesgrain
 from mediagrains import grain_constructors as bytesgrain_constructors
 from copy import copy, deepcopy
@@ -38,7 +39,13 @@ __all__ = ['VideoGrain', 'VIDEOGRAIN']
 
 
 def _dtype_from_cogframeformat(fmt: CogFrameFormat) -> np.dtype:
-    if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+    """This method returns the numpy "data type" for a particular video format.
+
+    For planar and padded formats this is the size of the native integer type that is used to handle the samples (eg. 8bit, 16bit, etc ...)
+    For weird packed formats like v210 (10-bit samples packed so that there are 3 10-bit samples in every 32-bit word) this is not possible.
+    Instead for v210 we return int32, since that is the most useful native data type that always corresponds to an integral number of samples.
+    """
+    if COG_FRAME_IS_PLANAR(fmt):
         if COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt) == 1:
             return np.dtype(np.uint8)
         elif COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt) == 2:
@@ -47,6 +54,7 @@ def _dtype_from_cogframeformat(fmt: CogFrameFormat) -> np.dtype:
             return np.dtype(np.int32)
     elif fmt in [CogFrameFormat.UYVY,
                  CogFrameFormat.YUYV,
+                 CogFrameFormat.AYUV,
                  CogFrameFormat.RGB,
                  CogFrameFormat.RGBx,
                  CogFrameFormat.RGBA,
@@ -89,23 +97,39 @@ class ComponentDataList(list):
 
 
 def _component_arrangement_from_format(fmt: CogFrameFormat):
-    if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
-        if COG_FRAME_IS_RGB(fmt):
+    """This method returns the ordering of the components in the component data arrays that are used to represent a particular format.
+
+    Note that for the likes of UYVY this will return YUV since the planes are represented in that order by the interface even though they
+    are interleved in the data.
+
+    For formats where no meaningful component access can be provided (v210, compressed formats, etc ...) the value X is returned.
+    """
+    if COG_FRAME_IS_PLANAR(fmt):
+        if COG_FRAME_IS_PLANAR_RGB(fmt):
             return ComponentDataList.ComponentOrder.RGB
         else:
             return ComponentDataList.ComponentOrder.YUV
-    elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.YUYV, CogFrameFormat.v216]:
+    elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.YUYV, CogFrameFormat.v216, CogFrameFormat.AYUV]:
         return ComponentDataList.ComponentOrder.YUV
     elif fmt in [CogFrameFormat.RGB, CogFrameFormat.RGBA, CogFrameFormat.RGBx, CogFrameFormat.ARGB, CogFrameFormat.xRGB]:
         return ComponentDataList.ComponentOrder.RGB
-    elif fmt in [CogFrameFormat.BGRA, CogFrameFormat.BGRx]:
+    elif fmt in [CogFrameFormat.BGRA, CogFrameFormat.BGRx, CogFrameFormat.xBGR, CogFrameFormat.ABGR]:
         return ComponentDataList.ComponentOrder.BGR
     else:
         return ComponentDataList.ComponentOrder.X
 
 
 def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, components: bytesgrain.VIDEOGRAIN.COMPONENT_LIST):
-    if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+    """This method returns a list of numpy array views which can be used to directly access the components of the video frame
+    without any need for conversion or copying. This is not possible for all formats.
+
+    For planar formats this simply returns a list of array views of the planes.
+
+    For interleaved formats this returns a list of array views that use stride tricks to access alternate elements in the source data array.
+
+    For weird packed formats like v210 nothing can be done, an empty list is returned since no individual component access is possible.
+    """
+    if COG_FRAME_IS_PLANAR(fmt):
         arrays = []
         for component in components:
             component_data = data[component.offset//data.itemsize:(component.offset + component.length)//data.itemsize]
@@ -113,6 +137,7 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
             arrays.append(component_data.transpose())
         return arrays
     elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.v216]:
+        # Either 8 or 16 bits 4:2:2 interleavedd in UYVY order
         return [
             as_strided(data[1:],
                        shape=(components[0].height, components[0].width),
@@ -124,6 +149,7 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
                        shape=(components[0].height, components[0].width//2),
                        strides=(components[0].stride, data.itemsize*4)).transpose()]
     elif fmt == CogFrameFormat.YUYV:
+        # 8 bit 4:2:2 interleaved in YUYV order
         return [
             as_strided(data,
                        shape=(components[0].height, components[0].width),
@@ -135,6 +161,7 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
                        shape=(components[0].height, components[0].width//2),
                        strides=(components[0].stride, data.itemsize*4)).transpose()]
     elif fmt == CogFrameFormat.RGB:
+        # 8 bit 4:4:4 three components interleaved in RGB order
         return [
             as_strided(data,
                        shape=(components[0].height, components[0].width),
@@ -149,6 +176,7 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
                  CogFrameFormat.RGBA,
                  CogFrameFormat.BGRx,
                  CogFrameFormat.BGRx]:
+        # 8 bit 4:4:4:4 four components interleave dropping the fourth component
         return [
             as_strided(data,
                        shape=(components[0].height, components[0].width),
@@ -162,7 +190,9 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
     elif fmt in [CogFrameFormat.ARGB,
                  CogFrameFormat.xRGB,
                  CogFrameFormat.ABGR,
-                 CogFrameFormat.xBGR]:
+                 CogFrameFormat.xBGR,
+                 CogFrameFormat.AYUV]:
+        # 8 bit 4:4:4:4 four components interleave dropping the first component
         return [
             as_strided(data[1:],
                        shape=(components[0].height, components[0].width),
@@ -175,6 +205,8 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
                        strides=(components[0].stride, data.itemsize*4)).transpose()]
     elif fmt == CogFrameFormat.v210:
         # v210 is barely supported. Convert it to something else to actually use it!
+        # This method returns an empty list because component access isn't supported, but
+        # the more basic access to the underlying data is.
         return []
 
     raise NotImplementedError("Cog Frame Format not amongst those supported for numpy array interpretation")
