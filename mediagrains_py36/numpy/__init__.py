@@ -119,6 +119,32 @@ def _component_arrangement_from_format(fmt: CogFrameFormat):
         return ComponentDataList.ComponentOrder.X
 
 
+def _component_arrays_for_interleaved_422(data0: np.ndarray, data1: np.ndarray, data2: np.ndarray, width: int, height: int, stride: int, itemsize: int):
+    return [
+        as_strided(data0,
+                   shape=(height, width),
+                   strides=(stride, itemsize*2)).transpose(),
+        as_strided(data1,
+                   shape=(height, width//2),
+                   strides=(stride, itemsize*4)).transpose(),
+        as_strided(data2,
+                   shape=(height, width//2),
+                   strides=(stride, itemsize*4)).transpose()]
+
+
+def _component_arrays_for_interleaved_444_take_three(data0: np.ndarray, data1: np.ndarray, data2: np.ndarray, width: int, height: int, stride: int, itemsize: int, num_components: int = 3):
+    return [
+        as_strided(data0,
+                   shape=(height, width),
+                   strides=(stride, itemsize*num_components)).transpose(),
+        as_strided(data1,
+                   shape=(height, width),
+                   strides=(stride, itemsize*num_components)).transpose(),
+        as_strided(data2,
+                   shape=(height, width),
+                   strides=(stride, itemsize*num_components)).transpose()]
+
+
 def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, components: bytesgrain.VIDEOGRAIN.COMPONENT_LIST):
     """This method returns a list of numpy array views which can be used to directly access the components of the video frame
     without any need for conversion or copying. This is not possible for all formats.
@@ -130,79 +156,33 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
     For weird packed formats like v210 nothing can be done, an empty list is returned since no individual component access is possible.
     """
     if COG_FRAME_IS_PLANAR(fmt):
-        arrays = []
-        for component in components:
-            component_data = data[component.offset//data.itemsize:(component.offset + component.length)//data.itemsize]
-            component_data = as_strided(component_data, shape=(component.height, component.width), strides=(component.stride, component_data.itemsize))
-            arrays.append(component_data.transpose())
-        return arrays
+        return [
+            as_strided(data[component.offset//data.itemsize:(component.offset + component.length)//data.itemsize],
+                       shape=(component.height, component.width),
+                       strides=(component.stride, data.itemsize)).transpose()
+            for component in components]
     elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.v216]:
         # Either 8 or 16 bits 4:2:2 interleavedd in UYVY order
-        return [
-            as_strided(data[1:],
-                       shape=(components[0].height, components[0].width),
-                       strides=(components[0].stride, data.itemsize*2)).transpose(),
-            as_strided(data,
-                       shape=(components[0].height, components[0].width//2),
-                       strides=(components[0].stride, data.itemsize*4)).transpose(),
-            as_strided(data[2:],
-                       shape=(components[0].height, components[0].width//2),
-                       strides=(components[0].stride, data.itemsize*4)).transpose()]
+        return _component_arrays_for_interleaved_422(data[1:], data, data[2:], components[0].width, components[0].height, components[0].stride, data.itemsize)
     elif fmt == CogFrameFormat.YUYV:
         # 8 bit 4:2:2 interleaved in YUYV order
-        return [
-            as_strided(data,
-                       shape=(components[0].height, components[0].width),
-                       strides=(components[0].stride, data.itemsize*2)).transpose(),
-            as_strided(data[1:],
-                       shape=(components[0].height, components[0].width//2),
-                       strides=(components[0].stride, data.itemsize*4)).transpose(),
-            as_strided(data[3:],
-                       shape=(components[0].height, components[0].width//2),
-                       strides=(components[0].stride, data.itemsize*4)).transpose()]
+        return _component_arrays_for_interleaved_422(data, data[1:], data[3:], components[0].width, components[0].height, components[0].stride, data.itemsize)
     elif fmt == CogFrameFormat.RGB:
         # 8 bit 4:4:4 three components interleaved in RGB order
-        return [
-            as_strided(data,
-                       shape=(components[0].height, components[0].width),
-                       strides=(components[0].stride, data.itemsize*3)).transpose(),
-            as_strided(data[1:],
-                       shape=(components[0].height, components[0].width),
-                       strides=(components[0].stride, data.itemsize*3)).transpose(),
-            as_strided(data[2:],
-                       shape=(components[0].height, components[0].width),
-                       strides=(components[0].stride, data.itemsize*3)).transpose()]
+        return _component_arrays_for_interleaved_444_take_three(data, data[1:], data[2:], components[0].width, components[0].height, components[0].stride, data.itemsize)
     elif fmt in [CogFrameFormat.RGBx,
                  CogFrameFormat.RGBA,
                  CogFrameFormat.BGRx,
                  CogFrameFormat.BGRx]:
         # 8 bit 4:4:4:4 four components interleave dropping the fourth component
-        return [
-            as_strided(data,
-                       shape=(components[0].height, components[0].width),
-                       strides=(components[0].stride, data.itemsize*4)).transpose(),
-            as_strided(data[1:],
-                       shape=(components[0].height, components[0].width),
-                       strides=(components[0].stride, data.itemsize*4)).transpose(),
-            as_strided(data[2:],
-                       shape=(components[0].height, components[0].width),
-                       strides=(components[0].stride, data.itemsize*4)).transpose()]
+        return _component_arrays_for_interleaved_444_take_three(data, data[1:], data[2:], components[0].width, components[0].height, components[0].stride, data.itemsize, num_components=4)
     elif fmt in [CogFrameFormat.ARGB,
                  CogFrameFormat.xRGB,
                  CogFrameFormat.ABGR,
                  CogFrameFormat.xBGR,
                  CogFrameFormat.AYUV]:
         # 8 bit 4:4:4:4 four components interleave dropping the first component
-        return [
-            as_strided(data[1:],
-                       shape=(components[0].height, components[0].width),
-                       strides=(components[0].stride, data.itemsize*4)).transpose(),
-            as_strided(data[2:],
-                       shape=(components[0].height, components[0].width),
-                       strides=(components[0].stride, data.itemsize*4)).transpose(),
-            as_strided(data[3:],
-                       shape=(components[0].height, components[0].width),
-                       strides=(components[0].stride, data.itemsize*4)).transpose()]
+        return _component_arrays_for_interleaved_444_take_three(data[1:], data[2:], data[3:], components[0].width, components[0].height, components[0].stride, data.itemsize, num_components=4)
     elif fmt == CogFrameFormat.v210:
         # v210 is barely supported. Convert it to something else to actually use it!
         # This method returns an empty list because component access isn't supported, but
