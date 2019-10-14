@@ -23,7 +23,8 @@ from mediagrains.cogenums import (
     CogFrameFormat,
     COG_FRAME_IS_PACKED,
     COG_FRAME_IS_COMPRESSED,
-    COG_FRAME_FORMAT_BYTES_PER_VALUE)
+    COG_FRAME_FORMAT_BYTES_PER_VALUE,
+    COG_FRAME_IS_RGB)
 from mediagrains import grain as bytesgrain
 from mediagrains import grain_constructors as bytesgrain_constructors
 from copy import copy, deepcopy
@@ -31,6 +32,7 @@ from copy import copy, deepcopy
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
 
+from enum import Enum, auto
 
 __all__ = ['VideoGrain', 'VIDEOGRAIN']
 
@@ -61,6 +63,45 @@ def _dtype_from_cogframeformat(fmt: CogFrameFormat) -> np.dtype:
         return np.dtype(np.int32)
 
     raise NotImplementedError("Cog Frame Format not amongst those supported for numpy array interpretation")
+
+
+class ComponentDataList(list):
+    class ComponentOrder (Enum):
+        YUV = auto()
+        RGB = auto()
+        BGR = auto()
+        X   = auto()
+
+    def __init__(self, data: list, arrangement: ComponentOrder=ComponentOrder.X):
+        super().__init__(data)
+        if arrangement == ComponentDataList.ComponentOrder.YUV:
+            self.Y = self[0]
+            self.U = self[1]
+            self.V = self[2]
+        elif arrangement == ComponentDataList.ComponentOrder.RGB:
+            self.R = self[0]
+            self.G = self[1]
+            self.B = self[2]
+        elif arrangement == ComponentDataList.ComponentOrder.BGR:
+            self.B = self[0]
+            self.G = self[1]
+            self.R = self[2]
+
+
+def _component_arrangement_from_format(fmt: CogFrameFormat):
+    if not COG_FRAME_IS_PACKED(fmt) and not COG_FRAME_IS_COMPRESSED(fmt):
+        if COG_FRAME_IS_RGB(fmt):
+            return ComponentDataList.ComponentOrder.RGB
+        else:
+            return ComponentDataList.ComponentOrder.YUV
+    elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.YUYV, CogFrameFormat.v216]:
+        return ComponentDataList.ComponentOrder.YUV
+    elif fmt in [CogFrameFormat.RGB, CogFrameFormat.RGBA, CogFrameFormat.RGBx, CogFrameFormat.ARGB, CogFrameFormat.xRGB]:
+        return ComponentDataList.ComponentOrder.RGB
+    elif fmt in [CogFrameFormat.BGRA, CogFrameFormat.BGRx]:
+        return ComponentDataList.ComponentOrder.BGR
+    else:
+        return ComponentDataList.ComponentOrder.X
 
 
 def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, components: bytesgrain.VIDEOGRAIN.COMPONENT_LIST):
@@ -143,7 +184,9 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
     def __init__(self, meta, data):
         super().__init__(meta, data)
         self._data = np.frombuffer(self._data, dtype=_dtype_from_cogframeformat(self.format))
-        self.component_data = _component_arrays_for_data_and_type(self._data, self.format, self.components)
+        self.component_data = ComponentDataList(
+            _component_arrays_for_data_and_type(self._data, self.format, self.components),
+            arrangement=_component_arrangement_from_format(self.format))
 
     def __array__(self):
         return np.array(self.data)
