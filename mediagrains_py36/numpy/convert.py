@@ -228,3 +228,11 @@ VIDEOGRAIN.grain_conversion(CogFrameFormat.S16_444_12BIT, CogFrameFormat.S16_420
 VIDEOGRAIN.grain_conversion(CogFrameFormat.S16_420_12BIT, CogFrameFormat.S16_422_12BIT)(_simple_duplicate_convert_yuv420__yuv422(CogFrameFormat.S16_422_12BIT))
 VIDEOGRAIN.grain_conversion(CogFrameFormat.S16_420_12BIT, CogFrameFormat.S16_444_12BIT)(lambda grain: _simple_duplicate_convert_yuv422__yuv444(CogFrameFormat.S16_444_12BIT)(_simple_duplicate_convert_yuv420__yuv422(CogFrameFormat.S16_422_12BIT)(grain)))
 VIDEOGRAIN.grain_conversion(CogFrameFormat.S16_422_12BIT, CogFrameFormat.S16_444_12BIT)(_simple_duplicate_convert_yuv422__yuv444(CogFrameFormat.S16_444_12BIT))
+
+# 32 bit conversions
+VIDEOGRAIN.grain_conversion(CogFrameFormat.S32_444, CogFrameFormat.S32_422)(_simple_mean_convert_yuv444__yuv422(CogFrameFormat.S32_422))
+VIDEOGRAIN.grain_conversion(CogFrameFormat.S32_422, CogFrameFormat.S32_420)(_simple_mean_convert_yuv422__yuv420(CogFrameFormat.S32_420))
+VIDEOGRAIN.grain_conversion(CogFrameFormat.S32_444, CogFrameFormat.S32_420)(lambda grain: _simple_mean_convert_yuv422__yuv420(CogFrameFormat.S32_420)(_simple_mean_convert_yuv444__yuv422(CogFrameFormat.S32_422)(grain)))
+VIDEOGRAIN.grain_conversion(CogFrameFormat.S32_420, CogFrameFormat.S32_422)(_simple_duplicate_convert_yuv420__yuv422(CogFrameFormat.S32_422))
+VIDEOGRAIN.grain_conversion(CogFrameFormat.S32_420, CogFrameFormat.S32_444)(lambda grain: _simple_duplicate_convert_yuv422__yuv444(CogFrameFormat.S32_444)(_simple_duplicate_convert_yuv420__yuv422(CogFrameFormat.S32_422)(grain)))
+VIDEOGRAIN.grain_conversion(CogFrameFormat.S32_422, CogFrameFormat.S32_444)(_simple_duplicate_convert_yuv422__yuv444(CogFrameFormat.S32_444))
