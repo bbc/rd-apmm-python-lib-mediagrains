@@ -19,6 +19,7 @@ from unittest import TestCase
 
 import uuid
 from mediagrains.numpy import VideoGrain
+from mediagrains.numpy import flow_id_for_converted_flow
 from mediagrains.cogenums import (
     CogFrameFormat,
     CogFrameLayout,
@@ -189,7 +190,8 @@ class TestGrain (TestCase):
                            cts=Timestamp.from_tai_sec_nsec("417798915:0"),
                            rate=Fraction(25, 1),
                            width=1920,
-                           height=1080):
+                           height=1080,
+                           ignore_cts=False):
         def __inner(grain):
             self.assertEqual(grain.grain_type, "video")
             self.assertEqual(grain.source_id, src_id)
@@ -198,7 +200,8 @@ class TestGrain (TestCase):
             self.assertEqual(grain.final_origin_timestamp(), ots)
             self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
             self.assertEqual(grain.sync_timestamp, sts)
-            self.assertEqual(grain.creation_timestamp, cts)
+            if not ignore_cts:
+                self.assertEqual(grain.creation_timestamp, cts)
             self.assertEqual(grain.rate, rate)
             self.assertEqual(grain.duration, 1/rate)
             self.assertEqual(grain.timelabels, [])
@@ -383,21 +386,24 @@ class TestGrain (TestCase):
             grain.component_data.U[:, :] = U
             grain.component_data.V[:, :] = V
 
+    def assertArrayEqual(self, a: np.ndarray, b: np.ndarray):
+        self.assertTrue(np.array_equal(a, b), msg="{} != {}".format(a, b))
+
     def assertMatchesTestPattern(self, grain):
         fmt = grain.format
 
         if self._is_rgb(fmt):
             (R, G, B) = self._test_pattern_rgb(fmt)
 
-            self.assertTrue(np.array_equal(grain.component_data.R[:, :], R))
-            self.assertTrue(np.array_equal(grain.component_data.G[:, :], G))
-            self.assertTrue(np.array_equal(grain.component_data.B[:, :], B))
+            self.assertArrayEqual(grain.component_data.R[:, :], R)
+            self.assertArrayEqual(grain.component_data.G[:, :], G)
+            self.assertArrayEqual(grain.component_data.B[:, :], B)
         else:
             (Y, U, V) = self._test_pattern_yuv(fmt)
 
-            self.assertTrue(np.array_equal(grain.component_data.Y[:, :], Y))
-            self.assertTrue(np.array_equal(grain.component_data.U[:, :], U))
-            self.assertTrue(np.array_equal(grain.component_data.V[:, :], V))
+            self.assertArrayEqual(grain.component_data.Y[:, :], Y)
+            self.assertArrayEqual(grain.component_data.U[:, :], U)
+            self.assertArrayEqual(grain.component_data.V[:, :], V)
 
     def test_video_grain_create(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -456,8 +462,18 @@ class TestGrain (TestCase):
         ots = Timestamp.from_tai_sec_nsec("417798915:5")
         sts = Timestamp.from_tai_sec_nsec("417798915:10")
 
-        for fmt_in in [CogFrameFormat.UYVY, CogFrameFormat.U8_444, CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB]:
-            for fmt_out in [CogFrameFormat.UYVY, CogFrameFormat.U8_444, CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB]:
+
+        def pairs_from(fmts):
+            for fmt_in in fmts:
+                for fmt_out in fmts:
+                    yield (fmt_in, fmt_out)
+
+        # This checks conversions within YUV and RGB space, but not conversions between the two
+        for fmts in [
+                [CogFrameFormat.YUYV, CogFrameFormat.UYVY, CogFrameFormat.U8_444, CogFrameFormat.U8_422, CogFrameFormat.U8_420], # All YUV 8bit formats
+                [CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB, CogFrameFormat.RGBx, CogFrameFormat.xRGB, CogFrameFormat.BGRx, CogFrameFormat.xBGR] # All 8-bit 3 component RGB formats
+                ]:
+            for (fmt_in, fmt_out) in pairs_from(fmts):
                 with self.subTest(fmt_in=fmt_in, fmt_out=fmt_out):
                     with mock.patch.object(Timestamp, "get_time", return_value=cts):
                         grain_in = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
@@ -469,7 +485,11 @@ class TestGrain (TestCase):
 
                     grain_out = grain_in.convert(fmt_out)
 
-                    self.assertIsVideoGrain(fmt_out, width=16, height=16)(grain_out)
+                    if fmt_in != fmt_out:
+                        flow_id_out = flow_id_for_converted_flow(src_id, fmt_out)
+                    else:
+                        flow_id_out = flow_id
+                    self.assertIsVideoGrain(fmt_out, flow_id=flow_id_out, width=16, height=16, ignore_cts=True)(grain_out)
                     self.assertMatchesTestPattern(grain_out)
 
     def test_video_grain_create_discontiguous(self):
