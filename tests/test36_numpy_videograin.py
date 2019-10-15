@@ -34,6 +34,7 @@ from mediatimestamp.immutable import Timestamp, TimeRange
 import mock
 from fractions import Fraction
 from copy import copy, deepcopy
+from typing import Tuple
 
 import numpy as np
 
@@ -314,66 +315,89 @@ class TestGrain (TestCase):
                 self.assertEqual(len(grain.component_data), 0)
             else:
                 self.assertIsInstance(grain.component_data[0], np.ndarray)
-                self.assertEqual(grain.component_data[0].nbytes, width*height*bps)
-                self.assertEqual(grain.component_data[0].dtype, dtype)
-                self.assertEqual(grain.component_data[0].size, width*height)
-                self.assertEqual(grain.component_data[0].itemsize, bps)
-                self.assertEqual(grain.component_data[0].ndim, 2)
-                self.assertEqual(grain.component_data[0].shape, (width, height))
+                self.assertTrue(np.array_equal(grain.component_data[0].nbytes, width*height*bps))
+                self.assertTrue(np.array_equal(grain.component_data[0].dtype, dtype))
+                self.assertTrue(np.array_equal(grain.component_data[0].size, width*height))
+                self.assertTrue(np.array_equal(grain.component_data[0].itemsize, bps))
+                self.assertTrue(np.array_equal(grain.component_data[0].ndim, 2))
+                self.assertTrue(np.array_equal(grain.component_data[0].shape, (width, height)))
 
                 self.assertIsInstance(grain.component_data[1], np.ndarray)
-                self.assertEqual(grain.component_data[1].nbytes, width*height*bps >> (hs + vs))
-                self.assertEqual(grain.component_data[1].dtype, dtype)
-                self.assertEqual(grain.component_data[1].size, width*height >> (hs + vs))
-                self.assertEqual(grain.component_data[1].itemsize, bps)
-                self.assertEqual(grain.component_data[1].ndim, 2)
-                self.assertEqual(grain.component_data[1].shape, (width >> hs, height >> vs))
+                self.assertTrue(np.array_equal(grain.component_data[1].nbytes, width*height*bps >> (hs + vs)))
+                self.assertTrue(np.array_equal(grain.component_data[1].dtype, dtype))
+                self.assertTrue(np.array_equal(grain.component_data[1].size, width*height >> (hs + vs)))
+                self.assertTrue(np.array_equal(grain.component_data[1].itemsize, bps))
+                self.assertTrue(np.array_equal(grain.component_data[1].ndim, 2))
+                self.assertTrue(np.array_equal(grain.component_data[1].shape, (width >> hs, height >> vs)))
 
                 self.assertIsInstance(grain.component_data[2], np.ndarray)
-                self.assertEqual(grain.component_data[2].nbytes, width*height*bps >> (hs + vs))
-                self.assertEqual(grain.component_data[2].dtype, dtype)
-                self.assertEqual(grain.component_data[2].size, width*height >> (hs + vs))
-                self.assertEqual(grain.component_data[2].itemsize, bps)
-                self.assertEqual(grain.component_data[2].ndim, 2)
-                self.assertEqual(grain.component_data[2].shape, (width >> hs, height >> vs))
+                self.assertTrue(np.array_equal(grain.component_data[2].nbytes, width*height*bps >> (hs + vs)))
+                self.assertTrue(np.array_equal(grain.component_data[2].dtype, dtype))
+                self.assertTrue(np.array_equal(grain.component_data[2].size, width*height >> (hs + vs)))
+                self.assertTrue(np.array_equal(grain.component_data[2].itemsize, bps))
+                self.assertTrue(np.array_equal(grain.component_data[2].ndim, 2))
+                self.assertTrue(np.array_equal(grain.component_data[2].shape, (width >> hs, height >> vs)))
 
         return __inner
 
-    def write_test_pattern(self, grain):
-        fmt = grain.format
-        (hs, vs, _) = self._get_hs_vs_and_bps(fmt)
+    def _test_pattern_rgb(self, fmt: CogFrameFormat) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return a 16x16 pixel RGB test pattern"""
         bd = self._get_bitdepth(fmt)
 
         v = (1 << (bd - 2))*3
-        R = np.array([[v, v, v, v, 0, 0, 0, 0, v, v, v, v, 0, 0, 0, 0] for _ in range(0, 16)], dtype=np.dtype(np.int32)).transpose()
-        G = np.array([[v, v, v, v, v, v, v, v, 0, 0, 0, 0, 0, 0, 0, 0] for _ in range(0, 16)], dtype=np.dtype(np.int32)).transpose()
-        B = np.array([[v, v, 0, 0, v, v, 0, 0, v, v, 0, 0, v, v, 0, 0] for _ in range(0, 16)], dtype=np.dtype(np.int32)).transpose()
+        return (np.array([[v, v, v, v, 0, 0, 0, 0, v, v, v, v, 0, 0, 0, 0] for _ in range(0, 16)], dtype=np.dtype(np.int32)).transpose(),
+                np.array([[v, v, v, v, v, v, v, v, 0, 0, 0, 0, 0, 0, 0, 0] for _ in range(0, 16)], dtype=np.dtype(np.int32)).transpose(),
+                np.array([[v, v, 0, 0, v, v, 0, 0, v, v, 0, 0, v, v, 0, 0] for _ in range(0, 16)], dtype=np.dtype(np.int32)).transpose())
+
+    def _test_pattern_yuv(self, fmt: CogFrameFormat) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        (R, G, B) = self._test_pattern_rgb(fmt)
+        bd = self._get_bitdepth(fmt)
+        (hs, vs, _) = self._get_hs_vs_and_bps(fmt)
+
+        Y = (R*0.2126 +  G*0.7152 + B*0.0722)
+        U = (R*-0.114572 - G*0.385428 + B*0.5 + (1 << bd - 1))
+        V = (R*0.5 - G*0.454153 - B*0.045847  + (1 << bd - 1))
+
+        if hs == 1:
+            U = (U[0::2, :] + U[1::2, :])/2
+            V = (V[0::2, :] + V[1::2, :])/2
+        if vs == 1:
+            U = (U[:, 0::2] + U[:, 1::2])/2
+            V = (V[:, 0::2] + V[:, 1::2])/2
+
+        return (np.around(Y), np.around(U), np.around(V))
+
+    def write_test_pattern(self, grain):
+        fmt = grain.format
 
         if self._is_rgb(fmt):
-            grain.component_data.R[0:16, 0:16] = R
-            grain.component_data.G[0:16, 0:16] = G
-            grain.component_data.B[0:16, 0:16] = B
+            (R, G, B) = self._test_pattern_rgb(fmt)
+
+            grain.component_data.R[:, :] = R
+            grain.component_data.G[:, :] = G
+            grain.component_data.B[:, :] = B
         else:
-            Y = R*0.2126 +  G*0.7152 + B*0.0722
-            U = R*-0.114572 - G*0.385428 + B*0.5 + (1 << bd - 1)
-            V = R*0.5 - G*0.454153 - B*0.045847  + (1 << bd - 1)
+            (Y, U, V) = self._test_pattern_yuv(fmt)
 
-            grain.component_data.Y[0:16, 0:16] = np.around(Y)
-
-            if hs == 0 and vs == 0:
-                grain.component_data.U[0:16, 0:16] = np.around(U)
-                grain.component_data.V[0:16, 0:16] = np.around(V)
-            elif hs == 1 and vs == 0:
-                grain.component_data.U[0:16, 0:16] = np.around((U[0::2, :] + U[1::2, :])/2)
-                grain.component_data.V[0:16, 0:16] = np.around((V[0::2, :] + U[1::2, :])/2)
-            elif hs == 1 and vs == 1:
-                u = (U[:, 0::2] + U[:, 1::2])/2
-                grain.component_data.U[0:16, 0:16] = np.around((u[0::2, :] + u[1::2, :])/2)
-                v = (V[:, 0::2] + U[:, 1::2])/2
-                grain.component_data.V[0:16, 0:16] = np.around((v[0::2, :] + v[1::2, :])/2)
+            grain.component_data.Y[:, :] = Y
+            grain.component_data.U[:, :] = U
+            grain.component_data.V[:, :] = V
 
     def assertMatchesTestPattern(self, grain):
-        self.fail()
+        fmt = grain.format
+
+        if self._is_rgb(fmt):
+            (R, G, B) = self._test_pattern_rgb(fmt)
+
+            self.assertTrue(np.array_equal(grain.component_data.R[:, :], R))
+            self.assertTrue(np.array_equal(grain.component_data.G[:, :], G))
+            self.assertTrue(np.array_equal(grain.component_data.B[:, :], B))
+        else:
+            (Y, U, V) = self._test_pattern_yuv(fmt)
+
+            self.assertTrue(np.array_equal(grain.component_data.Y[:, :], Y))
+            self.assertTrue(np.array_equal(grain.component_data.U[:, :], U))
+            self.assertTrue(np.array_equal(grain.component_data.V[:, :], V))
 
     def test_video_grain_create(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -432,23 +456,21 @@ class TestGrain (TestCase):
         ots = Timestamp.from_tai_sec_nsec("417798915:5")
         sts = Timestamp.from_tai_sec_nsec("417798915:10")
 
-        for (fmt_in, fmt_out) in [(CogFrameFormat.UYVY, CogFrameFormat.U8_444),
-                                  (CogFrameFormat.U8_444, CogFrameFormat.UYVY),
-                                  (CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB),
-                                  (CogFrameFormat.U8_444_RGB, CogFrameFormat.RGB)]:
-            with self.subTest(fmt_in=fmt_in, fmt_out=fmt_out):
-                with mock.patch.object(Timestamp, "get_time", return_value=cts):
-                    grain_in = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
-                                          cog_frame_format=fmt_in,
-                                          width=16, height=16, cog_frame_layout=CogFrameLayout.FULL_FRAME)
+        for fmt_in in [CogFrameFormat.UYVY, CogFrameFormat.U8_444, CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB]:
+            for fmt_out in [CogFrameFormat.UYVY, CogFrameFormat.U8_444, CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB]:
+                with self.subTest(fmt_in=fmt_in, fmt_out=fmt_out):
+                    with mock.patch.object(Timestamp, "get_time", return_value=cts):
+                        grain_in = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                                            cog_frame_format=fmt_in,
+                                            width=16, height=16, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
-                self.assertIsVideoGrain(fmt_in, width=16, height=16)(grain_in)
-                self.write_test_pattern(grain_in)
+                    self.assertIsVideoGrain(fmt_in, width=16, height=16)(grain_in)
+                    self.write_test_pattern(grain_in)
 
-                grain_out = grain_in.convert(fmt_out)
+                    grain_out = grain_in.convert(fmt_out)
 
-                self.assertIsVideoGrain(fmt_out, width=16, height=16)(grain_out)
-                self.assertMatchesTestPattern(grain_out)
+                    self.assertIsVideoGrain(fmt_out, width=16, height=16)(grain_out)
+                    self.assertMatchesTestPattern(grain_out)
 
     def test_video_grain_create_discontiguous(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")

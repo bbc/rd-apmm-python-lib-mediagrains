@@ -30,6 +30,8 @@ from mediagrains import grain as bytesgrain
 from mediagrains import grain_constructors as bytesgrain_constructors
 from copy import copy, deepcopy
 
+from .convert import get_grain_conversion_function
+
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
 
@@ -225,7 +227,10 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
         :returns: A new grain of the specified format. Notably converting to the same format is the same as a deepcopy
         :raises: NotImplementedError if the requested conversion is not possible
         """
-        return deepcopy(self)
+        if self.format == fmt:
+            return deepcopy(self)
+        else:
+            return get_grain_conversion_function(self.format, fmt)(self)
 
 
 def VideoGrain(*args, **kwargs) -> VIDEOGRAIN:
