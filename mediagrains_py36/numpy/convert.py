@@ -19,10 +19,13 @@
 Library for converting video grain formats represented as numpy arrays.
 """
 
-from mediagrains.cogenums import CogFrameFormat, CogFrameLayout
+from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, COG_FRAME_FORMAT_ACTIVE_BITS, COG_PLANAR_FORMAT, PlanarChromaFormat
 from typing import Callable, List
 from uuid import uuid5, UUID
 import numpy as np
+import numpy.random as npr
+
+from pdb import set_trace
 
 from .videograin import VideoGrain, VIDEOGRAIN
 
@@ -133,6 +136,42 @@ def _simple_duplicate_convert_yuv420__yuv422(fmt: CogFrameFormat) -> Callable[[V
     return _inner
 
 
+# Bit depth conversions
+def _unbiased_right_shift(a: np.ndarray, n: int) -> np.ndarray:
+    return (a >> n) + ((a >> (n - 1))&0x1)
+
+def _bitdepth_down_convert(fmt: CogFrameFormat) -> Callable[[VIDEOGRAIN], VIDEOGRAIN]:
+    def _inner(grain_in: VIDEOGRAIN) -> VIDEOGRAIN:
+        grain_out = new_grain(grain_in, fmt)
+
+        bitshift = COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format) - COG_FRAME_FORMAT_ACTIVE_BITS(fmt)
+
+        grain_out.component_data[0][:] = _unbiased_right_shift(grain_in.component_data[0][:], bitshift)
+        grain_out.component_data[1][:] = _unbiased_right_shift(grain_in.component_data[1][:], bitshift)
+        grain_out.component_data[2][:] = _unbiased_right_shift(grain_in.component_data[2][:], bitshift)
+
+        return grain_out
+    return _inner
+
+def _noisy_left_shift(a: np.ndarray, n: int) -> np.ndarray:
+    rando = ((npr.random_sample(a.shape) * (1 << n)).astype(a.dtype)) & ((1 << n) - 1)
+    return (a << n) + rando
+
+def _bitdepth_up_convert(fmt: CogFrameFormat) -> Callable[[VIDEOGRAIN], VIDEOGRAIN]:
+    def _inner(grain_in: VIDEOGRAIN) -> VIDEOGRAIN:
+        grain_out = new_grain(grain_in, fmt)
+
+        bitshift = COG_FRAME_FORMAT_ACTIVE_BITS(fmt) - COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format)
+
+        dt = grain_out.component_data[0].dtype
+
+        grain_out.component_data[0][:] = _noisy_left_shift(grain_in.component_data[0][:].astype(dt), bitshift)
+        grain_out.component_data[1][:] = _noisy_left_shift(grain_in.component_data[1][:].astype(dt), bitshift)
+        grain_out.component_data[2][:] = _noisy_left_shift(grain_in.component_data[2][:].astype(dt), bitshift)
+
+        return grain_out
+    return _inner
+
 
 def _register_simple_copy_conversions_for_formats_yuv(fmts: List[CogFrameFormat]):
     for i in range(0, len(fmts)):
@@ -236,3 +275,15 @@ VIDEOGRAIN.grain_conversion(CogFrameFormat.S32_444, CogFrameFormat.S32_420)(lamb
 VIDEOGRAIN.grain_conversion(CogFrameFormat.S32_420, CogFrameFormat.S32_422)(_simple_duplicate_convert_yuv420__yuv422(CogFrameFormat.S32_422))
 VIDEOGRAIN.grain_conversion(CogFrameFormat.S32_420, CogFrameFormat.S32_444)(lambda grain: _simple_duplicate_convert_yuv422__yuv444(CogFrameFormat.S32_444)(_simple_duplicate_convert_yuv420__yuv422(CogFrameFormat.S32_422)(grain)))
 VIDEOGRAIN.grain_conversion(CogFrameFormat.S32_422, CogFrameFormat.S32_444)(_simple_duplicate_convert_yuv422__yuv444(CogFrameFormat.S32_444))
+
+
+# Bit depth conversions
+def distinct_pairs_from(vals):
+    for i in range(0, len(vals)):
+        for j in range(i + 1, len(vals)):
+            yield (vals[i], vals[j])
+
+for ss in [PlanarChromaFormat.YUV_420, PlanarChromaFormat.YUV_422, PlanarChromaFormat.YUV_444, PlanarChromaFormat.RGB]:
+    for (d1, d2) in distinct_pairs_from([8, 10, 12, 16, 32]):
+        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(ss, d2), COG_PLANAR_FORMAT(ss, d1))(_bitdepth_down_convert(COG_PLANAR_FORMAT(ss, d1)))
+        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(ss, d1), COG_PLANAR_FORMAT(ss, d2))(_bitdepth_up_convert(COG_PLANAR_FORMAT(ss, d2)))

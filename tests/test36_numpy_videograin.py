@@ -18,7 +18,7 @@
 from unittest import TestCase
 
 import uuid
-from mediagrains.numpy import VideoGrain
+from mediagrains.numpy import VideoGrain, VIDEOGRAIN
 from mediagrains.numpy import flow_id_for_converted_flow
 from mediagrains_py36.numpy.videograin import _dtype_from_cogframeformat
 from mediagrains.cogenums import (
@@ -36,7 +36,7 @@ from mediatimestamp.immutable import Timestamp, TimeRange
 import mock
 from fractions import Fraction
 from copy import copy, deepcopy
-from typing import Tuple
+from typing import Tuple, Optional
 
 import numpy as np
 
@@ -298,9 +298,9 @@ class TestGrain (TestCase):
             if bps == 1:
                 dtype = np.dtype(np.uint8)
             elif bps == 2:
-                dtype = np.dtype(np.int16)
+                dtype = np.dtype(np.uint16)
             elif bps == 4:
-                dtype = np.dtype(np.int32)
+                dtype = np.dtype(np.uint32)
             else:
                 raise Exception()
 
@@ -387,24 +387,30 @@ class TestGrain (TestCase):
             grain.component_data.U[:, :] = U
             grain.component_data.V[:, :] = V
 
-    def assertArrayEqual(self, a: np.ndarray, b: np.ndarray):
-        self.assertTrue(np.array_equal(a, b), msg="{} != {}".format(a, b))
+    def assertArrayEqual(self, a: np.ndarray, b: np.ndarray, max_diff: Optional[int] = None):
+        if max_diff is None:
+            self.assertTrue(np.array_equal(a, b), msg="{} != {}".format(a, b))
+        else:
+            a = a.astype(np.dtype(np.int32))
+            b = b.astype(np.dtype(np.int32))
+            self.assertTrue(np.amax(np.absolute(a - b)) <= max_diff,
+                            msg="{} - {} = {} (allowing up to {} difference)".format(a, b, a - b, max_diff))
 
-    def assertMatchesTestPattern(self, grain):
+    def assertMatchesTestPattern(self, grain: VIDEOGRAIN, max_diff: Optional[int] = None):
         fmt = grain.format
 
         if self._is_rgb(fmt):
             (R, G, B) = self._test_pattern_rgb(fmt)
 
-            self.assertArrayEqual(grain.component_data.R[:, :], R)
-            self.assertArrayEqual(grain.component_data.G[:, :], G)
-            self.assertArrayEqual(grain.component_data.B[:, :], B)
+            self.assertArrayEqual(grain.component_data.R[:, :], R, max_diff=max_diff)
+            self.assertArrayEqual(grain.component_data.G[:, :], G, max_diff=max_diff)
+            self.assertArrayEqual(grain.component_data.B[:, :], B, max_diff=max_diff)
         else:
             (Y, U, V) = self._test_pattern_yuv(fmt)
 
-            self.assertArrayEqual(grain.component_data.Y[:, :], Y)
-            self.assertArrayEqual(grain.component_data.U[:, :], U)
-            self.assertArrayEqual(grain.component_data.V[:, :], V)
+            self.assertArrayEqual(grain.component_data.Y[:, :], Y, max_diff=max_diff)
+            self.assertArrayEqual(grain.component_data.U[:, :], U, max_diff=max_diff)
+            self.assertArrayEqual(grain.component_data.V[:, :], V, max_diff=max_diff)
 
     def test_video_grain_create(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -477,6 +483,10 @@ class TestGrain (TestCase):
                 [CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_420_10BIT], # All YUV 10bit formats except for v210
                 [CogFrameFormat.S16_444_12BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.S16_420_12BIT], # All YUV 12bit formats
                 [CogFrameFormat.S32_444, CogFrameFormat.S32_422, CogFrameFormat.S32_420], # All YUV 32bit formats
+                [CogFrameFormat.S32_444, CogFrameFormat.S16_444, CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_444_12BIT, CogFrameFormat.U8_444], # Bitdepth conversion
+                [CogFrameFormat.S32_422, CogFrameFormat.S16_422, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.U8_422], # Bitdepth conversion
+                [CogFrameFormat.S32_420, CogFrameFormat.S16_420, CogFrameFormat.S16_420_10BIT, CogFrameFormat.S16_420_12BIT, CogFrameFormat.U8_420], # Bitdepth conversion
+                [CogFrameFormat.S32_444_RGB, CogFrameFormat.S16_444_RGB, CogFrameFormat.S16_444_10BIT_RGB, CogFrameFormat.S16_444_12BIT_RGB, CogFrameFormat.U8_444_RGB], # Bitdepth conversion
                 ]:
             for (fmt_in, fmt_out) in pairs_from(fmts):
                 with self.subTest(fmt_in=fmt_in, fmt_out=fmt_out):
@@ -495,7 +505,14 @@ class TestGrain (TestCase):
                     else:
                         flow_id_out = flow_id
                     self.assertIsVideoGrain(fmt_out, flow_id=flow_id_out, width=16, height=16, ignore_cts=True)(grain_out)
-                    self.assertMatchesTestPattern(grain_out)
+
+                    # If we've converted from a different bit-depth we need to ignore rounding errors
+                    if self._get_bitdepth(fmt_out) > self._get_bitdepth(fmt_in):
+                        self.assertMatchesTestPattern(grain_out, max_diff=1 << (self._get_bitdepth(fmt_out)  + 1 - self._get_bitdepth(fmt_in)))
+                    elif self._get_bitdepth(fmt_out) < self._get_bitdepth(fmt_in):
+                        self.assertMatchesTestPattern(grain_out, max_diff=1)
+                    else:
+                        self.assertMatchesTestPattern(grain_out)
 
     def test_video_grain_create_discontiguous(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")

@@ -52,9 +52,9 @@ def _dtype_from_cogframeformat(fmt: CogFrameFormat) -> np.dtype:
         if COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt) == 1:
             return np.dtype(np.uint8)
         elif COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt) == 2:
-            return np.dtype(np.int16)
+            return np.dtype(np.uint16)
         elif COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt) == 4:
-            return np.dtype(np.int32)
+            return np.dtype(np.uint32)
     elif fmt in [CogFrameFormat.UYVY,
                  CogFrameFormat.YUYV,
                  CogFrameFormat.AYUV,
@@ -69,9 +69,9 @@ def _dtype_from_cogframeformat(fmt: CogFrameFormat) -> np.dtype:
                  CogFrameFormat.xBGR]:
         return np.dtype(np.uint8)
     elif fmt == CogFrameFormat.v216:
-        return np.dtype(np.int16)
+        return np.dtype(np.uint16)
     elif fmt == CogFrameFormat.v210:
-        return np.dtype(np.int32)
+        return np.dtype(np.uint32)
 
     raise NotImplementedError("Cog Frame Format not amongst those supported for numpy array interpretation")
 
