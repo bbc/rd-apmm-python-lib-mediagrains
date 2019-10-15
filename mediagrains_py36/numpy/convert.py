@@ -147,11 +147,14 @@ def _register_simple_copy_conversions_for_formats_rgb(fmts: List[CogFrameFormat]
             VIDEOGRAIN.grain_conversion(fmts[j], fmts[i])(_simple_copy_convert_rgb(fmts[i]))
 
 
-# 8bit 4:2:2 YUV formats
+# 4:2:2 YUV formats
 _register_simple_copy_conversions_for_formats_yuv([
     CogFrameFormat.YUYV,
     CogFrameFormat.UYVY,
     CogFrameFormat.U8_422])
+_register_simple_copy_conversions_for_formats_yuv([
+    CogFrameFormat.v216,
+    CogFrameFormat.S16_422])
 
 # 8 bit RGB formats
 _register_simple_copy_conversions_for_formats_rgb([
@@ -183,3 +186,26 @@ VIDEOGRAIN.grain_conversion(CogFrameFormat.U8_420, CogFrameFormat.U8_444)(lambda
 # 8 bit 4:2:2 YUV to 8 bit 4:4:4 YUV
 for fmt in [CogFrameFormat.U8_422, CogFrameFormat.UYVY, CogFrameFormat.YUYV]:
     VIDEOGRAIN.grain_conversion(fmt, CogFrameFormat.U8_444)(_simple_duplicate_convert_yuv422__yuv444(CogFrameFormat.U8_444))
+
+
+# 16 bit 4:4:4 YUV to 16 bit 4:2:2 YUV
+for fmt in [CogFrameFormat.S16_422, CogFrameFormat.v216]:
+    VIDEOGRAIN.grain_conversion(CogFrameFormat.S16_444, fmt)(_simple_mean_convert_yuv444__yuv422(fmt))
+
+# 16 bit 4:2:2 YUV to 16 bit 4:2:0 YUV
+for fmt in [CogFrameFormat.S16_422, CogFrameFormat.v216]:
+    VIDEOGRAIN.grain_conversion(fmt, CogFrameFormat.S16_420)(_simple_mean_convert_yuv422__yuv420(CogFrameFormat.S16_420))
+
+# 16 bit 4:4:4 YUV to 16 bit 4:2:0 YUV
+VIDEOGRAIN.grain_conversion(CogFrameFormat.S16_444, CogFrameFormat.S16_420)(lambda grain: _simple_mean_convert_yuv422__yuv420(CogFrameFormat.S16_420)(_simple_mean_convert_yuv444__yuv422(CogFrameFormat.S16_422)(grain)))
+
+# 16 bit 4:2:0 YUV to 16 bit 4:2:2 YUV
+for fmt in [CogFrameFormat.S16_422, CogFrameFormat.v216]:
+    VIDEOGRAIN.grain_conversion(CogFrameFormat.S16_420, fmt)(_simple_duplicate_convert_yuv420__yuv422(fmt))
+
+# 16 bit 4:2:0 YUV to 16 bit 4:4:4 YUV
+VIDEOGRAIN.grain_conversion(CogFrameFormat.S16_420, CogFrameFormat.S16_444)(lambda grain: _simple_duplicate_convert_yuv422__yuv444(CogFrameFormat.S16_444)(_simple_duplicate_convert_yuv420__yuv422(CogFrameFormat.S16_422)(grain)))
+
+# 16 bit 4:2:2 YUV to 16 bit 4:4:4 YUV
+for fmt in [CogFrameFormat.S16_422, CogFrameFormat.v216]:
+    VIDEOGRAIN.grain_conversion(fmt, CogFrameFormat.S16_444)(_simple_duplicate_convert_yuv422__yuv444(CogFrameFormat.S16_444))

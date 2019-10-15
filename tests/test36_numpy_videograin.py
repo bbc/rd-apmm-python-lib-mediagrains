@@ -20,6 +20,7 @@ from unittest import TestCase
 import uuid
 from mediagrains.numpy import VideoGrain
 from mediagrains.numpy import flow_id_for_converted_flow
+from mediagrains_py36.numpy.videograin import _dtype_from_cogframeformat
 from mediagrains.cogenums import (
     CogFrameFormat,
     CogFrameLayout,
@@ -348,9 +349,9 @@ class TestGrain (TestCase):
         bd = self._get_bitdepth(fmt)
 
         v = (1 << (bd - 2))*3
-        return (np.array([[v, v, v, v, 0, 0, 0, 0, v, v, v, v, 0, 0, 0, 0] for _ in range(0, 16)], dtype=np.dtype(np.int32)).transpose(),
-                np.array([[v, v, v, v, v, v, v, v, 0, 0, 0, 0, 0, 0, 0, 0] for _ in range(0, 16)], dtype=np.dtype(np.int32)).transpose(),
-                np.array([[v, v, 0, 0, v, v, 0, 0, v, v, 0, 0, v, v, 0, 0] for _ in range(0, 16)], dtype=np.dtype(np.int32)).transpose())
+        return (np.array([[v, v, v, v, 0, 0, 0, 0, v, v, v, v, 0, 0, 0, 0] for _ in range(0, 16)], dtype=_dtype_from_cogframeformat(fmt)).transpose(),
+                np.array([[v, v, v, v, v, v, v, v, 0, 0, 0, 0, 0, 0, 0, 0] for _ in range(0, 16)], dtype=_dtype_from_cogframeformat(fmt)).transpose(),
+                np.array([[v, v, 0, 0, v, v, 0, 0, v, v, 0, 0, v, v, 0, 0] for _ in range(0, 16)], dtype=_dtype_from_cogframeformat(fmt)).transpose())
 
     def _test_pattern_yuv(self, fmt: CogFrameFormat) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         (R, G, B) = self._test_pattern_rgb(fmt)
@@ -368,7 +369,7 @@ class TestGrain (TestCase):
             U = (U[:, 0::2] + U[:, 1::2])/2
             V = (V[:, 0::2] + V[:, 1::2])/2
 
-        return (np.around(Y), np.around(U), np.around(V))
+        return (np.around(Y).astype(_dtype_from_cogframeformat(fmt)), np.around(U).astype(_dtype_from_cogframeformat(fmt)), np.around(V).astype(_dtype_from_cogframeformat(fmt)))
 
     def write_test_pattern(self, grain):
         fmt = grain.format
@@ -471,7 +472,8 @@ class TestGrain (TestCase):
         # This checks conversions within YUV and RGB space, but not conversions between the two
         for fmts in [
                 [CogFrameFormat.YUYV, CogFrameFormat.UYVY, CogFrameFormat.U8_444, CogFrameFormat.U8_422, CogFrameFormat.U8_420], # All YUV 8bit formats
-                [CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB, CogFrameFormat.RGBx, CogFrameFormat.xRGB, CogFrameFormat.BGRx, CogFrameFormat.xBGR] # All 8-bit 3 component RGB formats
+                [CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB, CogFrameFormat.RGBx, CogFrameFormat.xRGB, CogFrameFormat.BGRx, CogFrameFormat.xBGR], # All 8-bit 3 component RGB formats
+                [CogFrameFormat.v216, CogFrameFormat.S16_444, CogFrameFormat.S16_422, CogFrameFormat.S16_420], # All YUV 16bit formats
                 ]:
             for (fmt_in, fmt_out) in pairs_from(fmts):
                 with self.subTest(fmt_in=fmt_in, fmt_out=fmt_out):
