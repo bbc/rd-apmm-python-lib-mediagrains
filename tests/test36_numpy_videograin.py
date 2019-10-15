@@ -474,6 +474,7 @@ class TestGrain (TestCase):
                 [CogFrameFormat.YUYV, CogFrameFormat.UYVY, CogFrameFormat.U8_444, CogFrameFormat.U8_422, CogFrameFormat.U8_420], # All YUV 8bit formats
                 [CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB, CogFrameFormat.RGBx, CogFrameFormat.xRGB, CogFrameFormat.BGRx, CogFrameFormat.xBGR], # All 8-bit 3 component RGB formats
                 [CogFrameFormat.v216, CogFrameFormat.S16_444, CogFrameFormat.S16_422, CogFrameFormat.S16_420], # All YUV 16bit formats
+                [CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_420_10BIT], # All YUV 10bit formats except for v210
                 ]:
             for (fmt_in, fmt_out) in pairs_from(fmts):
                 with self.subTest(fmt_in=fmt_in, fmt_out=fmt_out):
