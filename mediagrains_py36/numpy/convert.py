@@ -102,19 +102,26 @@ def _simple_duplicate_convert_yuv420__yuv422(grain_in: VIDEOGRAIN, grain_out: VI
 def _unbiased_right_shift(a: np.ndarray, n: int) -> np.ndarray:
     return (a >> n) + ((a >> (n - 1))&0x1)
 
-def _bitdepth_down_convert(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _bitdepth_down_convert_yuv(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
     bitshift = COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format) - COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.format)
 
     grain_out.component_data[0][:] = _unbiased_right_shift(grain_in.component_data[0][:], bitshift)
     grain_out.component_data[1][:] = _unbiased_right_shift(grain_in.component_data[1][:], bitshift)
     grain_out.component_data[2][:] = _unbiased_right_shift(grain_in.component_data[2][:], bitshift)
 
+def _bitdepth_down_convert_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+    bitshift = COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format) - COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.format)
+
+    grain_out.component_data.R[:] = _unbiased_right_shift(grain_in.component_data.R[:], bitshift)
+    grain_out.component_data.G[:] = _unbiased_right_shift(grain_in.component_data.G[:], bitshift)
+    grain_out.component_data.B[:] = _unbiased_right_shift(grain_in.component_data.B[:], bitshift)
+
 
 def _noisy_left_shift(a: np.ndarray, n: int) -> np.ndarray:
     rando = ((npr.random_sample(a.shape) * (1 << n)).astype(a.dtype)) & ((1 << n) - 1)
     return (a << n) + rando
 
-def _bitdepth_up_convert(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _bitdepth_up_convert_yuv(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
     bitshift = COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.format) - COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format)
 
     dt = grain_out.component_data[0].dtype
@@ -122,6 +129,15 @@ def _bitdepth_up_convert(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
     grain_out.component_data[0][:] = _noisy_left_shift(grain_in.component_data[0][:].astype(dt), bitshift)
     grain_out.component_data[1][:] = _noisy_left_shift(grain_in.component_data[1][:].astype(dt), bitshift)
     grain_out.component_data[2][:] = _noisy_left_shift(grain_in.component_data[2][:].astype(dt), bitshift)
+
+def _bitdepth_up_convert_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+    bitshift = COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.format) - COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format)
+
+    dt = grain_out.component_data[0].dtype
+
+    grain_out.component_data.R[:] = _noisy_left_shift(grain_in.component_data.R[:].astype(dt), bitshift)
+    grain_out.component_data.G[:] = _noisy_left_shift(grain_in.component_data.G[:].astype(dt), bitshift)
+    grain_out.component_data.B[:] = _noisy_left_shift(grain_in.component_data.B[:].astype(dt), bitshift)
 
 
 # Colourspace conversions (based on rec.709)
@@ -161,129 +177,94 @@ def _register_simple_copy_conversions_for_formats_rgb(fmts: List[CogFrameFormat]
             VIDEOGRAIN.grain_conversion(fmts[j], fmts[i])(_simple_copy_convert_rgb)
 
 
-# 4:2:2 8 bit YUV formats
-_register_simple_copy_conversions_for_formats_yuv([
-    CogFrameFormat.YUYV,
-    CogFrameFormat.UYVY,
-    CogFrameFormat.U8_422])
+def _equivalent_formats(fmt: CogFrameFormat) -> List[CogFrameFormat]:
+    equiv_categories = [
+        (CogFrameFormat.U8_422, CogFrameFormat.UYVY, CogFrameFormat.YUYV),
+        (CogFrameFormat.S16_422, CogFrameFormat.v216),
+        (CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB, CogFrameFormat.RGBx, CogFrameFormat.xRGB, CogFrameFormat.BGRx, CogFrameFormat.xBGR)]
+
+    for cat in equiv_categories:
+        if fmt in cat:
+            return cat
+    return (fmt,)
 
 
-# 8 bit RGB formats
-_register_simple_copy_conversions_for_formats_rgb([
-    CogFrameFormat.RGB,
-    CogFrameFormat.U8_444_RGB,
-    CogFrameFormat.RGBx,
-    CogFrameFormat.xRGB,
-    CogFrameFormat.BGRx,
-    CogFrameFormat.xBGR])
+_register_simple_copy_conversions_for_formats_yuv(_equivalent_formats(CogFrameFormat.U8_422))
+_register_simple_copy_conversions_for_formats_yuv(_equivalent_formats(CogFrameFormat.S16_422))
+_register_simple_copy_conversions_for_formats_rgb(_equivalent_formats(CogFrameFormat.U8_444_RGB))
 
-
-# 8 bit 4:4:4 YUV to 8 bit 4:2:2 YUV
-for fmt in [CogFrameFormat.U8_422, CogFrameFormat.UYVY, CogFrameFormat.YUYV]:
-    VIDEOGRAIN.grain_conversion(CogFrameFormat.U8_444, fmt)(_simple_mean_convert_yuv444__yuv422)
-
-
-# 8 bit 4:2:2 YUV to 8 bit 4:2:0 YUV
-for fmt in [CogFrameFormat.U8_422, CogFrameFormat.UYVY, CogFrameFormat.YUYV]:
-    VIDEOGRAIN.grain_conversion(fmt, CogFrameFormat.U8_420)(_simple_mean_convert_yuv422__yuv420)
-
-
-# 8 bit 4:4:4 YUV to 8 bit 4:2:0 YUV
-VIDEOGRAIN.grain_conversion(CogFrameFormat.U8_444, CogFrameFormat.U8_420)(compose(_simple_mean_convert_yuv444__yuv422, CogFrameFormat.U8_422, _simple_mean_convert_yuv422__yuv420))
-
-
-# 8 bit 4:2:0 YUV to 8 bit 4:2:2 YUV
-for fmt in [CogFrameFormat.U8_422, CogFrameFormat.UYVY, CogFrameFormat.YUYV]:
-    VIDEOGRAIN.grain_conversion(CogFrameFormat.U8_420, fmt)(_simple_duplicate_convert_yuv420__yuv422)
-
-
-# 8 bit 4:2:0 YUV to 8 bit 4:4:4 YUV
-VIDEOGRAIN.grain_conversion(CogFrameFormat.U8_420, CogFrameFormat.U8_444)(compose(_simple_duplicate_convert_yuv420__yuv422, CogFrameFormat.U8_422, _simple_duplicate_convert_yuv422__yuv444))
-
-
-# 8 bit 4:2:2 YUV to 8 bit 4:4:4 YUV
-for fmt in [CogFrameFormat.U8_422, CogFrameFormat.UYVY, CogFrameFormat.YUYV]:
-    VIDEOGRAIN.grain_conversion(fmt, CogFrameFormat.U8_444)(_simple_duplicate_convert_yuv422__yuv444)
-
-
-# 4:2:2 16 bit YUV formats
-_register_simple_copy_conversions_for_formats_yuv([
-    CogFrameFormat.v216,
-    CogFrameFormat.S16_422])
-
-
-# 16 bit 4:4:4 YUV to 16 bit 4:2:2 YUV
-for fmt in [CogFrameFormat.S16_422, CogFrameFormat.v216]:
-    VIDEOGRAIN.grain_conversion(CogFrameFormat.S16_444, fmt)(_simple_mean_convert_yuv444__yuv422)
-
-
-# 16 bit 4:2:2 YUV to 16 bit 4:2:0 YUV
-for fmt in [CogFrameFormat.S16_422, CogFrameFormat.v216]:
-    VIDEOGRAIN.grain_conversion(fmt, CogFrameFormat.S16_420)(_simple_mean_convert_yuv422__yuv420)
-
-
-# 16 bit 4:4:4 YUV to 16 bit 4:2:0 YUV
-VIDEOGRAIN.grain_conversion(CogFrameFormat.S16_444, CogFrameFormat.S16_420)(compose(_simple_mean_convert_yuv444__yuv422, CogFrameFormat.S16_422, _simple_mean_convert_yuv422__yuv420))
-
-
-# 16 bit 4:2:0 YUV to 16 bit 4:2:2 YUV
-for fmt in [CogFrameFormat.S16_422, CogFrameFormat.v216]:
-    VIDEOGRAIN.grain_conversion(CogFrameFormat.S16_420, fmt)(_simple_duplicate_convert_yuv420__yuv422)
-
-
-# 16 bit 4:2:0 YUV to 16 bit 4:4:4 YUV
-VIDEOGRAIN.grain_conversion(CogFrameFormat.S16_420, CogFrameFormat.S16_444)(compose(_simple_duplicate_convert_yuv420__yuv422, CogFrameFormat.S16_422, _simple_duplicate_convert_yuv422__yuv444))
-
-
-# 16 bit 4:2:2 YUV to 16 bit 4:4:4 YUV
-for fmt in [CogFrameFormat.S16_422, CogFrameFormat.v216]:
-    VIDEOGRAIN.grain_conversion(fmt, CogFrameFormat.S16_444)(_simple_duplicate_convert_yuv422__yuv444)
-
-
-# higher bit-depth conversions
-for bd in [10, 12, 32]:
-    VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, bd), COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_422, bd))(_simple_mean_convert_yuv444__yuv422)
-    VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_422, bd), COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_420, bd))(_simple_mean_convert_yuv422__yuv420)
+# 8 and 16 bit YUV colour subsampling conversions
+for bd in [8, 10, 12, 16, 32]:
+    for fmt in _equivalent_formats(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_422, bd)):
+        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, bd), fmt)(_simple_mean_convert_yuv444__yuv422)
+        VIDEOGRAIN.grain_conversion(fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_420, bd))(_simple_mean_convert_yuv422__yuv420)
+        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_420, bd), fmt)(_simple_duplicate_convert_yuv420__yuv422)
+        VIDEOGRAIN.grain_conversion(fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, bd))(_simple_duplicate_convert_yuv422__yuv444)
     VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, bd), COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_420, bd))(compose(_simple_mean_convert_yuv444__yuv422, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_422, bd), _simple_mean_convert_yuv422__yuv420))
-    VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_420, bd), COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_422, bd))(_simple_duplicate_convert_yuv420__yuv422)
     VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_420, bd), COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, bd))(compose(_simple_duplicate_convert_yuv420__yuv422, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_422, bd), _simple_duplicate_convert_yuv422__yuv444))
-    VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_422, bd), COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, bd))(_simple_duplicate_convert_yuv422__yuv444)
 
 
 # Bit depth conversions
-for ss in [PlanarChromaFormat.YUV_420, PlanarChromaFormat.YUV_422, PlanarChromaFormat.YUV_444, PlanarChromaFormat.RGB]:
-    for (d1, d2) in distinct_pairs_from([8, 10, 12, 16, 32]):
-        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(ss, d2), COG_PLANAR_FORMAT(ss, d1))(_bitdepth_down_convert)
-        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(ss, d1), COG_PLANAR_FORMAT(ss, d2))(_bitdepth_up_convert)
+for (d1, d2) in distinct_pairs_from([8, 10, 12, 16, 32]):
+    for ss in [PlanarChromaFormat.YUV_420, PlanarChromaFormat.YUV_422, PlanarChromaFormat.YUV_444]:
+        for fmt1 in _equivalent_formats(COG_PLANAR_FORMAT(ss, d1)):
+            for fmt2 in _equivalent_formats(COG_PLANAR_FORMAT(ss, d2)):
+                VIDEOGRAIN.grain_conversion(fmt2, fmt1)(_bitdepth_down_convert_yuv)
+                VIDEOGRAIN.grain_conversion(fmt1, fmt2)(_bitdepth_up_convert_yuv)
+    for ss in [PlanarChromaFormat.RGB]:
+        for fmt1 in _equivalent_formats(COG_PLANAR_FORMAT(ss, d1)):
+            for fmt2 in _equivalent_formats(COG_PLANAR_FORMAT(ss, d2)):
+                VIDEOGRAIN.grain_conversion(fmt2, fmt1)(_bitdepth_down_convert_rgb)
+                VIDEOGRAIN.grain_conversion(fmt1, fmt2)(_bitdepth_up_convert_rgb)
 
 
 # Colourspace conversion
 for d in [8, 10, 12, 16, 32]:
-    VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d), COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d))(_convert_yuv444_to_rgb)
-    VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d), COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d))(_convert_rgb_to_yuv444)
+    for fmt in _equivalent_formats(COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d)):
+        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d), fmt)(_convert_yuv444_to_rgb)
+        VIDEOGRAIN.grain_conversion(fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d))(_convert_rgb_to_yuv444)
 
 
 # We have a number of transformations that aren't supported directly, but are via an intermediate format
 # Bit depth and chroma combination conversions
 for (ss1, ss2) in distinct_pairs_from([PlanarChromaFormat.YUV_420, PlanarChromaFormat.YUV_422, PlanarChromaFormat.YUV_444]):
     for (d1, d2) in distinct_pairs_from([8, 10, 12, 16, 32]):
-        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(ss1, d1), COG_PLANAR_FORMAT(ss2, d2))(
-            compose(
-                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss1, d1), COG_PLANAR_FORMAT(ss2, d1)),
-                COG_PLANAR_FORMAT(ss2, d1),
-                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss2, d1), COG_PLANAR_FORMAT(ss2, d2))))
-        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(ss1, d2), COG_PLANAR_FORMAT(ss2, d1))(
-            compose(
-                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss1, d2), COG_PLANAR_FORMAT(ss2, d2)),
-                COG_PLANAR_FORMAT(ss2, d2),
-                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss2, d2), COG_PLANAR_FORMAT(ss2, d1))))
-        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(ss2, d1), COG_PLANAR_FORMAT(ss1, d2))(
-            compose(
-                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss2, d1), COG_PLANAR_FORMAT(ss2, d2)),
-                COG_PLANAR_FORMAT(ss2, d2),
-                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss2, d2), COG_PLANAR_FORMAT(ss1, d2))))
-        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(ss2, d2), COG_PLANAR_FORMAT(ss1, d1))(
-            compose(
-                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss2, d2), COG_PLANAR_FORMAT(ss1, d2)),
-                COG_PLANAR_FORMAT(ss1, d2),
-                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss1, d2), COG_PLANAR_FORMAT(ss1, d1))))
+        for fmt11 in _equivalent_formats(COG_PLANAR_FORMAT(ss1, d1)):
+            for fmt22 in _equivalent_formats(COG_PLANAR_FORMAT(ss2, d2)):
+                VIDEOGRAIN.grain_conversion_two_step(fmt11, COG_PLANAR_FORMAT(ss2, d1), fmt22)
+                VIDEOGRAIN.grain_conversion_two_step(fmt22, COG_PLANAR_FORMAT(ss1, d2), fmt11)
+        for fmt12 in _equivalent_formats(COG_PLANAR_FORMAT(ss1, d2)):
+            for fmt21 in _equivalent_formats(COG_PLANAR_FORMAT(ss2, d1)):
+                VIDEOGRAIN.grain_conversion_two_step(fmt12, COG_PLANAR_FORMAT(ss2, d2), fmt21)
+                VIDEOGRAIN.grain_conversion_two_step(fmt21, COG_PLANAR_FORMAT(ss2, d2), fmt12)
+
+# RGB and non-444 YUV at same bit-depth
+for d in [8, 10, 12, 16, 32]:
+    for rgb_fmt in _equivalent_formats(COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d)):
+        for ss in [PlanarChromaFormat.YUV_420, PlanarChromaFormat.YUV_422]:
+            for yuv_fmt in _equivalent_formats(COG_PLANAR_FORMAT(ss, d)):
+                VIDEOGRAIN.grain_conversion_two_step(rgb_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d), yuv_fmt)
+                VIDEOGRAIN.grain_conversion_two_step(yuv_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d), rgb_fmt)
+
+# RGB and YUV-444 with bit-depth conversion
+for (d1, d2) in distinct_pairs_from([8, 10, 12, 16, 32]):
+    for rgb_fmt in _equivalent_formats(COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d1)):
+        for yuv_fmt in _equivalent_formats(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d2)):
+            VIDEOGRAIN.grain_conversion_two_step(rgb_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d1), yuv_fmt)
+            VIDEOGRAIN.grain_conversion_two_step(yuv_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d2), rgb_fmt)
+    for rgb_fmt in _equivalent_formats(COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d2)):
+        for yuv_fmt in _equivalent_formats(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d1)):
+            VIDEOGRAIN.grain_conversion_two_step(rgb_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d2), yuv_fmt)
+            VIDEOGRAIN.grain_conversion_two_step(yuv_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d1), rgb_fmt)
+
+# RGB to YUV with bit-depth and colour subsampling conversion
+for (d1, d2) in distinct_pairs_from([8, 10, 12, 16, 32]):
+    for ss in [PlanarChromaFormat.YUV_420, PlanarChromaFormat.YUV_422]:
+        for rgb_fmt in _equivalent_formats(COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d1)):
+            for yuv_fmt in _equivalent_formats(COG_PLANAR_FORMAT(ss, d2)):
+                VIDEOGRAIN.grain_conversion_two_step(rgb_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d1), yuv_fmt)
+                VIDEOGRAIN.grain_conversion_two_step(yuv_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d1), rgb_fmt)
+        for rgb_fmt in _equivalent_formats(COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d2)):
+            for yuv_fmt in _equivalent_formats(COG_PLANAR_FORMAT(ss, d1)):
+                VIDEOGRAIN.grain_conversion_two_step(rgb_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d2), yuv_fmt)
+                VIDEOGRAIN.grain_conversion_two_step(yuv_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d2), rgb_fmt)

@@ -233,6 +233,15 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
         return _inner
 
     @classmethod
+    def grain_conversion_two_step(cls, fmt_in: CogFrameFormat, fmt_mid: CogFrameFormat, fmt_out: CogFrameFormat):
+        """Register a grain conversion via an intermediate format, using existing conversions"""
+        def _inner(grain_in: "VIDEOGRAIN", grain_out: "VIDEOGRAIN"):
+            grain_mid = grain_in._similar_grain(fmt_mid)
+            cls._get_grain_conversion_function(fmt_in, fmt_mid)(grain_in, grain_mid)
+            cls._get_grain_conversion_function(fmt_mid, fmt_out)(grain_mid, grain_out)
+        cls.grain_conversion(fmt_in, fmt_out)(_inner)
+
+    @classmethod
     def _get_grain_conversion_function(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat) -> Callable[["VIDEOGRAIN", "VIDEOGRAIN"], None]:
         """Return the registered grain conversion function for a specified type conversion, or raise NotImplementedError"""
         if (fmt_in, fmt_out) in cls._grain_conversions:

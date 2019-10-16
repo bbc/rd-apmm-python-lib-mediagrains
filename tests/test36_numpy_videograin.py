@@ -477,50 +477,43 @@ class TestGrain (TestCase):
                 for fmt_out in fmts:
                     yield (fmt_in, fmt_out)
 
-        for fmts in [
-                [CogFrameFormat.YUYV, CogFrameFormat.UYVY, CogFrameFormat.U8_444, CogFrameFormat.U8_422, CogFrameFormat.U8_420], # All YUV 8bit formats
-                [CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB, CogFrameFormat.RGBx, CogFrameFormat.xRGB, CogFrameFormat.BGRx, CogFrameFormat.xBGR], # All 8-bit 3 component RGB formats
-                [CogFrameFormat.v216, CogFrameFormat.S16_444, CogFrameFormat.S16_422, CogFrameFormat.S16_420], # All YUV 16bit formats
-                [CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_420_10BIT], # All YUV 10bit formats except for v210
-                [CogFrameFormat.S16_444_12BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.S16_420_12BIT], # All YUV 12bit formats
-                [CogFrameFormat.S32_444, CogFrameFormat.S32_422, CogFrameFormat.S32_420], # All YUV 32bit formats
-                [CogFrameFormat.S32_444, CogFrameFormat.S16_444, CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_444_12BIT, CogFrameFormat.U8_444,  # Bitdepth conversion
-                 CogFrameFormat.S32_422, CogFrameFormat.S16_422, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.U8_422,  # Bitdepth conversion
-                 CogFrameFormat.S32_420, CogFrameFormat.S16_420, CogFrameFormat.S16_420_10BIT, CogFrameFormat.S16_420_12BIT, CogFrameFormat.U8_420], # Bitdepth conversion
-                [CogFrameFormat.S32_444_RGB, CogFrameFormat.S16_444_RGB, CogFrameFormat.S16_444_10BIT_RGB, CogFrameFormat.S16_444_12BIT_RGB, CogFrameFormat.U8_444_RGB], # Bitdepth conversion
-                [CogFrameFormat.U8_444, CogFrameFormat.U8_444_RGB], # Colourspace conversion
-                [CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_444_10BIT_RGB], # Colourspace conversion
-                [CogFrameFormat.S16_444_12BIT, CogFrameFormat.S16_444_12BIT_RGB], # Colourspace conversion
-                [CogFrameFormat.S16_444, CogFrameFormat.S16_444_RGB], # Colourspace conversion
-                ]:
-            for (fmt_in, fmt_out) in pairs_from(fmts):
-                with self.subTest(fmt_in=fmt_in, fmt_out=fmt_out):
-                    with mock.patch.object(Timestamp, "get_time", return_value=cts):
-                        grain_in = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
-                                            cog_frame_format=fmt_in,
-                                            width=16, height=16, cog_frame_layout=CogFrameLayout.FULL_FRAME)
+        fmts = [CogFrameFormat.YUYV, CogFrameFormat.UYVY, CogFrameFormat.U8_444, CogFrameFormat.U8_422, CogFrameFormat.U8_420, # All YUV 8bit formats
+                CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB, CogFrameFormat.RGBx, CogFrameFormat.xRGB, CogFrameFormat.BGRx, CogFrameFormat.xBGR, # All 8-bit 3 component RGB formats
+                CogFrameFormat.v216, CogFrameFormat.S16_444, CogFrameFormat.S16_422, CogFrameFormat.S16_420, # All YUV 16bit formats
+                CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_420_10BIT, # All YUV 10bit formats except for v210
+                CogFrameFormat.S16_444_12BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.S16_420_12BIT, # All YUV 12bit formats
+                CogFrameFormat.S32_444, CogFrameFormat.S32_422, CogFrameFormat.S32_420] # All YUV 32bit formats
+        for (fmt_in, fmt_out) in pairs_from(fmts):
+            if not self._is_rgb(fmt_in) and self._get_bitdepth(fmt_in) == 32 and self._is_rgb(fmt_out):
+                # Conversions from 32bit YUV to RGB don't work, and this is known, so ignore theseL
+                continue
+            with self.subTest(fmt_in=fmt_in, fmt_out=fmt_out):
+                with mock.patch.object(Timestamp, "get_time", return_value=cts):
+                    grain_in = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                                        cog_frame_format=fmt_in,
+                                        width=16, height=16, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
-                    self.assertIsVideoGrain(fmt_in, width=16, height=16)(grain_in)
-                    self.write_test_pattern(grain_in)
+                self.assertIsVideoGrain(fmt_in, width=16, height=16)(grain_in)
+                self.write_test_pattern(grain_in)
 
-                    grain_out = grain_in.convert(fmt_out)
+                grain_out = grain_in.convert(fmt_out)
 
-                    if fmt_in != fmt_out:
-                        flow_id_out = grain_in.flow_id_for_converted_flow(fmt_out)
-                    else:
-                        flow_id_out = flow_id
-                    self.assertIsVideoGrain(fmt_out, flow_id=flow_id_out, width=16, height=16, ignore_cts=True)(grain_out)
+                if fmt_in != fmt_out:
+                    flow_id_out = grain_in.flow_id_for_converted_flow(fmt_out)
+                else:
+                    flow_id_out = flow_id
+                self.assertIsVideoGrain(fmt_out, flow_id=flow_id_out, width=16, height=16, ignore_cts=True)(grain_out)
 
-                    # If we've converted from a different bit-depth we need to ignore rounding errors
-                    if self._get_bitdepth(fmt_out) > self._get_bitdepth(fmt_in):
-                        self.assertMatchesTestPattern(grain_out, max_diff=1 << (self._get_bitdepth(fmt_out)  + 1 - self._get_bitdepth(fmt_in)))
-                    elif fmt_in == CogFrameFormat.S16_444 and fmt_out == CogFrameFormat.S16_444_RGB:
-                        self.assertMatchesTestPattern(grain_out, max_diff=2)
-                    elif ((self._get_bitdepth(fmt_out) < self._get_bitdepth(fmt_in)) or
-                          (self._is_rgb(fmt_in) != self._is_rgb(fmt_out))):
-                        self.assertMatchesTestPattern(grain_out, max_diff=1)
-                    else:
-                        self.assertMatchesTestPattern(grain_out)
+                # If we've converted from a different bit-depth we need to ignore rounding errors
+                if self._get_bitdepth(fmt_out) > self._get_bitdepth(fmt_in):
+                    self.assertMatchesTestPattern(grain_out, max_diff=1 << (self._get_bitdepth(fmt_out)  + 1 - self._get_bitdepth(fmt_in)))
+                elif fmt_in == CogFrameFormat.S16_444 and fmt_out == CogFrameFormat.S16_444_RGB:
+                    self.assertMatchesTestPattern(grain_out, max_diff=2)
+                elif ((self._get_bitdepth(fmt_out) < self._get_bitdepth(fmt_in)) or
+                        (self._is_rgb(fmt_in) != self._is_rgb(fmt_out))):
+                    self.assertMatchesTestPattern(grain_out, max_diff=1)
+                else:
+                    self.assertMatchesTestPattern(grain_out)
 
     def test_video_grain_create_discontiguous(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
