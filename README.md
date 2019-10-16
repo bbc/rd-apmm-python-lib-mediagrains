@@ -14,7 +14,7 @@ documentation for more details.
 
 ### Requirements
 
-* A working Python 2.7 or Python 3.x installation
+* A working Python 2.7 or Python 3.6+ installation
 * BBC R&D's internal deb repository set up as a source for apt (if installing via apt-get)
 * The tool [tox](https://tox.readthedocs.io/en/latest/) is needed to run the unittests, but not required to use the library.
 
@@ -84,6 +84,8 @@ it with colour-bars:
 ...             x_offset[i] += c.width//len(colours)
 ...             i += 1
 ```
+
+(In python3.6+ a more natural interface for accessing data exists in the form of numpy arrays. See later.)
 
 The object grain can then be freely used for whatever video processing
 is desired, or it can be serialised into a GSF file as follows:
@@ -158,6 +160,30 @@ This output gives a relatively detailed breakdown of the differences
 between two grains, both as a printed string (as seen above) and also
 in a data-centric fashion as a tree structure which can be
 interrogated in code.
+
+### Numpy arrays (Python 3.6+)
+
+In python 3.6 or higher an additional feature is provided in the form of numpy array access to the data in a grain. As such the above example of creating colourbars can be done more easily:
+
+```Python console
+>>> from mediagrains.numpy import VideoGrain
+>>> from uuid import uuid1
+>>> from mediagrains.cogenums import CogFrameFormat, CogFrameLayout
+>>> src_id = uuid1()
+>>> flow_id = uuid1()
+>>> grain = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+>>> colours = [
+...      (0x3FF, 0x000, 0x3FF),
+...      (0x3FF, 0x3FF, 0x000),
+...      (0x3FF, 0x000, 0x000),
+...      (0x3FF, 0x3FF, 0x3FF),
+...      (0x3FF, 0x200, 0x3FF),
+...      (0x3FF, 0x3FF, 0x200) ]
+>>> for c in range(0, 3):
+...     for x in range(0, grain.components[c].width):
+...         for y in range(0, grain.components[c].height):
+...             grain.component_data[c][x, y] = colours[x*len(colours)//grain.components[c].width][c]
+```
 
 ## Documentation
 

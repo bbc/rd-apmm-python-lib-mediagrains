@@ -209,6 +209,9 @@ normalise_time(value)
         from .grain_constructors import Grain
         return Grain(deepcopy(self.meta), deepcopy(self.data))
 
+    def __bytes__(self):
+        return bytes(self._data)
+
     @property
     def data(self):
         return self._data
@@ -862,16 +865,16 @@ length
             self.parent = parent
 
         def __getitem__(self, key):
-            return VIDEOGRAIN.COMPONENT(self.parent.meta['grain']['cog_frame']['components'][key])
+            return type(self.parent).COMPONENT(self.parent.meta['grain']['cog_frame']['components'][key])
 
         def __setitem__(self, key, value):
-            self.parent.meta['grain']['cog_frame']['components'][key] = VIDEOGRAIN.COMPONENT(value)
+            self.parent.meta['grain']['cog_frame']['components'][key] = type(self.parent).COMPONENT(value)
 
         def __delitem__(self, key):
             del self.parent.meta['grain']['cog_frame']['components'][key]
 
         def insert(self, key, value):
-            self.parent.meta['grain']['cog_frame']['components'].insert(key, VIDEOGRAIN.COMPONENT(value))
+            self.parent.meta['grain']['cog_frame']['components'].insert(key, type(self.parent).COMPONENT(value))
 
         def __len__(self):
             return len(self.parent.meta['grain']['cog_frame']['components'])

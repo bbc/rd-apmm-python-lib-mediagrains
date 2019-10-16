@@ -32,19 +32,21 @@ packages_required = [
     'enum34 >= 1.1.6;python_version<"3.4"',
     "six >= 1.10.0",
     "frozendict >= 1.2",
+    'numpy >= 1.17.2;python_version>="3.6"',
 ]
 
 deps_required = []
 
 
 if version_info[0] > 3 or (version_info[0] == 3 and version_info[1] >= 6):
-    packages['mediagrains_async'] = 'mediagrains_async'
+    packages['mediagrains_py36'] = 'mediagrains_py36'
+    packages['mediagrains_py36.asyncio'] = 'mediagrains_py36/asyncio'
 
 
 package_names = list(packages.keys())
 
 setup(name="mediagrains",
-      version="2.6.0.dev6",
+      version="2.6.0.dev7",
       description="Simple utility for grain-based media",
       url='https://github.com/bbc/rd-apmm-python-lib-mediagrains',
       author='James Weaver',

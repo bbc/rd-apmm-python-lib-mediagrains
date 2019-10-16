@@ -6,6 +6,7 @@
 - Added `Grain.normalise_time` method.
 - Added `Colourbars` test signal generator
 - Added `MovingBarOverlay` for test signal generators
+- Added `mediagrains.numpy` sublibrary for handling video grains as numpy arrays, in python 3.6+
 
 ## 2.5.3
 - BUGFIX: IOBytes doesn't quite fulfil bytes-like contracts, but can be converted to something that does
