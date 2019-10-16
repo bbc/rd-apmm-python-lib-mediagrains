@@ -168,6 +168,23 @@ class TestPSNR(TestCase):
             with self.assertRaises(NotImplementedError):
                 compute_psnr(grain_a, grain_b)
 
+    def test_mixed_format(self):
+        grain_a = _create_grain(CogFrameFormat.U8_422)
+        _set_colour_bars(grain_a)
+
+        planar_grain_b = _create_grain(CogFrameFormat.U8_422)
+        _set_colour_bars(planar_grain_b, noise_mask=0xfffa)
+        grain_b = _convert_u8_uyvy(planar_grain_b)
+
+        if version_info[0] > 3 or (version_info[0] == 3 and version_info[1] >= 6):
+            psnr = compute_psnr(grain_a, grain_b)
+            expected = [36.47984486113692, 39.45318336217709, 38.90095545159027]
+            self.assertTrue(self._check_psnr_range(psnr, expected, 0.1),
+                            "{} != {}".format(psnr, expected))
+        else:
+            with self.assertRaises(NotImplementedError):
+                compute_psnr(grain_a, grain_b)
+
     def test_compressed_unsupported(self):
         grain = _create_grain(CogFrameFormat.H264)
 

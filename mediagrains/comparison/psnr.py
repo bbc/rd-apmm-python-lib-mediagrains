@@ -101,6 +101,8 @@ else:
         if grain_a.width != grain_b.width or grain_a.height != grain_b.height:
             raise AttributeError("Frame dimensions differ")
 
+        if grain_a.format != grain_b.format:
+            raise NotImplementedError("Different grain formats not supported")
         if COG_FRAME_IS_COMPRESSED(grain_a.format):
             raise NotImplementedError("Compressed video is not supported")
 
