@@ -283,7 +283,33 @@ def distinct_pairs_from(vals):
         for j in range(i + 1, len(vals)):
             yield (vals[i], vals[j])
 
+# Compose two conversion functions together
+def compose(first: Callable[[VIDEOGRAIN], VIDEOGRAIN], second: Callable[[VIDEOGRAIN], VIDEOGRAIN]) -> Callable[[VIDEOGRAIN], VIDEOGRAIN]:
+    return lambda grain: second(first(grain))
+
 for ss in [PlanarChromaFormat.YUV_420, PlanarChromaFormat.YUV_422, PlanarChromaFormat.YUV_444, PlanarChromaFormat.RGB]:
     for (d1, d2) in distinct_pairs_from([8, 10, 12, 16, 32]):
         VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(ss, d2), COG_PLANAR_FORMAT(ss, d1))(_bitdepth_down_convert(COG_PLANAR_FORMAT(ss, d1)))
         VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(ss, d1), COG_PLANAR_FORMAT(ss, d2))(_bitdepth_up_convert(COG_PLANAR_FORMAT(ss, d2)))
+
+
+# We have a number of transformations that aren't supported directly, but are via an intermediate format
+# Bit depth and chroma combination conversions
+for (ss1, ss2) in distinct_pairs_from([PlanarChromaFormat.YUV_420, PlanarChromaFormat.YUV_422, PlanarChromaFormat.YUV_444]):
+    for (d1, d2) in distinct_pairs_from([8, 10, 12, 16, 32]):
+        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(ss1, d1), COG_PLANAR_FORMAT(ss2, d2))(
+            compose(
+                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss1, d1), COG_PLANAR_FORMAT(ss2, d1)),
+                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss2, d1), COG_PLANAR_FORMAT(ss2, d2))))
+        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(ss1, d2), COG_PLANAR_FORMAT(ss2, d1))(
+            compose(
+                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss1, d2), COG_PLANAR_FORMAT(ss2, d2)),
+                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss2, d2), COG_PLANAR_FORMAT(ss2, d1))))
+        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(ss2, d1), COG_PLANAR_FORMAT(ss1, d2))(
+            compose(
+                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss2, d1), COG_PLANAR_FORMAT(ss2, d2)),
+                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss2, d2), COG_PLANAR_FORMAT(ss1, d2))))
+        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(ss2, d2), COG_PLANAR_FORMAT(ss1, d1))(
+            compose(
+                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss2, d2), COG_PLANAR_FORMAT(ss1, d2)),
+                VIDEOGRAIN._get_grain_conversion_function(COG_PLANAR_FORMAT(ss1, d2), COG_PLANAR_FORMAT(ss1, d1))))

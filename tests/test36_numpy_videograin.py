@@ -483,9 +483,9 @@ class TestGrain (TestCase):
                 [CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_420_10BIT], # All YUV 10bit formats except for v210
                 [CogFrameFormat.S16_444_12BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.S16_420_12BIT], # All YUV 12bit formats
                 [CogFrameFormat.S32_444, CogFrameFormat.S32_422, CogFrameFormat.S32_420], # All YUV 32bit formats
-                [CogFrameFormat.S32_444, CogFrameFormat.S16_444, CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_444_12BIT, CogFrameFormat.U8_444], # Bitdepth conversion
-                [CogFrameFormat.S32_422, CogFrameFormat.S16_422, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.U8_422], # Bitdepth conversion
-                [CogFrameFormat.S32_420, CogFrameFormat.S16_420, CogFrameFormat.S16_420_10BIT, CogFrameFormat.S16_420_12BIT, CogFrameFormat.U8_420], # Bitdepth conversion
+                [CogFrameFormat.S32_444, CogFrameFormat.S16_444, CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_444_12BIT, CogFrameFormat.U8_444,  # Bitdepth conversion
+                 CogFrameFormat.S32_422, CogFrameFormat.S16_422, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.U8_422,  # Bitdepth conversion
+                 CogFrameFormat.S32_420, CogFrameFormat.S16_420, CogFrameFormat.S16_420_10BIT, CogFrameFormat.S16_420_12BIT, CogFrameFormat.U8_420], # Bitdepth conversion
                 [CogFrameFormat.S32_444_RGB, CogFrameFormat.S16_444_RGB, CogFrameFormat.S16_444_10BIT_RGB, CogFrameFormat.S16_444_12BIT_RGB, CogFrameFormat.U8_444_RGB], # Bitdepth conversion
                 ]:
             for (fmt_in, fmt_out) in pairs_from(fmts):
