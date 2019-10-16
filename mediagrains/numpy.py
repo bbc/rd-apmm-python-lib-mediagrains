@@ -22,8 +22,8 @@ Numpy compatible layer for mediagrains, but only available in python 3.6+
 from sys import version_info
 
 if version_info[0] > 3 or (version_info[0] == 3 and version_info[1] >= 6):
-    from mediagrains_py36.numpy import VideoGrain, VIDEOGRAIN, flow_id_for_converted_flow # noqa: F401
+    from mediagrains_py36.numpy import VideoGrain, VIDEOGRAIN # noqa: F401
 
-    __all__ = ['VideoGrain', 'VIDEOGRAIN', "flow_id_for_converted_flow"]
+    __all__ = ['VideoGrain', 'VIDEOGRAIN']
 else:
     __all__ = []

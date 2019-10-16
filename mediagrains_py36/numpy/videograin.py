@@ -29,6 +29,7 @@ from mediagrains.cogenums import (
 from mediagrains import grain as bytesgrain
 from mediagrains import grain_constructors as bytesgrain_constructors
 from copy import copy, deepcopy
+import uuid
 
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
@@ -226,18 +227,34 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
     @classmethod
     def grain_conversion(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat):
         """Decorator to apply to all grain conversion functions"""
-        def _inner(f: Callable[[cls], cls]) -> None:
+        def _inner(f: Callable[[cls, cls], None]) -> None:
             cls._grain_conversions[(fmt_in, fmt_out)] = f
             return f
         return _inner
 
     @classmethod
-    def _get_grain_conversion_function(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat) -> Callable[["VIDEOGRAIN"], "VIDEOGRAIN"]:
+    def _get_grain_conversion_function(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat) -> Callable[["VIDEOGRAIN", "VIDEOGRAIN"], None]:
         """Return the registered grain conversion function for a specified type conversion, or raise NotImplementedError"""
         if (fmt_in, fmt_out) in cls._grain_conversions:
             return cls._grain_conversions[(fmt_in, fmt_out)]
 
         raise NotImplementedError("This conversion has not yet been implemented")
+
+    def flow_id_for_converted_flow(self, fmt: CogFrameFormat) -> uuid.UUID:
+        return uuid.uuid5(self.source_id, "FORMAT_CONVERSION: {!r}".format(fmt))
+
+    def _similar_grain(self, fmt: CogFrameFormat) -> "VIDEOGRAIN":
+        """Returns a new empty grain that has the specified format, but other parameters identical to this grain."""
+        return VideoGrain(self.source_id,
+                          self.flow_id_for_converted_flow(fmt),
+                          origin_timestamp=self.origin_timestamp,
+                          sync_timestamp=self.sync_timestamp,
+                          cog_frame_format=fmt,
+                          width=self.width,
+                          height=self.height,
+                          rate=self.rate,
+                          duration=self.duration,
+                          cog_frame_layout=self.layout)
 
     def convert(self, fmt: CogFrameFormat) -> "VIDEOGRAIN":
         """Used to convert this grain to a different cog format.
@@ -249,7 +266,9 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
         if self.format == fmt:
             return deepcopy(self)
         else:
-            return self.__class__._get_grain_conversion_function(self.format, fmt)(self)
+            grain_out = self._similar_grain(fmt)
+            self.__class__._get_grain_conversion_function(self.format, fmt)(self, grain_out)
+            return grain_out
 
 
 def VideoGrain(*args, **kwargs) -> VIDEOGRAIN:

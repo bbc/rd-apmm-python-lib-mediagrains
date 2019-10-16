@@ -20,6 +20,6 @@ Library for handling mediagrains in numpy arrays
 """
 
 from .videograin import VIDEOGRAIN, VideoGrain
-from . convert import flow_id_for_converted_flow
+from . import convert
 
-__all__ = ['VideoGrain', 'VIDEOGRAIN', "flow_id_for_converted_flow"]
+__all__ = ['VideoGrain', 'VIDEOGRAIN']

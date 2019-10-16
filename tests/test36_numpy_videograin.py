@@ -19,7 +19,6 @@ from unittest import TestCase
 
 import uuid
 from mediagrains.numpy import VideoGrain, VIDEOGRAIN
-from mediagrains.numpy import flow_id_for_converted_flow
 from mediagrains_py36.numpy.videograin import _dtype_from_cogframeformat
 from mediagrains.cogenums import (
     CogFrameFormat,
@@ -507,7 +506,7 @@ class TestGrain (TestCase):
                     grain_out = grain_in.convert(fmt_out)
 
                     if fmt_in != fmt_out:
-                        flow_id_out = flow_id_for_converted_flow(src_id, fmt_out)
+                        flow_id_out = grain_in.flow_id_for_converted_flow(fmt_out)
                     else:
                         flow_id_out = flow_id
                     self.assertIsVideoGrain(fmt_out, flow_id=flow_id_out, width=16, height=16, ignore_cts=True)(grain_out)
