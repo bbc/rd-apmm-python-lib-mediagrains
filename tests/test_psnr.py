@@ -19,6 +19,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 from unittest import TestCase
+from sys import version_info
 import uuid
 
 from mediagrains import VideoGrain
@@ -45,7 +46,13 @@ pixel_ranges = {
 }
 
 
-def set_colour_bars(vg, noise_mask=0xffff):
+def _create_grain(cog_frame_format):
+    return VideoGrain(SRC_ID, FLOW_ID,
+                      cog_frame_format=cog_frame_format,
+                      width=480, height=270)
+
+
+def _set_colour_bars(vg, noise_mask=0xffff):
     """The code, except for the noise_mask, was copied from testsignalgenerator. It was duplicated here to keep
        the unit tests isolated.
 
@@ -85,6 +92,30 @@ def set_colour_bars(vg, noise_mask=0xffff):
             vg.data[offset:offset + vg.components[c].width*_bpp] = lines[c]
 
 
+def _convert_u8_uyvy(grain_u8):
+    grain_uyvy = _create_grain(CogFrameFormat.UYVY)
+    for y in range(0, grain_u8.height):
+        for x in range(0, grain_u8.width//2):
+            # U
+            grain_uyvy.data[y*grain_uyvy.components[0].stride + 4*x + 0] = grain_u8.data[grain_u8.components[1].offset +
+                                                                                         y*grain_u8.components[1].stride +
+                                                                                         x]
+            # Y
+            grain_uyvy.data[y*grain_uyvy.components[0].stride + 4*x + 1] = grain_u8.data[grain_u8.components[0].offset +
+                                                                                         y*grain_u8.components[0].stride +
+                                                                                         2*x + 0]
+            # V
+            grain_uyvy.data[y*grain_uyvy.components[0].stride + 4*x + 2] = grain_u8.data[grain_u8.components[2].offset +
+                                                                                         y*grain_u8.components[2].stride +
+                                                                                         x]
+            # Y
+            grain_uyvy.data[y*grain_uyvy.components[0].stride + 4*x + 3] = grain_u8.data[grain_u8.components[0].offset +
+                                                                                         y*grain_u8.components[0].stride +
+                                                                                         2*x + 1]
+
+    return grain_uyvy
+
+
 class TestPSNR(TestCase):
     def _check_psnr_range(self, computed, ranges, max_diff):
         for psnr, psnr_range in zip(computed, ranges):
@@ -92,46 +123,53 @@ class TestPSNR(TestCase):
                 return False
         return True
 
-    def _create_grain(self, cog_frame_format):
-        return VideoGrain(SRC_ID, FLOW_ID,
-                          cog_frame_format=cog_frame_format,
-                          width=480, height=270)
-
-    def _test_format(self, cog_frame_format, expected):
-        grain_a = self._create_grain(cog_frame_format)
-        set_colour_bars(grain_a)
-        grain_b = self._create_grain(cog_frame_format)
-        set_colour_bars(grain_b, noise_mask=0xfffa)
+    def _test_planar_format(self, cog_frame_format, expected):
+        grain_a = _create_grain(cog_frame_format)
+        _set_colour_bars(grain_a)
+        grain_b = _create_grain(cog_frame_format)
+        _set_colour_bars(grain_b, noise_mask=0xfffa)
 
         psnr = compute_psnr(grain_a, grain_b)
-        self.assertTrue(self._check_psnr_range(psnr, expected, 0.1))
+        self.assertTrue(self._check_psnr_range(psnr, expected, 0.1), "{} != {}".format(psnr, expected))
 
     def test_identical_data(self):
-        grain = self._create_grain(CogFrameFormat.U8_422)
-        set_colour_bars(grain, noise_mask=0xfa)
+        grain = _create_grain(CogFrameFormat.U8_422)
+        _set_colour_bars(grain, noise_mask=0xfa)
 
         self.assertEqual(compute_psnr(grain, grain), [float('Inf'), float('Inf'), float('Inf')])
 
     def test_planar_8bit(self):
-        self._test_format(CogFrameFormat.U8_422, [36.47984486113692, 39.45318336217709, 38.90095545159027])
+        self._test_planar_format(CogFrameFormat.U8_422, [36.47984486113692, 39.45318336217709, 38.90095545159027])
 
     def test_planar_10bit(self):
-        self._test_format(CogFrameFormat.S16_422_10BIT, [48.8541475647564, 50.477799910245636, 50.477799910245636])
+        self._test_planar_format(CogFrameFormat.S16_422_10BIT, [48.8541475647564, 50.477799910245636, 50.477799910245636])
 
     def test_planar_12bit(self):
-        self._test_format(CogFrameFormat.S16_422_12BIT, [60.30687786176762, 62.525365357931186, 62.525365357931186])
+        self._test_planar_format(CogFrameFormat.S16_422_12BIT, [60.30687786176762, 62.525365357931186, 62.525365357931186])
 
     def test_planar_16bit(self):
-        self._test_format(CogFrameFormat.S16_422, [84.39126581514387, 86.60975331130743, 86.60975331130743])
+        self._test_planar_format(CogFrameFormat.S16_422, [84.39126581514387, 86.60975331130743, 86.60975331130743])
+
+    def test_uyvy_format(self):
+        planar_grain_a = _create_grain(CogFrameFormat.U8_422)
+        _set_colour_bars(planar_grain_a)
+        grain_a = _convert_u8_uyvy(planar_grain_a)
+
+        planar_grain_b = _create_grain(CogFrameFormat.U8_422)
+        _set_colour_bars(planar_grain_b, noise_mask=0xfffa)
+        grain_b = _convert_u8_uyvy(planar_grain_b)
+
+        if version_info[0] > 3 or (version_info[0] == 3 and version_info[1] >= 6):
+            psnr = compute_psnr(grain_a, grain_b)
+            expected = [36.47984486113692, 39.45318336217709, 38.90095545159027]
+            self.assertTrue(self._check_psnr_range(psnr, expected, 0.1),
+                            "{} != {}".format(psnr, expected))
+        else:
+            with self.assertRaises(NotImplementedError):
+                compute_psnr(grain_a, grain_b)
 
     def test_compressed_unsupported(self):
-        grain = self._create_grain(CogFrameFormat.H264)
-
-        with self.assertRaises(NotImplementedError):
-            compute_psnr(grain, grain)
-
-    def test_packed_unsupported(self):
-        grain = self._create_grain(CogFrameFormat.UYVY)
+        grain = _create_grain(CogFrameFormat.H264)
 
         with self.assertRaises(NotImplementedError):
             compute_psnr(grain, grain)
