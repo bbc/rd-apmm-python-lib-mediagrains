@@ -355,12 +355,15 @@ class TestGrain (TestCase):
 
     def _test_pattern_yuv(self, fmt: CogFrameFormat) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         (R, G, B) = self._test_pattern_rgb(fmt)
+        (R, G, B) = (R.astype(np.dtype(np.double)),
+                     G.astype(np.dtype(np.double)),
+                     B.astype(np.dtype(np.double)))
         bd = self._get_bitdepth(fmt)
         (hs, vs, _) = self._get_hs_vs_and_bps(fmt)
 
         Y = (R*0.2126 +  G*0.7152 + B*0.0722)
-        U = (R*-0.114572 - G*0.385428 + B*0.5 + (1 << bd - 1))
-        V = (R*0.5 - G*0.454153 - B*0.045847  + (1 << bd - 1))
+        U = (R*-0.114572 - G*0.385428 + B*0.5 + (1 << (bd - 1)))
+        V = (R*0.5 - G*0.454153 - B*0.045847  + (1 << (bd - 1)))
 
         if hs == 1:
             U = (U[0::2, :] + U[1::2, :])/2
@@ -391,8 +394,8 @@ class TestGrain (TestCase):
         if max_diff is None:
             self.assertTrue(np.array_equal(a, b), msg="{} != {}".format(a, b))
         else:
-            a = a.astype(np.dtype(np.int32))
-            b = b.astype(np.dtype(np.int32))
+            a = a.astype(np.dtype(np.int64))
+            b = b.astype(np.dtype(np.int64))
             self.assertTrue(np.amax(np.absolute(a - b)) <= max_diff,
                             msg="{} - {} = {} (allowing up to {} difference)".format(a, b, a - b, max_diff))
 
@@ -475,7 +478,6 @@ class TestGrain (TestCase):
                 for fmt_out in fmts:
                     yield (fmt_in, fmt_out)
 
-        # This checks conversions within YUV and RGB space, but not conversions between the two
         for fmts in [
                 [CogFrameFormat.YUYV, CogFrameFormat.UYVY, CogFrameFormat.U8_444, CogFrameFormat.U8_422, CogFrameFormat.U8_420], # All YUV 8bit formats
                 [CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB, CogFrameFormat.RGBx, CogFrameFormat.xRGB, CogFrameFormat.BGRx, CogFrameFormat.xBGR], # All 8-bit 3 component RGB formats
@@ -487,6 +489,10 @@ class TestGrain (TestCase):
                  CogFrameFormat.S32_422, CogFrameFormat.S16_422, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.U8_422,  # Bitdepth conversion
                  CogFrameFormat.S32_420, CogFrameFormat.S16_420, CogFrameFormat.S16_420_10BIT, CogFrameFormat.S16_420_12BIT, CogFrameFormat.U8_420], # Bitdepth conversion
                 [CogFrameFormat.S32_444_RGB, CogFrameFormat.S16_444_RGB, CogFrameFormat.S16_444_10BIT_RGB, CogFrameFormat.S16_444_12BIT_RGB, CogFrameFormat.U8_444_RGB], # Bitdepth conversion
+                [CogFrameFormat.U8_444, CogFrameFormat.U8_444_RGB], # Colourspace conversion
+                [CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_444_10BIT_RGB], # Colourspace conversion
+                [CogFrameFormat.S16_444_12BIT, CogFrameFormat.S16_444_12BIT_RGB], # Colourspace conversion
+                [CogFrameFormat.S16_444, CogFrameFormat.S16_444_RGB], # Colourspace conversion
                 ]:
             for (fmt_in, fmt_out) in pairs_from(fmts):
                 with self.subTest(fmt_in=fmt_in, fmt_out=fmt_out):
@@ -509,7 +515,10 @@ class TestGrain (TestCase):
                     # If we've converted from a different bit-depth we need to ignore rounding errors
                     if self._get_bitdepth(fmt_out) > self._get_bitdepth(fmt_in):
                         self.assertMatchesTestPattern(grain_out, max_diff=1 << (self._get_bitdepth(fmt_out)  + 1 - self._get_bitdepth(fmt_in)))
-                    elif self._get_bitdepth(fmt_out) < self._get_bitdepth(fmt_in):
+                    elif fmt_in == CogFrameFormat.S16_444 and fmt_out == CogFrameFormat.S16_444_RGB:
+                        self.assertMatchesTestPattern(grain_out, max_diff=2)
+                    elif ((self._get_bitdepth(fmt_out) < self._get_bitdepth(fmt_in)) or
+                          (self._is_rgb(fmt_in) != self._is_rgb(fmt_out))):
                         self.assertMatchesTestPattern(grain_out, max_diff=1)
                     else:
                         self.assertMatchesTestPattern(grain_out)

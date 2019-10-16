@@ -46,7 +46,7 @@ def _dtype_from_cogframeformat(fmt: CogFrameFormat) -> np.dtype:
 
     For planar and padded formats this is the size of the native integer type that is used to handle the samples (eg. 8bit, 16bit, etc ...)
     For weird packed formats like v210 (10-bit samples packed so that there are 3 10-bit samples in every 32-bit word) this is not possible.
-    Instead for v210 we return int32, since that is the most useful native data type that always corresponds to an integral number of samples.
+    Instead for v210 we return uint32, since that is the most useful native data type that always corresponds to an integral number of samples.
     """
     if COG_FRAME_IS_PLANAR(fmt):
         if COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt) == 1:
