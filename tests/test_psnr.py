@@ -97,6 +97,15 @@ class TestPSNR(TestCase):
                           cog_frame_format=cog_frame_format,
                           width=480, height=270)
 
+    def _test_format(self, cog_frame_format, expected):
+        grain_a = self._create_grain(cog_frame_format)
+        set_colour_bars(grain_a)
+        grain_b = self._create_grain(cog_frame_format)
+        set_colour_bars(grain_b, noise_mask=0xfffa)
+
+        psnr = compute_psnr(grain_a, grain_b)
+        self.assertTrue(self._check_psnr_range(psnr, expected, 0.1))
+
     def test_identical_data(self):
         grain = self._create_grain(CogFrameFormat.U8_422)
         set_colour_bars(grain, noise_mask=0xfa)
@@ -104,40 +113,16 @@ class TestPSNR(TestCase):
         self.assertEqual(compute_psnr(grain, grain), [float('Inf'), float('Inf'), float('Inf')])
 
     def test_planar_8bit(self):
-        grain_a = self._create_grain(CogFrameFormat.U8_422)
-        set_colour_bars(grain_a)
-        grain_b = self._create_grain(CogFrameFormat.U8_422)
-        set_colour_bars(grain_b, noise_mask=0xfffa)
-
-        psnr = compute_psnr(grain_a, grain_b)
-        self.assertTrue(self._check_psnr_range(psnr, [36.47984486113692, 39.45318336217709, 38.90095545159027], 0.1))
+        self._test_format(CogFrameFormat.U8_422, [36.47984486113692, 39.45318336217709, 38.90095545159027])
 
     def test_planar_10bit(self):
-        grain_a = self._create_grain(CogFrameFormat.S16_422_10BIT)
-        set_colour_bars(grain_a)
-        grain_b = self._create_grain(CogFrameFormat.S16_422_10BIT)
-        set_colour_bars(grain_b, noise_mask=0xfffa)
-
-        psnr = compute_psnr(grain_a, grain_b)
-        self.assertTrue(self._check_psnr_range(psnr, [48.8541475647564, 50.477799910245636, 50.477799910245636], 0.1))
+        self._test_format(CogFrameFormat.S16_422_10BIT, [48.8541475647564, 50.477799910245636, 50.477799910245636])
 
     def test_planar_12bit(self):
-        grain_a = self._create_grain(CogFrameFormat.S16_422_12BIT)
-        set_colour_bars(grain_a)
-        grain_b = self._create_grain(CogFrameFormat.S16_422_12BIT)
-        set_colour_bars(grain_b, noise_mask=0xfffa)
-
-        psnr = compute_psnr(grain_a, grain_b)
-        self.assertTrue(self._check_psnr_range(psnr, [60.30687786176762, 62.525365357931186, 62.525365357931186], 0.1))
+        self._test_format(CogFrameFormat.S16_422_12BIT, [60.30687786176762, 62.525365357931186, 62.525365357931186])
 
     def test_planar_16bit(self):
-        grain_a = self._create_grain(CogFrameFormat.S16_422)
-        set_colour_bars(grain_a)
-        grain_b = self._create_grain(CogFrameFormat.S16_422)
-        set_colour_bars(grain_b, noise_mask=0xfffa)
-
-        psnr = compute_psnr(grain_a, grain_b)
-        self.assertTrue(self._check_psnr_range(psnr, [84.39126581514387, 86.60975331130743, 86.60975331130743], 0.1))
+        self._test_format(CogFrameFormat.S16_422, [84.39126581514387, 86.60975331130743, 86.60975331130743])
 
     def test_compressed_unsupported(self):
         grain = self._create_grain(CogFrameFormat.H264)
