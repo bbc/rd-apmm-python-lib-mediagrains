@@ -27,7 +27,8 @@ import sys
 
 from ..cogenums import CogAudioFormat, CogFrameFormat, COG_FRAME_IS_PACKED, COG_FRAME_IS_COMPRESSED, COG_FRAME_FORMAT_BYTES_PER_VALUE
 
-from .options import Exclude, Include, ComparisonExclude, ComparisonExpectDifferenceMatches
+from .options import Exclude, Include, ComparisonExclude, ComparisonExpectDifferenceMatches, ComparisonPSNR
+from .psnr import compute_psnr
 
 
 #
@@ -353,6 +354,40 @@ class TimestampDifferanceComparisonResult(DifferenceComparisonResult):
         super(TimestampDifferanceComparisonResult, self).__init__(identifier, a, b, expected_difference=expected_difference, **kwargs)
 
 
+class PSNRComparisonResult(ComparisonResult):
+    def __init__(self, identifier, a, b, **kwargs):
+        """Compute the PSNR for two grains and compare the result with the expected values and comparison operator.
+
+        :param identifier: The path in the grain structure
+        :param a: A GRAIN
+        :param b: Another GRAIN
+        :param kwargs: Other named arguments
+        """
+        super(PSNRComparisonResult, self).__init__(identifier, a, b, **kwargs)
+
+    def compare(self, a, b):
+        opts = [option for option in self._options if isinstance(option, ComparisonPSNR) and self.identifier == option.path]
+
+        if self.excluded():
+            return (False, "For speed reasons not comparing {} and {} when this would be excluded".format(self._identifier.format('a'),
+                                                                                                          self._identifier.format('b')), [])
+
+        try:
+            psnr = compute_psnr(a, b)
+        except NotImplementedError:
+            return (False, "Grain is not supported for PSNR comparison of {} and {}".format(self._identifier.format('a'),
+                                                                                            self._identifier.format('b')), [])
+
+        if all(opt.matcher(psnr) for opt in opts):
+            return (True, "PSNR({}, {}) == {!r}, meets requirements set in options".format(self._identifier.format('a'),
+                                                                                           self._identifier.format('b'),
+                                                                                           psnr), [])
+        else:
+            return (False, "PSNR({}, {}) == {!r}, does not meet requirements set in options".format(self._identifier.format('a'),
+                                                                                                    self._identifier.format('b'),
+                                                                                                    psnr), [])
+
+
 class AOnlyComparisonResult(ComparisonResult):
     def __init__(self, identifier, a, **kwargs):
         super(AOnlyComparisonResult, self).__init__(identifier, a, None, **kwargs)
@@ -594,29 +629,37 @@ class GrainComparisonResult(ComparisonResult):
                 children[key] = EqualityComparisonResult(path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
 
             if a.format == b.format:
-                if COG_FRAME_IS_COMPRESSED(a.format):
-                    wc = 'B'
-                elif a.format == CogFrameFormat.v210:
-                    wc = 'I'
-                elif a.format == CogFrameFormat.v216:
-                    wc = 'H'
-                elif COG_FRAME_IS_PACKED(a.format):
-                    wc = 'B'
+                path = self._identifier + '.data'
+                compare_psnr = len([option for option in self._options if isinstance(option, ComparisonPSNR) and path == option.path]) != 0
+                if compare_psnr:
+                    children['data'] = PSNRComparisonResult(path,
+                                                            a,
+                                                            b,
+                                                            options=self._options)
                 else:
-                    if COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 1:
+                    if COG_FRAME_IS_COMPRESSED(a.format):
                         wc = 'B'
-                    elif COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 2:
-                        wc = 'H'
-                    elif COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 4:
+                    elif a.format == CogFrameFormat.v210:
                         wc = 'I'
+                    elif a.format == CogFrameFormat.v216:
+                        wc = 'H'
+                    elif COG_FRAME_IS_PACKED(a.format):
+                        wc = 'B'
+                    else:
+                        if COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 1:
+                            wc = 'B'
+                        elif COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 2:
+                            wc = 'H'
+                        elif COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 4:
+                            wc = 'I'
 
-                children['data'] = DataEqualityComparisonResult(self._identifier + ".data",
-                                                                a.data,
-                                                                b.data,
-                                                                options=self._options,
-                                                                attr="data",
-                                                                alignment="@",
-                                                                word_code=wc)
+                    children['data'] = DataEqualityComparisonResult(self._identifier + ".data",
+                                                                    a.data,
+                                                                    b.data,
+                                                                    options=self._options,
+                                                                    attr="data",
+                                                                    alignment="@",
+                                                                    word_code=wc)
             else:
                 self._options.append(Exclude.data)
                 children['data'] = FailingComparisonResult(self._identifier + ".data",

@@ -33,6 +33,7 @@ packages_required = [
     "six >= 1.10.0",
     "frozendict >= 1.2",
     'numpy >= 1.17.2;python_version>="3.6"',
+    'numpy;python_version<"3.6"'
 ]
 
 deps_required = []

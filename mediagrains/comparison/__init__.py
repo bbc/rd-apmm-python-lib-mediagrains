@@ -29,8 +29,9 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 from ._internal import GrainComparisonResult, GrainIteratorComparisonResult
+from .psnr import compute_psnr
 
-__all__ = ["compare_grain"]
+__all__ = ["compare_grain", "compute_psnr"]
 
 
 #
