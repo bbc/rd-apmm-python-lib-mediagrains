@@ -164,7 +164,62 @@ def _convert_yuv444_to_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
 
 
 def _convert_v210_to_yuv422_10bit(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
-    pass
+    # This is a v210 -> planar descramble. It's not super fast, but it should be correct
+    #
+    # Input data is array of 32-bit words, arranged as a 1d array in repeating blocks of 4 like:
+    # lsb ->       ->msb
+    # | U0 | Y0 | V0 |X|
+    # | Y1 | U1 | Y2 |X|
+    # | V1 | Y3 | U2 |X|
+    # | Y4 | V2 | Y5 |X|
+    # ...
+
+    # Our first descramble simple creates arrays containing the first, second, or third sample from each dword:
+    # first  = [U0] [Y1] [V1] [Y4] ...
+    # second = [Y0] [U1] [Y3] [V2] ...
+    # third  = [V0] [Y2] [U2] [Y5] ...
+
+    first  = (grain_in.data & 0x3FF).astype(np.dtype(np.uint16))
+    second = ((grain_in.data >> 10) & 0x3FF).astype(np.dtype(np.uint16))
+    third  = ((grain_in.data >> 20) & 0x3FF).astype(np.dtype(np.uint16))
+
+    # These arrays are still linear 1d arrays so we reinterpret them as 2d arrays, remembering that v210 has an alignment of 48 pixels horizontally
+    first.shape = (grain_in.height, 32*((grain_in.width + 47)//48))
+    second.shape = (grain_in.height, 32*((grain_in.width + 47)//48))
+    third.shape = (grain_in.height, 32*((grain_in.width + 47)//48))
+
+    # Our usual transpose to make the arrays more convenient
+    first = first.transpose()
+    second = second.transpose()
+    third = third.transpose()
+
+    # Finally we can assign every third entry in the target component_data arrays with every second entry from one of the three intermediate arrays:
+    # eg:
+    # Y = [Y0] [  ] [  ] [Y3] [  ] [  ] ...
+    # Y = [Y0] [Y1] [  ] [Y3] [Y4] [  ] ...
+    # Y = [Y0] [Y1] [Y2] [Y3] [Y4] [Y5] ...
+
+    grain_out.component_data.Y[0::3, :] = second[0::2, :][0:(grain_in.width + 2)//3, :]
+    grain_out.component_data.Y[1::3, :] = first[1::2, :][0:(grain_in.width + 1)//3, :]
+    grain_out.component_data.Y[2::3, :] = third[1::2, :][0:(grain_in.width + 0)//3, :]
+
+    # And similarly for the chroma:
+    # U = [U0] [  ] [  ] ...
+    # U = [U0] [U1] [  ] ...
+    # U = [U0] [U1] [U2] ...
+
+    grain_out.component_data.U[0::3, :] = first[0::4, :][0:(grain_in.width//2 + 2)//3, :]
+    grain_out.component_data.U[1::3, :] = second[1::4, :][0:(grain_in.width//2 + 1)//3, :]
+    grain_out.component_data.U[2::3, :] = third[2::4, :][0:(grain_in.width//2 + 0)//3, :]
+
+    # And similarly for the chroma:
+    # V = [V0] [  ] [  ] ...
+    # V = [V0] [V1] [  ] ...
+    # V = [V0] [V1] [V2] ...
+
+    grain_out.component_data.V[0::3, :] = third[0::4, :][0:(grain_in.width//2 + 2)//3, :]
+    grain_out.component_data.V[1::3, :] = first[2::4, :][0:(grain_in.width//2 + 1)//3, :]
+    grain_out.component_data.V[2::3, :] = second[3::4, :][0:(grain_in.width//2 + 0)//3, :]
 
 
 # These methods automate the process of registering simple copy conversions
@@ -229,6 +284,10 @@ for d in [8, 10, 12, 16, 32]:
             # This conversion doesn't work for 32-bit data, so I have disabled it
             VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d), fmt)(_convert_yuv444_to_rgb)
         VIDEOGRAIN.grain_conversion(fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d))(_convert_rgb_to_yuv444)
+
+
+# V210 -> 10 bit 4:2:2 YUV
+VIDEOGRAIN.grain_conversion(CogFrameFormat.v210, CogFrameFormat.S16_422_10BIT)(_convert_v210_to_yuv422_10bit)
 
 
 # We have a number of transformations that aren't supported directly, but are via an intermediate format
