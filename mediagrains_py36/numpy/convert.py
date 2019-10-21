@@ -222,6 +222,30 @@ def _convert_v210_to_yuv422_10bit(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
     grain_out.component_data.V[2::3, :] = second[3::4, :][0:(grain_in.width//2 + 0)//3, :]
 
 
+def _convert_yuv422_10bit_to_v210(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+    # This won't be fast, but it should work.
+
+    # Take every third entry in each component and arrange them
+    first = np.zeros((grain_in.height, 32*((grain_in.width + 47)//48)), dtype=np.dtype(np.uint32)).transpose()
+    second = np.zeros((grain_in.height, 32*((grain_in.width + 47)//48)), dtype=np.dtype(np.uint32)).transpose()
+    third = np.zeros((grain_in.height, 32*((grain_in.width + 47)//48)), dtype=np.dtype(np.uint32)).transpose()
+
+    first[0::4, :][0:(grain_in.width//2 + 2)//3, :] = grain_in.component_data.U[0::3, :]
+    first[1::2, :][0:(grain_in.width + 1)//3, :] = grain_in.component_data.Y[1::3, :]
+    first[2::4, :][0:(grain_in.width//2 + 1)//3, :] = grain_in.component_data.V[1::3, :]
+
+    second[0::2, :][0:(grain_in.width + 2)//3, :] = grain_in.component_data.Y[0::3, :]
+    second[1::4, :][0:(grain_in.width//2 + 1)//3, :] = grain_in.component_data.U[1::3, :]
+    second[3::4, :][0:(grain_in.width//2 + 0)//3, :] = grain_in.component_data.V[2::3, :]
+
+    third[0::4, :][0:(grain_in.width//2 + 2)//3, :] = grain_in.component_data.V[0::3, :]
+    third[1::2, :][0:(grain_in.width + 0)//3, :] = grain_in.component_data.Y[2::3, :]
+    third[2::4, :][0:(grain_in.width//2 + 0)//3, :] = grain_in.component_data.U[2::3, :]
+
+    # Now combine them to make the dwords expected
+    grain_out.data[:] = np.ravel(first.transpose()) + (np.ravel(second.transpose()) << 10) + (np.ravel(third.transpose()) << 20)
+
+
 # These methods automate the process of registering simple copy conversions
 def _register_simple_copy_conversions_for_formats_yuv(fmts: List[CogFrameFormat]):
     for i in range(0, len(fmts)):
@@ -286,9 +310,9 @@ for d in [8, 10, 12, 16, 32]:
         VIDEOGRAIN.grain_conversion(fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d))(_convert_rgb_to_yuv444)
 
 
-# V210 -> 10 bit 4:2:2 YUV
+# V210 <-> 10 bit 4:2:2 YUV
 VIDEOGRAIN.grain_conversion(CogFrameFormat.v210, CogFrameFormat.S16_422_10BIT)(_convert_v210_to_yuv422_10bit)
-
+VIDEOGRAIN.grain_conversion(CogFrameFormat.S16_422_10BIT, CogFrameFormat.v210)(_convert_yuv422_10bit_to_v210)
 
 # We have a number of transformations that aren't supported directly, but are via an intermediate format
 # Bit depth and chroma combination conversions
