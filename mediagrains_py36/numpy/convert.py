@@ -147,9 +147,9 @@ def _convert_rgb_to_yuv444(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
                     grain_in.component_data.G,
                     grain_in.component_data.B)
 
-    grain_out.component_data.Y[:,:] = (R*0.2126 +  G*0.7152 + B*0.0722)
-    grain_out.component_data.U[:,:] = (R*-0.114572 - G*0.385428 + B*0.5 + (1 << (bd - 1)))
-    grain_out.component_data.V[:,:] = (R*0.5 - G*0.454153 - B*0.045847  + (1 << (bd - 1)))
+    np.clip((R*0.2126 +  G*0.7152 + B*0.0722), 0, 1 << bd, out=grain_out.component_data.Y, casting="unsafe")
+    np.clip((R*-0.114572 - G*0.385428 + B*0.5 + (1 << (bd - 1))), 0, 1 << bd, out=grain_out.component_data.U, casting="unsafe")
+    np.clip((R*0.5 - G*0.454153 - B*0.045847  + (1 << (bd - 1))), 0, 1 << bd, out=grain_out.component_data.V, casting="unsafe")
 
 
 def _convert_yuv444_to_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
@@ -158,9 +158,9 @@ def _convert_yuv444_to_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
                     grain_in.component_data.U.astype(np.dtype(np.double)) - (1 << (bd - 1)),
                     grain_in.component_data.V.astype(np.dtype(np.double)) - (1 << (bd - 1)))
 
-    grain_out.component_data.R[:,:] = (Y + V*1.5748)
-    grain_out.component_data.G[:,:] = (Y - U*0.187324 - V*0.468124)
-    grain_out.component_data.B[:,:] = (Y + U*1.8556)
+    np.clip((Y + V*1.5748), 0, 1 << bd, out=grain_out.component_data.R, casting="unsafe")
+    np.clip((Y - U*0.187324 - V*0.468124), 0, 1 << bd, out=grain_out.component_data.G, casting="unsafe")
+    np.clip((Y + U*1.8556), 0, 1 << bd, out=grain_out.component_data.B, casting="unsafe")
 
 
 def _convert_v210_to_yuv422_10bit(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
@@ -304,9 +304,7 @@ for (d1, d2) in distinct_pairs_from([8, 10, 12, 16, 32]):
 # Colourspace conversion
 for d in [8, 10, 12, 16, 32]:
     for fmt in _equivalent_formats(COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d)):
-        if d != 32:
-            # This conversion doesn't work for 32-bit data, so I have disabled it
-            VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d), fmt)(_convert_yuv444_to_rgb)
+        VIDEOGRAIN.grain_conversion(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d), fmt)(_convert_yuv444_to_rgb)
         VIDEOGRAIN.grain_conversion(fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d))(_convert_rgb_to_yuv444)
 
 
@@ -340,10 +338,7 @@ for (d1, d2) in distinct_pairs_from([8, 10, 12, 16, 32]):
     for rgb_fmt in _equivalent_formats(COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d1)):
         for yuv_fmt in _equivalent_formats(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d2)):
             VIDEOGRAIN.grain_conversion_two_step(rgb_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d1), yuv_fmt)
-            if d2 != 32:
-                VIDEOGRAIN.grain_conversion_two_step(yuv_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d2), rgb_fmt)
-            else:
-                VIDEOGRAIN.grain_conversion_two_step(yuv_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d1), rgb_fmt)
+            VIDEOGRAIN.grain_conversion_two_step(yuv_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d2), rgb_fmt)
     for rgb_fmt in _equivalent_formats(COG_PLANAR_FORMAT(PlanarChromaFormat.RGB, d2)):
         for yuv_fmt in _equivalent_formats(COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d1)):
             VIDEOGRAIN.grain_conversion_two_step(rgb_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d2), yuv_fmt)
@@ -367,3 +362,4 @@ for d in [8, 10, 12, 16, 32]:
         for fmt in _equivalent_formats(COG_PLANAR_FORMAT(ss, d)):
             if fmt != CogFrameFormat.S16_422_10BIT:
                 VIDEOGRAIN.grain_conversion_two_step(CogFrameFormat.v210, CogFrameFormat.S16_422_10BIT, fmt)
+                VIDEOGRAIN.grain_conversion_two_step(fmt, CogFrameFormat.S16_422_10BIT, CogFrameFormat.v210)

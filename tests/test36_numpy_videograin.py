@@ -30,7 +30,9 @@ from mediagrains.cogenums import (
     COG_FRAME_IS_COMPRESSED,
     COG_FRAME_IS_PLANAR,
     COG_FRAME_IS_PLANAR_RGB,
-    COG_FRAME_FORMAT_ACTIVE_BITS)
+    COG_FRAME_FORMAT_ACTIVE_BITS,
+    COG_PLANAR_FORMAT,
+    PlanarChromaFormat)
 from mediatimestamp.immutable import Timestamp, TimeRange
 import mock
 from fractions import Fraction
@@ -508,7 +510,8 @@ class TestGrain (TestCase):
                 CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_420_10BIT, # All YUV 10bit formats except for v210
                 CogFrameFormat.v210, # v210, may the gods be merciful to us for including it
                 CogFrameFormat.S16_444_12BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.S16_420_12BIT, # All YUV 12bit formats
-                CogFrameFormat.S32_444, CogFrameFormat.S32_422, CogFrameFormat.S32_420] # All YUV 32bit formats
+                CogFrameFormat.S32_444, CogFrameFormat.S32_422, CogFrameFormat.S32_420, # All YUV 32bit formats
+                CogFrameFormat.S16_444_RGB, CogFrameFormat.S16_444_10BIT_RGB, CogFrameFormat.S16_444_12BIT_RGB, CogFrameFormat.S32_444_RGB] # Other planar RGB formats
         for (fmt_in, fmt_out) in pairs_from(fmts):
             with self.subTest(fmt_in=fmt_in, fmt_out=fmt_out):
                 with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -519,29 +522,65 @@ class TestGrain (TestCase):
                 self.assertIsVideoGrain(fmt_in, width=16, height=16)(grain_in)
                 self.write_test_pattern(grain_in)
 
-                if (not self._is_rgb(fmt_in) and self._get_bitdepth(fmt_in) == 32 and fmt_out == CogFrameFormat.S32_444_RGB) or (fmt_out == CogFrameFormat.v210 and fmt_in not in [CogFrameFormat.v210, CogFrameFormat.S16_422_10BIT]):
-                    # Conversions from 32bit YUV to RGB don't work, and this is known, so check that an exception is thrown:
-                    with self.assertRaises(NotImplementedError):
-                        grain_out = grain_in.convert(fmt_out)
+                grain_out = grain_in.convert(fmt_out)
+
+                if fmt_in != fmt_out:
+                    flow_id_out = grain_in.flow_id_for_converted_flow(fmt_out)
                 else:
-                    grain_out = grain_in.convert(fmt_out)
+                    flow_id_out = flow_id
+                self.assertIsVideoGrain(fmt_out, flow_id=flow_id_out, width=16, height=16, ignore_cts=True)(grain_out)
 
-                    if fmt_in != fmt_out:
-                        flow_id_out = grain_in.flow_id_for_converted_flow(fmt_out)
-                    else:
-                        flow_id_out = flow_id
-                    self.assertIsVideoGrain(fmt_out, flow_id=flow_id_out, width=16, height=16, ignore_cts=True)(grain_out)
+                # Some conversions for v210 are just really hard to check when not exact
+                # For other formats it's simpler
+                if fmt_out != CogFrameFormat.v210:
+                    # We have several possible cases here:
+                    # * We've changed bit-depth
+                    # * We've changed colour subsampling
+                    # * We've changed colourspace
+                    #
+                    # In addition we have have done none of those things, or even more than one
 
-                    # If we've converted from a different bit-depth we need to ignore rounding errors
+                    # If we've increased bit-depth there will be rounding errors
                     if self._get_bitdepth(fmt_out) > self._get_bitdepth(fmt_in):
-                        self.assertMatchesTestPattern(grain_out, max_diff=1 << (self._get_bitdepth(fmt_out)  + 1 - self._get_bitdepth(fmt_in)))
-                    elif fmt_in == CogFrameFormat.S16_444 and fmt_out == CogFrameFormat.S16_444_RGB:
+                        self.assertMatchesTestPattern(grain_out, max_diff=1 << (self._get_bitdepth(fmt_out)  + 2 - self._get_bitdepth(fmt_in)))
+
+                    # If we're changing from yuv to rgb then there's some potential for floating point errors, depending on the sizes
+                    elif self._get_bitdepth(fmt_in) >= 16 and not self._is_rgb(fmt_in) and fmt_out == CogFrameFormat.S16_444_RGB:
                         self.assertMatchesTestPattern(grain_out, max_diff=2)
+                    elif self._get_bitdepth(fmt_in) == 32 and not self._is_rgb(fmt_in) and fmt_out == CogFrameFormat.S32_444_RGB:
+                        self.assertMatchesTestPattern(grain_out, max_diff=1 << 10) # The potential errors in 32 bit conversions are very large
+
+                    # If we've decreased bit-depth *and* or changed from rgb to yuv then there is a smaller scope for error
                     elif ((self._get_bitdepth(fmt_out) < self._get_bitdepth(fmt_in)) or
                             (self._is_rgb(fmt_in) != self._is_rgb(fmt_out))):
                         self.assertMatchesTestPattern(grain_out, max_diff=1)
+
+                    # If we're in none of these cases then the transformation should be lossless
                     else:
                         self.assertMatchesTestPattern(grain_out)
+                else:
+                    grain_rev = grain_out.convert(fmt_in)
+
+                    # The conversion from 10-bit 422 should be lossless
+                    if fmt_in in [CogFrameFormat.v210, CogFrameFormat.S16_422_10BIT]:
+                        self.assertMatchesTestPattern(grain_rev)
+
+                    # If we are not colour space converting and our input bit-depth is equal or lower to 10bits we have minor scope for rounding error
+                    elif self._get_bitdepth(fmt_in) in [8, 10] and not self._is_rgb(fmt_in):
+                        self.assertMatchesTestPattern(grain_rev, max_diff=1)
+
+                    # If we are significantly lowering the bit depth then there is potential for significant error when reversing the process
+                    elif self._get_bitdepth(fmt_in) in [12, 16, 32] and not self._is_rgb(fmt_in):
+                        self.assertMatchesTestPattern(grain_rev, max_diff=1 << (self._get_bitdepth(fmt_in) - 9))
+
+                    # And even more if we are also colour converting
+                    elif self._get_bitdepth(fmt_in) in [12, 16, 32] and self._is_rgb(fmt_in):
+                        self.assertMatchesTestPattern(grain_rev, max_diff=1 << (self._get_bitdepth(fmt_in) - 8))
+
+                    # Otherwise if we are only colour converting then the potential error is a small floating point rounding error
+                    elif self._is_rgb(fmt_in):
+                        self.assertMatchesTestPattern(grain_rev, max_diff=4)
+
 
     def test_video_grain_create_discontiguous(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
