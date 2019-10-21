@@ -8,6 +8,7 @@
 - Added `MovingBarOverlay` for test signal generators
 - Added `mediagrains.numpy` sublibrary for handling video grains as numpy arrays, in python 3.6+
 - Added `PSNR` option to grain compare.
+- Support for converting between supported video grain formats added to `mediagrains.numpy`
 
 ## 2.5.3
 - BUGFIX: IOBytes doesn't quite fulfil bytes-like contracts, but can be converted to something that does

@@ -18,7 +18,8 @@
 from unittest import TestCase
 
 import uuid
-from mediagrains.numpy import VideoGrain
+from mediagrains.numpy import VideoGrain, VIDEOGRAIN
+from mediagrains_py36.numpy.videograin import _dtype_from_cogframeformat
 from mediagrains.cogenums import (
     CogFrameFormat,
     CogFrameLayout,
@@ -34,8 +35,11 @@ from mediatimestamp.immutable import Timestamp, TimeRange
 import mock
 from fractions import Fraction
 from copy import copy, deepcopy
+from typing import Tuple, Optional
 
 import numpy as np
+
+from pdb import set_trace
 
 
 class TestGrain (TestCase):
@@ -186,7 +190,8 @@ class TestGrain (TestCase):
                            cts=Timestamp.from_tai_sec_nsec("417798915:0"),
                            rate=Fraction(25, 1),
                            width=1920,
-                           height=1080):
+                           height=1080,
+                           ignore_cts=False):
         def __inner(grain):
             self.assertEqual(grain.grain_type, "video")
             self.assertEqual(grain.source_id, src_id)
@@ -195,7 +200,8 @@ class TestGrain (TestCase):
             self.assertEqual(grain.final_origin_timestamp(), ots)
             self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
             self.assertEqual(grain.sync_timestamp, sts)
-            self.assertEqual(grain.creation_timestamp, cts)
+            if not ignore_cts:
+                self.assertEqual(grain.creation_timestamp, cts)
             self.assertEqual(grain.rate, rate)
             self.assertEqual(grain.duration, 1/rate)
             self.assertEqual(grain.timelabels, [])
@@ -291,9 +297,9 @@ class TestGrain (TestCase):
             if bps == 1:
                 dtype = np.dtype(np.uint8)
             elif bps == 2:
-                dtype = np.dtype(np.int16)
+                dtype = np.dtype(np.uint16)
             elif bps == 4:
-                dtype = np.dtype(np.int32)
+                dtype = np.dtype(np.uint32)
             else:
                 raise Exception()
 
@@ -312,96 +318,101 @@ class TestGrain (TestCase):
                 self.assertEqual(len(grain.component_data), 0)
             else:
                 self.assertIsInstance(grain.component_data[0], np.ndarray)
-                self.assertEqual(grain.component_data[0].nbytes, width*height*bps)
-                self.assertEqual(grain.component_data[0].dtype, dtype)
-                self.assertEqual(grain.component_data[0].size, width*height)
-                self.assertEqual(grain.component_data[0].itemsize, bps)
-                self.assertEqual(grain.component_data[0].ndim, 2)
-                self.assertEqual(grain.component_data[0].shape, (width, height))
+                self.assertTrue(np.array_equal(grain.component_data[0].nbytes, width*height*bps))
+                self.assertTrue(np.array_equal(grain.component_data[0].dtype, dtype))
+                self.assertTrue(np.array_equal(grain.component_data[0].size, width*height))
+                self.assertTrue(np.array_equal(grain.component_data[0].itemsize, bps))
+                self.assertTrue(np.array_equal(grain.component_data[0].ndim, 2))
+                self.assertTrue(np.array_equal(grain.component_data[0].shape, (width, height)))
 
                 self.assertIsInstance(grain.component_data[1], np.ndarray)
-                self.assertEqual(grain.component_data[1].nbytes, width*height*bps >> (hs + vs))
-                self.assertEqual(grain.component_data[1].dtype, dtype)
-                self.assertEqual(grain.component_data[1].size, width*height >> (hs + vs))
-                self.assertEqual(grain.component_data[1].itemsize, bps)
-                self.assertEqual(grain.component_data[1].ndim, 2)
-                self.assertEqual(grain.component_data[1].shape, (width >> hs, height >> vs))
+                self.assertTrue(np.array_equal(grain.component_data[1].nbytes, width*height*bps >> (hs + vs)))
+                self.assertTrue(np.array_equal(grain.component_data[1].dtype, dtype))
+                self.assertTrue(np.array_equal(grain.component_data[1].size, width*height >> (hs + vs)))
+                self.assertTrue(np.array_equal(grain.component_data[1].itemsize, bps))
+                self.assertTrue(np.array_equal(grain.component_data[1].ndim, 2))
+                self.assertTrue(np.array_equal(grain.component_data[1].shape, (width >> hs, height >> vs)))
 
                 self.assertIsInstance(grain.component_data[2], np.ndarray)
-                self.assertEqual(grain.component_data[2].nbytes, width*height*bps >> (hs + vs))
-                self.assertEqual(grain.component_data[2].dtype, dtype)
-                self.assertEqual(grain.component_data[2].size, width*height >> (hs + vs))
-                self.assertEqual(grain.component_data[2].itemsize, bps)
-                self.assertEqual(grain.component_data[2].ndim, 2)
-                self.assertEqual(grain.component_data[2].shape, (width >> hs, height >> vs))
-
-                # Test that changes to the component arrays are reflected in the main data array
-                for y in range(0, 16):
-                    for x in range(0, 16):
-                        grain.component_data[0][x, y] = (y*16 + x) & 0x3F
-
-                for y in range(0, 16 >> vs):
-                    for x in range(0, 16 >> hs):
-                        grain.component_data[1][x, y] = (y*16 + x) & 0x3F + 0x40
-                        grain.component_data[2][x, y] = (y*16 + x) & 0x3F + 0x50
-
-                if COG_FRAME_IS_PLANAR(fmt):
-                    for y in range(0, 16):
-                        for x in range(0, 16):
-                            self.assertEqual(grain.data[y*width + x], (y*16 + x) & 0x3F)
-
-                    for y in range(0, 16 >> vs):
-                        for x in range(0, 16 >> hs):
-                            self.assertEqual(grain.data[width*height + y*(width >> hs) + x], (y*16 + x) & 0x3F + 0x40)
-                            self.assertEqual(grain.data[width*height + (width >> hs)*(height >> vs) + y*(width >> hs) + x], (y*16 + x) & 0x3F + 0x50)
-
-                elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.v216]:
-                    for y in range(0, 16):
-                        for x in range(0, 8):
-                            self.assertEqual(grain.data[y*width*2 + 4*x + 0], (y*16 + x) & 0x3F + 0x40)
-                            self.assertEqual(grain.data[y*width*2 + 4*x + 1], (y*16 + 2*x + 0) & 0x3F)
-                            self.assertEqual(grain.data[y*width*2 + 4*x + 2], (y*16 + x) & 0x3F + 0x50)
-                            self.assertEqual(grain.data[y*width*2 + 4*x + 3], (y*16 + 2*x + 1) & 0x3F)
-
-                elif fmt == CogFrameFormat.YUYV:
-                    for y in range(0, 16):
-                        for x in range(0, 8):
-                            self.assertEqual(grain.data[y*width*2 + 4*x + 0], (y*16 + 2*x + 0) & 0x3F)
-                            self.assertEqual(grain.data[y*width*2 + 4*x + 1], (y*16 + x) & 0x3F + 0x40)
-                            self.assertEqual(grain.data[y*width*2 + 4*x + 2], (y*16 + 2*x + 1) & 0x3F)
-                            self.assertEqual(grain.data[y*width*2 + 4*x + 3], (y*16 + x) & 0x3F + 0x50)
-
-                elif fmt == CogFrameFormat.RGB:
-                    for y in range(0, 16):
-                        for x in range(0, 16):
-                            self.assertEqual(grain.data[y*width*3 + 3*x + 0], (y*16 + x) & 0x3F)
-                            self.assertEqual(grain.data[y*width*3 + 3*x + 1], (y*16 + x) & 0x3F + 0x40)
-                            self.assertEqual(grain.data[y*width*3 + 3*x + 2], (y*16 + x) & 0x3F + 0x50)
-
-                elif fmt in [CogFrameFormat.RGBx,
-                             CogFrameFormat.RGBA,
-                             CogFrameFormat.BGRx,
-                             CogFrameFormat.BGRx]:
-                    for y in range(0, 16):
-                        for x in range(0, 16):
-                            self.assertEqual(grain.data[y*width*4 + 4*x + 0], (y*16 + x) & 0x3F)
-                            self.assertEqual(grain.data[y*width*4 + 4*x + 1], (y*16 + x) & 0x3F + 0x40)
-                            self.assertEqual(grain.data[y*width*4 + 4*x + 2], (y*16 + x) & 0x3F + 0x50)
-
-                elif fmt in [CogFrameFormat.ARGB,
-                             CogFrameFormat.xRGB,
-                             CogFrameFormat.ABGR,
-                             CogFrameFormat.xBGR]:
-                    for y in range(0, 16):
-                        for x in range(0, 16):
-                            self.assertEqual(grain.data[y*width*4 + 4*x + 1], (y*16 + x) & 0x3F)
-                            self.assertEqual(grain.data[y*width*4 + 4*x + 2], (y*16 + x) & 0x3F + 0x40)
-                            self.assertEqual(grain.data[y*width*4 + 4*x + 3], (y*16 + x) & 0x3F + 0x50)
-
-                else:
-                    raise Exception()
+                self.assertTrue(np.array_equal(grain.component_data[2].nbytes, width*height*bps >> (hs + vs)))
+                self.assertTrue(np.array_equal(grain.component_data[2].dtype, dtype))
+                self.assertTrue(np.array_equal(grain.component_data[2].size, width*height >> (hs + vs)))
+                self.assertTrue(np.array_equal(grain.component_data[2].itemsize, bps))
+                self.assertTrue(np.array_equal(grain.component_data[2].ndim, 2))
+                self.assertTrue(np.array_equal(grain.component_data[2].shape, (width >> hs, height >> vs)))
 
         return __inner
+
+    def _test_pattern_rgb(self, fmt: CogFrameFormat) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return a 16x16 pixel RGB test pattern"""
+        bd = self._get_bitdepth(fmt)
+
+        v = (1 << (bd - 2))*3
+        return (np.array([[v, v, v, v, 0, 0, 0, 0, v, v, v, v, 0, 0, 0, 0] for _ in range(0, 16)], dtype=_dtype_from_cogframeformat(fmt)).transpose(),
+                np.array([[v, v, v, v, v, v, v, v, 0, 0, 0, 0, 0, 0, 0, 0] for _ in range(0, 16)], dtype=_dtype_from_cogframeformat(fmt)).transpose(),
+                np.array([[v, v, 0, 0, v, v, 0, 0, v, v, 0, 0, v, v, 0, 0] for _ in range(0, 16)], dtype=_dtype_from_cogframeformat(fmt)).transpose())
+
+    def _test_pattern_yuv(self, fmt: CogFrameFormat) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        (R, G, B) = self._test_pattern_rgb(fmt)
+        (R, G, B) = (R.astype(np.dtype(np.double)),
+                     G.astype(np.dtype(np.double)),
+                     B.astype(np.dtype(np.double)))
+        bd = self._get_bitdepth(fmt)
+        (hs, vs, _) = self._get_hs_vs_and_bps(fmt)
+
+        Y = (R*0.2126 +  G*0.7152 + B*0.0722)
+        U = (R*-0.114572 - G*0.385428 + B*0.5 + (1 << (bd - 1)))
+        V = (R*0.5 - G*0.454153 - B*0.045847  + (1 << (bd - 1)))
+
+        if hs == 1:
+            U = (U[0::2, :] + U[1::2, :])/2
+            V = (V[0::2, :] + V[1::2, :])/2
+        if vs == 1:
+            U = (U[:, 0::2] + U[:, 1::2])/2
+            V = (V[:, 0::2] + V[:, 1::2])/2
+
+        return (np.around(Y).astype(_dtype_from_cogframeformat(fmt)), np.around(U).astype(_dtype_from_cogframeformat(fmt)), np.around(V).astype(_dtype_from_cogframeformat(fmt)))
+
+    def write_test_pattern(self, grain):
+        fmt = grain.format
+
+        if self._is_rgb(fmt):
+            (R, G, B) = self._test_pattern_rgb(fmt)
+
+            grain.component_data.R[:, :] = R
+            grain.component_data.G[:, :] = G
+            grain.component_data.B[:, :] = B
+        else:
+            (Y, U, V) = self._test_pattern_yuv(fmt)
+
+            grain.component_data.Y[:, :] = Y
+            grain.component_data.U[:, :] = U
+            grain.component_data.V[:, :] = V
+
+    def assertArrayEqual(self, a: np.ndarray, b: np.ndarray, max_diff: Optional[int] = None):
+        if max_diff is None:
+            self.assertTrue(np.array_equal(a, b), msg="{} != {}".format(a, b))
+        else:
+            a = a.astype(np.dtype(np.int64))
+            b = b.astype(np.dtype(np.int64))
+            self.assertTrue(np.amax(np.absolute(a - b)) <= max_diff,
+                            msg="{} - {} = {} (allowing up to {} difference)".format(a, b, a - b, max_diff))
+
+    def assertMatchesTestPattern(self, grain: VIDEOGRAIN, max_diff: Optional[int] = None):
+        fmt = grain.format
+
+        if self._is_rgb(fmt):
+            (R, G, B) = self._test_pattern_rgb(fmt)
+
+            self.assertArrayEqual(grain.component_data.R[:, :], R, max_diff=max_diff)
+            self.assertArrayEqual(grain.component_data.G[:, :], G, max_diff=max_diff)
+            self.assertArrayEqual(grain.component_data.B[:, :], B, max_diff=max_diff)
+        else:
+            (Y, U, V) = self._test_pattern_yuv(fmt)
+
+            self.assertArrayEqual(grain.component_data.Y[:, :], Y, max_diff=max_diff)
+            self.assertArrayEqual(grain.component_data.U[:, :], U, max_diff=max_diff)
+            self.assertArrayEqual(grain.component_data.V[:, :], V, max_diff=max_diff)
 
     def test_video_grain_create(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -452,6 +463,59 @@ class TestGrain (TestCase):
 
                 if fmt is not CogFrameFormat.v210:
                     self.assertComponentsAreModifiable(grain)
+
+    def test_video_grain_convert(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+
+        def pairs_from(fmts):
+            for fmt_in in fmts:
+                for fmt_out in fmts:
+                    yield (fmt_in, fmt_out)
+
+        fmts = [CogFrameFormat.YUYV, CogFrameFormat.UYVY, CogFrameFormat.U8_444, CogFrameFormat.U8_422, CogFrameFormat.U8_420, # All YUV 8bit formats
+                CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB, CogFrameFormat.RGBx, CogFrameFormat.xRGB, CogFrameFormat.BGRx, CogFrameFormat.xBGR, # All 8-bit 3 component RGB formats
+                CogFrameFormat.v216, CogFrameFormat.S16_444, CogFrameFormat.S16_422, CogFrameFormat.S16_420, # All YUV 16bit formats
+                CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_420_10BIT, # All YUV 10bit formats except for v210
+                CogFrameFormat.S16_444_12BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.S16_420_12BIT, # All YUV 12bit formats
+                CogFrameFormat.S32_444, CogFrameFormat.S32_422, CogFrameFormat.S32_420] # All YUV 32bit formats
+        for (fmt_in, fmt_out) in pairs_from(fmts):
+            with self.subTest(fmt_in=fmt_in, fmt_out=fmt_out):
+                with mock.patch.object(Timestamp, "get_time", return_value=cts):
+                    grain_in = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                                        cog_frame_format=fmt_in,
+                                        width=16, height=16, cog_frame_layout=CogFrameLayout.FULL_FRAME)
+
+                self.assertIsVideoGrain(fmt_in, width=16, height=16)(grain_in)
+                self.write_test_pattern(grain_in)
+
+                if not self._is_rgb(fmt_in) and self._get_bitdepth(fmt_in) == 32 and fmt_out == CogFrameFormat.S32_444_RGB:
+                    # Conversions from 32bit YUV to RGB don't work, and this is known, so check that an exception is thrown:
+                    with self.assertRaises(NotImplementedError):
+                        grain_out = grain_in.convert(fmt_out)
+                else:
+                    grain_out = grain_in.convert(fmt_out)
+
+                    if fmt_in != fmt_out:
+                        flow_id_out = grain_in.flow_id_for_converted_flow(fmt_out)
+                    else:
+                        flow_id_out = flow_id
+                    self.assertIsVideoGrain(fmt_out, flow_id=flow_id_out, width=16, height=16, ignore_cts=True)(grain_out)
+
+                    # If we've converted from a different bit-depth we need to ignore rounding errors
+                    if self._get_bitdepth(fmt_out) > self._get_bitdepth(fmt_in):
+                        self.assertMatchesTestPattern(grain_out, max_diff=1 << (self._get_bitdepth(fmt_out)  + 1 - self._get_bitdepth(fmt_in)))
+                    elif fmt_in == CogFrameFormat.S16_444 and fmt_out == CogFrameFormat.S16_444_RGB:
+                        self.assertMatchesTestPattern(grain_out, max_diff=2)
+                    elif ((self._get_bitdepth(fmt_out) < self._get_bitdepth(fmt_in)) or
+                            (self._is_rgb(fmt_in) != self._is_rgb(fmt_out))):
+                        self.assertMatchesTestPattern(grain_out, max_diff=1)
+                    else:
+                        self.assertMatchesTestPattern(grain_out)
 
     def test_video_grain_create_discontiguous(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
