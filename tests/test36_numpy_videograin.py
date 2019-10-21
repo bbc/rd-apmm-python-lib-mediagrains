@@ -37,6 +37,8 @@ from fractions import Fraction
 from copy import copy, deepcopy
 from typing import Tuple, Optional
 
+from itertools import chain, repeat
+
 import numpy as np
 
 from pdb import set_trace
@@ -373,6 +375,25 @@ class TestGrain (TestCase):
 
         return (np.around(Y).astype(_dtype_from_cogframeformat(fmt)), np.around(U).astype(_dtype_from_cogframeformat(fmt)), np.around(V).astype(_dtype_from_cogframeformat(fmt)))
 
+    def _test_pattern_v210(self) -> np.ndarray:
+        (Y, U, V) = self._test_pattern_yuv(CogFrameFormat.S16_422_10BIT)
+
+        output = np.zeros(32*16, dtype=np.dtype(np.uint32))
+        for y in range(0, 16):
+
+            yy = chain(iter(Y[:, y]), repeat(0))
+            uu = chain(iter(U[:, y]), repeat(0))
+            vv = chain(iter(V[:, y]), repeat(0))
+
+            for x in range(0, 8):
+                 output[y*32 + 4*x + 0] = next(uu) | (next(yy) << 10) | (next(vv) << 20)
+                 output[y*32 + 4*x + 1] = next(yy) | (next(uu) << 10) | (next(yy) << 20)
+                 output[y*32 + 4*x + 2] = next(vv) | (next(yy) << 10) | (next(uu) << 20)
+                 output[y*32 + 4*x + 3] = next(yy) | (next(vv) << 10) | (next(yy) << 20)
+
+        return output
+
+
     def write_test_pattern(self, grain):
         fmt = grain.format
 
@@ -382,6 +403,8 @@ class TestGrain (TestCase):
             grain.component_data.R[:, :] = R
             grain.component_data.G[:, :] = G
             grain.component_data.B[:, :] = B
+        elif fmt == CogFrameFormat.v210:
+            grain.data[:] = self._test_pattern_v210()
         else:
             (Y, U, V) = self._test_pattern_yuv(fmt)
 
@@ -407,6 +430,8 @@ class TestGrain (TestCase):
             self.assertArrayEqual(grain.component_data.R[:, :], R, max_diff=max_diff)
             self.assertArrayEqual(grain.component_data.G[:, :], G, max_diff=max_diff)
             self.assertArrayEqual(grain.component_data.B[:, :], B, max_diff=max_diff)
+        elif fmt == CogFrameFormat.v210:
+            self.assertArrayEqual(grain.data, self._test_pattern_v210())
         else:
             (Y, U, V) = self._test_pattern_yuv(fmt)
 
@@ -481,6 +506,7 @@ class TestGrain (TestCase):
                 CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB, CogFrameFormat.RGBx, CogFrameFormat.xRGB, CogFrameFormat.BGRx, CogFrameFormat.xBGR, # All 8-bit 3 component RGB formats
                 CogFrameFormat.v216, CogFrameFormat.S16_444, CogFrameFormat.S16_422, CogFrameFormat.S16_420, # All YUV 16bit formats
                 CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_420_10BIT, # All YUV 10bit formats except for v210
+                CogFrameFormat.v210, # v210, may the gods be merciful to us for including it
                 CogFrameFormat.S16_444_12BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.S16_420_12BIT, # All YUV 12bit formats
                 CogFrameFormat.S32_444, CogFrameFormat.S32_422, CogFrameFormat.S32_420] # All YUV 32bit formats
         for (fmt_in, fmt_out) in pairs_from(fmts):
@@ -493,7 +519,7 @@ class TestGrain (TestCase):
                 self.assertIsVideoGrain(fmt_in, width=16, height=16)(grain_in)
                 self.write_test_pattern(grain_in)
 
-                if not self._is_rgb(fmt_in) and self._get_bitdepth(fmt_in) == 32 and fmt_out == CogFrameFormat.S32_444_RGB:
+                if (not self._is_rgb(fmt_in) and self._get_bitdepth(fmt_in) == 32 and fmt_out == CogFrameFormat.S32_444_RGB) or (fmt_out == CogFrameFormat.v210 and fmt_in != CogFrameFormat.v210) or (fmt_in == CogFrameFormat.v210 and fmt_out not in [CogFrameFormat.v210, CogFrameFormat.S16_422_10BIT]):
                     # Conversions from 32bit YUV to RGB don't work, and this is known, so check that an exception is thrown:
                     with self.assertRaises(NotImplementedError):
                         grain_out = grain_in.convert(fmt_out)

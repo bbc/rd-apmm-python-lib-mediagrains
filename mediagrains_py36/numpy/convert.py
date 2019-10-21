@@ -163,6 +163,10 @@ def _convert_yuv444_to_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
     grain_out.component_data.B[:,:] = (Y + U*1.8556)
 
 
+def _convert_v210_to_yuv422_10bit(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+    pass
+
+
 # These methods automate the process of registering simple copy conversions
 def _register_simple_copy_conversions_for_formats_yuv(fmts: List[CogFrameFormat]):
     for i in range(0, len(fmts)):
