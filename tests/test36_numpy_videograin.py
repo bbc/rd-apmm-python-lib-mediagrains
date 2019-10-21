@@ -519,7 +519,7 @@ class TestGrain (TestCase):
                 self.assertIsVideoGrain(fmt_in, width=16, height=16)(grain_in)
                 self.write_test_pattern(grain_in)
 
-                if (not self._is_rgb(fmt_in) and self._get_bitdepth(fmt_in) == 32 and fmt_out == CogFrameFormat.S32_444_RGB) or (fmt_out == CogFrameFormat.v210 and fmt_in != CogFrameFormat.v210) or (fmt_in == CogFrameFormat.v210 and fmt_out not in [CogFrameFormat.v210, CogFrameFormat.S16_422_10BIT]):
+                if (not self._is_rgb(fmt_in) and self._get_bitdepth(fmt_in) == 32 and fmt_out == CogFrameFormat.S32_444_RGB) or (fmt_out == CogFrameFormat.v210 and fmt_in != CogFrameFormat.v210):
                     # Conversions from 32bit YUV to RGB don't work, and this is known, so check that an exception is thrown:
                     with self.assertRaises(NotImplementedError):
                         grain_out = grain_in.convert(fmt_out)

@@ -336,3 +336,10 @@ for (d1, d2) in distinct_pairs_from([8, 10, 12, 16, 32]):
             for yuv_fmt in _equivalent_formats(COG_PLANAR_FORMAT(ss, d1)):
                 VIDEOGRAIN.grain_conversion_two_step(rgb_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d2), yuv_fmt)
                 VIDEOGRAIN.grain_conversion_two_step(yuv_fmt, COG_PLANAR_FORMAT(PlanarChromaFormat.YUV_444, d2), rgb_fmt)
+
+# Conversions from v210 to other formats
+for d in [8, 10, 12, 16, 32]:
+    for ss in [PlanarChromaFormat.YUV_420, PlanarChromaFormat.YUV_422, PlanarChromaFormat.YUV_444, PlanarChromaFormat.RGB]:
+        for fmt in _equivalent_formats(COG_PLANAR_FORMAT(ss, d)):
+            if fmt != CogFrameFormat.S16_422_10BIT:
+                VIDEOGRAIN.grain_conversion_two_step(CogFrameFormat.v210, CogFrameFormat.S16_422_10BIT, fmt)
