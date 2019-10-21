@@ -250,7 +250,7 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
         raise NotImplementedError("This conversion has not yet been implemented")
 
     def flow_id_for_converted_flow(self, fmt: CogFrameFormat) -> uuid.UUID:
-        return uuid.uuid5(self.source_id, "FORMAT_CONVERSION: {!r}".format(fmt))
+        return uuid.uuid5(self.flow_id, "FORMAT_CONVERSION: {!r}".format(fmt))
 
     def _similar_grain(self, fmt: CogFrameFormat) -> "VIDEOGRAIN":
         """Returns a new empty grain that has the specified format, but other parameters identical to this grain."""
