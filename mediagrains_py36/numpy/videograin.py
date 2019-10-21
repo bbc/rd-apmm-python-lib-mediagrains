@@ -266,7 +266,7 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
                           cog_frame_layout=self.layout)
 
     def convert(self, fmt: CogFrameFormat) -> "VIDEOGRAIN":
-        """Used to convert this grain to a different cog format.
+        """Used to convert this grain to a different cog format. Always produces a new grain.
 
         :param fmt: The format to convert to
         :returns: A new grain of the specified format. Notably converting to the same format is the same as a deepcopy
@@ -278,6 +278,18 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
             grain_out = self._similar_grain(fmt)
             self.__class__._get_grain_conversion_function(self.format, fmt)(self, grain_out)
             return grain_out
+
+    def asformat(self, fmt: CogFrameFormat) -> "VIDEOGRAIN":
+        """Used to ensure that this grain is in a particular format. Converts it if not.
+
+        :param fmt: The format to ensure
+        :returns: self or a new grain.
+        :raises NotImplementedError if the requested conversion is not possible.
+        """
+        if self.format == fmt:
+            return self
+        else:
+            return self.convert(fmt)
 
 
 def VideoGrain(*args, **kwargs) -> VIDEOGRAIN:
