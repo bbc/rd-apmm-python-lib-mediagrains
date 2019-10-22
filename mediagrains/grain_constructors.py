@@ -132,20 +132,15 @@ but src_id is kept avaialble for backwards compatibility)
         if src_id is None or flow_id is None:
             raise AttributeError("Must specify at least meta or src_id and flow_id")
 
-        if isinstance(src_id, UUID):
-            src_id = str(src_id)
-        if isinstance(flow_id, UUID):
-            flow_id = str(flow_id)
-
-        if not isinstance(src_id, str) or not isinstance(flow_id, str):
+        if not isinstance(src_id, UUID) or not isinstance(flow_id, UUID):
             raise AttributeError("Invalid types for src_id and flow_id")
 
         meta = {
             "@_ns": "urn:x-ipstudio:ns:0.1",
             "grain": {
                 "grain_type": "empty",
-                "source_id": src_id,
-                "flow_id": flow_id,
+                "source_id": str(src_id),
+                "flow_id": str(flow_id),
                 "origin_timestamp": str(ots),
                 "sync_timestamp": str(sts),
                 "creation_timestamp": str(cts),
