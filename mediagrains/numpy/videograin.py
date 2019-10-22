@@ -21,8 +21,6 @@ Library for handling mediagrains in numpy arrays
 
 from mediagrains.cogenums import (
     CogFrameFormat,
-    COG_FRAME_IS_PACKED,
-    COG_FRAME_IS_COMPRESSED,
     COG_FRAME_IS_PLANAR,
     COG_FRAME_FORMAT_BYTES_PER_VALUE,
     COG_FRAME_IS_PLANAR_RGB)
@@ -82,9 +80,9 @@ class ComponentDataList(list):
         YUV = auto()
         RGB = auto()
         BGR = auto()
-        X   = auto()
+        X = auto()
 
-    def __init__(self, data: list, arrangement: ComponentOrder=ComponentOrder.X):
+    def __init__(self, data: list, arrangement: ComponentOrder = ComponentOrder.X):
         super().__init__(data)
         if arrangement == ComponentDataList.ComponentOrder.YUV:
             self.Y = self[0]
@@ -136,7 +134,14 @@ def _component_arrays_for_interleaved_422(data0: np.ndarray, data1: np.ndarray, 
                    strides=(stride, itemsize*4)).transpose()]
 
 
-def _component_arrays_for_interleaved_444_take_three(data0: np.ndarray, data1: np.ndarray, data2: np.ndarray, width: int, height: int, stride: int, itemsize: int, num_components: int = 3):
+def _component_arrays_for_interleaved_444_take_three(data0: np.ndarray,
+                                                     data1: np.ndarray,
+                                                     data2: np.ndarray,
+                                                     width: int,
+                                                     height: int,
+                                                     stride: int,
+                                                     itemsize: int,
+                                                     num_components: int = 3):
     return [
         as_strided(data0,
                    shape=(height, width),
@@ -173,20 +178,40 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
         return _component_arrays_for_interleaved_422(data, data[1:], data[3:], components[0].width, components[0].height, components[0].stride, data.itemsize)
     elif fmt == CogFrameFormat.RGB:
         # 8 bit 4:4:4 three components interleaved in RGB order
-        return _component_arrays_for_interleaved_444_take_three(data, data[1:], data[2:], components[0].width, components[0].height, components[0].stride, data.itemsize)
+        return _component_arrays_for_interleaved_444_take_three(data,
+                                                                data[1:],
+                                                                data[2:],
+                                                                components[0].width,
+                                                                components[0].height,
+                                                                components[0].stride,
+                                                                data.itemsize)
     elif fmt in [CogFrameFormat.RGBx,
                  CogFrameFormat.RGBA,
                  CogFrameFormat.BGRx,
                  CogFrameFormat.BGRx]:
         # 8 bit 4:4:4:4 four components interleave dropping the fourth component
-        return _component_arrays_for_interleaved_444_take_three(data, data[1:], data[2:], components[0].width, components[0].height, components[0].stride, data.itemsize, num_components=4)
+        return _component_arrays_for_interleaved_444_take_three(data,
+                                                                data[1:],
+                                                                data[2:],
+                                                                components[0].width,
+                                                                components[0].height,
+                                                                components[0].stride,
+                                                                data.itemsize,
+                                                                num_components=4)
     elif fmt in [CogFrameFormat.ARGB,
                  CogFrameFormat.xRGB,
                  CogFrameFormat.ABGR,
                  CogFrameFormat.xBGR,
                  CogFrameFormat.AYUV]:
         # 8 bit 4:4:4:4 four components interleave dropping the first component
-        return _component_arrays_for_interleaved_444_take_three(data[1:], data[2:], data[3:], components[0].width, components[0].height, components[0].stride, data.itemsize, num_components=4)
+        return _component_arrays_for_interleaved_444_take_three(data[1:],
+                                                                data[2:],
+                                                                data[3:],
+                                                                components[0].width,
+                                                                components[0].height,
+                                                                components[0].stride,
+                                                                data.itemsize,
+                                                                num_components=4)
     elif fmt == CogFrameFormat.v210:
         # v210 is barely supported. Convert it to something else to actually use it!
         # This method returns an empty list because component access isn't supported, but

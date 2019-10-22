@@ -23,7 +23,7 @@
 # that python code using it is compatible with this library when specifying
 # video and audio formats.
 
-from enum import IntEnum, Enum
+from enum import IntEnum
 
 __all__ = [
     'CogFrameFormat',
@@ -129,7 +129,7 @@ class PlanarChromaFormat(IntEnum):
     YUV_444 = 0x00
     YUV_422 = 0x01
     YUV_420 = 0x03
-    RGB     = 0x10
+    RGB = 0x10
 
 
 def COG_PLANAR_FORMAT(chroma, depth):

@@ -20,6 +20,6 @@ Library for handling mediagrains in numpy arrays
 """
 
 from .videograin import VIDEOGRAIN, VideoGrain
-from . import convert
+from . import convert  # noqa: F401
 
 __all__ = ['VideoGrain', 'VIDEOGRAIN']
