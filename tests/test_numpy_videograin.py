@@ -19,7 +19,7 @@ from unittest import TestCase
 
 import uuid
 from mediagrains.numpy import VideoGrain, VIDEOGRAIN
-from mediagrains_py36.numpy.videograin import _dtype_from_cogframeformat
+from mediagrains.numpy.videograin import _dtype_from_cogframeformat
 from mediagrains.cogenums import (
     CogFrameFormat,
     CogFrameLayout,

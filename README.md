@@ -14,7 +14,7 @@ documentation for more details.
 
 ### Requirements
 
-* A working Python 2.7 or Python 3.6+ installation
+* A working Python 3.6+ installation
 * BBC R&D's internal deb repository set up as a source for apt (if installing via apt-get)
 * The tool [tox](https://tox.readthedocs.io/en/latest/) is needed to run the unittests, but not required to use the library.
 
@@ -25,7 +25,7 @@ documentation for more details.
 $ pip install mediagrains
 
 # Install via apt-get
-$ apt-get install python-mediagrains python3-mediagrains
+$ apt-get install python3-mediagrains
 
 # Install directly from source repo
 $ git clone git@github.com:bbc/rd-apmm-python-lib-mediagrains.git
@@ -85,7 +85,7 @@ it with colour-bars:
 ...             i += 1
 ```
 
-(In python3.6+ a more natural interface for accessing data exists in the form of numpy arrays. See later.)
+(a more natural interface for accessing data exists in the form of numpy arrays. See later.)
 
 The object grain can then be freely used for whatever video processing
 is desired, or it can be serialised into a GSF file as follows:
@@ -161,9 +161,9 @@ between two grains, both as a printed string (as seen above) and also
 in a data-centric fashion as a tree structure which can be
 interrogated in code.
 
-### Numpy arrays (Python 3.6+)
+### Numpy arrays
 
-In python 3.6 or higher an additional feature is provided in the form of numpy array access to the data in a grain. As such the above example of creating colourbars can be done more easily:
+An additional feature is provided in the form of numpy array access to the data in a grain. As such the above example of creating colourbars can be done more easily:
 
 ```Python console
 >>> from mediagrains.numpy import VideoGrain
