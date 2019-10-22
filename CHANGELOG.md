@@ -9,6 +9,7 @@
 - Added `mediagrains.numpy` sublibrary for handling video grains as numpy arrays, in python 3.6+
 - Added `PSNR` option to grain compare.
 - Support for converting between all uncompressed video grain formats added to `mediagrains.numpy`
+- This is the last release that will support python 2.7 (apart from bugfixes)
 
 ## 2.5.3
 - BUGFIX: IOBytes doesn't quite fulfil bytes-like contracts, but can be converted to something that does
