@@ -32,7 +32,7 @@ import uuid
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
 
-from typing import Callable
+from typing import Callable, Dict, Tuple
 
 from enum import Enum, auto
 
@@ -222,7 +222,9 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
 
 
 class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
-    _grain_conversions = {}
+    ConversionFunc = Callable[["VIDEOGRAIN", "VIDEOGRAIN"], None]
+
+    _grain_conversions: Dict[Tuple[CogFrameFormat, CogFrameFormat], ConversionFunc] = {}
 
     def __init__(self, meta, data):
         super().__init__(meta, data)
@@ -252,7 +254,7 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
     @classmethod
     def grain_conversion(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat):
         """Decorator to apply to all grain conversion functions"""
-        def _inner(f: Callable[[cls, cls], None]) -> None:
+        def _inner(f: "VIDEOGRAIN.ConversionFunc") -> "VIDEOGRAIN.ConversionFunc":
             cls._grain_conversions[(fmt_in, fmt_out)] = f
             return f
         return _inner
@@ -267,7 +269,7 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
         cls.grain_conversion(fmt_in, fmt_out)(_inner)
 
     @classmethod
-    def _get_grain_conversion_function(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat) -> Callable[["VIDEOGRAIN", "VIDEOGRAIN"], None]:
+    def _get_grain_conversion_function(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat) -> "VIDEOGRAIN.ConversionFunc":
         """Return the registered grain conversion function for a specified type conversion, or raise NotImplementedError"""
         if (fmt_in, fmt_out) in cls._grain_conversions:
             return cls._grain_conversions[(fmt_in, fmt_out)]

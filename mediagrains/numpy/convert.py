@@ -20,7 +20,7 @@ Library for converting video grain formats represented as numpy arrays.
 """
 
 from mediagrains.cogenums import CogFrameFormat, COG_FRAME_FORMAT_ACTIVE_BITS, COG_PLANAR_FORMAT, PlanarChromaFormat
-from typing import Callable, List
+from typing import List, Tuple, Sequence
 import numpy as np
 import numpy.random as npr
 
@@ -33,9 +33,9 @@ def distinct_pairs_from(vals):
             yield (vals[i], vals[j])
 
 
-def compose(first: Callable[[VIDEOGRAIN, VIDEOGRAIN], None],
+def compose(first: VIDEOGRAIN.ConversionFunc,
             intermediate: CogFrameFormat,
-            second: Callable[[VIDEOGRAIN, VIDEOGRAIN], None]) -> Callable[[VIDEOGRAIN, VIDEOGRAIN], None]:
+            second: VIDEOGRAIN.ConversionFunc) -> VIDEOGRAIN.ConversionFunc:
     """Compose two conversion functions together"""
     def _inner(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
         grain_intermediate = grain_in._similar_grain(intermediate)
@@ -48,13 +48,13 @@ def compose(first: Callable[[VIDEOGRAIN, VIDEOGRAIN], None],
 # Some simple conversions can be acheived by just copying the data from one grain to the other with no
 # clever work at all. All the cleverness is already present in the code that creates the component array views
 # in the mediagrains
-def _simple_copy_convert_yuv(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _simple_copy_convert_yuv(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     grain_out.component_data.Y[:, :] = grain_in.component_data.Y
     grain_out.component_data.U[:, :] = grain_in.component_data.U
     grain_out.component_data.V[:, :] = grain_in.component_data.V
 
 
-def _simple_copy_convert_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _simple_copy_convert_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     grain_out.component_data.R[:, :] = grain_in.component_data.R
     grain_out.component_data.G[:, :] = grain_in.component_data.G
     grain_out.component_data.B[:, :] = grain_in.component_data.B
@@ -66,20 +66,20 @@ def _int_array_mean(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 # Some conversions between YUV colour subsampling systems require a simple mean
-def _simple_mean_convert_yuv444__yuv422(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _simple_mean_convert_yuv444__yuv422(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     grain_out.component_data.Y[:, :] = grain_in.component_data.Y
     grain_out.component_data.U[:, :] = _int_array_mean(grain_in.component_data.U[0::2, :], grain_in.component_data.U[1::2, :])
     grain_out.component_data.V[:, :] = _int_array_mean(grain_in.component_data.V[0::2, :], grain_in.component_data.V[1::2, :])
 
 
-def _simple_mean_convert_yuv422__yuv420(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _simple_mean_convert_yuv422__yuv420(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     grain_out.component_data.Y[:, :] = grain_in.component_data.Y
     grain_out.component_data.U[:, :] = _int_array_mean(grain_in.component_data.U[:, 0::2], grain_in.component_data.U[:, 1::2])
     grain_out.component_data.V[:, :] = _int_array_mean(grain_in.component_data.V[:, 0::2], grain_in.component_data.V[:, 1::2])
 
 
 # Other conversions require duplicating samples
-def _simple_duplicate_convert_yuv422__yuv444(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _simple_duplicate_convert_yuv422__yuv444(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     grain_out.component_data.Y[:, :] = grain_in.component_data.Y
 
     grain_out.component_data.U[0::2, :] = grain_in.component_data.U
@@ -88,7 +88,7 @@ def _simple_duplicate_convert_yuv422__yuv444(grain_in: VIDEOGRAIN, grain_out: VI
     grain_out.component_data.V[1::2, :] = grain_in.component_data.V
 
 
-def _simple_duplicate_convert_yuv420__yuv422(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _simple_duplicate_convert_yuv420__yuv422(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     grain_out.component_data.Y[:, :] = grain_in.component_data.Y
 
     grain_out.component_data.U[:, 0::2] = grain_in.component_data.U
@@ -102,7 +102,7 @@ def _unbiased_right_shift(a: np.ndarray, n: int) -> np.ndarray:
     return (a >> n) + ((a >> (n - 1)) & 0x1)
 
 
-def _bitdepth_down_convert_yuv(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _bitdepth_down_convert_yuv(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     bitshift = COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format) - COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.format)
 
     grain_out.component_data[0][:] = _unbiased_right_shift(grain_in.component_data[0][:], bitshift)
@@ -110,7 +110,7 @@ def _bitdepth_down_convert_yuv(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
     grain_out.component_data[2][:] = _unbiased_right_shift(grain_in.component_data[2][:], bitshift)
 
 
-def _bitdepth_down_convert_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _bitdepth_down_convert_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     bitshift = COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format) - COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.format)
 
     grain_out.component_data.R[:] = _unbiased_right_shift(grain_in.component_data.R[:], bitshift)
@@ -123,7 +123,7 @@ def _noisy_left_shift(a: np.ndarray, n: int) -> np.ndarray:
     return (a << n) + rando
 
 
-def _bitdepth_up_convert_yuv(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _bitdepth_up_convert_yuv(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     bitshift = COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.format) - COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format)
 
     dt = grain_out.component_data[0].dtype
@@ -133,7 +133,7 @@ def _bitdepth_up_convert_yuv(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
     grain_out.component_data[2][:] = _noisy_left_shift(grain_in.component_data[2][:].astype(dt), bitshift)
 
 
-def _bitdepth_up_convert_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _bitdepth_up_convert_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     bitshift = COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.format) - COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format)
 
     dt = grain_out.component_data[0].dtype
@@ -144,7 +144,7 @@ def _bitdepth_up_convert_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
 
 
 # Colourspace conversions (based on rec.709)
-def _convert_rgb_to_yuv444(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _convert_rgb_to_yuv444(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     bd = COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.format)
     (R, G, B) = (grain_in.component_data.R,
                  grain_in.component_data.G,
@@ -155,7 +155,7 @@ def _convert_rgb_to_yuv444(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
     np.clip((R*0.5 - G*0.454153 - B*0.045847 + (1 << (bd - 1))), 0, 1 << bd, out=grain_out.component_data.V, casting="unsafe")
 
 
-def _convert_yuv444_to_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _convert_yuv444_to_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     bd = COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format)
     (Y, U, V) = (grain_in.component_data.Y.astype(np.dtype(np.double)),
                  grain_in.component_data.U.astype(np.dtype(np.double)) - (1 << (bd - 1)),
@@ -166,7 +166,7 @@ def _convert_yuv444_to_rgb(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
     np.clip((Y + U*1.8556), 0, 1 << bd, out=grain_out.component_data.B, casting="unsafe")
 
 
-def _convert_v210_to_yuv422_10bit(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _convert_v210_to_yuv422_10bit(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     # This is a v210 -> planar descramble. It's not super fast, but it should be correct
     #
     # Input data is array of 32-bit words, arranged as a 1d array in repeating blocks of 4 like:
@@ -225,7 +225,7 @@ def _convert_v210_to_yuv422_10bit(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
     grain_out.component_data.V[2::3, :] = second[3::4, :][0:(grain_in.width//2 + 0)//3, :]
 
 
-def _convert_yuv422_10bit_to_v210(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
+def _convert_yuv422_10bit_to_v210(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     # This won't be fast, but it should work.
 
     # Take every third entry in each component and arrange them
@@ -250,22 +250,22 @@ def _convert_yuv422_10bit_to_v210(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN):
 
 
 # These methods automate the process of registering simple copy conversions
-def _register_simple_copy_conversions_for_formats_yuv(fmts: List[CogFrameFormat]):
+def _register_simple_copy_conversions_for_formats_yuv(fmts: Sequence[CogFrameFormat]):
     for i in range(0, len(fmts)):
         for j in range(i+1, len(fmts)):
             VIDEOGRAIN.grain_conversion(fmts[i], fmts[j])(_simple_copy_convert_yuv)
             VIDEOGRAIN.grain_conversion(fmts[j], fmts[i])(_simple_copy_convert_yuv)
 
 
-def _register_simple_copy_conversions_for_formats_rgb(fmts: List[CogFrameFormat]):
+def _register_simple_copy_conversions_for_formats_rgb(fmts: Sequence[CogFrameFormat]):
     for i in range(0, len(fmts)):
         for j in range(i+1, len(fmts)):
             VIDEOGRAIN.grain_conversion(fmts[i], fmts[j])(_simple_copy_convert_rgb)
             VIDEOGRAIN.grain_conversion(fmts[j], fmts[i])(_simple_copy_convert_rgb)
 
 
-def _equivalent_formats(fmt: CogFrameFormat) -> List[CogFrameFormat]:
-    equiv_categories = [
+def _equivalent_formats(fmt: CogFrameFormat) -> Tuple[CogFrameFormat, ...]:
+    equiv_categories: List[Tuple[CogFrameFormat, ...]] = [
         (CogFrameFormat.U8_422, CogFrameFormat.UYVY, CogFrameFormat.YUYV),
         (CogFrameFormat.S16_422, CogFrameFormat.v216),
         (CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB, CogFrameFormat.RGBx, CogFrameFormat.xRGB, CogFrameFormat.BGRx, CogFrameFormat.xBGR)]

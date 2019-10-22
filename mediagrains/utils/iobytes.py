@@ -22,6 +22,7 @@ bytes object, lazily loading as necessary.
 """
 
 from collections.abc import Sequence
+from typing import List
 
 __all__ = ["IOBytes"]
 
@@ -40,7 +41,7 @@ class LazyLoader (object):
     transparently passed through to the stored object.
     """
 
-    _attributes = []
+    _attributes: List[str] = []
 
     def __init__(self, loader):
         """

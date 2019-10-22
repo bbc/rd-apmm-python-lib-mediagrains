@@ -20,6 +20,7 @@ A simple wrapper class AsyncIOBytes which is an asynchronous version of IOBytes
 """
 
 from collections.abc import Sequence
+from typing import List
 
 
 __all__ = ["AsyncIOBytes"]
@@ -40,7 +41,7 @@ class AsyncLazyLoader (object):
     Unlike the synchronous version loading is not automatic, but can be triggered by awaiting the load coroutine.
     """
 
-    _attributes = []
+    _attributes: List[str] = []
 
     def __init__(self, loader):
         """
