@@ -132,7 +132,7 @@ class PlanarChromaFormat(IntEnum):
     RGB = 0x10
 
 
-def COG_PLANAR_FORMAT(chroma, depth):
+def COG_PLANAR_FORMAT(chroma: PlanarChromaFormat, depth: int) -> CogFrameFormat:
     if depth <= 8:
         return CogFrameFormat(0 + chroma + (depth << 10))
     elif depth > 16:
@@ -141,27 +141,27 @@ def COG_PLANAR_FORMAT(chroma, depth):
         return CogFrameFormat(4 + chroma + (depth << 10))
 
 
-def COG_FRAME_IS_PACKED(fmt):
+def COG_FRAME_IS_PACKED(fmt: CogFrameFormat) -> bool:
     return ((fmt >> 8) & 0x1) != 0
 
 
-def COG_FRAME_IS_COMPRESSED(fmt):
+def COG_FRAME_IS_COMPRESSED(fmt: CogFrameFormat) -> bool:
     return ((fmt >> 9) & 0x1) != 0
 
 
-def COG_FRAME_IS_PLANAR(fmt):
+def COG_FRAME_IS_PLANAR(fmt: CogFrameFormat) -> bool:
     return ((fmt >> 8) & 0x3) == 0
 
 
-def COG_FRAME_IS_ALPHA(fmt):
+def COG_FRAME_IS_ALPHA(fmt: CogFrameFormat) -> bool:
     return ((fmt >> 7) & 0x1) != 0
 
 
-def COG_FRAME_IS_PLANAR_RGB(fmt):
+def COG_FRAME_IS_PLANAR_RGB(fmt: CogFrameFormat) -> bool:
     return ((fmt >> 4) & 0x31) == 1
 
 
-def COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt):
+def COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt: CogFrameFormat) -> int:
     if ((fmt) & 0xc) == 0:
         return 1
     elif ((fmt) & 0xc) == 4:
@@ -170,13 +170,13 @@ def COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt):
         return 4
 
 
-def COG_FRAME_FORMAT_H_SHIFT(fmt):
+def COG_FRAME_FORMAT_H_SHIFT(fmt: CogFrameFormat) -> int:
     return (fmt & 0x1)
 
 
-def COG_FRAME_FORMAT_V_SHIFT(fmt):
+def COG_FRAME_FORMAT_V_SHIFT(fmt: CogFrameFormat) -> int:
     return ((fmt >> 1) & 0x1)
 
 
-def COG_FRAME_FORMAT_ACTIVE_BITS(fmt):
+def COG_FRAME_FORMAT_ACTIVE_BITS(fmt: CogFrameFormat) -> int:
     return (((int(fmt)) >> 10) & 0x3F)
