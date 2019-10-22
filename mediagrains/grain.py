@@ -27,7 +27,7 @@ from __future__ import absolute_import
 from six import string_types
 
 from uuid import UUID
-from mediatimestamp.immutable import Timestamp, TimeOffset
+from mediatimestamp.immutable import Timestamp, TimeOffset, TimeRange
 from collections import Sequence, MutableSequence, Mapping
 from fractions import Fraction
 from copy import copy, deepcopy
@@ -120,12 +120,19 @@ expected_length
     How long the data would be expected to be based on what's listed in the metadata
 
 
-In addition there is a method provided for convenience:
+In addition these methods are provided for convenience:
 
 
 final_origin_timestamp()
     The origin timestamp of the final sample in the grain. For most grain types this is the same as
     origin_timestamp, but not for audio grains.
+
+origin_timerange()
+    The origin time range covered by the samples in the grain.
+
+normalise_time(value)
+    Returns a normalised Timestamp, TimeOffset or TimeRange using the video frame rate or audio sample rate.
+
     """
     def __init__(self, meta, data):
         self.meta = meta
@@ -202,6 +209,9 @@ final_origin_timestamp()
         from .grain_constructors import Grain
         return Grain(deepcopy(self.meta), deepcopy(self.data))
 
+    def __bytes__(self):
+        return bytes(self._data)
+
     @property
     def data(self):
         return self._data
@@ -246,6 +256,12 @@ final_origin_timestamp()
 
     def final_origin_timestamp(self):
         return self.origin_timestamp
+
+    def origin_timerange(self):
+        return TimeRange(self.origin_timestamp, self.final_origin_timestamp(), TimeRange.INCLUSIVE)
+
+    def normalise_time(self, value):
+        return value
 
     @property
     def sync_timestamp(self):
@@ -849,16 +865,16 @@ length
             self.parent = parent
 
         def __getitem__(self, key):
-            return VIDEOGRAIN.COMPONENT(self.parent.meta['grain']['cog_frame']['components'][key])
+            return type(self.parent).COMPONENT(self.parent.meta['grain']['cog_frame']['components'][key])
 
         def __setitem__(self, key, value):
-            self.parent.meta['grain']['cog_frame']['components'][key] = VIDEOGRAIN.COMPONENT(value)
+            self.parent.meta['grain']['cog_frame']['components'][key] = type(self.parent).COMPONENT(value)
 
         def __delitem__(self, key):
             del self.parent.meta['grain']['cog_frame']['components'][key]
 
         def insert(self, key, value):
-            self.parent.meta['grain']['cog_frame']['components'].insert(key, VIDEOGRAIN.COMPONENT(value))
+            self.parent.meta['grain']['cog_frame']['components'].insert(key, type(self.parent).COMPONENT(value))
 
         def __len__(self):
             return len(self.parent.meta['grain']['cog_frame']['components'])
@@ -885,6 +901,11 @@ length
         self.meta['grain']['cog_frame']['format'] = int(self.meta['grain']['cog_frame']['format'])
         self.meta['grain']['cog_frame']['layout'] = int(self.meta['grain']['cog_frame']['layout'])
         self.components = VIDEOGRAIN.COMPONENT_LIST(self)
+
+    def normalise_time(self, value):
+        if self.rate == 0:
+            return value
+        return value.normalise(self.rate.numerator, self.rate.denominator)
 
     @property
     def format(self):
@@ -1063,6 +1084,11 @@ unit_offsets
             self.meta['grain']['cog_coded_frame']['is_key_frame'] = False
         self.meta['grain']['cog_coded_frame']['format'] = int(self.meta['grain']['cog_coded_frame']['format'])
         self.meta['grain']['cog_coded_frame']['layout'] = int(self.meta['grain']['cog_coded_frame']['layout'])
+
+    def normalise_time(self, value):
+        if self.rate == 0:
+            return value
+        return value.normalise(self.rate.numerator, self.rate.denominator)
 
     @property
     def format(self):
@@ -1293,6 +1319,9 @@ sample_rate
     def final_origin_timestamp(self):
         return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, self.sample_rate, 1))
 
+    def normalise_time(self, value):
+        return value.normalise(self.sample_rate, 1)
+
     @property
     def format(self):
         return CogAudioFormat(self.meta['grain']['cog_audio']['format'])
@@ -1426,6 +1455,9 @@ remainder
 
     def final_origin_timestamp(self):
         return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, self.sample_rate, 1))
+
+    def normalise_time(self, value):
+        return value.normalise(self.sample_rate, 1)
 
     @property
     def format(self):

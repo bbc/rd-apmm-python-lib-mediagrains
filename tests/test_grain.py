@@ -20,7 +20,7 @@ from unittest import TestCase
 import uuid
 from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
-from mediatimestamp.immutable import Timestamp, TimeOffset
+from mediatimestamp.immutable import Timestamp, TimeOffset, TimeRange
 import mock
 from fractions import Fraction
 import json
@@ -41,6 +41,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.final_origin_timestamp(), cts)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(cts))
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(0, 1))
@@ -88,6 +89,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.source_id, src_id)
         self.assertEqual(grain.flow_id, flow_id)
@@ -110,6 +112,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
         self.assertEqual(grain.sync_timestamp, ots)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(0, 1))
@@ -131,6 +134,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(0, 1))
@@ -200,6 +204,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
@@ -246,6 +251,7 @@ class TestGrain (TestCase):
         grain.origin_timestamp = ots
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
 
         grain.sync_timestamp = sts
         self.assertEqual(grain.sync_timestamp, sts)
@@ -329,6 +335,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
@@ -539,6 +546,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
@@ -644,6 +652,7 @@ class TestGrain (TestCase):
 
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
         self.assertEqual(grain.sync_timestamp, ots)
         self.assertEqual(grain.creation_timestamp, cts)
 
@@ -659,6 +668,7 @@ class TestGrain (TestCase):
 
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.final_origin_timestamp(), cts)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(cts))
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
 
@@ -808,6 +818,28 @@ class TestGrain (TestCase):
         self.assertEqual(grain.length, 0)
         self.assertEqual(grain.expected_length, 8192*1080)
 
+    def test_video_grain_normalise(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=ots):
+            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots,
+                               rate=Fraction(25, 1),
+                               cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                               width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
+
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertNotEqual(grain.normalise_time(grain.origin_timestamp),
+                            ots)
+        self.assertEqual(grain.normalise_time(grain.origin_timestamp),
+                         ots.normalise(25, 1))
+        self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertNotEqual(grain.normalise_time(grain.origin_timerange()),
+                            TimeRange.from_single_timestamp(ots))
+        self.assertEqual(grain.normalise_time(grain.origin_timerange()),
+                         TimeRange.from_single_timestamp(ots).normalise(25, 1))
+
     def test_audio_grain_create_S16_PLANES(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
         flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
@@ -825,6 +857,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots + TimeOffset.from_count(1919, 48000, 1))
+        self.assertEqual(grain.origin_timerange(), TimeRange(ots, ots + TimeOffset.from_count(1919, 48000, 1)))
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
@@ -857,6 +890,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots + TimeOffset.from_count(1919, 48000, 1))
+        self.assertEqual(grain.origin_timerange(), TimeRange(ots, ots + TimeOffset.from_count(1919, 48000, 1)))
         self.assertEqual(grain.sync_timestamp, ots)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
@@ -887,6 +921,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.final_origin_timestamp(), cts + TimeOffset.from_count(1919, 48000, 1))
+        self.assertEqual(grain.origin_timerange(), TimeRange(cts, cts + TimeOffset.from_count(1919, 48000, 1)))
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
@@ -1032,6 +1067,29 @@ class TestGrain (TestCase):
         self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
         self.assertEqual(grain.meta, meta)
         self.assertEqual(grain.data, data)
+
+    def test_audio_grain_normalise(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        ots = Timestamp.from_tai_sec_nsec("417798915:2")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=ots):
+            grain = AudioGrain(src_id, flow_id,
+                               cog_audio_format=CogAudioFormat.S16_PLANES,
+                               channels=2, samples=1920, sample_rate=48000)
+
+        final_ts = ots + TimeOffset.from_count(1920 - 1, 48000, 1)
+
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertNotEqual(grain.normalise_time(grain.origin_timestamp),
+                            ots)
+        self.assertEqual(grain.normalise_time(grain.origin_timestamp),
+                         ots.normalise(48000, 1))
+        self.assertEqual(grain.final_origin_timestamp(), final_ts)
+        self.assertNotEqual(grain.normalise_time(grain.origin_timerange()),
+                            TimeRange(ots, final_ts))
+        self.assertEqual(grain.normalise_time(grain.origin_timerange()),
+                         TimeRange(ots, final_ts).normalise(48000, 1))
 
     def test_coded_video_grain_create_VC2(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -1297,6 +1355,29 @@ class TestGrain (TestCase):
         self.assertEqual(grain.meta, meta)
         self.assertEqual(grain.data, data)
 
+    def test_coded_video_grain_normalise(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=ots):
+            grain = CodedVideoGrain(src_id, flow_id, origin_timestamp=ots,
+                                    rate=Fraction(25, 1),
+                                    cog_frame_format=CogFrameFormat.VC2,
+                                    origin_width=1920, origin_height=1080,
+                                    cog_frame_layout=CogFrameLayout.FULL_FRAME)
+
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertNotEqual(grain.normalise_time(grain.origin_timestamp),
+                            ots)
+        self.assertEqual(grain.normalise_time(grain.origin_timestamp),
+                         ots.normalise(25, 1))
+        self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertNotEqual(grain.normalise_time(grain.origin_timerange()),
+                            TimeRange.from_single_timestamp(ots))
+        self.assertEqual(grain.normalise_time(grain.origin_timerange()),
+                         TimeRange.from_single_timestamp(ots).normalise(25, 1))
+
     def test_coded_audio_grain_create_MP1(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
         flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
@@ -1319,6 +1400,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots + TimeOffset.from_count(1919, 48000, 1))
+        self.assertEqual(grain.origin_timerange(), TimeRange(ots, ots + TimeOffset.from_count(1919, 48000, 1)))
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
@@ -1358,6 +1440,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots + TimeOffset.from_count(1919, 48000, 1))
+        self.assertEqual(grain.origin_timerange(), TimeRange(ots, ots + TimeOffset.from_count(1919, 48000, 1)))
         self.assertEqual(grain.sync_timestamp, ots)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
@@ -1396,6 +1479,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.final_origin_timestamp(), cts + TimeOffset.from_count(1919, 48000, 1))
+        self.assertEqual(grain.origin_timerange(), TimeRange(cts, cts + TimeOffset.from_count(1919, 48000, 1)))
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
@@ -1571,6 +1655,34 @@ class TestGrain (TestCase):
         self.assertEqual(grain.meta, meta)
         self.assertEqual(grain.data, data)
 
+    def test_coded_audio_grain_normalise(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        ots = Timestamp.from_tai_sec_nsec("417798915:2")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=ots):
+            grain = CodedAudioGrain(src_id, flow_id, origin_timestamp=ots,
+                                    cog_audio_format=CogAudioFormat.MP1,
+                                    samples=1920,
+                                    channels=6,
+                                    priming=0,
+                                    remainder=0,
+                                    sample_rate=48000,
+                                    length=15360)
+
+        final_ts = ots + TimeOffset.from_count(1920 - 1, 48000, 1)
+
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertNotEqual(grain.normalise_time(grain.origin_timestamp),
+                            ots)
+        self.assertEqual(grain.normalise_time(grain.origin_timestamp),
+                         ots.normalise(48000, 1))
+        self.assertEqual(grain.final_origin_timestamp(), final_ts)
+        self.assertNotEqual(grain.normalise_time(grain.origin_timerange()),
+                            TimeRange(ots, final_ts))
+        self.assertEqual(grain.normalise_time(grain.origin_timerange()),
+                         TimeRange(ots, final_ts).normalise(48000, 1))
+
     def test_event_grain_create(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
         flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
@@ -1587,6 +1699,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
@@ -1616,6 +1729,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
         self.assertEqual(grain.sync_timestamp, ots)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
@@ -1641,6 +1755,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.final_origin_timestamp(), cts)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(cts))
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
@@ -1662,6 +1777,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.grain_type, "event")
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.final_origin_timestamp(), cts)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(cts))
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(0, 1))
@@ -1725,6 +1841,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, ots)
         self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))

@@ -44,7 +44,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 
-__all__ = ["Exclude", "Include", "ExpectedDifference", "CompareOnlyMetadata"]
+__all__ = ["Exclude", "Include", "ExpectedDifference", "CompareOnlyMetadata", "PSNR"]
 
 
 #
@@ -108,6 +108,53 @@ class _ExpectedDifference(object):
         return _ExpectedDifference(self.path + "." + attr)
 
 
+class _PSNR(object):
+    def __init__(self, path):
+        self.path = path
+
+    def __repr__(self):
+        return self.path.format("PSNR")
+
+    def __lt__(self, other):
+        def _compare_psnr(x, other):
+            for comp_x, comp_other in zip(x, other):
+                if comp_other is not None and not comp_x < comp_other:
+                    return False
+            return True
+
+        return ComparisonPSNR(self.path, lambda x: _compare_psnr(x, other), "{} < {!r}".format('PSNR', other))
+
+    def __le__(self, other):
+        def _compare_psnr(x, other):
+            for comp_x, comp_other in zip(x, other):
+                if comp_other is not None and not comp_x <= comp_other:
+                    return False
+            return True
+
+        return ComparisonPSNR(self.path, lambda x: _compare_psnr(x, other), "{} <= {!r}".format('PSNR', other))
+
+    def __gt__(self, other):
+        def _compare_psnr(x, other):
+            for comp_x, comp_other in zip(x, other):
+                if comp_other is not None and not comp_x > comp_other:
+                    return False
+            return True
+
+        return ComparisonPSNR(self.path, lambda x: _compare_psnr(x, other), "{} > {!r}".format('PSNR', other))
+
+    def __ge__(self, other):
+        def _compare_psnr(x, other):
+            for comp_x, comp_other in zip(x, other):
+                if comp_other is not None and not comp_x >= comp_other:
+                    return False
+            return True
+
+        return ComparisonPSNR(self.path, lambda x: _compare_psnr(x, other), "{} >= {!r}".format('PSNR', other))
+
+    def __getattr__(self, attr):
+        return _PSNR(self.path + "." + attr)
+
+
 class ComparisonOption(object):
     def __init__(self, path):
         self.path = path
@@ -142,6 +189,16 @@ class ComparisonExpectDifferenceMatches(ComparisonOption):
         return self._repr
 
 
+class ComparisonPSNR(ComparisonOption):
+    def __init__(self, path, matcher, _repr):
+        self.matcher = matcher
+        self._repr = _repr
+        super(ComparisonPSNR, self).__init__(path)
+
+    def __repr__(self):
+        return self._repr
+
+
 Exclude = _Exclude()
 
 
@@ -152,3 +209,6 @@ ExpectedDifference = _ExpectedDifference("{}")
 
 
 CompareOnlyMetadata = Exclude.data
+
+
+PSNR = _PSNR("{}")

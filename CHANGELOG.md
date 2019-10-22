@@ -1,5 +1,16 @@
 # Mediagrains Library Changelog
 
+## 2.6.0
+- Added support for async methods to gsf decoder in python 3.6+
+- Added `Grain.origin_timerange` method.
+- Added `Grain.normalise_time` method.
+- Added `Colourbars` test signal generator
+- Added `MovingBarOverlay` for test signal generators
+- Added `mediagrains.numpy` sublibrary for handling video grains as numpy arrays, in python 3.6+
+- Added `PSNR` option to grain compare.
+- Support for converting between all uncompressed video grain formats added to `mediagrains.numpy`
+- This is the last release that will support python 2.7 (apart from bugfixes)
+
 ## 2.5.3
 - BUGFIX: IOBytes doesn't quite fulfil bytes-like contracts, but can be converted to something that does
 
