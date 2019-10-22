@@ -24,15 +24,29 @@ from uuid import UUID
 from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
 
+from typing import Optional, Mapping, Any, Union, SupportsBytes, cast
+
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from .grain import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN, size_for_audio_format
+
+
+GrainMetadataDict = Mapping[str, Any]
 
 __all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain", "CodedAudioGrain", "EventGrain"]
 
 
-def Grain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
-          sync_timestamp=None, creation_timestamp=None, rate=Fraction(0, 1), duration=Fraction(0, 1),
-          flow_id=None, data=None, src_id=None, source_id=None, meta=None):
+def Grain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
+          flow_id_or_data: Optional[Union[UUID, SupportsBytes]] = None,
+          origin_timestamp: Optional[Timestamp] = None,
+          sync_timestamp: Optional[Timestamp] = None,
+          creation_timestamp: Optional[Timestamp] = None,
+          rate: Fraction = Fraction(0, 1),
+          duration: Fraction = Fraction(0, 1),
+          flow_id: Optional[UUID] = None,
+          data: Optional[SupportsBytes] = None,
+          src_id: Optional[UUID] = None,
+          source_id: Optional[UUID] = None,
+          meta: Optional[GrainMetadataDict] = None) -> GRAIN:
     """\
 Function called to construct a grain either from existing data or with new data.
 
@@ -161,17 +175,22 @@ but src_id is kept avaialble for backwards compatibility)
         return GRAIN(meta, data)
 
 
-def AudioGrain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
-               sync_timestamp=None, creation_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
-               cog_audio_format=CogAudioFormat.INVALID,
-               samples=0,
-               channels=0,
-               sample_rate=48000,
-               src_id=None,
-               source_id=None,
-               format=None,
-               flow_id=None,
-               data=None):
+def AudioGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
+               flow_id_or_data: Optional[Union[UUID, SupportsBytes]] = None,
+               origin_timestamp: Optional[Timestamp] = None,
+               sync_timestamp: Optional[Timestamp] = None,
+               creation_timestamp: Optional[Timestamp] = None,
+               rate: Fraction = Fraction(25, 1),
+               duration: Fraction = Fraction(1, 25),
+               cog_audio_format: CogAudioFormat = CogAudioFormat.INVALID,
+               samples: int = 0,
+               channels: int = 0,
+               sample_rate: int = 48000,
+               src_id: Optional[UUID] = None,
+               source_id: Optional[UUID] = None,
+               format: Optional[CogAudioFormat] = None,
+               flow_id: Optional[UUID] = None,
+               data: Optional[SupportsBytes] = None) -> AUDIOGRAIN:
     """\
 Function called to construct an audio grain either from existing data or with new data.
 
@@ -296,24 +315,25 @@ but src_id is kept avaialble for backwards compatibility)
     return AUDIOGRAIN(meta, data)
 
 
-def CodedAudioGrain(src_id_or_meta=None,
-                    flow_id_or_data=None,
-                    origin_timestamp=None,
-                    creation_timestamp=None,
-                    sync_timestamp=None,
-                    rate=Fraction(25, 1),
-                    duration=Fraction(1, 25),
-                    cog_audio_format=CogAudioFormat.INVALID,
-                    samples=0,
-                    channels=0,
-                    priming=0,
-                    remainder=0,
-                    sample_rate=48000,
-                    length=None,
-                    src_id=None,
-                    source_id=None,
-                    format=None,
-                    flow_id=None, data=None):
+def CodedAudioGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
+                    flow_id_or_data: Optional[Union[UUID, SupportsBytes]] = None,
+                    origin_timestamp: Optional[Timestamp] = None,
+                    creation_timestamp: Optional[Timestamp] = None,
+                    sync_timestamp: Optional[Timestamp] = None,
+                    rate: Fraction = Fraction(25, 1),
+                    duration: Fraction = Fraction(1, 25),
+                    cog_audio_format: CogAudioFormat = CogAudioFormat.INVALID,
+                    samples: int = 0,
+                    channels: int = 0,
+                    priming: int = 0,
+                    remainder: int = 0,
+                    sample_rate: int = 48000,
+                    length: Optional[int] = None,
+                    src_id: Optional[UUID] = None,
+                    source_id: Optional[UUID] = None,
+                    format: Optional[CogAudioFormat] = None,
+                    flow_id: Optional[UUID] = None,
+                    data: Optional[SupportsBytes] = None) -> CODEDAUDIOGRAIN:
     """\
 Function called to construct a coded audio grain either from existing data or with new data.
 
@@ -449,11 +469,23 @@ but src_id is kept avaialble for backwards compatibility)
     return CODEDAUDIOGRAIN(meta, data)
 
 
-def VideoGrain(src_id_or_meta=None, flow_id_or_data=None, creation_timestamp=None, origin_timestamp=None,
-               sync_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
-               cog_frame_format=CogFrameFormat.UNKNOWN, width=1920,
-               height=1080, cog_frame_layout=CogFrameLayout.UNKNOWN,
-               src_id=None, source_id=None, format=None, layout=None, flow_id=None, data=None):
+def VideoGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
+               flow_id_or_data: Optional[Union[UUID, SupportsBytes]] = None,
+               origin_timestamp: Optional[Timestamp] = None,
+               creation_timestamp: Optional[Timestamp] = None,
+               sync_timestamp: Optional[Timestamp] = None,
+               rate: Fraction = Fraction(25, 1),
+               duration: Fraction = Fraction(1, 25),
+               cog_frame_format: CogFrameFormat = CogFrameFormat.UNKNOWN,
+               width: int = 1920,
+               height: int = 1080,
+               cog_frame_layout: CogFrameLayout = CogFrameLayout.UNKNOWN,
+               src_id: Optional[UUID] = None,
+               source_id: Optional[UUID] = None,
+               format: Optional[CogFrameFormat] = None,
+               layout: Optional[CogFrameLayout] = None,
+               flow_id: Optional[UUID] = None,
+               data: Optional[SupportsBytes] = None) -> VIDEOGRAIN:
     """\
 Function called to construct a video grain either from existing data or with new data.
 
