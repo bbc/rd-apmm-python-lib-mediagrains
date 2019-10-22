@@ -50,7 +50,7 @@ pipeline {
                         }
                         bbcGithubNotify(context: "lint/flake8_3", status: "PENDING")
                         // Run the linter
-                        sh 'python3 -m flake8 --filename=mediagrains/*.py,tests/test_*.py'
+                        sh 'python3 -m flake8
                         script {
                             env.lint3_result = "SUCCESS" // This will only run if the sh above succeeded
                         }

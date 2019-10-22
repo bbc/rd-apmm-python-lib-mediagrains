@@ -21,7 +21,7 @@ from . import compare_grain
 from .options import Exclude
 
 
-from .testsignalgenerator import LumaSteps
+from ..testsignalgenerator import LumaSteps
 from uuid import uuid1
 
 src_id = uuid1()
