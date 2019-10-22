@@ -21,14 +21,7 @@ library's io.BytesIO, taking an io stream and wrapping it to appear as a
 bytes object, lazily loading as necessary.
 """
 
-from __future__ import print_function
-from __future__ import absolute_import
-
-try:
-    from collections.abc import Sequence
-except ImportError:
-    from collections import Sequence
-
+from collections.abc import Sequence
 
 __all__ = ["IOBytes"]
 

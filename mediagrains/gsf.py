@@ -20,15 +20,13 @@ A library for deserialising GSF files, either from string buffers or file
 objects.
 """
 
-from __future__ import print_function, absolute_import
 from . import Grain
-from six import indexbytes
 from uuid import UUID, uuid1
 from datetime import datetime
+from io import BytesIO
 from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
 from frozendict import frozendict
-from six import BytesIO, PY3
 from .utils import IOBytes
 from os import SEEK_SET
 
@@ -272,7 +270,7 @@ class GSFBlock():
             raise EOFError("Unable to read enough bytes from source")
 
         for n in range(0, length):
-            r += (indexbytes(uint_bytes, n) << (n*8))
+            r += (uint_bytes[n] << (n*8))
         return r
 
     def read_bool(self):
@@ -704,16 +702,8 @@ def _write_rational(file, value):
     _write_uint(file, value.denominator, 4)
 
 
-def seekable(file):  # pragma: no cover
-    if PY3:
-        return file.seekable()
-    else:
-        try:
-            file.tell()
-        except IOError:
-            return False
-        else:
-            return True
+def seekable(file):
+    return file.seekable()
 
 
 class GSFEncoder(object):

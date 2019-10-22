@@ -20,9 +20,6 @@ Contains a number of useful hypothesis strategies which can be used to
 generate mediagrains for hypothesis based testing
 """
 
-from __future__ import print_function
-from __future__ import absolute_import
-
 from mediatimestamp.hypothesis.strategies import immutabletimestamps as timestamps
 from hypothesis.strategies import (
     integers,

@@ -15,9 +15,6 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
-from __future__ import absolute_import
-
 from fractions import Fraction
 
 from . import compare_grain

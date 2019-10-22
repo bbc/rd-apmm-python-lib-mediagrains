@@ -19,9 +19,6 @@ The submodule of mediagrains which contains code for generating test video
 grains.
 """
 
-from __future__ import print_function
-from __future__ import absolute_import
-
 from fractions import Fraction
 from mediatimestamp.immutable import TimeOffset
 from copy import deepcopy

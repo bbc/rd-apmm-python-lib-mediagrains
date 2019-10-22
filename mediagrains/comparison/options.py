@@ -40,10 +40,6 @@ This mechanism may be expanded for further option types in the future.
 
 CompareOnlyMetadata is a convenience name for Exclude.data"""
 
-from __future__ import print_function
-from __future__ import absolute_import
-
-
 __all__ = ["Exclude", "Include", "ExpectedDifference", "CompareOnlyMetadata", "PSNR"]
 
 

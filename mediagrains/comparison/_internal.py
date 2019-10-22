@@ -15,13 +15,10 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
-from __future__ import absolute_import
-
 from mediatimestamp.immutable import TimeOffset
 from difflib import SequenceMatcher
 
-from six.moves import reduce
+from functools import reduce
 import struct
 import sys
 

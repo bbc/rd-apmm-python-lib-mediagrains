@@ -20,11 +20,6 @@ The submodule of mediagrains which contains the functions used to construct
 grains.
 """
 
-from __future__ import print_function
-from __future__ import absolute_import
-
-from six import string_types
-
 from uuid import UUID
 from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
@@ -128,7 +123,7 @@ but src_id is kept avaialble for backwards compatibility)
         if isinstance(flow_id, UUID):
             flow_id = str(flow_id)
 
-        if not isinstance(src_id, string_types) or not isinstance(flow_id, string_types):
+        if not isinstance(src_id, str) or not isinstance(flow_id, str):
             raise AttributeError("Invalid types for src_id and flow_id")
 
         meta = {

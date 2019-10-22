@@ -25,9 +25,6 @@ itself.
 The main interface is via the compare_grain function.
 """
 
-from __future__ import print_function
-from __future__ import absolute_import
-
 from ._internal import GrainComparisonResult, GrainIteratorComparisonResult
 from .psnr import compute_psnr
 

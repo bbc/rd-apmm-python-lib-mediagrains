@@ -15,9 +15,6 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
-from __future__ import absolute_import
-
 from .iobytes import IOBytes
 
 __all__ = ["IOBytes"]
