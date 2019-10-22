@@ -108,12 +108,12 @@ but src_id is kept avaialble for backwards compatibility)
     if meta is None:
         if isinstance(src_id_or_meta, dict):
             meta = src_id_or_meta
-            if data is None:
+            if data is None and not isinstance(flow_id_or_data, UUID):
                 data = flow_id_or_data
         else:
-            if src_id is None:
+            if src_id is None and isinstance(src_id_or_meta, UUID):
                 src_id = src_id_or_meta
-            if flow_id is None:
+            if flow_id is None and isinstance(flow_id_or_data, UUID):
                 flow_id = flow_id_or_data
 
     if meta is None:
@@ -258,12 +258,12 @@ but src_id is kept avaialble for backwards compatibility)
 
     if isinstance(src_id_or_meta, dict):
         meta = src_id_or_meta
-        if data is None:
+        if data is None and not isinstance(flow_id_or_data, UUID):
             data = flow_id_or_data
     else:
-        if src_id is None:
+        if src_id is None and isinstance(src_id_or_meta, UUID):
             src_id = src_id_or_meta
-        if flow_id is None:
+        if flow_id is None and isinstance(flow_id_or_data, UUID):
             flow_id = flow_id_or_data
 
     if meta is None:
@@ -407,12 +407,12 @@ but src_id is kept avaialble for backwards compatibility)
 
     if isinstance(src_id_or_meta, dict):
         meta = src_id_or_meta
-        if data is None:
+        if data is None and not isinstance(flow_id_or_data, UUID):
             data = flow_id_or_data
     else:
-        if src_id is None:
+        if src_id is None and isinstance(src_id_or_meta, UUID):
             src_id = src_id_or_meta
-        if flow_id is None:
+        if flow_id is None and isinstance(flow_id_or_data, UUID):
             flow_id = flow_id_or_data
 
     if length is None:
@@ -577,12 +577,12 @@ but src_id is kept avaialble for backwards compatibility)
 
     if isinstance(src_id_or_meta, dict):
         meta = src_id_or_meta
-        if data is None:
+        if data is None and not isinstance(flow_id_or_data, UUID):
             data = flow_id_or_data
     else:
-        if src_id is None:
+        if src_id is None and isinstance(src_id_or_meta, UUID):
             src_id = src_id_or_meta
-        if flow_id is None:
+        if flow_id is None and isinstance(flow_id_or_data, UUID):
             flow_id = flow_id_or_data
 
     if meta is None:
