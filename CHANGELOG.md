@@ -1,6 +1,6 @@
 # Mediagrains Library Changelog
 
-## 2.6.0 (Under development)
+## 2.6.0
 - Added support for async methods to gsf decoder in python 3.6+
 - Added `Grain.origin_timerange` method.
 - Added `Grain.normalise_time` method.
