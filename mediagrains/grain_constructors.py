@@ -24,7 +24,7 @@ from uuid import UUID
 from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
 
-from typing import Optional, Mapping, Any, Union, SupportsBytes, cast
+from typing import Optional, Mapping, Any, Union, SupportsBytes, ByteString, cast, Sized, List
 
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from .grain import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN, size_for_audio_format
@@ -36,14 +36,14 @@ __all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain", "CodedAudioGr
 
 
 def Grain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
-          flow_id_or_data: Optional[Union[UUID, SupportsBytes]] = None,
+          flow_id_or_data: Optional[Union[UUID, Union[ByteString, SupportsBytes]]] = None,
           origin_timestamp: Optional[Timestamp] = None,
           sync_timestamp: Optional[Timestamp] = None,
           creation_timestamp: Optional[Timestamp] = None,
           rate: Fraction = Fraction(0, 1),
           duration: Fraction = Fraction(0, 1),
           flow_id: Optional[UUID] = None,
-          data: Optional[SupportsBytes] = None,
+          data: Optional[Union[ByteString, SupportsBytes]] = None,
           src_id: Optional[UUID] = None,
           source_id: Optional[UUID] = None,
           meta: Optional[GrainMetadataDict] = None) -> GRAIN:
@@ -171,7 +171,7 @@ but src_id is kept avaialble for backwards compatibility)
 
 
 def AudioGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
-               flow_id_or_data: Optional[Union[UUID, SupportsBytes]] = None,
+               flow_id_or_data: Optional[Union[UUID, Union[ByteString, SupportsBytes]]] = None,
                origin_timestamp: Optional[Timestamp] = None,
                sync_timestamp: Optional[Timestamp] = None,
                creation_timestamp: Optional[Timestamp] = None,
@@ -185,7 +185,7 @@ def AudioGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
                source_id: Optional[UUID] = None,
                format: Optional[CogAudioFormat] = None,
                flow_id: Optional[UUID] = None,
-               data: Optional[SupportsBytes] = None) -> AUDIOGRAIN:
+               data: Optional[Union[ByteString, SupportsBytes]] = None) -> AUDIOGRAIN:
     """\
 Function called to construct an audio grain either from existing data or with new data.
 
@@ -311,7 +311,7 @@ but src_id is kept avaialble for backwards compatibility)
 
 
 def CodedAudioGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
-                    flow_id_or_data: Optional[Union[UUID, SupportsBytes]] = None,
+                    flow_id_or_data: Optional[Union[UUID, Union[ByteString, SupportsBytes]]] = None,
                     origin_timestamp: Optional[Timestamp] = None,
                     creation_timestamp: Optional[Timestamp] = None,
                     sync_timestamp: Optional[Timestamp] = None,
@@ -328,7 +328,7 @@ def CodedAudioGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = N
                     source_id: Optional[UUID] = None,
                     format: Optional[CogAudioFormat] = None,
                     flow_id: Optional[UUID] = None,
-                    data: Optional[SupportsBytes] = None) -> CODEDAUDIOGRAIN:
+                    data: Optional[Union[ByteString, SupportsBytes]] = None) -> CODEDAUDIOGRAIN:
     """\
 Function called to construct a coded audio grain either from existing data or with new data.
 
@@ -416,8 +416,8 @@ but src_id is kept avaialble for backwards compatibility)
             flow_id = flow_id_or_data
 
     if length is None:
-        if data is not None:
-            length = len(data)
+        if data is not None and hasattr(data, "__len__"):
+            length = len(cast(Sized, data))
         else:
             length = 0
 
@@ -465,7 +465,7 @@ but src_id is kept avaialble for backwards compatibility)
 
 
 def VideoGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
-               flow_id_or_data: Optional[Union[UUID, SupportsBytes]] = None,
+               flow_id_or_data: Optional[Union[UUID, Union[ByteString, SupportsBytes]]] = None,
                origin_timestamp: Optional[Timestamp] = None,
                creation_timestamp: Optional[Timestamp] = None,
                sync_timestamp: Optional[Timestamp] = None,
@@ -480,7 +480,7 @@ def VideoGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
                format: Optional[CogFrameFormat] = None,
                layout: Optional[CogFrameLayout] = None,
                flow_id: Optional[UUID] = None,
-               data: Optional[SupportsBytes] = None) -> VIDEOGRAIN:
+               data: Optional[Union[ByteString, SupportsBytes]] = None) -> VIDEOGRAIN:
     """\
 Function called to construct a video grain either from existing data or with new data.
 
@@ -624,7 +624,7 @@ but src_id is kept avaialble for backwards compatibility)
             },
         }
 
-    def size_for_format(fmt, w, h):
+    def size_for_format(fmt: CogFrameFormat, w: int, h: int) -> int:
         if ((fmt >> 8) & 0x1) == 0x00:  # Cog frame is not packed
             h_shift = (fmt & 0x01)
             v_shift = ((fmt >> 1) & 0x01)
@@ -664,8 +664,8 @@ but src_id is kept avaialble for backwards compatibility)
         size = size_for_format(cog_frame_format, width, height)
         data = bytearray(size)
 
-    def components_for_format(fmt, w, h):
-        components = []
+    def components_for_format(fmt: CogFrameFormat, w: int, h: int) -> List[VIDEOGRAIN.ComponentDict]:
+        components: List[VIDEOGRAIN.ComponentDict] = []
         if ((fmt >> 8) & 0x1) == 0x00:  # Cog frame is not packed
             h_shift = (fmt & 0x01)
             v_shift = ((fmt >> 1) & 0x01)
@@ -763,13 +763,29 @@ but src_id is kept avaialble for backwards compatibility)
     return VIDEOGRAIN(meta, data)
 
 
-def CodedVideoGrain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None, creation_timestamp=None,
-                    sync_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
-                    cog_frame_format=CogFrameFormat.UNKNOWN, origin_width=1920,
-                    origin_height=1080, coded_width=None,
-                    coded_height=None, is_key_frame=False, temporal_offset=0, length=None,
-                    cog_frame_layout=CogFrameLayout.UNKNOWN, unit_offsets=None,
-                    flow_id=None, src_id=None, source_id=None, format=None, layout=None, data=None):
+def CodedVideoGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
+                    flow_id_or_data: Optional[Union[UUID, Union[ByteString, SupportsBytes]]] = None,
+                    origin_timestamp: Optional[Timestamp] = None,
+                    creation_timestamp: Optional[Timestamp] = None,
+                    sync_timestamp: Optional[Timestamp] = None,
+                    rate: Fraction = Fraction(25, 1),
+                    duration: Fraction = Fraction(1, 25),
+                    cog_frame_format: CogFrameFormat = CogFrameFormat.UNKNOWN,
+                    origin_width: int = 1920,
+                    origin_height: int = 1080,
+                    coded_width: Optional[int] = None,
+                    coded_height: Optional[int] = None,
+                    is_key_frame: bool = False,
+                    temporal_offset: int = 0,
+                    length: Optional[int] = None,
+                    cog_frame_layout: CogFrameLayout = CogFrameLayout.UNKNOWN,
+                    unit_offsets: Optional[List[int]] = None,
+                    src_id: Optional[UUID] = None,
+                    source_id: Optional[UUID] = None,
+                    format: Optional[CogFrameFormat] = None,
+                    layout: Optional[CogFrameLayout] = None,
+                    flow_id: Optional[UUID] = None,
+                    data: Optional[Union[ByteString, SupportsBytes]] = None) -> CODEDVIDEOGRAIN:
     """\
 Function called to construct a coded video grain either from existing data or with new data.
 
@@ -854,12 +870,12 @@ but src_id is kept avaialble for backwards compatibility)
 
     if isinstance(src_id_or_meta, dict):
         meta = src_id_or_meta
-        if data is None:
+        if data is None and not isinstance(flow_id_or_data, UUID):
             data = flow_id_or_data
     else:
-        if src_id is None:
+        if src_id is None and isinstance(src_id_or_meta, UUID):
             src_id = src_id_or_meta
-        if flow_id is None:
+        if flow_id is None and isinstance(flow_id_or_data, UUID):
             flow_id = flow_id_or_data
 
     if coded_width is None:
@@ -868,8 +884,8 @@ but src_id is kept avaialble for backwards compatibility)
         coded_height = origin_height
 
     if length is None:
-        if data is not None:
-            length = len(data)
+        if data is not None and hasattr(data, "__len__"):
+            length = len(cast(Sized, data))
         else:
             length = 0
 
@@ -924,10 +940,20 @@ but src_id is kept avaialble for backwards compatibility)
     return CODEDVIDEOGRAIN(meta, data)
 
 
-def EventGrain(src_id_or_meta=None, flow_id_or_data=None, origin_timestamp=None,
-               sync_timestamp=None, creation_timestamp=None, rate=Fraction(25, 1), duration=Fraction(1, 25),
-               event_type='', topic='',
-               src_id=None, source_id=None, flow_id=None, meta=None, data=None):
+def EventGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
+               flow_id_or_data: Optional[Union[UUID, Union[ByteString, SupportsBytes]]] = None,
+               origin_timestamp: Optional[Timestamp] = None,
+               creation_timestamp: Optional[Timestamp] = None,
+               sync_timestamp: Optional[Timestamp] = None,
+               rate: Fraction = Fraction(25, 1),
+               duration: Fraction = Fraction(1, 25),
+               event_type: str = '',
+               topic: str = '',
+               src_id: Optional[UUID] = None,
+               source_id: Optional[UUID] = None,
+               flow_id: Optional[UUID] = None,
+               meta: Optional[GrainMetadataDict] = None,
+               data: Optional[Union[ByteString, SupportsBytes]] = None) -> EVENTGRAIN:
     """\
 Function called to construct an event grain either from existing data or with new data.
 
@@ -1002,14 +1028,14 @@ but src_id is kept avaialble for backwards compatibility)
         src_id = source_id
 
     if isinstance(src_id_or_meta, dict):
-        if meta is None:
+        if meta is None and not isinstance(src_id_or_meta, UUID):
             meta = src_id_or_meta
-        if data is None:
+        if data is None and not isinstance(flow_id_or_data, UUID):
             data = flow_id_or_data
     else:
-        if src_id is None:
+        if src_id is None and isinstance(src_id_or_meta, UUID):
             src_id = src_id_or_meta
-        if flow_id is None:
+        if flow_id is None and isinstance(flow_id_or_data, UUID):
             flow_id = flow_id_or_data
 
     if meta is None:

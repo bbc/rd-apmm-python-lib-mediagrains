@@ -27,6 +27,8 @@ from collections import Sequence, MutableSequence, Mapping
 from fractions import Fraction
 from copy import copy, deepcopy
 
+from typing_extensions import TypedDict
+
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
 import json
@@ -761,6 +763,8 @@ pixel_aspect_ratio
 components
     A list-like sequence of VIDEOGRAIN.COMPONENT objects
     """
+
+    ComponentDict = TypedDict('ComponentDict', {'stride': int, 'offset': int, 'width': int, 'height': int, 'length': int})
 
     class COMPONENT(Mapping):
         """
