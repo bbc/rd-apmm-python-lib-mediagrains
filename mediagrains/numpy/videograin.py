@@ -32,7 +32,7 @@ import uuid
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
 
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Tuple, Optional, overload
 
 from enum import Enum, auto
 
@@ -226,33 +226,44 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
 
     _grain_conversions: Dict[Tuple[CogFrameFormat, CogFrameFormat], ConversionFunc] = {}
 
-    def __init__(self, meta, data):
+    def __init__(self, meta: bytesgrain.GRAIN.MetadataDict, data: Optional[bytesgrain.GRAIN.DataType]):
         super().__init__(meta, data)
-        self._data = np.frombuffer(self._data, dtype=_dtype_from_cogframeformat(self.format))
+        self._data: np.ndarray = np.frombuffer(self._data, dtype=_dtype_from_cogframeformat(self.format))
         self.component_data = ComponentDataList(
             _component_arrays_for_data_and_type(self._data, self.format, self.components),
             arrangement=_component_arrangement_from_format(self.format))
 
-    def __array__(self):
+    @property
+    def data(self) -> np.ndarray:
+        return self._data
+
+    @data.setter
+    def data(self, value: bytesgrain.GRAIN.DataType):
+        self._data = np.frombuffer(value, dtype=_dtype_from_cogframeformat(self.format))
+        self.component_data = ComponentDataList(
+            _component_arrays_for_data_and_type(self._data, self.format, self.components),
+            arrangement=_component_arrangement_from_format(self.format))
+
+    def __array__(self) -> np.ndarray:
         return np.array(self.data)
 
-    def __bytes__(self):
-        return bytes(self.data)
+    def __bytes__(self) -> bytes:
+        return bytes(self._data)
 
-    def __copy__(self):
+    def __copy__(self) -> "VIDEOGRAIN":
         return VideoGrain(copy(self.meta), self.data)
 
-    def __deepcopy__(self, memo):
-        return VideoGrain(deepcopy(self.meta), self.data.copy())
+    def __deepcopy__(self, memo) -> "VIDEOGRAIN":
+        return VideoGrain(deepcopy(self.meta), self._data.copy())
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.data is None:
             return "{}({!r})".format(self._factory, self.meta)
         else:
             return "{}({!r},< numpy data of length {} >)".format(self._factory, self.meta, len(self.data))
 
     @classmethod
-    def grain_conversion(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat):
+    def grain_conversion(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat) -> Callable[["VIDEOGRAIN.ConversionFunc"], "VIDEOGRAIN.ConversionFunc"]:
         """Decorator to apply to all grain conversion functions"""
         def _inner(f: "VIDEOGRAIN.ConversionFunc") -> "VIDEOGRAIN.ConversionFunc":
             cls._grain_conversions[(fmt_in, fmt_out)] = f
