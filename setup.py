@@ -27,7 +27,7 @@ packages = {
 }
 
 packages_required = [
-    "mediatimestamp >= 1.2.0",
+    "mediatimestamp >= 1.3.0",
     "frozendict >= 1.2",
     'numpy >= 1.17.2',
 ]

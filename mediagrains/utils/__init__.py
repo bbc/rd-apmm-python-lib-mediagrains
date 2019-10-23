@@ -16,5 +16,6 @@
 #
 
 from .iobytes import IOBytes
+from .grain_wrapper import GrainWrapper
 
-__all__ = ["IOBytes"]
+__all__ = ["IOBytes", "GrainWrapper"]
