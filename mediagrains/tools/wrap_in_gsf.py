@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+#
+# Copyright 2019 British Broadcasting Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+"""Given a raw essence input, wrap it into a GSF file"""
+
+import typing
+
+import uuid
+import argparse
+import sys
+from contextlib import contextmanager
+
+from mediatimestamp.immutable import Timestamp
+
+from ..cogenums import CogFrameFormat, CogAudioFormat
+from ..grain_constructors import VideoGrain, AudioGrain
+from ..gsf import GSFEncoder
+from ..utils import GrainWrapper
+
+
+@contextmanager
+def _file_or_pipe(file_or_pipe, mode):
+    """Context manager to open a file or stdin/stdout for binary operations
+
+    :param file_or_pipe: Name of file to open, or "-" to indicate a pipe
+    :param mode: Mode in which to open the given file or pipe - used directly for files and to detect direction of
+                 of pipes. Must be one of "rb" or "wb"
+    """
+    if file_or_pipe == "-":
+        if "w" in mode:
+            yield sys.stdout.buffer
+        else:
+            yield sys.stdin.buffer
+    else:
+        with open(file_or_pipe, mode) as fp:
+            yield fp
+
+
+def wrap_to_gsf(
+        input_file: typing.BinaryIO,
+        output_file: typing.BinaryIO,
+        grain_constructor: typing.Callable,
+        **kwargs):
+    """Wrap the supplied input in GSF and write it out to a given file-like object
+
+    :param input_file: A file-like object to read the input media from, one frame/Grain at a time
+    :param output_file: A file-like object to write output GSF data to
+    :param grain_constructor: Which of the mediagrains.grain_constructors to use when creating the base Grain
+    :param kwargs: Other arguments are passed through to the Grain constructor directly.
+    """
+    wrapper = GrainWrapper(grain_constructor, input_file, **kwargs)
+
+    # Write a GSF file with the grains read from the input
+    encoder = GSFEncoder(output_file)
+    segment = encoder.add_segment(id=wrapper.template_grain.flow_id)
+    encoder.start_dump()
+
+    for grain in wrapper.grains():
+        print("Got grain with TS {}".format(grain.origin_timestamp.to_sec_nsec()), file=sys.stderr)
+        segment.add_grains([grain])
+
+    encoder.end_dump()
+
+
+def wrap_video_in_gsf():
+    """Provide a utility to take a raw video input and turn it into a GSF file"""
+    parser = argparse.ArgumentParser(
+        description="A utility to take raw video essence and generate a GSF file",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    parser.add_argument("input_file", help="Input file. Specify - for stdin", type=str)
+    parser.add_argument("output_file", help="Output GSF file path. Specify - for stdout", type=str)
+
+    parser.add_argument("--flow-id", help="UUID of GSF Flow - one will be generated if not set",
+                        type=uuid.UUID, default=None)
+    parser.add_argument("--source-id", help="UUID of GSF Source - one will be generated if not given",
+                        type=uuid.UUID, default=None)
+    parser.add_argument("--start-ts", help="Timestamp of start of media", type=Timestamp.from_str,
+                        default=Timestamp(0, 0))
+
+    parser.add_argument("--size", help="Size of input video, in WidthxHeight form", default="1920x1080")
+
+    parser.add_argument("--format", help="Frame format; one of the CogFrameFormat options",
+                        type=lambda x: CogFrameFormat[x], default=CogFrameFormat.S16_422_10BIT.name)
+
+    parser.add_argument("--rate", help="Frame rate of input video", type=int, default=25)
+
+    args = parser.parse_args()
+
+    # Parse width and height separately
+    width, height = [int(element.strip()) for element in args.size.split("x")]
+
+    # Generate missing UUIDs
+    flow_id = args.flow_id if args.flow_id else uuid.uuid4()
+    source_id = args.source_id if args.source_id else uuid.uuid4()
+
+    with _file_or_pipe(args.input_file, "rb") as input_file, _file_or_pipe(args.output_file, "wb") as output_file:
+        wrap_to_gsf(
+            input_file=input_file, output_file=output_file, grain_constructor=VideoGrain,
+            flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, rate=args.rate,
+            width=width, height=height, cog_frame_format=args.format
+        )
+
+
+def wrap_audio_in_gsf():
+    """Provide a utility to take a raw audio input and turn it into a GSF file"""
+    parser = argparse.ArgumentParser(
+        description="A utility to take raw audio samples and generate a GSF file",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    parser.add_argument("input_file", help="Input file. Specify - for stdin", type=str)
+    parser.add_argument("output_file", help="Output GSF file path. Specify - for stdout", type=str)
+
+    parser.add_argument("--flow-id", help="UUID of GSF Flow - one will be generated if not set",
+                        type=uuid.UUID, default=None)
+    parser.add_argument("--source-id", help="UUID of GSF Source - one will be generated if not given",
+                        type=uuid.UUID, default=None)
+    parser.add_argument("--start-ts", help="Timestamp of start of media",
+                        type=Timestamp.from_str, default=Timestamp(0, 0))
+
+    parser.add_argument("--channels", help="Number of channels present in input media", type=int, default=2)
+    parser.add_argument("--samples-per-grain", help="Number of samples to write to each Grain", type=int, default=1920)
+
+    parser.add_argument("--format", help="Audio format; one of the CogAudioFormat options",
+                        type=lambda x: CogAudioFormat[x], default=CogAudioFormat.S16_PLANES.name)
+
+    parser.add_argument("--sample-rate", help="Sample rate of input audio", type=int, default=48000)
+
+    args = parser.parse_args()
+
+    # Generate missing UUIDs
+    flow_id = args.flow_id if args.flow_id else uuid.uuid4()
+    source_id = args.source_id if args.source_id else uuid.uuid4()
+
+    with _file_or_pipe(args.input_file, "rb") as input_file, _file_or_pipe(args.output_file, "wb") as output_file:
+        wrap_to_gsf(
+            input_file=input_file, output_file=output_file, grain_constructor=AudioGrain,
+            flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, rate=args.sample_rate,
+            channels=args.channels, samples=args.samples_per_grain, cog_audio_format=args.format
+        )

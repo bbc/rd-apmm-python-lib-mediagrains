@@ -24,6 +24,7 @@ packages = {
     'mediagrains.utils': 'mediagrains/utils',
     'mediagrains.asyncio': 'mediagrains/asyncio',
     'mediagrains.numpy': 'mediagrains/numpy'
+    'mediagrains.tools': 'mediagrains/tools'
 }
 
 packages_required = [
@@ -35,6 +36,11 @@ packages_required = [
 deps_required = []
 
 package_names = list(packages.keys())
+
+console_scripts = [
+    'wrap_video_in_gsf=mediagrains.tools:wrap_video_in_gsf',
+    'wrap_audio_in_gsf=mediagrains.tools:wrap_audio_in_gsf'
+]
 
 setup(name="mediagrains",
       version="2.7.0.dev1",
@@ -48,7 +54,9 @@ setup(name="mediagrains",
       package_dir=packages,
       package_data={name: ['py.typed'] for name in package_names},
       install_requires=packages_required,
-      scripts=[],
+      entry_points={
+          'console_scripts': console_scripts
+      },
       data_files=[],
       long_description="""
 Simple python library for dealing with grain data in a python-native format.
