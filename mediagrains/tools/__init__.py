@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from .wrap_in_gsf import wrap_video_in_gsf, wrap_audio_in_gsf
+from .extract_from_gsf import extract_gsf_essence, gsf_probe
 
-__all__ = ["wrap_video_in_gsf", "wrap_audio_in_gsf"]
+__all__ = ["wrap_video_in_gsf", "wrap_audio_in_gsf", "extract_gsf_essence", "gsf_probe"]
