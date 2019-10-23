@@ -33,6 +33,7 @@ import numpy as np
 from numpy.lib.stride_tricks import as_strided
 
 from typing import Callable, Dict, Tuple, Optional
+from ..typing import GrainMetadataDict, GrainDataType
 
 from enum import Enum, auto
 
@@ -226,7 +227,7 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
 
     _grain_conversions: Dict[Tuple[CogFrameFormat, CogFrameFormat], ConversionFunc] = {}
 
-    def __init__(self, meta: bytesgrain.GRAIN.MetadataDict, data: Optional[bytesgrain.GRAIN.DataType]):
+    def __init__(self, meta: GrainMetadataDict, data: Optional[GrainDataType]):
         super().__init__(meta, data)
         self._data: np.ndarray = np.frombuffer(self._data, dtype=_dtype_from_cogframeformat(self.format))
         self.component_data = ComponentDataList(
@@ -238,7 +239,7 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
         return self._data
 
     @data.setter
-    def data(self, value: bytesgrain.GRAIN.DataType):
+    def data(self, value: GrainDataType):
         self._data = np.frombuffer(value, dtype=_dtype_from_cogframeformat(self.format))
         self.component_data = ComponentDataList(
             _component_arrays_for_data_and_type(self._data, self.format, self.components),

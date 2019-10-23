@@ -25,36 +25,17 @@ from uuid import UUID
 from mediatimestamp.immutable import Timestamp, TimeOffset, TimeRange
 from collections.abc import Sequence, MutableSequence, Mapping
 from fractions import Fraction
-from decimal import Decimal
-from numbers import Rational
 from copy import copy, deepcopy
 
 from typing import List, Dict, Any, Union, SupportsBytes, Optional, overload, Tuple, cast, Sized, Iterator, Iterable
 from typing_extensions import TypedDict, Literal
+from .typing import RationalTypes, MediaJSONSerialisable, EventGrainDatumDict, GrainMetadataDict, GrainDataType
 
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
 import json
 
 __all__ = ["GRAIN", "VIDEOGRAIN", "AUDIOGRAIN", "CODEDVIDEOGRAIN", "CODEDAUDIOGRAIN", "EVENTGRAIN", "attributes_for_grain_type"]
-
-
-# TODO: Move this somewhere more central
-# These are the types that can be freely converte into a Fraction
-RationalTypes = Union[str, float, Decimal, Rational]
-
-# TODO: Move this into mediajson, and make it actually describe what is serialisable.
-MediaJSONSerialisable = Any
-
-
-# This is weird, but is currently how you specifiy a structured dict with optional entries
-class _EventGrainDatumDict_MANDATORY (TypedDict):
-    path: str
-
-
-class EventGrainDatumDict (_EventGrainDatumDict_MANDATORY, total=False):
-    pre: MediaJSONSerialisable
-    post: MediaJSONSerialisable
 
 
 def attributes_for_grain_type(grain_type: str) -> List[str]:
@@ -152,13 +133,7 @@ normalise_time(value)
     Returns a normalised Timestamp, TimeOffset or TimeRange using the video frame rate or audio sample rate.
 
     """
-
-    # This is a type that represents a valid metadata dictionary.
-    # In future we will constrain this more, right now it's just a Dict[str, Any]
-    MetadataDict = Dict[str, Any]
-    DataType = Union[SupportsBytes, bytes]
-
-    def __init__(self, meta: MetadataDict, data: Optional[DataType]):
+    def __init__(self, meta: GrainMetadataDict, data: Optional[GrainDataType]):
         self.meta = meta
         self._data = data
         self._factory = "Grain"
@@ -206,13 +181,13 @@ normalise_time(value)
         return 2
 
     @overload
-    def __getitem__(self, index: int) -> "Union[GRAIN.MetadataDict, Optional[GRAIN.DataType]]": ...
+    def __getitem__(self, index: int) -> Union[GrainMetadataDict, Optional[GrainDataType]]: ...
 
     @overload  # noqa: F811
-    def __getitem__(self, index: slice) -> """Union[Tuple[GRAIN.MetadataDict],
-                                                    Tuple[GRAIN.MetadataDict, Optional[GRAIN.DataType]],
-                                                    Tuple[Optional[GRAIN.DataType]],
-                                                    Tuple[()]]""": ...
+    def __getitem__(self, index: slice) -> Union[Tuple[GrainMetadataDict],
+                                                 Tuple[GrainMetadataDict, Optional[GrainDataType]],
+                                                 Tuple[Optional[GrainDataType]],
+                                                 Tuple[()]]: ...
 
     def __getitem__(self, index):  # noqa: F811
         return (self.meta, self.data)[index]
@@ -245,11 +220,11 @@ normalise_time(value)
         return bytes(self._data)
 
     @property
-    def data(self) -> "Optional[GRAIN.DataType]":
+    def data(self) -> "Optional[GrainDataType]":
         return self._data
 
     @data.setter
-    def data(self, value: "Optional[GRAIN.DataType]"):
+    def data(self, value: "Optional[GrainDataType]"):
         self._data = value
 
     @property
@@ -360,9 +335,9 @@ normalise_time(value)
         self.timelabels.append(tl)
 
     class TIMELABEL(Mapping):
-        MetadataDict = Dict[str, Any]
+        GrainMetadataDict = Dict[str, Any]
 
-        def __init__(self, meta: "Optional[GRAIN.TIMELABEL.MetadataDict]" = None):
+        def __init__(self, meta: "Optional[GRAIN.TIMELABEL.GrainMetadataDict]" = None):
             if meta is None:
                 meta = {}
             self.meta = meta
@@ -453,10 +428,10 @@ normalise_time(value)
                 return [GRAIN.TIMELABEL(self.parent.meta['grain']['timelabels'][n]) for n in range(len(self))[key]]
 
         @overload
-        def __setitem__(self, key: int, value: "GRAIN.TIMELABEL.MetadataDict") -> None: ...
+        def __setitem__(self, key: int, value: "GRAIN.TIMELABEL.GrainMetadataDict") -> None: ...
 
         @overload  # noqa: F811
-        def __setitem__(self, key: slice, value: "Iterable[GRAIN.TIMELABEL.MetadataDict]") -> None: ...
+        def __setitem__(self, key: slice, value: "Iterable[GRAIN.TIMELABEL.GrainMetadataDict]") -> None: ...
 
         def __setitem__(self, key, value):  # noqa: F811
             if 'timelabels' not in self.parent.meta['grain']:
@@ -476,7 +451,7 @@ normalise_time(value)
             if len(self.parent.meta['grain']['timelabels']) == 0:
                 del self.parent.meta['grain']['timelabels']
 
-        def insert(self, key: int, value: "GRAIN.TIMELABEL.MetadataDict") -> None:
+        def insert(self, key: int, value: "GRAIN.TIMELABEL.GrainMetadataDict") -> None:
             if 'timelabels' not in self.parent.meta['grain']:
                 self.parent.meta['grain']['timelabels'] = []
             self.parent.meta['grain']['timelabels'].insert(key, dict(GRAIN.TIMELABEL(value)))
@@ -583,7 +558,7 @@ append(path, pre=None, post=None)
     provided string, and pre and post set optionally. All calls should use
     only json serialisable objects for the values of pre and post.
     """
-    def __init__(self, meta: GRAIN.MetadataDict, data: Optional[GRAIN.DataType]):
+    def __init__(self, meta: GrainMetadataDict, data: Optional[GrainDataType]):
         super(EVENTGRAIN, self).__init__(meta, None)
         self._factory = "EventGrain"
         self.meta['grain']['grain_type'] = 'event'
@@ -738,7 +713,7 @@ post
         self.meta['grain']['event_payload']['data'] = [dict(datum) for datum in value]
 
     def append(self, path: str, pre: Optional[MediaJSONSerialisable] = None, post: Optional[MediaJSONSerialisable] = None) -> None:
-        datum = {'path': path}
+        datum = EventGrainDatumDict(path=path)
         if pre is not None:
             datum['pre'] = pre
         if post is not None:
@@ -966,7 +941,7 @@ length
         def __ne__(self, other: object) -> bool:
             return not (self == other)
 
-    def __init__(self, meta: GRAIN.MetadataDict, data: Optional[GRAIN.DataType]):
+    def __init__(self, meta: GrainMetadataDict, data: Optional[GrainDataType]):
         super(VIDEOGRAIN, self).__init__(meta, data)
         self._factory = "VideoGrain"
         self.meta['grain']['grain_type'] = 'video'
@@ -1148,7 +1123,7 @@ unit_offsets
     A list-like object containing integer offsets of coded units within the
     data array.
 """
-    def __init__(self, meta: GRAIN.MetadataDict, data: GRAIN.DataType):
+    def __init__(self, meta: GrainMetadataDict, data: GrainDataType):
         super(CODEDVIDEOGRAIN, self).__init__(meta, data)
         self._factory = "CodedVideoGrain"
         self.meta['grain']['grain_type'] = 'coded_video'
@@ -1396,7 +1371,7 @@ sample_rate
     An integer indicating the number of samples per channel per second in this
     audio flow.
 """
-    def __init__(self, meta: GRAIN.MetadataDict, data: Optional[GRAIN.DataType]):
+    def __init__(self, meta: GrainMetadataDict, data: Optional[GrainDataType]):
         super(AUDIOGRAIN, self).__init__(meta, data)
         self._factory = "AudioGrain"
         self.meta['grain']['grain_type'] = 'audio'
@@ -1529,7 +1504,7 @@ priming
 remainder
     An integer
 """
-    def __init__(self, meta, data):
+    def __init__(self, meta: GrainMetadataDict, data: Optional[GrainDataType]):
         super(CODEDAUDIOGRAIN, self).__init__(meta, data)
         self._factory = "CodedAudioGrain"
         self.meta['grain']['grain_type'] = 'coded_audio'
@@ -1546,58 +1521,58 @@ remainder
                 self.meta['grain']['cog_coded_audio'][key] = DEF
         self.meta['grain']['cog_coded_audio']['format'] = int(self.meta['grain']['cog_coded_audio']['format'])
 
-    def final_origin_timestamp(self):
+    def final_origin_timestamp(self) -> Timestamp:
         return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, self.sample_rate, 1))
 
-    def normalise_time(self, value):
+    def normalise_time(self, value: Timestamp) -> Timestamp:
         return value.normalise(self.sample_rate, 1)
 
     @property
-    def format(self):
+    def format(self) -> CogAudioFormat:
         return CogAudioFormat(self.meta['grain']['cog_coded_audio']['format'])
 
     @format.setter
-    def format(self, value):
+    def format(self, value: int) -> None:
         self.meta['grain']['cog_coded_audio']['format'] = int(value)
 
     @property
-    def channels(self):
+    def channels(self) -> int:
         return self.meta['grain']['cog_coded_audio']['channels']
 
     @channels.setter
-    def channels(self, value):
+    def channels(self, value: int) -> None:
         self.meta['grain']['cog_coded_audio']['channels'] = value
 
     @property
-    def samples(self):
+    def samples(self) -> int:
         return self.meta['grain']['cog_coded_audio']['samples']
 
     @samples.setter
-    def samples(self, value):
+    def samples(self, value: int) -> None:
         self.meta['grain']['cog_coded_audio']['samples'] = value
 
     @property
-    def priming(self):
+    def priming(self) -> int:
         return self.meta['grain']['cog_coded_audio']['priming']
 
     @priming.setter
-    def priming(self, value):
+    def priming(self, value: int) -> None:
         self.meta['grain']['cog_coded_audio']['priming'] = value
 
     @property
-    def remainder(self):
+    def remainder(self) -> int:
         return self.meta['grain']['cog_coded_audio']['remainder']
 
     @remainder.setter
-    def remainder(self, value):
+    def remainder(self, value: int) -> None:
         self.meta['grain']['cog_coded_audio']['remainder'] = value
 
     @property
-    def sample_rate(self):
+    def sample_rate(self) -> int:
         return self.meta['grain']['cog_coded_audio']['sample_rate']
 
     @sample_rate.setter
-    def sample_rate(self, value):
+    def sample_rate(self, value: int) -> None:
         self.meta['grain']['cog_coded_audio']['sample_rate'] = value
 
 
