@@ -1309,7 +1309,7 @@ unit_offsets
             del self.meta['grain']['cog_coded_frame']['unit_offsets']
 
 
-def size_for_audio_format(cog_audio_format, channels, samples):
+def size_for_audio_format(cog_audio_format: CogAudioFormat, channels: int, samples: int) -> int:
     if (cog_audio_format & 0x200) == 0x200:  # compressed format, no idea of correct size
         return 0
 
@@ -1396,7 +1396,7 @@ sample_rate
     An integer indicating the number of samples per channel per second in this
     audio flow.
 """
-    def __init__(self, meta, data):
+    def __init__(self, meta: GRAIN.MetadataDict, data: Optional[GRAIN.DataType]):
         super(AUDIOGRAIN, self).__init__(meta, data)
         self._factory = "AudioGrain"
         self.meta['grain']['grain_type'] = 'audio'
@@ -1409,46 +1409,46 @@ sample_rate
                 self.meta['grain']['cog_audio'][key] = 0
         self.meta['grain']['cog_audio']['format'] = int(self.meta['grain']['cog_audio']['format'])
 
-    def final_origin_timestamp(self):
+    def final_origin_timestamp(self) -> Timestamp:
         return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, self.sample_rate, 1))
 
-    def normalise_time(self, value):
+    def normalise_time(self, value: Timestamp) -> Timestamp:
         return value.normalise(self.sample_rate, 1)
 
     @property
-    def format(self):
+    def format(self) -> CogAudioFormat:
         return CogAudioFormat(self.meta['grain']['cog_audio']['format'])
 
     @format.setter
-    def format(self, value):
+    def format(self, value: CogAudioFormat) -> None:
         self.meta['grain']['cog_audio']['format'] = int(value)
 
     @property
-    def samples(self):
+    def samples(self) -> int:
         return self.meta['grain']['cog_audio']['samples']
 
     @samples.setter
-    def samples(self, value):
+    def samples(self, value: int) -> None:
         self.meta['grain']['cog_audio']['samples'] = int(value)
 
     @property
-    def channels(self):
+    def channels(self) -> int:
         return self.meta['grain']['cog_audio']['channels']
 
     @channels.setter
-    def channels(self, value):
+    def channels(self, value: int) -> None:
         self.meta['grain']['cog_audio']['channels'] = int(value)
 
     @property
-    def sample_rate(self):
+    def sample_rate(self) -> int:
         return self.meta['grain']['cog_audio']['sample_rate']
 
     @sample_rate.setter
-    def sample_rate(self, value):
+    def sample_rate(self, value: int) -> None:
         self.meta['grain']['cog_audio']['sample_rate'] = int(value)
 
     @property
-    def expected_length(self):
+    def expected_length(self) -> int:
         return size_for_audio_format(self.format, self.channels, self.samples)
 
 
