@@ -1148,7 +1148,7 @@ unit_offsets
     A list-like object containing integer offsets of coded units within the
     data array.
 """
-    def __init__(self, meta, data):
+    def __init__(self, meta: GRAIN.MetadataDict, data: GRAIN.DataType):
         super(CODEDVIDEOGRAIN, self).__init__(meta, data)
         self._factory = "CodedVideoGrain"
         self.meta['grain']['grain_type'] = 'coded_video'
@@ -1166,92 +1166,104 @@ unit_offsets
         self.meta['grain']['cog_coded_frame']['format'] = int(self.meta['grain']['cog_coded_frame']['format'])
         self.meta['grain']['cog_coded_frame']['layout'] = int(self.meta['grain']['cog_coded_frame']['layout'])
 
-    def normalise_time(self, value):
+    def normalise_time(self, value: Timestamp) -> Timestamp:
         if self.rate == 0:
             return value
         return value.normalise(self.rate.numerator, self.rate.denominator)
 
     @property
-    def format(self):
+    def format(self) -> CogFrameFormat:
         return CogFrameFormat(self.meta['grain']['cog_coded_frame']['format'])
 
     @format.setter
-    def format(self, value):
+    def format(self, value: CogFrameFormat) -> None:
         self.meta['grain']['cog_coded_frame']['format'] = int(value)
 
     @property
-    def layout(self):
+    def layout(self) -> CogFrameLayout:
         return CogFrameLayout(self.meta['grain']['cog_coded_frame']['layout'])
 
     @layout.setter
-    def layout(self, value):
+    def layout(self, value: CogFrameLayout) -> None:
         self.meta['grain']['cog_coded_frame']['layout'] = int(value)
 
     @property
-    def origin_width(self):
+    def origin_width(self) -> int:
         return self.meta['grain']['cog_coded_frame']['origin_width']
 
     @origin_width.setter
-    def origin_width(self, value):
+    def origin_width(self, value: int) -> None:
         self.meta['grain']['cog_coded_frame']['origin_width'] = value
 
     @property
-    def origin_height(self):
+    def origin_height(self) -> int:
         return self.meta['grain']['cog_coded_frame']['origin_height']
 
     @origin_height.setter
-    def origin_height(self, value):
+    def origin_height(self, value: int) -> None:
         self.meta['grain']['cog_coded_frame']['origin_height'] = value
 
     @property
-    def coded_width(self):
+    def coded_width(self) -> int:
         return self.meta['grain']['cog_coded_frame']['coded_width']
 
     @coded_width.setter
-    def coded_width(self, value):
+    def coded_width(self, value: int) -> None:
         self.meta['grain']['cog_coded_frame']['coded_width'] = value
 
     @property
-    def coded_height(self):
+    def coded_height(self) -> int:
         return self.meta['grain']['cog_coded_frame']['coded_height']
 
     @coded_height.setter
-    def coded_height(self, value):
+    def coded_height(self, value: int) -> None:
         self.meta['grain']['cog_coded_frame']['coded_height'] = value
 
     @property
-    def is_key_frame(self):
+    def is_key_frame(self) -> bool:
         return self.meta['grain']['cog_coded_frame']['is_key_frame']
 
     @is_key_frame.setter
-    def is_key_frame(self, value):
+    def is_key_frame(self, value: bool) -> None:
         self.meta['grain']['cog_coded_frame']['is_key_frame'] = bool(value)
 
     @property
-    def temporal_offset(self):
+    def temporal_offset(self) -> int:
         return self.meta['grain']['cog_coded_frame']['temporal_offset']
 
     @temporal_offset.setter
-    def temporal_offset(self, value):
+    def temporal_offset(self, value: int) -> None:
         self.meta['grain']['cog_coded_frame']['temporal_offset'] = value
 
     class UNITOFFSETS(MutableSequence):
-        def __init__(self, parent):
+        def __init__(self, parent: "CODEDVIDEOGRAIN"):
             self.parent = parent
 
-        def __getitem__(self, key):
+        @overload
+        def __getitem__(self, key: int) -> int: ...
+
+        @overload  # noqa: F811
+        def __getitem__(self, key: slice) -> List[int]: ...
+
+        def __getitem__(self, key):  # noqa: F811
             if 'unit_offsets' in self.parent.meta['grain']['cog_coded_frame']:
                 return self.parent.meta['grain']['cog_coded_frame']['unit_offsets'][key]
             else:
                 raise IndexError("list index out of range")
 
-        def __setitem__(self, key, value):
+        @overload
+        def __setitem__(self, key: int, value: int) -> None: ...
+
+        @overload  # noqa: F811
+        def __setitem__(self, key: slice, value: Iterable[int]) -> None: ...
+
+        def __setitem__(self, key, value):  # noqa: F811
             if 'unit_offsets' in self.parent.meta['grain']['cog_coded_frame']:
                 self.parent.meta['grain']['cog_coded_frame']['unit_offsets'][key] = value
             else:
                 raise IndexError("list assignment index out of range")
 
-        def __delitem__(self, key):
+        def __delitem__(self, key: Union[int, slice]) -> None:
             if 'unit_offsets' in self.parent.meta['grain']['cog_coded_frame']:
                 del self.parent.meta['grain']['cog_coded_frame']['unit_offsets'][key]
                 if len(self.parent.meta['grain']['cog_coded_frame']['unit_offsets']) == 0:
@@ -1259,39 +1271,39 @@ unit_offsets
             else:
                 raise IndexError("list assignment index out of range")
 
-        def insert(self, key, value):
+        def insert(self, key: int, value: int) -> None:
             if 'unit_offsets' not in self.parent.meta['grain']['cog_coded_frame']:
-                d = []
+                d: List[int] = []
                 d.insert(key, value)
                 self.parent.meta['grain']['cog_coded_frame']['unit_offsets'] = d
             else:
                 self.parent.meta['grain']['cog_coded_frame']['unit_offsets'].insert(key, value)
 
-        def __len__(self):
+        def __len__(self) -> int:
             if 'unit_offsets' in self.parent.meta['grain']['cog_coded_frame']:
                 return len(self.parent.meta['grain']['cog_coded_frame']['unit_offsets'])
             else:
                 return 0
 
-        def __eq__(self, other):
+        def __eq__(self, other: object) -> bool:
             return list(self) == other
 
-        def __ne__(self, other):
+        def __ne__(self, other: object) -> bool:
             return not (self == other)
 
-        def __repr__(self):
+        def __repr__(self) -> str:
             if 'unit_offsets' not in self.parent.meta['grain']['cog_coded_frame']:
                 return repr([])
             else:
                 return repr(self.parent.meta['grain']['cog_coded_frame']['unit_offsets'])
 
     @property
-    def unit_offsets(self):
+    def unit_offsets(self) -> "CODEDVIDEOGRAIN.UNITOFFSETS":
         return CODEDVIDEOGRAIN.UNITOFFSETS(self)
 
     @unit_offsets.setter
-    def unit_offsets(self, value):
-        if value is not None and len(value) != 0:
+    def unit_offsets(self, value: Iterable[int]) -> None:
+        if value is not None and not (hasattr(value, "__len__") and len(cast(Sized, value)) == 0):
             self.meta['grain']['cog_coded_frame']['unit_offsets'] = value
         elif 'unit_offsets' in self.meta['grain']['cog_coded_frame']:
             del self.meta['grain']['cog_coded_frame']['unit_offsets']
