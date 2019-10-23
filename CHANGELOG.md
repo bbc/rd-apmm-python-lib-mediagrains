@@ -3,6 +3,9 @@
 ## 2.7.0 (Under Construction)
 - Dropped all support for Python2.7
 - Moved python3.6 specific submodules in tree
+- Added `GrainWrapper` class to wrap raw essence in Grains.
+- Added `wrap_video_in_gsf` and `wrap_audio_in_gsf` tools to generate GSF files from raw essence.
+- Added `extract_from_gsf` and `gsf_probe` tools to extract essence and metadata from GSF files.
 
 ## 2.6.0
 - Added support for async methods to gsf decoder in python 3.6+
