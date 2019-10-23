@@ -457,12 +457,6 @@ class TestGrain (TestCase):
         grain.components[0]['length'] = 17
         self.assertEqual(grain.components[0].length, 17)
 
-        grain.components[0]['potato'] = 3
-        self.assertIn('potato', grain.components[0])
-        self.assertEqual(grain.components[0]['potato'], 3)
-        del grain.components[0]['potato']
-        self.assertNotIn('potato', grain.components[0])
-
         grain.components.append({'stride': 1920,
                                  'width': 1920,
                                  'height': 1080,

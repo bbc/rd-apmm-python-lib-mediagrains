@@ -32,7 +32,7 @@ import uuid
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
 
-from typing import Callable, Dict, Tuple, Optional, overload
+from typing import Callable, Dict, Tuple, Optional
 
 from enum import Enum, auto
 

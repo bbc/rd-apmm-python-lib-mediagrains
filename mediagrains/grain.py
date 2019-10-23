@@ -450,7 +450,7 @@ normalise_time(value)
             if isinstance(key, int):
                 return GRAIN.TIMELABEL(self.parent.meta['grain']['timelabels'][key])
             else:
-                return [GRAIN.TIMELABEL(self.parent.meta['grain']['timelabels'][n]) for n in range(key)]
+                return [GRAIN.TIMELABEL(self.parent.meta['grain']['timelabels'][n]) for n in range(len(self))[key]]
 
         @overload
         def __setitem__(self, key: int, value: "GRAIN.TIMELABEL.MetadataDict") -> None: ...
@@ -464,8 +464,9 @@ normalise_time(value)
             if isinstance(key, int):
                 self.parent.meta['grain']['timelabels'][key] = dict(GRAIN.TIMELABEL(value))
             else:
+                values = iter(value)
                 for n in key:
-                    self.parent.meta['grain']['timelabels'][n] = dict(GRAIN.TIMELABEL(next(value)))
+                    self.parent.meta['grain']['timelabels'][n] = dict(GRAIN.TIMELABEL(next(values)))
 
         def __delitem__(self, key: Union[int, slice]) -> None:
             if 'timelabels' not in self.parent.meta['grain']:
@@ -859,96 +860,113 @@ height
 length
     The total length of the data for this component in bytes
 """
-        def __init__(self, meta):
+        def __init__(self, meta: "VIDEOGRAIN.ComponentDict"):
             self.meta = meta
 
-        def __getitem__(self, key):
+        def __getitem__(self, key: Literal['stride', 'offset', 'width', 'height', 'length']) -> int:
             return self.meta[key]
 
-        def __setitem__(self, key, value):
+        def __setitem__(self, key: Literal['stride', 'offset', 'width', 'height', 'length'], value: int) -> None:
             self.meta[key] = value
 
-        def __delitem__(self, key):
-            del self.meta[key]
-
-        def __iter__(self):
+        def __iter__(self) -> Iterator[str]:
             return self.meta.__iter__()
 
-        def __len__(self):
+        def __len__(self) -> int:
             return self.meta.__len__()
 
-        def __eq__(self, other):
+        def __eq__(self, other: object) -> bool:
             return dict(self) == other
 
-        def __ne__(self, other):
+        def __ne__(self, other: object) -> bool:
             return not (self == other)
 
         @property
-        def stride(self):
+        def stride(self) -> int:
             return self.meta['stride']
 
         @stride.setter
-        def stride(self, value):
+        def stride(self, value: int) -> None:
             self.meta['stride'] = value
 
         @property
-        def offset(self):
+        def offset(self) -> int:
             return self.meta['offset']
 
         @offset.setter
-        def offset(self, value):
+        def offset(self, value: int) -> None:
             self.meta['offset'] = value
 
         @property
-        def width(self):
+        def width(self) -> int:
             return self.meta['width']
 
         @width.setter
-        def width(self, value):
+        def width(self, value: int) -> None:
             self.meta['width'] = value
 
         @property
-        def height(self):
+        def height(self) -> int:
             return self.meta['height']
 
         @height.setter
-        def height(self, value):
+        def height(self, value: int) -> None:
             self.meta['height'] = value
 
         @property
-        def length(self):
+        def length(self) -> int:
             return self.meta['length']
 
         @length.setter
-        def length(self, value):
+        def length(self, value: int) -> None:
             self.meta['length'] = value
 
     class COMPONENT_LIST(MutableSequence):
-        def __init__(self, parent):
+        def __init__(self, parent: "VIDEOGRAIN"):
             self.parent = parent
 
-        def __getitem__(self, key):
-            return type(self.parent).COMPONENT(self.parent.meta['grain']['cog_frame']['components'][key])
+        @overload
+        def __getitem__(self, key: int) -> "VIDEOGRAIN.COMPONENT": ...
 
-        def __setitem__(self, key, value):
-            self.parent.meta['grain']['cog_frame']['components'][key] = type(self.parent).COMPONENT(value)
+        @overload  # noqa: F811
+        def __getitem__(self, key: slice) -> "List[VIDEOGRAIN.COMPONENT]": ...
 
-        def __delitem__(self, key):
+        def __getitem__(self, key):  # noqa: F811
+            if isinstance(key, int):
+                return type(self.parent).COMPONENT(self.parent.meta['grain']['cog_frame']['components'][key])
+            else:
+                return [type(self.parent).COMPONENT(self.parent.meta['grain']['cog_frame']['components'][k]) for k in range(len(self))[key]]
+
+        @overload
+        def __setitem__(self, key: int, value: "VIDEOGRAIN.ComponentDict") -> None: ...
+
+        @overload  # noqa: F811
+        def __setitem__(self, key: slice, value: "Iterable[VIDEOGRAIN.ComponentDict]") -> None: ...
+
+        def __setitem__(self, key, value):  # noqa: F811
+            if isinstance(key, int):
+                self.parent.meta['grain']['cog_frame']['components'][key] = type(self.parent).COMPONENT(value)
+            else:
+                values = iter(value)
+                for n in range(len(self))[key]:
+                    self.parent.meta['grain']['cog_frame']['components'][n] = type(self.parent).COMPONENT(next(values))
+
+        def __delitem__(self, key: Union[int, slice]) -> None:
             del self.parent.meta['grain']['cog_frame']['components'][key]
 
-        def insert(self, key, value):
+        def insert(self, key: int, value: "VIDEOGRAIN.ComponentDict") -> None:
             self.parent.meta['grain']['cog_frame']['components'].insert(key, type(self.parent).COMPONENT(value))
 
-        def __len__(self):
+        def __len__(self) -> int:
             return len(self.parent.meta['grain']['cog_frame']['components'])
 
-        def __eq__(self, other):
+        def __eq__(self, other: object) -> bool:
             return list(self) == other
 
-        def __ne__(self, other):
+        def __ne__(self, other: object) -> bool:
             return not (self == other)
 
-    def __init__(self, meta, data):
+    def __init__(self, meta: GRAIN.MetadataDict, data: Optional[GRAIN.DataType]):
         super(VIDEOGRAIN, self).__init__(meta, data)
         self._factory = "VideoGrain"
         self.meta['grain']['grain_type'] = 'video'
@@ -965,53 +983,53 @@ length
         self.meta['grain']['cog_frame']['layout'] = int(self.meta['grain']['cog_frame']['layout'])
         self.components = VIDEOGRAIN.COMPONENT_LIST(self)
 
-    def normalise_time(self, value):
+    def normalise_time(self, value: Timestamp) -> Timestamp:
         if self.rate == 0:
             return value
         return value.normalise(self.rate.numerator, self.rate.denominator)
 
     @property
-    def format(self):
+    def format(self) -> CogFrameFormat:
         return CogFrameFormat(self.meta['grain']['cog_frame']['format'])
 
     @format.setter
-    def format(self, value):
+    def format(self, value: CogFrameFormat) -> None:
         self.meta['grain']['cog_frame']['format'] = int(value)
 
     @property
-    def width(self):
+    def width(self) -> int:
         return self.meta['grain']['cog_frame']['width']
 
     @width.setter
-    def width(self, value):
+    def width(self, value: int) -> None:
         self.meta['grain']['cog_frame']['width'] = value
 
     @property
-    def height(self):
+    def height(self) -> int:
         return self.meta['grain']['cog_frame']['height']
 
     @height.setter
-    def height(self, value):
+    def height(self, value: int) -> None:
         self.meta['grain']['cog_frame']['height'] = value
 
     @property
-    def layout(self):
+    def layout(self) -> CogFrameLayout:
         return CogFrameLayout(self.meta['grain']['cog_frame']['layout'])
 
     @layout.setter
-    def layout(self, value):
+    def layout(self, value: CogFrameLayout) -> None:
         self.meta['grain']['cog_frame']['layout'] = int(value)
 
     @property
-    def extension(self):
+    def extension(self) -> int:
         return self.meta['grain']['cog_frame']['extension']
 
     @extension.setter
-    def extension(self, value):
+    def extension(self, value: int) -> None:
         self.meta['grain']['cog_frame']['extension'] = value
 
     @property
-    def source_aspect_ratio(self):
+    def source_aspect_ratio(self) -> Optional[Fraction]:
         if 'source_aspect_ratio' in self.meta['grain']['cog_frame']:
             return Fraction(self.meta['grain']['cog_frame']['source_aspect_ratio']['numerator'],
                             self.meta['grain']['cog_frame']['source_aspect_ratio']['denominator'])
@@ -1019,13 +1037,13 @@ length
             return None
 
     @source_aspect_ratio.setter
-    def source_aspect_ratio(self, value):
+    def source_aspect_ratio(self, value: RationalTypes) -> None:
         value = Fraction(value)
         self.meta['grain']['cog_frame']['source_aspect_ratio'] = {'numerator': value.numerator,
                                                                   'denominator': value.denominator}
 
     @property
-    def pixel_aspect_ratio(self):
+    def pixel_aspect_ratio(self) -> Optional[Fraction]:
         if 'pixel_aspect_ratio' in self.meta['grain']['cog_frame']:
             return Fraction(self.meta['grain']['cog_frame']['pixel_aspect_ratio']['numerator'],
                             self.meta['grain']['cog_frame']['pixel_aspect_ratio']['denominator'])
@@ -1033,13 +1051,13 @@ length
             return None
 
     @pixel_aspect_ratio.setter
-    def pixel_aspect_ratio(self, value):
+    def pixel_aspect_ratio(self, value: RationalTypes) -> None:
         value = Fraction(value)
         self.meta['grain']['cog_frame']['pixel_aspect_ratio'] = {'numerator': value.numerator,
                                                                  'denominator': value.denominator}
 
     @property
-    def expected_length(self):
+    def expected_length(self) -> int:
         length = 0
         for component in self.components:
             if component.offset + component.length > length:
