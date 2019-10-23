@@ -30,7 +30,7 @@ from numbers import Rational
 from copy import copy, deepcopy
 
 from typing import List, Dict, Any, Union, SupportsBytes, Optional, overload, Tuple, cast, Sized, Iterator, Iterable
-from typing_extensions import TypedDict
+from typing_extensions import TypedDict, Literal
 
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
@@ -43,9 +43,22 @@ __all__ = ["GRAIN", "VIDEOGRAIN", "AUDIOGRAIN", "CODEDVIDEOGRAIN", "CODEDAUDIOGR
 # These are the types that can be freely converte into a Fraction
 RationalTypes = Union[str, float, Decimal, Rational]
 
+# TODO: Move this into mediajson, and make it actually describe what is serialisable.
+MediaJSONSerialisable = Any
+
+
+# This is weird, but is currently how you specifiy a structured dict with optional entries
+class _EventGrainDatumDict_MANDATORY (TypedDict):
+    path: str
+
+
+class EventGrainDatumDict (_EventGrainDatumDict_MANDATORY, total=False):
+    pre: MediaJSONSerialisable
+    post: MediaJSONSerialisable
+
 
 def attributes_for_grain_type(grain_type: str) -> List[str]:
-    """Returns a list of attributes for a particular grain type. Useful for testing."""
+    """Returns a list of attributes for a partiggcular grain type. Useful for testing."""
 
     COMMON_ATTRS = ['source_id', 'flow_id', 'origin_timestamp', 'sync_timestamp', 'creation_timestamp', 'rate', 'duration']
 
@@ -569,14 +582,17 @@ append(path, pre=None, post=None)
     provided string, and pre and post set optionally. All calls should use
     only json serialisable objects for the values of pre and post.
     """
-    def __init__(self, meta, data):
+    def __init__(self, meta: GRAIN.MetadataDict, data: Optional[GRAIN.DataType]):
         super(EVENTGRAIN, self).__init__(meta, None)
         self._factory = "EventGrain"
         self.meta['grain']['grain_type'] = 'event'
         if 'event_payload' not in self.meta['grain']:
             self.meta['grain']['event_payload'] = {}
         if data is not None:
-            self.data = data
+            if isinstance(data, bytes):
+                self.data = data
+            else:
+                self.data = bytes(data)
         if 'type' not in self.meta['grain']['event_payload']:
             self.meta['grain']['event_payload']['type'] = ""
         if 'topic' not in self.meta['grain']['event_payload']:
@@ -585,22 +601,24 @@ append(path, pre=None, post=None)
             self.meta['grain']['event_payload']['data'] = []
 
     @property
-    def data(self):
+    def data(self) -> bytes:
         return json.dumps({'type': self.event_type,
                            'topic': self.topic,
                            'data': [dict(datum) for datum in self.event_data]}).encode('utf-8')
 
     @data.setter
-    def data(self, value):
+    def data(self, value: Union[str, bytes]):
         if not isinstance(value, str):
-            value = value.decode('utf-8')
-        value = json.loads(value)
-        if 'type' not in value or 'topic' not in value or 'data' not in value:
+            payload = json.loads(value.decode('utf-8'))
+        else:
+            payload = json.loads(value)
+
+        if 'type' not in payload or 'topic' not in payload or 'data' not in payload:
             raise ValueError("incorrectly formated event payload")
-        self.event_type = value['type']
-        self.topic = value['topic']
+        self.event_type = payload['type']
+        self.topic = payload['topic']
         self.meta['grain']['event_payload']['data'] = []
-        for datum in value['data']:
+        for datum in payload['data']:
             d = {'path': datum['path']}
             if 'pre' in datum:
                 d['pre'] = datum['pre']
@@ -608,23 +626,23 @@ append(path, pre=None, post=None)
                 d['post'] = datum['post']
             self.meta['grain']['event_payload']['data'].append(d)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "EventGrain({!r})".format(self.meta)
 
     @property
-    def event_type(self):
+    def event_type(self) -> str:
         return self.meta['grain']['event_payload']['type']
 
     @event_type.setter
-    def event_type(self, value):
+    def event_type(self, value: str) -> None:
         self.meta['grain']['event_payload']['type'] = value
 
     @property
-    def topic(self):
+    def topic(self) -> str:
         return self.meta['grain']['event_payload']['topic']
 
     @topic.setter
-    def topic(self, value):
+    def topic(self, value: str) -> None:
         self.meta['grain']['event_payload']['topic'] = value
 
     class DATA(Mapping):
@@ -650,75 +668,75 @@ post
     The post value, or None if none is present. If set to None will remove
     "post" key from dictionary.
 """
-        def __init__(self, meta):
+        def __init__(self, meta: EventGrainDatumDict):
             self.meta = meta
 
-        def __getitem__(self, key):
+        def __getitem__(self, key: Literal['path', 'pre', 'post']) -> MediaJSONSerialisable:
             return self.meta[key]
 
-        def __setitem__(self, key, value):
+        def __setitem__(self, key: Literal['path', 'pre', 'post'], value: MediaJSONSerialisable) -> None:
             self.meta[key] = value
 
-        def __delitem__(self, key):
+        def __delitem__(self, key: Literal['pre', 'post']) -> None:
             del self.meta[key]
 
-        def __iter__(self):
+        def __iter__(self) -> Iterator[str]:
             return self.meta.__iter__()
 
-        def __len__(self):
+        def __len__(self) -> int:
             return self.meta.__len__()
 
-        def __eq__(self, other):
+        def __eq__(self, other: object) -> bool:
             return dict(self) == other
 
-        def __ne__(self, other):
+        def __ne__(self, other: object) -> bool:
             return not (self == other)
 
         @property
-        def path(self):
+        def path(self) -> str:
             return self.meta['path']
 
         @path.setter
-        def path(self, value):
+        def path(self, value: str) -> None:
             self.meta['path'] = value
 
         @property
-        def pre(self):
+        def pre(self) -> Optional[MediaJSONSerialisable]:
             if 'pre' in self.meta:
                 return self.meta['pre']
             else:
                 return None
 
         @pre.setter
-        def pre(self, value):
+        def pre(self, value: Optional[MediaJSONSerialisable]) -> None:
             if value is not None:
                 self.meta['pre'] = value
             else:
                 del self.meta['pre']
 
         @property
-        def post(self):
+        def post(self) -> Optional[MediaJSONSerialisable]:
             if 'post' in self.meta:
                 return self.meta['post']
-            elif 'pre' in self.meta:
+            else:
                 return None
 
         @post.setter
-        def post(self, value):
+        def post(self, value: Optional[MediaJSONSerialisable]) -> None:
             if value is not None:
                 self.meta['post'] = value
             elif 'post' in self.meta:
                 del self.meta['post']
 
     @property
-    def event_data(self):
+    def event_data(self) -> List["EVENTGRAIN.DATA"]:
         return [EVENTGRAIN.DATA(datum) for datum in self.meta['grain']['event_payload']['data']]
 
     @event_data.setter
-    def event_data(self, value):
+    def event_data(self, value: List[EventGrainDatumDict]) -> None:
         self.meta['grain']['event_payload']['data'] = [dict(datum) for datum in value]
 
-    def append(self, path, pre=None, post=None):
+    def append(self, path: str, pre: Optional[MediaJSONSerialisable] = None, post: Optional[MediaJSONSerialisable] = None) -> None:
         datum = {'path': path}
         if pre is not None:
             datum['pre'] = pre

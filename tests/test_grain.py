@@ -1834,7 +1834,7 @@ class TestGrain (TestCase):
         })
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = Grain(meta, data)
+            grain = Grain(meta, data.encode('utf-8'))
 
         self.assertEqual(grain.grain_type, "event")
         self.assertEqual(grain.source_id, src_id)
