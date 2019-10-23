@@ -21,7 +21,6 @@ import typing
 import uuid
 import argparse
 import sys
-from contextlib import contextmanager
 
 from mediatimestamp.immutable import Timestamp
 
@@ -29,50 +28,34 @@ from ..cogenums import CogFrameFormat, CogAudioFormat
 from ..grain_constructors import VideoGrain, AudioGrain
 from ..gsf import GSFEncoder
 from ..utils import GrainWrapper
-
-
-@contextmanager
-def _file_or_pipe(file_or_pipe, mode):
-    """Context manager to open a file or stdin/stdout for binary operations
-
-    :param file_or_pipe: Name of file to open, or "-" to indicate a pipe
-    :param mode: Mode in which to open the given file or pipe - used directly for files and to detect direction of
-                 of pipes. Must be one of "rb" or "wb"
-    """
-    if file_or_pipe == "-":
-        if "w" in mode:
-            yield sys.stdout.buffer
-        else:
-            yield sys.stdin.buffer
-    else:
-        with open(file_or_pipe, mode) as fp:
-            yield fp
+from ._file_or_pipe import file_or_pipe
 
 
 def wrap_to_gsf(
-        input_file: typing.BinaryIO,
-        output_file: typing.BinaryIO,
+        input_file: str,
+        output_file: str,
         grain_constructor: typing.Callable,
         **kwargs):
     """Wrap the supplied input in GSF and write it out to a given file-like object
 
-    :param input_file: A file-like object to read the input media from, one frame/Grain at a time
-    :param output_file: A file-like object to write output GSF data to
+    :param input_file: A file path (or "-" for stdin) to read the input media from, one frame/Grain at a time
+    :param output_file: A file path (or "-" for stdout) to write output GSF data to
     :param grain_constructor: Which of the mediagrains.grain_constructors to use when creating the base Grain
     :param kwargs: Other arguments are passed through to the Grain constructor directly.
     """
-    wrapper = GrainWrapper(grain_constructor, input_file, **kwargs)
+    with file_or_pipe(input_file, "rb") as input_data, file_or_pipe(output_file, "wb") as output_data:
+        wrapper = GrainWrapper(grain_constructor, input_data, **kwargs)
 
-    # Write a GSF file with the grains read from the input
-    encoder = GSFEncoder(output_file)
-    segment = encoder.add_segment(id=wrapper.template_grain.flow_id)
-    encoder.start_dump()
+        # Write a GSF file with the grains read from the input
+        encoder = GSFEncoder(output_data)
+        segment = encoder.add_segment(id=wrapper.template_grain.flow_id)
+        encoder.start_dump()
 
-    for grain in wrapper.grains():
-        print("Got grain with TS {}".format(grain.origin_timestamp.to_sec_nsec()), file=sys.stderr)
-        segment.add_grains([grain])
+        for grain in wrapper.grains():
+            print("Got grain with TS {}".format(grain.origin_timestamp.to_sec_nsec()), file=sys.stderr)
+            segment.add_grains([grain])
 
-    encoder.end_dump()
+        encoder.end_dump()
 
 
 def wrap_video_in_gsf():
@@ -108,12 +91,11 @@ def wrap_video_in_gsf():
     flow_id = args.flow_id if args.flow_id else uuid.uuid4()
     source_id = args.source_id if args.source_id else uuid.uuid4()
 
-    with _file_or_pipe(args.input_file, "rb") as input_file, _file_or_pipe(args.output_file, "wb") as output_file:
-        wrap_to_gsf(
-            input_file=input_file, output_file=output_file, grain_constructor=VideoGrain,
-            flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, rate=args.rate,
-            width=width, height=height, cog_frame_format=args.format
-        )
+    wrap_to_gsf(
+        input_file=args.input_file, output_file=args.output_file, grain_constructor=VideoGrain,
+        flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, rate=args.rate,
+        width=width, height=height, cog_frame_format=args.format
+    )
 
 
 def wrap_audio_in_gsf():
@@ -147,9 +129,8 @@ def wrap_audio_in_gsf():
     flow_id = args.flow_id if args.flow_id else uuid.uuid4()
     source_id = args.source_id if args.source_id else uuid.uuid4()
 
-    with _file_or_pipe(args.input_file, "rb") as input_file, _file_or_pipe(args.output_file, "wb") as output_file:
-        wrap_to_gsf(
-            input_file=input_file, output_file=output_file, grain_constructor=AudioGrain,
-            flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, rate=args.sample_rate,
-            channels=args.channels, samples=args.samples_per_grain, cog_audio_format=args.format
-        )
+    wrap_to_gsf(
+        input_file=args.input_file, output_file=args.output_file, grain_constructor=AudioGrain,
+        flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, rate=args.sample_rate,
+        channels=args.channels, samples=args.samples_per_grain, cog_audio_format=args.format
+    )
