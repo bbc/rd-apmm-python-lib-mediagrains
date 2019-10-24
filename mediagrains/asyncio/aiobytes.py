@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #
 # Copyright 2019 British Broadcasting Corporation
 #

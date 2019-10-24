@@ -1,4 +1,3 @@
-PYTHON=`which python`
 PYTHON3=`which python3`
 PY2DSC=`which py2dsc`
 
@@ -48,15 +47,15 @@ $(topbuilddir)/dist:
 	mkdir -p $@
 
 source: $(topbuilddir)/dist
-	$(PYTHON) $(topdir)/setup.py sdist $(COMPILE) --dist-dir=$(topbuilddir)/dist
+	$(PYTHON3) $(topdir)/setup.py sdist $(COMPILE) --dist-dir=$(topbuilddir)/dist
 
 $(topbuilddir)/dist/$(MODNAME)-$(VERSION).tar.gz: source
 
 install:
-	$(PYTHON) $(topdir)/setup.py install --root $(DESTDIR) $(COMPILE)
+	$(PYTHON3) $(topdir)/setup.py install --root $(DESTDIR) $(COMPILE)
 
 clean:
-	$(PYTHON) $(topdir)/setup.py clean || true
+	$(PYTHON3) $(topdir)/setup.py clean || true
 	rm -rf $(topbuilddir)/.tox
 	rm -rf $(topbuilddir)/build/ MANIFEST
 	rm -rf $(topbuilddir)/dist
