@@ -68,7 +68,7 @@ clean:
 testenv: $(TOXDIR)/py36/bin/activate
 
 $(TOXDIR)/py36/bin/activate: tox.ini
-	tox -e py36 --recreate --workdir $(TOXDIR)
+	tox -e py36 --recreate --workdir --notest $(TOXDIR)
 
 test:
 	tox --workdir $(TOXDIR)
