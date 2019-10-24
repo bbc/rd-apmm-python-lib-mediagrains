@@ -51,7 +51,7 @@ pipeline {
                         }
                         bbcGithubNotify(context: "lint/flake8_3", status: "PENDING")
                         // Run the linter
-                        sh 'make lint'
+                        sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-lint make lint'
                         script {
                             env.lint3_result = "SUCCESS" // This will only run if the sh above succeeded
                         }
@@ -69,7 +69,7 @@ pipeline {
                         }
                         bbcGithubNotify(context: "type/mypy", status: "PENDING")
                         // Run the linter
-                        sh 'make mypy'
+                        sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-mypy make mypy'
                         script {
                             env.mypy_result = "SUCCESS" // This will only run if the sh above succeeded
                         }
@@ -92,7 +92,7 @@ pipeline {
                         }
                         bbcGithubNotify(context: "tests/py36", status: "PENDING")
                         // Use a workdirectory in /tmp to avoid shebang length limitation
-                        sh 'tox -e py36 --recreate --workdir /tmp/$(basename ${WORKSPACE})/tox-py36'
+                        sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-py36 make test'
                         script {
                             env.py36_result = "SUCCESS" // This will only run if the sh above succeeded
                         }
