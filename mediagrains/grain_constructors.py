@@ -25,7 +25,16 @@ from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
 
 from typing import Optional, Union, cast, Sized, List
-from .typing import GrainDataType, GrainMetadataDict
+from .typing import (
+    GrainDataType,
+    GrainMetadataDict,
+    EmptyGrainMetadataDict,
+    AudioGrainMetadataDict,
+    CodedAudioGrainMetadataDict,
+    VideoGrainMetadataDict,
+    EventGrainMetadataDict,
+    CodedVideoGrainMetadataDict,
+    VideoGrainComponentDict)
 
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from .grain import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN, size_for_audio_format
@@ -134,42 +143,42 @@ but src_id is kept avaialble for backwards compatibility)
         if not isinstance(src_id, UUID) or not isinstance(flow_id, UUID):
             raise AttributeError("Invalid types for src_id and flow_id")
 
-        meta = {
+        meta = EmptyGrainMetadataDict({
             "@_ns": "urn:x-ipstudio:ns:0.1",
             "grain": {
-                "grain_type": "empty",
-                "source_id": str(src_id),
-                "flow_id": str(flow_id),
-                "origin_timestamp": str(ots),
-                "sync_timestamp": str(sts),
-                "creation_timestamp": str(cts),
-                "rate": {
-                    "numerator": Fraction(rate).numerator,
-                    "denominator": Fraction(rate).denominator,
-                    },
-                "duration": {
-                    "numerator": Fraction(duration).numerator,
-                    "denominator": Fraction(duration).denominator,
-                    },
+                'grain_type': "empty",
+                'source_id': str(src_id),
+                'flow_id': str(flow_id),
+                'origin_timestamp': str(ots),
+                'sync_timestamp': str(sts),
+                'creation_timestamp': str(cts),
+                'rate': {
+                    'numerator': Fraction(rate).numerator,
+                    'denominator': Fraction(rate).denominator
+                },
+                'duration': {
+                    'numerator': Fraction(duration).numerator,
+                    'denominator': Fraction(duration).denominator
                 }
             }
+        })
         data = None
 
     if 'grain' in meta and 'grain_type' in meta['grain'] and meta['grain']['grain_type'] == 'video':
-        return VideoGrain(meta, data)
+        return VideoGrain(cast(VideoGrainMetadataDict, meta), data)
     elif 'grain' in meta and 'grain_type' in meta['grain'] and meta['grain']['grain_type'] == 'audio':
-        return AudioGrain(meta, data)
+        return AudioGrain(cast(AudioGrainMetadataDict, meta), data)
     elif 'grain' in meta and 'grain_type' in meta['grain'] and meta['grain']['grain_type'] == 'coded_video':
-        return CodedVideoGrain(meta, data)
+        return CodedVideoGrain(cast(CodedVideoGrainMetadataDict, meta), data)
     elif 'grain' in meta and 'grain_type' in meta['grain'] and meta['grain']['grain_type'] == 'coded_audio':
-        return CodedAudioGrain(meta, data)
+        return CodedAudioGrain(cast(CodedAudioGrainMetadataDict, meta), data)
     elif 'grain' in meta and 'grain_type' in meta['grain'] and meta['grain']['grain_type'] in ['event', 'data']:
-        return EventGrain(meta, data)
+        return EventGrain(cast(EventGrainMetadataDict, meta), data)
     else:
         return GRAIN(meta, data)
 
 
-def AudioGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
+def AudioGrain(src_id_or_meta: Optional[Union[UUID, AudioGrainMetadataDict]] = None,
                flow_id_or_data: Optional[Union[UUID, GrainDataType]] = None,
                origin_timestamp: Optional[Timestamp] = None,
                sync_timestamp: Optional[Timestamp] = None,
@@ -279,21 +288,21 @@ but src_id is kept avaialble for backwards compatibility)
         meta = {
             "@_ns": "urn:x-ipstudio:ns:0.1",
             "grain": {
-                "grain_type": "audio",
-                "source_id": str(src_id),
-                "flow_id": str(flow_id),
-                "origin_timestamp": str(origin_timestamp),
-                "sync_timestamp": str(sync_timestamp),
-                "creation_timestamp": str(cts),
-                "rate": {
-                    "numerator": Fraction(rate).numerator,
-                    "denominator": Fraction(rate).denominator,
-                    },
-                "duration": {
-                    "numerator": Fraction(duration).numerator,
-                    "denominator": Fraction(duration).denominator,
-                    },
-                "cog_audio": {
+                'grain_type': "audio",
+                'source_id': str(src_id),
+                'flow_id': str(flow_id),
+                'origin_timestamp': str(origin_timestamp),
+                'sync_timestamp': str(sync_timestamp),
+                'creation_timestamp': str(cts),
+                'rate': {
+                    'numerator': Fraction(rate).numerator,
+                    'denominator': Fraction(rate).denominator
+                },
+                'duration': {
+                    'numerator': Fraction(duration).numerator,
+                    'denominator': Fraction(duration).denominator
+                },
+                'cog_audio': {
                     "format": cog_audio_format,
                     "samples": samples,
                     "channels": channels,
@@ -309,7 +318,7 @@ but src_id is kept avaialble for backwards compatibility)
     return AUDIOGRAIN(meta, data)
 
 
-def CodedAudioGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
+def CodedAudioGrain(src_id_or_meta: Optional[Union[UUID, CodedAudioGrainMetadataDict]] = None,
                     flow_id_or_data: Optional[Union[UUID, GrainDataType]] = None,
                     origin_timestamp: Optional[Timestamp] = None,
                     creation_timestamp: Optional[Timestamp] = None,
@@ -343,7 +352,7 @@ A properly formated metadata dictionary for a Coded Audio Grain should look like
         {
             "@_ns": "urn:x-ipstudio:ns:0.1",
             "grain": {
-                "grain_type": "audio",
+                "grain_type": "coded_audio",
                 "source_id": src_id, # str or uuid.UUID
                 "flow_id": flow_id, # str or uuid.UUID
                 "origin_timestamp": origin_timestamp, # str or mediatimestamps.Timestamp
@@ -432,21 +441,21 @@ but src_id is kept avaialble for backwards compatibility)
         meta = {
             "@_ns": "urn:x-ipstudio:ns:0.1",
             "grain": {
-                "grain_type": "coded_audio",
-                "source_id": str(src_id),
-                "flow_id": str(flow_id),
-                "origin_timestamp": str(origin_timestamp),
-                "sync_timestamp": str(sync_timestamp),
-                "creation_timestamp": str(cts),
-                "rate": {
-                    "numerator": Fraction(rate).numerator,
-                    "denominator": Fraction(rate).denominator,
-                    },
-                "duration": {
-                    "numerator": Fraction(duration).numerator,
-                    "denominator": Fraction(duration).denominator,
-                    },
-                "cog_coded_audio": {
+                'grain_type': "coded_audio",
+                'source_id': str(src_id),
+                'flow_id': str(flow_id),
+                'origin_timestamp': str(origin_timestamp),
+                'sync_timestamp': str(sync_timestamp),
+                'creation_timestamp': str(cts),
+                'rate': {
+                    'numerator': Fraction(rate).numerator,
+                    'denominator': Fraction(rate).denominator
+                },
+                'duration': {
+                    'numerator': Fraction(duration).numerator,
+                    'denominator': Fraction(duration).denominator
+                },
+                'cog_coded_audio': {
                     "format": cog_audio_format,
                     "samples": samples,
                     "channels": channels,
@@ -463,7 +472,7 @@ but src_id is kept avaialble for backwards compatibility)
     return CODEDAUDIOGRAIN(meta, data)
 
 
-def VideoGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
+def VideoGrain(src_id_or_meta: Optional[Union[UUID, VideoGrainMetadataDict]] = None,
                flow_id_or_data: Optional[Union[UUID, GrainDataType]] = None,
                origin_timestamp: Optional[Timestamp] = None,
                creation_timestamp: Optional[Timestamp] = None,
@@ -598,21 +607,21 @@ but src_id is kept avaialble for backwards compatibility)
         meta = {
             "@_ns": "urn:x-ipstudio:ns:0.1",
             "grain": {
-                "grain_type": "video",
-                "source_id": str(src_id),
-                "flow_id": str(flow_id),
-                "origin_timestamp": str(origin_timestamp),
-                "sync_timestamp": str(sync_timestamp),
-                "creation_timestamp": str(cts),
-                "rate": {
-                    "numerator": Fraction(rate).numerator,
-                    "denominator": Fraction(rate).denominator,
-                    },
-                "duration": {
-                    "numerator": Fraction(duration).numerator,
-                    "denominator": Fraction(duration).denominator,
-                    },
-                "cog_frame": {
+                'grain_type': "video",
+                'source_id': str(src_id),
+                'flow_id': str(flow_id),
+                'origin_timestamp': str(origin_timestamp),
+                'sync_timestamp': str(sync_timestamp),
+                'creation_timestamp': str(cts),
+                'rate': {
+                    'numerator': Fraction(rate).numerator,
+                    'denominator': Fraction(rate).denominator,
+                },
+                'duration': {
+                    'numerator': Fraction(duration).numerator,
+                    'denominator': Fraction(duration).denominator,
+                },
+                'cog_frame': {
                     "format": cog_frame_format,
                     "width": width,
                     "height": height,
@@ -663,8 +672,8 @@ but src_id is kept avaialble for backwards compatibility)
         size = size_for_format(cog_frame_format, width, height)
         data = bytearray(size)
 
-    def components_for_format(fmt: CogFrameFormat, w: int, h: int) -> List[VIDEOGRAIN.ComponentDict]:
-        components: List[VIDEOGRAIN.ComponentDict] = []
+    def components_for_format(fmt: CogFrameFormat, w: int, h: int) -> List[VideoGrainComponentDict]:
+        components: List[VideoGrainComponentDict] = []
         if ((fmt >> 8) & 0x1) == 0x00:  # Cog frame is not packed
             h_shift = (fmt & 0x01)
             v_shift = ((fmt >> 1) & 0x01)
@@ -756,13 +765,15 @@ but src_id is kept avaialble for backwards compatibility)
                 })
         return components
 
-    if "cog_frame" in meta['grain'] and ("components" not in meta['grain']['cog_frame'] or len(meta['grain']['cog_frame']['components']) == 0):
+    if ("cog_frame" in meta['grain'] and
+        ("components" not in meta['grain']['cog_frame'] or
+         len(meta['grain']['cog_frame']['components']) == 0)):
         meta['grain']['cog_frame']['components'] = components_for_format(cog_frame_format, width, height)
 
     return VIDEOGRAIN(meta, data)
 
 
-def CodedVideoGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
+def CodedVideoGrain(src_id_or_meta: Optional[Union[UUID, CodedVideoGrainMetadataDict]] = None,
                     flow_id_or_data: Optional[Union[UUID, GrainDataType]] = None,
                     origin_timestamp: Optional[Timestamp] = None,
                     creation_timestamp: Optional[Timestamp] = None,
@@ -939,7 +950,7 @@ but src_id is kept avaialble for backwards compatibility)
     return CODEDVIDEOGRAIN(meta, data)
 
 
-def EventGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
+def EventGrain(src_id_or_meta: Optional[Union[UUID, EventGrainMetadataDict]] = None,
                flow_id_or_data: Optional[Union[UUID, GrainDataType]] = None,
                origin_timestamp: Optional[Timestamp] = None,
                creation_timestamp: Optional[Timestamp] = None,
@@ -951,7 +962,7 @@ def EventGrain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
                src_id: Optional[UUID] = None,
                source_id: Optional[UUID] = None,
                flow_id: Optional[UUID] = None,
-               meta: Optional[GrainMetadataDict] = None,
+               meta: Optional[EventGrainMetadataDict] = None,
                data: Optional[GrainDataType] = None) -> EVENTGRAIN:
     """\
 Function called to construct an event grain either from existing data or with new data.
@@ -1048,7 +1059,7 @@ but src_id is kept avaialble for backwards compatibility)
             origin_timestamp = cts
         if sync_timestamp is None:
             sync_timestamp = origin_timestamp
-        meta = {
+        meta = EventGrainMetadataDict({
             "@_ns": "urn:x-ipstudio:ns:0.1",
             "grain": {
                 "grain_type": "event",
@@ -1071,6 +1082,6 @@ but src_id is kept avaialble for backwards compatibility)
                     "data": []
                 }
             },
-        }
+        })
 
     return EVENTGRAIN(meta, data)

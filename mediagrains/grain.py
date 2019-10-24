@@ -28,8 +28,22 @@ from fractions import Fraction
 from copy import copy, deepcopy
 
 from typing import List, Dict, Any, Union, SupportsBytes, Optional, overload, Tuple, cast, Sized, Iterator, Iterable
-from typing_extensions import TypedDict, Literal
-from .typing import RationalTypes, MediaJSONSerialisable, EventGrainDatumDict, GrainMetadataDict, GrainDataType
+from typing_extensions import Literal
+from .typing import (
+    RationalTypes,
+    MediaJSONSerialisable,
+    EventGrainDatumDict,
+    GrainMetadataDict,
+    GrainDataType,
+    VideoGrainComponentDict,
+    EmptyGrainMetadataDict,
+    FractionDict,
+    TimeLabel,
+    EventGrainMetadataDict,
+    VideoGrainMetadataDict,
+    CodedVideoGrainMetadataDict,
+    AudioGrainMetadataDict,
+    CodedAudioGrainMetadataDict)
 
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
@@ -137,45 +151,47 @@ normalise_time(value)
         self.meta = meta
         self._data = data
         self._factory = "Grain"
+
+        # This code is here to deal with malformed inputs, and as such needs to cast away the type safety to operate
         if "@_ns" not in self.meta:
-            self.meta['@_ns'] = "urn:x-ipstudio:ns:0.1"
+            cast(EmptyGrainMetadataDict, self.meta)['@_ns'] = "urn:x-ipstudio:ns:0.1"
         if 'grain' not in self.meta:
-            self.meta['grain'] = {}
+            cast(dict, self.meta)['grain'] = {}
         if 'grain_type' not in self.meta['grain']:
-            self.meta['grain']['grain_type'] = "empty"
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['grain_type'] = "empty"
         if 'creation_timestamp' not in self.meta['grain']:
-            self.meta['grain']['creation_timestamp'] = str(Timestamp.get_time())
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['creation_timestamp'] = str(Timestamp.get_time())
         if 'origin_timestamp' not in self.meta['grain']:
-            self.meta['grain']['origin_timestamp'] = self.meta['grain']['creation_timestamp']
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['origin_timestamp'] = self.meta['grain']['creation_timestamp']
         if 'sync_timestamp' not in self.meta['grain']:
-            self.meta['grain']['sync_timestamp'] = self.meta['grain']['origin_timestamp']
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['sync_timestamp'] = self.meta['grain']['origin_timestamp']
         if 'rate' not in self.meta['grain']:
-            self.meta['grain']['rate'] = {'numerator': 0,
-                                          'denominator': 1}
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['rate'] = {'numerator': 0,
+                                                                        'denominator': 1}
         if 'duration' not in self.meta['grain']:
-            self.meta['grain']['duration'] = {'numerator': 0,
-                                              'denominator': 1}
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['duration'] = {'numerator': 0,
+                                                                            'denominator': 1}
         if 'source_id' not in self.meta['grain']:
-            self.meta['grain']['source_id'] = "00000000-0000-0000-0000-000000000000"
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['source_id'] = "00000000-0000-0000-0000-000000000000"
         if 'flow_id' not in self.meta['grain']:
-            self.meta['grain']['flow_id'] = "00000000-0000-0000-0000-000000000000"
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['flow_id'] = "00000000-0000-0000-0000-000000000000"
 
         if isinstance(self.meta["grain"]["source_id"], UUID):
-            self.meta['grain']['source_id'] = str(self.meta['grain']['source_id'])
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['source_id'] = str(self.meta['grain']['source_id'])
         if isinstance(self.meta["grain"]["flow_id"], UUID):
-            self.meta['grain']['flow_id'] = str(self.meta['grain']['flow_id'])
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['flow_id'] = str(self.meta['grain']['flow_id'])
         if isinstance(self.meta["grain"]["origin_timestamp"], Timestamp):
-            self.meta['grain']['origin_timestamp'] = str(self.meta['grain']['origin_timestamp'])
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['origin_timestamp'] = str(self.meta['grain']['origin_timestamp'])
         if isinstance(self.meta["grain"]["sync_timestamp"], Timestamp):
-            self.meta['grain']['sync_timestamp'] = str(self.meta['grain']['sync_timestamp'])
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['sync_timestamp'] = str(self.meta['grain']['sync_timestamp'])
         if isinstance(self.meta["grain"]["creation_timestamp"], Timestamp):
-            self.meta['grain']['creation_timestamp'] = str(self.meta['grain']['creation_timestamp'])
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['creation_timestamp'] = str(self.meta['grain']['creation_timestamp'])
         if isinstance(self.meta['grain']['rate'], Fraction):
-            self.meta['grain']['rate'] = {'numerator': self.meta['grain']['rate'].numerator,
-                                          'denominator': self.meta['grain']['rate'].denominator}
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['rate'] = {'numerator': self.meta['grain']['rate'].numerator,
+                                                                        'denominator': self.meta['grain']['rate'].denominator}
         if isinstance(self.meta['grain']['duration'], Fraction):
-            self.meta['grain']['duration'] = {'numerator': self.meta['grain']['duration'].numerator,
-                                              'denominator': self.meta['grain']['duration'].denominator}
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['duration'] = {'numerator': self.meta['grain']['duration'].numerator,
+                                                                            'denominator': self.meta['grain']['duration'].denominator}
 
     def __len__(self) -> int:
         return 2
@@ -233,33 +249,36 @@ normalise_time(value)
 
     @grain_type.setter
     def grain_type(self, value: str) -> None:
-        self.meta['grain']['grain_type'] = value
+        # We ignore the type safety rules for this assignment
+        self.meta['grain']['grain_type'] = value  # type: ignore
 
     @property
     def source_id(self) -> UUID:
-        return UUID(self.meta['grain']['source_id'])
+        # Our code ensures that this will always be a string at runtime
+        return UUID(cast(str, self.meta['grain']['source_id']))
 
     @source_id.setter
     def source_id(self, value: Union[UUID, str]) -> None:
-        self.meta['grain']['source_id'] = str(value)
+        cast(EmptyGrainMetadataDict, self.meta)['grain']['source_id'] = str(value)
 
     @property
     def flow_id(self) -> UUID:
-        return UUID(self.meta['grain']['flow_id'])
+        return UUID(cast(str, self.meta['grain']['flow_id']))
 
     @flow_id.setter
     def flow_id(self, value: Union[UUID, str]) -> None:
-        self.meta['grain']['flow_id'] = str(value)
+        cast(EmptyGrainMetadataDict, self.meta)['grain']['flow_id'] = str(value)
 
     @property
     def origin_timestamp(self) -> Timestamp:
-        return Timestamp.from_tai_sec_nsec(self.meta['grain']['origin_timestamp'])
+        return Timestamp.from_tai_sec_nsec(cast(str, self.meta['grain']['origin_timestamp']))
 
     @origin_timestamp.setter
     def origin_timestamp(self, value: Union[TimeOffset, str]):
         if isinstance(value, TimeOffset):
-            value = value.to_sec_nsec()
-        self.meta['grain']['origin_timestamp'] = value
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['origin_timestamp'] = value.to_sec_nsec()
+        else:
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['origin_timestamp'] = value
 
     def final_origin_timestamp(self) -> Timestamp:
         return self.origin_timestamp
@@ -277,8 +296,9 @@ normalise_time(value)
     @sync_timestamp.setter
     def sync_timestamp(self, value: Union[TimeOffset, str]) -> None:
         if isinstance(value, TimeOffset):
-            value = value.to_sec_nsec()
-        self.meta['grain']['sync_timestamp'] = value
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['sync_timestamp'] = value.to_sec_nsec()
+        else:
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['sync_timestamp'] = value
 
     @property
     def creation_timestamp(self) -> Timestamp:
@@ -287,34 +307,35 @@ normalise_time(value)
     @creation_timestamp.setter
     def creation_timestamp(self, value: Union[TimeOffset, str]) -> None:
         if isinstance(value, TimeOffset):
-            value = value.to_sec_nsec()
-        self.meta['grain']['creation_timestamp'] = value
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['creation_timestamp'] = value.to_sec_nsec()
+        else:
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['creation_timestamp'] = value
 
     @property
     def rate(self) -> Fraction:
-        return Fraction(self.meta['grain']['rate']['numerator'],
-                        self.meta['grain']['rate']['denominator'])
+        return Fraction(cast(FractionDict, self.meta['grain']['rate'])['numerator'],
+                        cast(FractionDict, self.meta['grain']['rate'])['denominator'])
 
     @rate.setter
     def rate(self, value: RationalTypes) -> None:
         value = Fraction(value)
-        self.meta['grain']['rate'] = {
+        cast(EmptyGrainMetadataDict, self.meta)['grain']['rate'] = {
             'numerator': value.numerator,
             'denominator': value.denominator
-            }
+        }
 
     @property
     def duration(self) -> Fraction:
-        return Fraction(self.meta['grain']['duration']['numerator'],
-                        self.meta['grain']['duration']['denominator'])
+        return Fraction(cast(FractionDict, self.meta['grain']['duration'])['numerator'],
+                        cast(FractionDict, self.meta['grain']['duration'])['denominator'])
 
     @duration.setter
     def duration(self, value: RationalTypes) -> None:
         value = Fraction(value)
-        self.meta['grain']['duration'] = {
+        cast(EmptyGrainMetadataDict, self.meta)['grain']['duration'] = {
             'numerator': value.numerator,
             'denominator': value.denominator
-            }
+        }
 
     @property
     def timelabels(self) -> "GRAIN.TIMELABELS":
@@ -322,7 +343,7 @@ normalise_time(value)
 
     @timelabels.setter
     def timelabels(self, value: "Union[List[GRAIN.TIMELABEL], GRAIN.TIMELABELS]") -> None:
-        self.meta['grain']['timelabels'] = []
+        cast(EmptyGrainMetadataDict, self.meta)['grain']['timelabels'] = []
         for x in value:
             self.timelabels.append(x)
 
@@ -453,8 +474,8 @@ normalise_time(value)
 
         def insert(self, key: int, value: "GRAIN.TIMELABEL.GrainMetadataDict") -> None:
             if 'timelabels' not in self.parent.meta['grain']:
-                self.parent.meta['grain']['timelabels'] = []
-            self.parent.meta['grain']['timelabels'].insert(key, dict(GRAIN.TIMELABEL(value)))
+                cast(EmptyGrainMetadataDict, self.parent.meta)['grain']['timelabels'] = []
+            self.parent.meta['grain']['timelabels'].insert(key, cast(TimeLabel, dict(GRAIN.TIMELABEL(value))))
 
         def __len__(self) -> int:
             if 'timelabels' not in self.parent.meta['grain']:
@@ -479,7 +500,7 @@ normalise_time(value)
     @property
     def expected_length(self) -> int:
         if 'length' in self.meta['grain']:
-            return self.meta['grain']['length']
+            return cast(dict, self.meta['grain'])['length']
         else:
             return self.length
 
@@ -558,12 +579,17 @@ append(path, pre=None, post=None)
     provided string, and pre and post set optionally. All calls should use
     only json serialisable objects for the values of pre and post.
     """
-    def __init__(self, meta: GrainMetadataDict, data: Optional[GrainDataType]):
+    def __init__(self, meta: EventGrainMetadataDict, data: Optional[GrainDataType]):
         super(EVENTGRAIN, self).__init__(meta, None)
+        self.meta: EventGrainMetadataDict
+
         self._factory = "EventGrain"
         self.meta['grain']['grain_type'] = 'event'
         if 'event_payload' not in self.meta['grain']:
-            self.meta['grain']['event_payload'] = {}
+            self.meta['grain']['event_payload'] = {
+                'type': "",
+                'topic': "",
+                'data': []}
         if data is not None:
             if isinstance(data, bytes):
                 self.data = data
@@ -595,7 +621,7 @@ append(path, pre=None, post=None)
         self.topic = payload['topic']
         self.meta['grain']['event_payload']['data'] = []
         for datum in payload['data']:
-            d = {'path': datum['path']}
+            d: EventGrainDatumDict = {'path': datum['path']}
             if 'pre' in datum:
                 d['pre'] = datum['pre']
             if 'post' in datum:
@@ -710,7 +736,7 @@ post
 
     @event_data.setter
     def event_data(self, value: List[EventGrainDatumDict]) -> None:
-        self.meta['grain']['event_payload']['data'] = [dict(datum) for datum in value]
+        self.meta['grain']['event_payload']['data'] = [cast(EventGrainDatumDict, dict(datum)) for datum in value]
 
     def append(self, path: str, pre: Optional[MediaJSONSerialisable] = None, post: Optional[MediaJSONSerialisable] = None) -> None:
         datum = EventGrainDatumDict(path=path)
@@ -804,8 +830,6 @@ components
     A list-like sequence of VIDEOGRAIN.COMPONENT objects
     """
 
-    ComponentDict = TypedDict('ComponentDict', {'stride': int, 'offset': int, 'width': int, 'height': int, 'length': int})
-
     class COMPONENT(Mapping):
         """
 A class representing a video component, it may be treated as a dictionary of the form:
@@ -835,7 +859,7 @@ height
 length
     The total length of the data for this component in bytes
 """
-        def __init__(self, meta: "VIDEOGRAIN.ComponentDict"):
+        def __init__(self, meta: VideoGrainComponentDict):
             self.meta = meta
 
         def __getitem__(self, key: Literal['stride', 'offset', 'width', 'height', 'length']) -> int:
@@ -913,10 +937,10 @@ length
                 return [type(self.parent).COMPONENT(self.parent.meta['grain']['cog_frame']['components'][k]) for k in range(len(self))[key]]
 
         @overload
-        def __setitem__(self, key: int, value: "VIDEOGRAIN.ComponentDict") -> None: ...
+        def __setitem__(self, key: int, value: VideoGrainComponentDict) -> None: ...
 
         @overload  # noqa: F811
-        def __setitem__(self, key: slice, value: "Iterable[VIDEOGRAIN.ComponentDict]") -> None: ...
+        def __setitem__(self, key: slice, value: Iterable[VideoGrainComponentDict]) -> None: ...
 
         def __setitem__(self, key, value):  # noqa: F811
             if isinstance(key, int):
@@ -929,8 +953,8 @@ length
         def __delitem__(self, key: Union[int, slice]) -> None:
             del self.parent.meta['grain']['cog_frame']['components'][key]
 
-        def insert(self, key: int, value: "VIDEOGRAIN.ComponentDict") -> None:
-            self.parent.meta['grain']['cog_frame']['components'].insert(key, type(self.parent).COMPONENT(value))
+        def insert(self, key: int, value: VideoGrainComponentDict) -> None:
+            self.parent.meta['grain']['cog_frame']['components'].insert(key, type(self.parent).COMPONENT(value))  # type: ignore
 
         def __len__(self) -> int:
             return len(self.parent.meta['grain']['cog_frame']['components'])
@@ -941,8 +965,10 @@ length
         def __ne__(self, other: object) -> bool:
             return not (self == other)
 
-    def __init__(self, meta: GrainMetadataDict, data: Optional[GrainDataType]):
+    def __init__(self, meta: VideoGrainMetadataDict, data: Optional[GrainDataType]):
         super(VIDEOGRAIN, self).__init__(meta, data)
+        self.meta: VideoGrainMetadataDict
+
         self._factory = "VideoGrain"
         self.meta['grain']['grain_type'] = 'video'
         if 'cog_frame' not in self.meta['grain']:
@@ -1006,8 +1032,8 @@ length
     @property
     def source_aspect_ratio(self) -> Optional[Fraction]:
         if 'source_aspect_ratio' in self.meta['grain']['cog_frame']:
-            return Fraction(self.meta['grain']['cog_frame']['source_aspect_ratio']['numerator'],
-                            self.meta['grain']['cog_frame']['source_aspect_ratio']['denominator'])
+            return Fraction(cast(FractionDict, self.meta['grain']['cog_frame']['source_aspect_ratio'])['numerator'],
+                            cast(FractionDict, self.meta['grain']['cog_frame']['source_aspect_ratio'])['denominator'])
         else:
             return None
 
@@ -1020,8 +1046,8 @@ length
     @property
     def pixel_aspect_ratio(self) -> Optional[Fraction]:
         if 'pixel_aspect_ratio' in self.meta['grain']['cog_frame']:
-            return Fraction(self.meta['grain']['cog_frame']['pixel_aspect_ratio']['numerator'],
-                            self.meta['grain']['cog_frame']['pixel_aspect_ratio']['denominator'])
+            return Fraction(cast(FractionDict, self.meta['grain']['cog_frame']['pixel_aspect_ratio'])['numerator'],
+                            cast(FractionDict, self.meta['grain']['cog_frame']['pixel_aspect_ratio'])['denominator'])
         else:
             return None
 
@@ -1123,19 +1149,30 @@ unit_offsets
     A list-like object containing integer offsets of coded units within the
     data array.
 """
-    def __init__(self, meta: GrainMetadataDict, data: GrainDataType):
+    def __init__(self, meta: CodedVideoGrainMetadataDict, data: GrainDataType):
         super(CODEDVIDEOGRAIN, self).__init__(meta, data)
+        self.meta: CodedVideoGrainMetadataDict
+
         self._factory = "CodedVideoGrain"
         self.meta['grain']['grain_type'] = 'coded_video'
         if 'cog_coded_frame' not in self.meta['grain']:
-            self.meta['grain']['cog_coded_frame'] = {}
+            self.meta['grain']['cog_coded_frame'] = {}  # type: ignore
         if 'format' not in self.meta['grain']['cog_coded_frame']:
             self.meta['grain']['cog_coded_frame']['format'] = int(CogFrameFormat.UNKNOWN)
         if 'layout' not in self.meta['grain']['cog_coded_frame']:
             self.meta['grain']['cog_coded_frame']['layout'] = int(CogFrameLayout.UNKNOWN)
-        for key in ['origin_width', 'origin_height', 'coded_width', 'coded_height', 'temporal_offset', 'length']:
-            if key not in self.meta['grain']['cog_coded_frame']:
-                self.meta['grain']['cog_coded_frame'][key] = 0
+        if 'origin_width' not in self.meta['grain']['cog_coded_frame']:
+            self.meta['grain']['cog_coded_frame']['origin_width'] = 0
+        if 'origin_height' not in self.meta['grain']['cog_coded_frame']:
+            self.meta['grain']['cog_coded_frame']['origin_height'] = 0
+        if 'coded_width' not in self.meta['grain']['cog_coded_frame']:
+            self.meta['grain']['cog_coded_frame']['coded_width'] = 0
+        if 'coded_height' not in self.meta['grain']['cog_coded_frame']:
+            self.meta['grain']['cog_coded_frame']['coded_height'] = 0
+        if 'temporal_offset' not in self.meta['grain']['cog_coded_frame']:
+            self.meta['grain']['cog_coded_frame']['temporal_offset'] = 0
+        if 'length' not in self.meta['grain']['cog_coded_frame']:
+            self.meta['grain']['cog_coded_frame']['length'] = 0
         if 'is_key_frame' not in self.meta['grain']['cog_coded_frame']:
             self.meta['grain']['cog_coded_frame']['is_key_frame'] = False
         self.meta['grain']['cog_coded_frame']['format'] = int(self.meta['grain']['cog_coded_frame']['format'])
@@ -1240,7 +1277,7 @@ unit_offsets
 
         def __delitem__(self, key: Union[int, slice]) -> None:
             if 'unit_offsets' in self.parent.meta['grain']['cog_coded_frame']:
-                del self.parent.meta['grain']['cog_coded_frame']['unit_offsets'][key]
+                del cast(List[int], self.parent.meta['grain']['cog_coded_frame']['unit_offsets'])[key]
                 if len(self.parent.meta['grain']['cog_coded_frame']['unit_offsets']) == 0:
                     del self.parent.meta['grain']['cog_coded_frame']['unit_offsets']
             else:
@@ -1252,7 +1289,7 @@ unit_offsets
                 d.insert(key, value)
                 self.parent.meta['grain']['cog_coded_frame']['unit_offsets'] = d
             else:
-                self.parent.meta['grain']['cog_coded_frame']['unit_offsets'].insert(key, value)
+                cast(List[int], self.parent.meta['grain']['cog_coded_frame']['unit_offsets']).insert(key, value)
 
         def __len__(self) -> int:
             if 'unit_offsets' in self.parent.meta['grain']['cog_coded_frame']:
@@ -1279,7 +1316,7 @@ unit_offsets
     @unit_offsets.setter
     def unit_offsets(self, value: Iterable[int]) -> None:
         if value is not None and not (hasattr(value, "__len__") and len(cast(Sized, value)) == 0):
-            self.meta['grain']['cog_coded_frame']['unit_offsets'] = value
+            self.meta['grain']['cog_coded_frame']['unit_offsets'] = list(value)
         elif 'unit_offsets' in self.meta['grain']['cog_coded_frame']:
             del self.meta['grain']['cog_coded_frame']['unit_offsets']
 
@@ -1371,17 +1408,22 @@ sample_rate
     An integer indicating the number of samples per channel per second in this
     audio flow.
 """
-    def __init__(self, meta: GrainMetadataDict, data: Optional[GrainDataType]):
+    def __init__(self, meta: AudioGrainMetadataDict, data: Optional[GrainDataType]):
         super(AUDIOGRAIN, self).__init__(meta, data)
+        self.meta: AudioGrainMetadataDict
+
         self._factory = "AudioGrain"
         self.meta['grain']['grain_type'] = 'audio'
         if 'cog_audio' not in self.meta['grain']:
-            self.meta['grain']['cog_audio'] = {}
+            self.meta['grain']['cog_audio'] = {}  # type: ignore
         if 'format' not in self.meta['grain']['cog_audio']:
             self.meta['grain']['cog_audio']['format'] = int(CogAudioFormat.INVALID)
-        for key in ['samples', 'channels', 'sample_rate']:
-            if key not in self.meta['grain']['cog_audio']:
-                self.meta['grain']['cog_audio'][key] = 0
+        if 'samples' not in self.meta['grain']['cog_audio']:
+            self.meta['grain']['cog_audio']['samples'] = 0
+        if 'channels' not in self.meta['grain']['cog_audio']:
+            self.meta['grain']['cog_audio']['channels'] = 0
+        if 'sample_rate' not in self.meta['grain']['cog_audio']:
+            self.meta['grain']['cog_audio']['sample_rate'] = 0
         self.meta['grain']['cog_audio']['format'] = int(self.meta['grain']['cog_audio']['format'])
 
     def final_origin_timestamp(self) -> Timestamp:
@@ -1504,21 +1546,26 @@ priming
 remainder
     An integer
 """
-    def __init__(self, meta: GrainMetadataDict, data: Optional[GrainDataType]):
+    def __init__(self, meta: CodedAudioGrainMetadataDict, data: Optional[GrainDataType]):
         super(CODEDAUDIOGRAIN, self).__init__(meta, data)
+        self.meta: CodedAudioGrainMetadataDict
+
         self._factory = "CodedAudioGrain"
         self.meta['grain']['grain_type'] = 'coded_audio'
         if 'cog_coded_audio' not in self.meta['grain']:
-            self.meta['grain']['cog_coded_audio'] = {}
+            self.meta['grain']['cog_coded_audio'] = {}  # type: ignore
         if 'format' not in self.meta['grain']['cog_coded_audio']:
             self.meta['grain']['cog_coded_audio']['format'] = int(CogAudioFormat.INVALID)
-        for (key, DEF) in [('channels', 0),
-                           ('samples', 0),
-                           ('priming', 0),
-                           ('remainder', 0),
-                           ('sample_rate', 48000)]:
-            if key not in self.meta['grain']['cog_coded_audio']:
-                self.meta['grain']['cog_coded_audio'][key] = DEF
+        if 'channels' not in self.meta['grain']['cog_coded_audio']:
+            self.meta['grain']['cog_coded_audio']['channels'] = 0
+        if 'samples' not in self.meta['grain']['cog_coded_audio']:
+            self.meta['grain']['cog_coded_audio']['samples'] = 0
+        if 'priming' not in self.meta['grain']['cog_coded_audio']:
+            self.meta['grain']['cog_coded_audio']['priming'] = 0
+        if 'remainder' not in self.meta['grain']['cog_coded_audio']:
+            self.meta['grain']['cog_coded_audio']['remainder'] = 0
+        if 'sample_rate' not in self.meta['grain']['cog_coded_audio']:
+            self.meta['grain']['cog_coded_audio']['sample_rate'] = 48000
         self.meta['grain']['cog_coded_audio']['format'] = int(self.meta['grain']['cog_coded_audio']['format'])
 
     def final_origin_timestamp(self) -> Timestamp:
