@@ -701,10 +701,6 @@ def _write_rational(file, value):
     _write_uint(file, value.denominator, 4)
 
 
-def seekable(file):
-    return file.seekable()
-
-
 class GSFEncoder(object):
     """An encoder for GSF format.
 
@@ -831,7 +827,7 @@ class GSFEncoder(object):
         it will append."""
         self._active_dump = True
 
-        if seekable(self.file):
+        if self.file.seekable():
             self.file.seek(0)
             self.file.truncate()
 
@@ -962,7 +958,7 @@ class GSFEncoderSegment(object):
         if all_at_once:
             _write_sint(file, self.count, 8)
         else:
-            if seekable(file):
+            if file.seekable():
                 self._count_pos = file.tell()
             _write_sint(file, -1, 8)
 
@@ -1149,7 +1145,7 @@ class GSFEncoderSegment(object):
         if self._file is None:
             return
 
-        if seekable(self._file) and self._count_pos != -1:
+        if self._file.seekable() and self._count_pos != -1:
             curpos = self._file.tell()
             self._file.seek(self._count_pos)
             _write_sint(self._file, self._write_count, 8)
