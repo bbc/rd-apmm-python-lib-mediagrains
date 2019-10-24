@@ -50,7 +50,7 @@ pipeline {
                         }
                         bbcGithubNotify(context: "lint/flake8_3", status: "PENDING")
                         // Run the linter
-                        sh 'python3 -m flake8'
+                        sh 'make lint'
                         script {
                             env.lint3_result = "SUCCESS" // This will only run if the sh above succeeded
                         }
@@ -58,6 +58,24 @@ pipeline {
                     post {
                         always {
                             bbcGithubNotify(context: "lint/flake8_3", status: env.lint3_result)
+                        }
+                    }
+                }
+                stage ("Py36 Type Check") {
+                    steps {
+                        script {
+                            env.mypy_result = "FAILURE"
+                        }
+                        bbcGithubNotify(context: "type/mypy", status: "PENDING")
+                        // Run the linter
+                        sh 'make mypy'
+                        script {
+                            env.mypy_result = "SUCCESS" // This will only run if the sh above succeeded
+                        }
+                    }
+                    post {
+                        always {
+                            bbcGithubNotify(context: "type/mypy", status: env.mypy_result)
                         }
                     }
                 }

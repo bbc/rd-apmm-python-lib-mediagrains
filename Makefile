@@ -126,4 +126,10 @@ $(topbuilddir)/docs/$(MODNAME):
 $(topbuilddir)/docs/$(MODNAME).html: $(topbuilddir)/docs/$(MODNAME) $(TOXDIR)/py36/bin/activate
 	. $(TOXDIR)/py36/bin/activate && cd $(topbuilddir)/docs/ && pydoc -w ./
 
-.PHONY: test testenv clean install source deb dsc rpm wheel egg all rpm_dirs rpm_spec docs
+lint: $(TOXDIR)/py36/bin/activate
+	. $(TOXDIR)/py36/bin/activate && python -m flake8
+
+mypy: $(TOXDIR)/py36/bin/activate
+	. $(TOXDIR)/py36/bin/activate && python -m mypy -p $(MODNAME)
+
+.PHONY: test testenv clean install source deb dsc rpm wheel egg all rpm_dirs rpm_spec docs lint mypy
