@@ -43,7 +43,7 @@ pipeline {
             }
         }
         stage ("Tests") {
-            parallel {
+            stages {
                 stage ("Py2.7 Linting Check") {
                     steps {
                         script {
@@ -79,7 +79,7 @@ pipeline {
                             bbcGithubNotify(context: "lint/flake8_3", status: env.lint3_result)
                         }
                     }
-                }		
+                }
                 stage ("Build Docs") {
                    steps {
                        sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-docs make docs'
@@ -149,7 +149,7 @@ pipeline {
             }
         }
         stage ("Build Packages") {
-            parallel{
+            stages {
                 stage ("Build Deb with pbuilder") {
                     steps {
                         script {
@@ -181,7 +181,7 @@ pipeline {
             when {
                 anyOf {
                     expression { return params.FORCE_PYUPLOAD }
-                    expression { return params.FORCE_PYPIUPLOAD }		    
+                    expression { return params.FORCE_PYPIUPLOAD }
                     expression { return params.FORCE_DEBUPLOAD }
                     expression { return params.FORCE_DOCSUPLOAD }
                     expression {
@@ -189,7 +189,7 @@ pipeline {
                     }
                 }
             }
-            parallel {
+            stages {
                 stage ("Upload Docs") {
                     when {
                         anyOf {
