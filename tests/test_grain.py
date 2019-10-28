@@ -24,6 +24,9 @@ from fractions import Fraction
 import json
 from copy import copy, deepcopy
 
+from fixtures import async_test
+
+
 src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
 flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
 cts = Timestamp.from_tai_sec_nsec("417798915:0")
@@ -668,6 +671,53 @@ class TestGrain (TestCase):
         self.assertEqual(grain.length, 0)
         self.assertEqual(grain.expected_length, 8192*1080)
 
+    @async_test
+    async def test_videograin_with_async_data(self):
+        meta = VIDEOGRAIN_TEST_METADATA
+
+        async def _get_data():
+            _data = bytearray(8192*1080)
+            for n in range(0, 16):
+                _data[n] = n & 0xFF
+            return _data
+
+        data_awaitable = _get_data()
+        expected_data = await _get_data()
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = Grain(meta, data=data_awaitable)
+
+        self.assertEqual(grain.grain_type, "video")
+        self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(grain.meta, meta)
+        self.assertIsNone(grain.data)
+
+        self.assertEqual((await grain)[:16], expected_data[:16])
+        self.assertEqual(grain.data[:16], expected_data[:16])
+
+    @async_test
+    async def test_videograin_with_async_data_as_acm(self):
+        meta = VIDEOGRAIN_TEST_METADATA
+
+        async def _get_data():
+            _data = bytearray(8192*1080)
+            for n in range(0, 16):
+                _data[n] = n & 0xFF
+            return _data
+
+        data_awaitable = _get_data()
+        expected_data = await _get_data()
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = Grain(meta, data=data_awaitable)
+
+        self.assertEqual(grain.grain_type, "video")
+        self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(grain.meta, meta)
+        self.assertIsNone(grain.data)
+
+        async with grain as _grain:
+            self.assertEqual(_grain.data[:16], expected_data[:16])
 
     def test_video_grain_normalise(self):
         with mock.patch.object(Timestamp, "get_time", return_value=ots):

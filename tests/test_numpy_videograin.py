@@ -34,6 +34,8 @@ from fractions import Fraction
 from copy import copy, deepcopy
 from typing import Tuple, Optional
 
+from fixtures import async_test
+
 from itertools import chain, repeat
 
 import numpy as np
@@ -484,6 +486,40 @@ class TestGrain (TestCase):
 
                 if fmt is not CogFrameFormat.v210:
                     self.assertComponentsAreModifiable(grain)
+
+    @async_test
+    async def test_video_grain_async_create(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        async def _get_data():
+            _data = bytearray(16*16*3)
+            for i in range(0, 3):
+                for y in range(0, 16):
+                    for x in range(0, 16):
+                        _data[(i*16 + y)*16 + x] = x + (y << 4)
+            return _data
+
+        data_awaitable = _get_data()
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                               cog_frame_format=CogFrameFormat.U8_444,
+                               width=16, height=16, cog_frame_layout=CogFrameLayout.FULL_FRAME,
+                               data=data_awaitable)
+
+        self.assertIsNone(grain.data)
+        self.assertEqual(len(grain.component_data), 0)
+
+        async with grain as _grain:
+            for y in range(0, 16):
+                for x in range(0, 16):
+                    self.assertEqual(_grain.component_data.Y[x, y], x + (y << 4))
+                    self.assertEqual(_grain.component_data.U[x, y], x + (y << 4))
+                    self.assertEqual(_grain.component_data.V[x, y], x + (y << 4))
 
     def test_video_grain_convert(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")

@@ -16,8 +16,6 @@
 #
 
 from unittest import TestCase
-import asyncio
-import warnings
 import aiofiles
 from datetime import datetime
 from uuid import UUID

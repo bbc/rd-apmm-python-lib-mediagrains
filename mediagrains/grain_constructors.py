@@ -25,7 +25,7 @@ from fractions import Fraction
 
 from typing import Optional, Union, cast, Sized, List
 from .typing import (
-    GrainDataType,
+    GrainDataParameterType,
     GrainMetadataDict,
     EmptyGrainMetadataDict,
     AudioGrainMetadataDict,
@@ -43,14 +43,14 @@ __all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain", "CodedAudioGr
 
 
 def Grain(src_id_or_meta: Optional[Union[UUID, GrainMetadataDict]] = None,
-          flow_id_or_data: Optional[Union[UUID, GrainDataType]] = None,
+          flow_id_or_data: Optional[Union[UUID, GrainDataParameterType]] = None,
           origin_timestamp: Optional[Timestamp] = None,
           sync_timestamp: Optional[Timestamp] = None,
           creation_timestamp: Optional[Timestamp] = None,
           rate: Fraction = Fraction(0, 1),
           duration: Fraction = Fraction(0, 1),
           flow_id: Optional[UUID] = None,
-          data: Optional[GrainDataType] = None,
+          data: GrainDataParameterType = None,
           src_id: Optional[UUID] = None,
           source_id: Optional[UUID] = None,
           meta: Optional[GrainMetadataDict] = None) -> GRAIN:
@@ -68,6 +68,10 @@ one of the values: "video", "audio", "coded_video", "coded_audio" or "event" the
 the parameters will be passed through to the relevent specialised constructor
 function, otherwise a generic grain object will be returned which wraps the meta
 and data elements.
+
+Optionally the data element can be replaced with an Awaitable that will return a
+data element when awaited. This is useful for grains that are backed with some
+sort of asynchronous IO system.
 
 A properly formated metadata dictionary for a Grain should look like:
 
@@ -178,7 +182,7 @@ but src_id is kept avaialble for backwards compatibility)
 
 
 def AudioGrain(src_id_or_meta: Optional[Union[UUID, AudioGrainMetadataDict]] = None,
-               flow_id_or_data: Optional[Union[UUID, GrainDataType]] = None,
+               flow_id_or_data: Optional[Union[UUID, GrainDataParameterType]] = None,
                origin_timestamp: Optional[Timestamp] = None,
                sync_timestamp: Optional[Timestamp] = None,
                creation_timestamp: Optional[Timestamp] = None,
@@ -192,7 +196,7 @@ def AudioGrain(src_id_or_meta: Optional[Union[UUID, AudioGrainMetadataDict]] = N
                source_id: Optional[UUID] = None,
                format: Optional[CogAudioFormat] = None,
                flow_id: Optional[UUID] = None,
-               data: Optional[GrainDataType] = None) -> AUDIOGRAIN:
+               data: GrainDataParameterType = None) -> AUDIOGRAIN:
     """\
 Function called to construct an audio grain either from existing data or with new data.
 
@@ -202,6 +206,10 @@ First method of calling:
 
 where meta is a dictionary containing the grain metadata, and data is a bytes-like
 object which contains the grain's payload.
+
+Optionally the data element can be replaced with an Awaitable that will return a
+data element when awaited. This is useful for grains that are backed with some
+sort of asynchronous IO system.
 
 A properly formated metadata dictionary for an Audio Grain should look like:
 
@@ -318,7 +326,7 @@ but src_id is kept avaialble for backwards compatibility)
 
 
 def CodedAudioGrain(src_id_or_meta: Optional[Union[UUID, CodedAudioGrainMetadataDict]] = None,
-                    flow_id_or_data: Optional[Union[UUID, GrainDataType]] = None,
+                    flow_id_or_data: Optional[Union[UUID, GrainDataParameterType]] = None,
                     origin_timestamp: Optional[Timestamp] = None,
                     creation_timestamp: Optional[Timestamp] = None,
                     sync_timestamp: Optional[Timestamp] = None,
@@ -335,7 +343,7 @@ def CodedAudioGrain(src_id_or_meta: Optional[Union[UUID, CodedAudioGrainMetadata
                     source_id: Optional[UUID] = None,
                     format: Optional[CogAudioFormat] = None,
                     flow_id: Optional[UUID] = None,
-                    data: Optional[GrainDataType] = None) -> CODEDAUDIOGRAIN:
+                    data: GrainDataParameterType = None) -> CODEDAUDIOGRAIN:
     """\
 Function called to construct a coded audio grain either from existing data or with new data.
 
@@ -345,6 +353,10 @@ First method of calling:
 
 where meta is a dictionary containing the grain metadata, and data is a bytes-like
 object which contains the grain's payload.
+
+Optionally the data element can be replaced with an Awaitable that will return a
+data element when awaited. This is useful for grains that are backed with some
+sort of asynchronous IO system.
 
 A properly formated metadata dictionary for a Coded Audio Grain should look like:
 
@@ -472,7 +484,7 @@ but src_id is kept avaialble for backwards compatibility)
 
 
 def VideoGrain(src_id_or_meta: Optional[Union[UUID, VideoGrainMetadataDict]] = None,
-               flow_id_or_data: Optional[Union[UUID, GrainDataType]] = None,
+               flow_id_or_data: Optional[Union[UUID, GrainDataParameterType]] = None,
                origin_timestamp: Optional[Timestamp] = None,
                creation_timestamp: Optional[Timestamp] = None,
                sync_timestamp: Optional[Timestamp] = None,
@@ -487,7 +499,7 @@ def VideoGrain(src_id_or_meta: Optional[Union[UUID, VideoGrainMetadataDict]] = N
                format: Optional[CogFrameFormat] = None,
                layout: Optional[CogFrameLayout] = None,
                flow_id: Optional[UUID] = None,
-               data: Optional[GrainDataType] = None) -> VIDEOGRAIN:
+               data: GrainDataParameterType = None) -> VIDEOGRAIN:
     """\
 Function called to construct a video grain either from existing data or with new data.
 
@@ -497,6 +509,10 @@ First method of calling:
 
 where meta is a dictionary containing the grain metadata, and data is a bytes-like
 object which contains the grain's payload.
+
+Optionally the data element can be replaced with an Awaitable that will return a
+data element when awaited. This is useful for grains that are backed with some
+sort of asynchronous IO system.
 
 A properly formated metadata dictionary for a Video Grain should look like:
 
@@ -773,7 +789,7 @@ but src_id is kept avaialble for backwards compatibility)
 
 
 def CodedVideoGrain(src_id_or_meta: Optional[Union[UUID, CodedVideoGrainMetadataDict]] = None,
-                    flow_id_or_data: Optional[Union[UUID, GrainDataType]] = None,
+                    flow_id_or_data: Optional[Union[UUID, GrainDataParameterType]] = None,
                     origin_timestamp: Optional[Timestamp] = None,
                     creation_timestamp: Optional[Timestamp] = None,
                     sync_timestamp: Optional[Timestamp] = None,
@@ -794,7 +810,7 @@ def CodedVideoGrain(src_id_or_meta: Optional[Union[UUID, CodedVideoGrainMetadata
                     format: Optional[CogFrameFormat] = None,
                     layout: Optional[CogFrameLayout] = None,
                     flow_id: Optional[UUID] = None,
-                    data: Optional[GrainDataType] = None) -> CODEDVIDEOGRAIN:
+                    data: GrainDataParameterType = None) -> CODEDVIDEOGRAIN:
     """\
 Function called to construct a coded video grain either from existing data or with new data.
 
@@ -804,6 +820,10 @@ First method of calling:
 
 where meta is a dictionary containing the grain metadata, and data is a bytes-like
 object which contains the grain's payload.
+
+Optionally the data element can be replaced with an Awaitable that will return a
+data element when awaited. This is useful for grains that are backed with some
+sort of asynchronous IO system.
 
 A properly formated metadata dictionary for a Video Grain should look like:
 
@@ -950,7 +970,7 @@ but src_id is kept avaialble for backwards compatibility)
 
 
 def EventGrain(src_id_or_meta: Optional[Union[UUID, EventGrainMetadataDict]] = None,
-               flow_id_or_data: Optional[Union[UUID, GrainDataType]] = None,
+               flow_id_or_data: Optional[Union[UUID, GrainDataParameterType]] = None,
                origin_timestamp: Optional[Timestamp] = None,
                creation_timestamp: Optional[Timestamp] = None,
                sync_timestamp: Optional[Timestamp] = None,
@@ -962,7 +982,7 @@ def EventGrain(src_id_or_meta: Optional[Union[UUID, EventGrainMetadataDict]] = N
                source_id: Optional[UUID] = None,
                flow_id: Optional[UUID] = None,
                meta: Optional[EventGrainMetadataDict] = None,
-               data: Optional[GrainDataType] = None) -> EVENTGRAIN:
+               data: GrainDataParameterType = None) -> EVENTGRAIN:
     """\
 Function called to construct an event grain either from existing data or with new data.
 
@@ -972,6 +992,10 @@ First method of calling:
 
 where meta is a dictionary containing the grain metadata, and data is a bytes-like
 object which contains a string representation of the json grain payload.
+
+Optionally the data element can be replaced with an Awaitable that will return a
+data element when awaited. This is useful for grains that are backed with some
+sort of asynchronous IO system.
 
 A properly formated metadata dictionary for an Event Grain should look like:
 
