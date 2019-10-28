@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2018 British Broadcasting Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +17,6 @@
 Contains a number of useful hypothesis strategies which can be used to
 generate mediagrains for hypothesis based testing
 """
-
-from __future__ import print_function
-from __future__ import absolute_import
 
 from mediatimestamp.hypothesis.strategies import immutabletimestamps as timestamps
 from hypothesis.strategies import (

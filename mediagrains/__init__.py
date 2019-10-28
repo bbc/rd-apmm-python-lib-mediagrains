@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #
 # Copyright 2018 British Broadcasting Corporation
 #
@@ -40,7 +39,6 @@ with numpy and similar libraries.
 The gsf and grain submodules have their own documentation.
 """
 
-from __future__ import absolute_import
 from .grain_constructors import Grain, VideoGrain, CodedVideoGrain, AudioGrain, CodedAudioGrain, EventGrain
 
 __all__ = ["Grain", "VideoGrain", "CodedVideoGrain", "AudioGrain", "CodedAudioGrain", "EventGrain"]

@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #
 # Copyright 2018 British Broadcasting Corporation
 #
@@ -456,12 +455,6 @@ class TestGrain (TestCase):
 
         grain.components[0]['length'] = 17
         self.assertEqual(grain.components[0].length, 17)
-
-        grain.components[0]['potato'] = 3
-        self.assertIn('potato', grain.components[0])
-        self.assertEqual(grain.components[0]['potato'], 3)
-        del grain.components[0]['potato']
-        self.assertNotIn('potato', grain.components[0])
 
         grain.components.append({'stride': 1920,
                                  'width': 1920,
@@ -1834,7 +1827,7 @@ class TestGrain (TestCase):
         })
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = Grain(meta, data)
+            grain = Grain(meta, data.encode('utf-8'))
 
         self.assertEqual(grain.grain_type, "event")
         self.assertEqual(grain.source_id, src_id)

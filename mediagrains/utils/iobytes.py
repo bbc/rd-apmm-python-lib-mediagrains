@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2019 British Broadcasting Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,14 +19,8 @@ library's io.BytesIO, taking an io stream and wrapping it to appear as a
 bytes object, lazily loading as necessary.
 """
 
-from __future__ import print_function
-from __future__ import absolute_import
-
-try:
-    from collections.abc import Sequence
-except ImportError:
-    from collections import Sequence
-
+from collections.abc import Sequence
+from typing import List
 
 __all__ = ["IOBytes"]
 
@@ -47,7 +39,7 @@ class LazyLoader (object):
     transparently passed through to the stored object.
     """
 
-    _attributes = []
+    _attributes: List[str] = []
 
     def __init__(self, loader):
         """
@@ -57,7 +49,7 @@ class LazyLoader (object):
         self._loader = loader
 
     def __getattribute__(self, attr):
-        if attr in (['_object', '_loader', '__repr__'] + type(self)._attributes):
+        if attr in (['_object', '_loader', '__repr__', '__class__'] + type(self)._attributes):
             return object.__getattribute__(self, attr)
         else:
             if object.__getattribute__(self, '_object') is None:

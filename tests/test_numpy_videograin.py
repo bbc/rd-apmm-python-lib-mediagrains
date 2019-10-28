@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #
 # Copyright 2018 British Broadcasting Corporation
 #
@@ -19,20 +18,16 @@ from unittest import TestCase
 
 import uuid
 from mediagrains.numpy import VideoGrain, VIDEOGRAIN
-from mediagrains_py36.numpy.videograin import _dtype_from_cogframeformat
+from mediagrains.numpy.videograin import _dtype_from_cogframeformat
 from mediagrains.cogenums import (
     CogFrameFormat,
     CogFrameLayout,
     COG_FRAME_FORMAT_BYTES_PER_VALUE,
     COG_FRAME_FORMAT_H_SHIFT,
     COG_FRAME_FORMAT_V_SHIFT,
-    COG_FRAME_IS_PACKED,
-    COG_FRAME_IS_COMPRESSED,
     COG_FRAME_IS_PLANAR,
     COG_FRAME_IS_PLANAR_RGB,
-    COG_FRAME_FORMAT_ACTIVE_BITS,
-    COG_PLANAR_FORMAT,
-    PlanarChromaFormat)
+    COG_FRAME_FORMAT_ACTIVE_BITS)
 from mediatimestamp.immutable import Timestamp, TimeRange
 import mock
 from fractions import Fraction
@@ -42,8 +37,6 @@ from typing import Tuple, Optional
 from itertools import chain, repeat
 
 import numpy as np
-
-from pdb import set_trace
 
 
 class TestGrain (TestCase):
@@ -364,9 +357,9 @@ class TestGrain (TestCase):
         bd = self._get_bitdepth(fmt)
         (hs, vs, _) = self._get_hs_vs_and_bps(fmt)
 
-        Y = (R*0.2126 +  G*0.7152 + B*0.0722)
+        Y = (R*0.2126 + G*0.7152 + B*0.0722)
         U = (R*-0.114572 - G*0.385428 + B*0.5 + (1 << (bd - 1)))
-        V = (R*0.5 - G*0.454153 - B*0.045847  + (1 << (bd - 1)))
+        V = (R*0.5 - G*0.454153 - B*0.045847 + (1 << (bd - 1)))
 
         if hs == 1:
             U = (U[0::2, :] + U[1::2, :])/2
@@ -375,7 +368,9 @@ class TestGrain (TestCase):
             U = (U[:, 0::2] + U[:, 1::2])/2
             V = (V[:, 0::2] + V[:, 1::2])/2
 
-        return (np.around(Y).astype(_dtype_from_cogframeformat(fmt)), np.around(U).astype(_dtype_from_cogframeformat(fmt)), np.around(V).astype(_dtype_from_cogframeformat(fmt)))
+        return (np.around(Y).astype(_dtype_from_cogframeformat(fmt)),
+                np.around(U).astype(_dtype_from_cogframeformat(fmt)),
+                np.around(V).astype(_dtype_from_cogframeformat(fmt)))
 
     def _test_pattern_v210(self) -> np.ndarray:
         (Y, U, V) = self._test_pattern_yuv(CogFrameFormat.S16_422_10BIT)
@@ -388,13 +383,12 @@ class TestGrain (TestCase):
             vv = chain(iter(V[:, y]), repeat(0))
 
             for x in range(0, 8):
-                 output[y*32 + 4*x + 0] = next(uu) | (next(yy) << 10) | (next(vv) << 20)
-                 output[y*32 + 4*x + 1] = next(yy) | (next(uu) << 10) | (next(yy) << 20)
-                 output[y*32 + 4*x + 2] = next(vv) | (next(yy) << 10) | (next(uu) << 20)
-                 output[y*32 + 4*x + 3] = next(yy) | (next(vv) << 10) | (next(yy) << 20)
+                output[y*32 + 4*x + 0] = next(uu) | (next(yy) << 10) | (next(vv) << 20)
+                output[y*32 + 4*x + 1] = next(yy) | (next(uu) << 10) | (next(yy) << 20)
+                output[y*32 + 4*x + 2] = next(vv) | (next(yy) << 10) | (next(uu) << 20)
+                output[y*32 + 4*x + 3] = next(yy) | (next(vv) << 10) | (next(yy) << 20)
 
         return output
-
 
     def write_test_pattern(self, grain):
         fmt = grain.format
@@ -498,26 +492,26 @@ class TestGrain (TestCase):
         ots = Timestamp.from_tai_sec_nsec("417798915:5")
         sts = Timestamp.from_tai_sec_nsec("417798915:10")
 
-
         def pairs_from(fmts):
             for fmt_in in fmts:
                 for fmt_out in fmts:
                     yield (fmt_in, fmt_out)
 
-        fmts = [CogFrameFormat.YUYV, CogFrameFormat.UYVY, CogFrameFormat.U8_444, CogFrameFormat.U8_422, CogFrameFormat.U8_420, # All YUV 8bit formats
-                CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB, CogFrameFormat.RGBx, CogFrameFormat.xRGB, CogFrameFormat.BGRx, CogFrameFormat.xBGR, # All 8-bit 3 component RGB formats
-                CogFrameFormat.v216, CogFrameFormat.S16_444, CogFrameFormat.S16_422, CogFrameFormat.S16_420, # All YUV 16bit formats
-                CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_420_10BIT, # All YUV 10bit formats except for v210
-                CogFrameFormat.v210, # v210, may the gods be merciful to us for including it
-                CogFrameFormat.S16_444_12BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.S16_420_12BIT, # All YUV 12bit formats
-                CogFrameFormat.S32_444, CogFrameFormat.S32_422, CogFrameFormat.S32_420, # All YUV 32bit formats
-                CogFrameFormat.S16_444_RGB, CogFrameFormat.S16_444_10BIT_RGB, CogFrameFormat.S16_444_12BIT_RGB, CogFrameFormat.S32_444_RGB] # Other planar RGB formats
+        fmts = [CogFrameFormat.YUYV, CogFrameFormat.UYVY, CogFrameFormat.U8_444, CogFrameFormat.U8_422, CogFrameFormat.U8_420,  # All YUV 8bit formats
+                CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB, CogFrameFormat.RGBx, CogFrameFormat.xRGB, CogFrameFormat.BGRx, CogFrameFormat.xBGR,
+                # All 8-bit 3 component RGB formats
+                CogFrameFormat.v216, CogFrameFormat.S16_444, CogFrameFormat.S16_422, CogFrameFormat.S16_420,  # All YUV 16bit formats
+                CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_420_10BIT,  # All YUV 10bit formats except for v210
+                CogFrameFormat.v210,  # v210, may the gods be merciful to us for including it
+                CogFrameFormat.S16_444_12BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.S16_420_12BIT,  # All YUV 12bit formats
+                CogFrameFormat.S32_444, CogFrameFormat.S32_422, CogFrameFormat.S32_420,  # All YUV 32bit formats
+                CogFrameFormat.S16_444_RGB, CogFrameFormat.S16_444_10BIT_RGB, CogFrameFormat.S16_444_12BIT_RGB, CogFrameFormat.S32_444_RGB]  # Other planar RGB
         for (fmt_in, fmt_out) in pairs_from(fmts):
             with self.subTest(fmt_in=fmt_in, fmt_out=fmt_out):
                 with mock.patch.object(Timestamp, "get_time", return_value=cts):
                     grain_in = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
-                                        cog_frame_format=fmt_in,
-                                        width=16, height=16, cog_frame_layout=CogFrameLayout.FULL_FRAME)
+                                          cog_frame_format=fmt_in,
+                                          width=16, height=16, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
                 self.assertIsVideoGrain(fmt_in, width=16, height=16)(grain_in)
                 self.write_test_pattern(grain_in)
@@ -542,13 +536,13 @@ class TestGrain (TestCase):
 
                     # If we've increased bit-depth there will be rounding errors
                     if self._get_bitdepth(fmt_out) > self._get_bitdepth(fmt_in):
-                        self.assertMatchesTestPattern(grain_out, max_diff=1 << (self._get_bitdepth(fmt_out)  + 2 - self._get_bitdepth(fmt_in)))
+                        self.assertMatchesTestPattern(grain_out, max_diff=1 << (self._get_bitdepth(fmt_out) + 2 - self._get_bitdepth(fmt_in)))
 
                     # If we're changing from yuv to rgb then there's some potential for floating point errors, depending on the sizes
                     elif self._get_bitdepth(fmt_in) >= 16 and not self._is_rgb(fmt_in) and fmt_out == CogFrameFormat.S16_444_RGB:
                         self.assertMatchesTestPattern(grain_out, max_diff=2)
                     elif self._get_bitdepth(fmt_in) == 32 and not self._is_rgb(fmt_in) and fmt_out == CogFrameFormat.S32_444_RGB:
-                        self.assertMatchesTestPattern(grain_out, max_diff=1 << 10) # The potential errors in 32 bit conversions are very large
+                        self.assertMatchesTestPattern(grain_out, max_diff=1 << 10)  # The potential errors in 32 bit conversions are very large
 
                     # If we've decreased bit-depth *and* or changed from rgb to yuv then there is a smaller scope for error
                     elif ((self._get_bitdepth(fmt_out) < self._get_bitdepth(fmt_in)) or
@@ -580,7 +574,6 @@ class TestGrain (TestCase):
                     # Otherwise if we are only colour converting then the potential error is a small floating point rounding error
                     elif self._is_rgb(fmt_in):
                         self.assertMatchesTestPattern(grain_rev, max_diff=4)
-
 
     def test_video_grain_create_discontiguous(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")

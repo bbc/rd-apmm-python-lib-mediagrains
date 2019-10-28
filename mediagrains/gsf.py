@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #
 # Copyright 2018 British Broadcasting Corporation
 #
@@ -20,15 +19,13 @@ A library for deserialising GSF files, either from string buffers or file
 objects.
 """
 
-from __future__ import print_function, absolute_import
 from . import Grain
-from six import indexbytes
 from uuid import UUID, uuid1
 from datetime import datetime
+from io import BytesIO
 from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
 from frozendict import frozendict
-from six import BytesIO, PY3
 from .utils import IOBytes
 from os import SEEK_SET
 
@@ -272,7 +269,7 @@ class GSFBlock():
             raise EOFError("Unable to read enough bytes from source")
 
         for n in range(0, length):
-            r += (indexbytes(uint_bytes, n) << (n*8))
+            r += (uint_bytes[n] << (n*8))
         return r
 
     def read_bool(self):
@@ -704,18 +701,6 @@ def _write_rational(file, value):
     _write_uint(file, value.denominator, 4)
 
 
-def seekable(file):  # pragma: no cover
-    if PY3:
-        return file.seekable()
-    else:
-        try:
-            file.tell()
-        except IOError:
-            return False
-        else:
-            return True
-
-
 class GSFEncoder(object):
     """An encoder for GSF format.
 
@@ -842,7 +827,7 @@ class GSFEncoder(object):
         it will append."""
         self._active_dump = True
 
-        if seekable(self.file):
+        if self.file.seekable():
             self.file.seek(0)
             self.file.truncate()
 
@@ -973,7 +958,7 @@ class GSFEncoderSegment(object):
         if all_at_once:
             _write_sint(file, self.count, 8)
         else:
-            if seekable(file):
+            if file.seekable():
                 self._count_pos = file.tell()
             _write_sint(file, -1, 8)
 
@@ -1160,7 +1145,7 @@ class GSFEncoderSegment(object):
         if self._file is None:
             return
 
-        if seekable(self._file) and self._count_pos != -1:
+        if self._file.seekable() and self._count_pos != -1:
             curpos = self._file.tell()
             self._file.seek(self._count_pos)
             _write_sint(self._file, self._write_count, 8)

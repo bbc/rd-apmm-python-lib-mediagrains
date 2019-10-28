@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 #
 # Copyright 2018 British Broadcasting Corporation
 #
@@ -15,16 +15,13 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
-from __future__ import absolute_import
-
 from fractions import Fraction
 
 from . import compare_grain
 from .options import Exclude
 
 
-from .testsignalgenerator import LumaSteps
+from ..testsignalgenerator import LumaSteps
 from uuid import uuid1
 
 src_id = uuid1()

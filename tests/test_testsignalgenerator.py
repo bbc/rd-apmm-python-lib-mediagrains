@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #
 # Copyright 2018 British Broadcasting Corporation
 #
@@ -642,7 +641,6 @@ class TestMovingBarOverlay(TestCase):
                         self.assertEqual(U[y*grain.components[1].stride + 2*x + 1], expected[x//(width//16)][1] >> 8)
                         self.assertEqual(V[y*grain.components[2].stride + 2*x + 0], expected[x//(width//16)][2] & 0xFF)
                         self.assertEqual(V[y*grain.components[2].stride + 2*x + 1], expected[x//(width//16)][2] >> 8)
-
 
             ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
 

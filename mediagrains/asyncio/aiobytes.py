@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #
 # Copyright 2019 British Broadcasting Corporation
 #
@@ -20,6 +19,7 @@ A simple wrapper class AsyncIOBytes which is an asynchronous version of IOBytes
 """
 
 from collections.abc import Sequence
+from typing import List
 
 
 __all__ = ["AsyncIOBytes"]
@@ -40,7 +40,7 @@ class AsyncLazyLoader (object):
     Unlike the synchronous version loading is not automatic, but can be triggered by awaiting the load coroutine.
     """
 
-    _attributes = []
+    _attributes: List[str] = []
 
     def __init__(self, loader):
         """
@@ -50,7 +50,7 @@ class AsyncLazyLoader (object):
         self._loader = loader
 
     def __getattribute__(self, attr):
-        if attr in (['_object', '_loader', '__repr__', 'load'] + type(self)._attributes):
+        if attr in (['_object', '_loader', '__repr__', 'load', '__class__'] + type(self)._attributes):
             return object.__getattribute__(self, attr)
         else:
             if object.__getattribute__(self, '_object') is None:
