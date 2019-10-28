@@ -30,7 +30,7 @@ class GrainWrapper(object):
     def __init__(
         self,
         grain_constructor: typing.Callable,
-        input_data: typing.BinaryIO,
+        input_data: typing.IO[bytes],
         **kwargs
     ):
         """Set up the wrapper and the Grains that will be generated

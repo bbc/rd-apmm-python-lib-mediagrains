@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utility function to open a file or a pipe"""
+import typing
+
 import sys
 from contextlib import contextmanager
 
 
 @contextmanager
-def file_or_pipe(file_or_pipe: str, mode: str):
+def file_or_pipe(file_or_pipe: str, mode: str) -> typing.Iterator[typing.IO[bytes]]:
     """Context manager to open a file or stdin/stdout for binary operations
 
     :param file_or_pipe: Name of file to open, or "-" to indicate a pipe
