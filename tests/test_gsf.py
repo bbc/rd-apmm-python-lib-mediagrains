@@ -15,7 +15,6 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
 from unittest import TestCase
 from uuid import UUID
 from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
@@ -31,14 +30,11 @@ from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from mediatimestamp.immutable import Timestamp, TimeOffset
 from datetime import datetime
 from fractions import Fraction
-from six import PY2, BytesIO, int2byte
+from io import BytesIO
 from frozendict import frozendict
 from os import SEEK_SET
 
-if PY2:
-    import mock
-else:
-    from unittest import mock
+from unittest import mock
 
 with open('examples/video.gsf', 'rb') as f:
     VIDEO_DATA = f.read()
@@ -776,7 +772,7 @@ class TestGSFBlock(TestCase):
         test_stream = BytesIO()
 
         test_stream.write(b"blok")
-        test_stream.write(int2byte(first_block_length))
+        test_stream.write(bytes((first_block_length,)))
         test_stream.write(b"\x00\x00\x00")
         test_stream.write(b"chil\x0c\x00\x00\x00\x08\x09\x0a\x0b")
         test_stream.write(b"chil\x08\x00\x00\x00")

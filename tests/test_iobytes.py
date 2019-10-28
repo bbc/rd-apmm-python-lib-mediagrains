@@ -14,8 +14,6 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
-
 from unittest import TestCase
 import mock
 
@@ -24,10 +22,10 @@ from mediagrains.utils import IOBytes
 from hypothesis import given
 from hypothesis.strategies import integers
 
-from six import int2byte, BytesIO, binary_type
+from io import BytesIO
 
 
-TEST_DATA = b''.join(int2byte((x//256) % 256) + int2byte(x % 256) for x in range(0, 65536))
+TEST_DATA = b''.join(bytes(((x//256) % 256, (x % 256))) for x in range(0, 65536))
 
 
 class IncorrectAccess (Exception):
@@ -41,7 +39,7 @@ class TestIOBytes (TestCase):
         iostream = BytesIO(TEST_DATA)
         orig_loc = iostream.tell()
         iobytes = IOBytes(iostream, start, length)
-        data = binary_type(iobytes)
+        data = bytes(iobytes)
         self.assertEqual(len(data), length)
         self.assertEqual(data, TEST_DATA[start:start + length])
         self.assertEqual(orig_loc, iostream.tell())

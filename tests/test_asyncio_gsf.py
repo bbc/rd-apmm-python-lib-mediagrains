@@ -22,6 +22,8 @@ import aiofiles
 from datetime import datetime
 from uuid import UUID
 
+from fixtures import async_test
+
 from mediagrains.asyncio import AsyncGSFDecoder, AsyncLazyLoaderUnloadedError, loads
 from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, EVENTGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN
 from mediagrains.gsf import GSFDecodeError
@@ -49,36 +51,6 @@ with open('examples/event.gsf', 'rb') as f:
 
 with open('examples/interleaved.gsf', 'rb') as f:
     INTERLEAVED_DATA = f.read()
-
-
-def async_test(f):
-    def __inner(*args, **kwargs):
-        loop = asyncio.get_event_loop()
-        loop.set_debug(True)
-        E = None
-        warns = []
-
-        try:
-            with warnings.catch_warnings(record=True) as warns:
-                loop.run_until_complete(f(*args, **kwargs))
-
-        except AssertionError as e:
-            E = e
-        except Exception as e:
-            E = e
-
-        for w in warns:
-            warnings.showwarning(w.message,
-                                 w.category,
-                                 w.filename,
-                                 w.lineno)
-        if E is None:
-            args[0].assertEqual(len(warns), 0,
-                                msg="asyncio subsystem generated warnings due to unawaited coroutines")
-        else:
-            raise E
-
-    return __inner
 
 
 class TestAsyncGSFBlock (TestCase):
