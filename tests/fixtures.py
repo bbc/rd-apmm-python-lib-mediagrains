@@ -67,6 +67,7 @@ def attribute_and_pairs_of_grains_of_type_differing_only_in_one_attribute(grain_
         return grain_strat
 
 
+
 def suppress_deprecation_warnings(f):
     @wraps(f)
     def __inner(*args, **kwargs):
