@@ -15,6 +15,14 @@
 # limitations under the License.
 #
 
+
+#
+# The code these tests test is deprecated
+#
+# The tests remain until the code is removed
+#
+
+
 from unittest import TestCase
 import asyncio
 import warnings
@@ -54,7 +62,7 @@ with open('examples/interleaved.gsf', 'rb') as f:
 
 
 class TestAsyncGSFBlock (TestCase):
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_decode_headers(self):
         async with aiofiles.open('examples/video.gsf', 'rb') as video_data_stream:
             UUT = AsyncGSFDecoder(file_data=video_data_stream)
@@ -65,7 +73,7 @@ class TestAsyncGSFBlock (TestCase):
         self.assertEqual(len(head['segments']), 1)
         self.assertEqual(head['segments'][0]['id'], UUID('c6a3d3ff-74c0-446d-b59e-de1041f27e8a'))
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_generate_grains(self):
         """Test that the generator yields each grain"""
         async with aiofiles.open('examples/video.gsf', 'rb') as video_data_stream:
@@ -79,7 +87,7 @@ class TestAsyncGSFBlock (TestCase):
 
         self.assertEqual(10, grain_count)  # There are 10 grains in the file
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_local_id_filtering(self):
         async with aiofiles.open('examples/interleaved.gsf', 'rb') as interleaved_data_stream:
             async with AsyncGSFDecoder(file_data=interleaved_data_stream) as UUT:
@@ -107,7 +115,7 @@ class TestAsyncGSFBlock (TestCase):
                     self.assertEqual(grain.flow_id, UUID('2472f38e-3517-11e9-8da2-5065f34ed007'))
                     self.assertEqual(local_id, 2)
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_lazy_loading(self):
         async with aiofiles.open('examples/video.gsf', 'rb') as video_data_stream:
             grains = [grain async for (grain, local_id) in AsyncGSFDecoder(file_data=video_data_stream).grains()]
@@ -121,7 +129,7 @@ class TestAsyncGSFBlock (TestCase):
 
 
 class TestAsyncGSFLoads(TestCase):
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_video(self):
         (head, segments) = await loads(VIDEO_DATA)
 
@@ -168,7 +176,7 @@ class TestAsyncGSFLoads(TestCase):
 
             self.assertEqual(len(grain.data), grain.components[0].length + grain.components[1].length + grain.components[2].length)
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_audio(self):
         (head, segments) = await loads(AUDIO_DATA)
 
@@ -198,7 +206,7 @@ class TestAsyncGSFLoads(TestCase):
             total_samples += grain.samples
             ots = start_ots + TimeOffset.from_count(total_samples, grain.sample_rate)
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_coded_video(self):
         (head, segments) = await loads(CODED_VIDEO_DATA)
 
@@ -240,14 +248,14 @@ class TestAsyncGSFLoads(TestCase):
             self.assertEqual(grain.unit_offsets, unit_offsets[0][0])
             unit_offsets.pop(0)
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_rejects_incorrect_type_file(self):
         with self.assertRaises(GSFDecodeBadFileTypeError) as cm:
             await loads(b"POTATO23\x07\x00\x00\x00")
         self.assertEqual(cm.exception.offset, 0)
         self.assertEqual(cm.exception.filetype, "POTATO23")
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_rejects_incorrect_version_file(self):
         with self.assertRaises(GSFDecodeBadVersionError) as cm:
             await loads(b"SSBBgrsg\x08\x00\x03\x00")
@@ -255,20 +263,20 @@ class TestAsyncGSFLoads(TestCase):
         self.assertEqual(cm.exception.major, 8)
         self.assertEqual(cm.exception.minor, 3)
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_rejects_bad_head_tag(self):
         with self.assertRaises(GSFDecodeError) as cm:
             await loads(b"SSBBgrsg\x07\x00\x00\x00" +
                         b"\xff\xff\xff\xff\x00\x00\x00\x00")
         self.assertEqual(cm.exception.offset, 12)
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_raises_exception_without_head(self):
         with self.assertRaises(GSFDecodeError) as cm:
             await loads(b"SSBBgrsg\x07\x00\x00\x00")
         self.assertEqual(cm.exception.offset, 12)
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_skips_unknown_block_before_head(self):
         (head, segments) = await loads(b"SSBBgrsg\x07\x00\x00\x00" +
                                        b"dumy\x08\x00\x00\x00" +
@@ -281,7 +289,7 @@ class TestAsyncGSFLoads(TestCase):
         self.assertEqual(head['segments'], [])
         self.assertEqual(head['tags'], [])
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_skips_unknown_block_instead_of_segm(self):
         (head, segments) = await loads(b"SSBBgrsg\x07\x00\x00\x00" +
                                        b"head\x27\x00\x00\x00" +
@@ -294,7 +302,7 @@ class TestAsyncGSFLoads(TestCase):
         self.assertEqual(head['segments'], [])
         self.assertEqual(head['tags'], [])
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_skips_unknown_block_before_segm(self):
         (head, segments) = await loads(b"SSBBgrsg\x07\x00\x00\x00" +
                                        (b"head\x49\x00\x00\x00" +
@@ -315,7 +323,7 @@ class TestAsyncGSFLoads(TestCase):
         self.assertEqual(head['segments'][0]['count'], 0)
         self.assertEqual(head['tags'], [])
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_raises_when_head_too_small(self):
         with self.assertRaises(GSFDecodeError) as cm:
             (head, segments) = await loads(b"SSBBgrsg\x07\x00\x00\x00" +
@@ -330,7 +338,7 @@ class TestAsyncGSFLoads(TestCase):
 
         self.assertEqual(cm.exception.offset, 51)
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_raises_when_segm_too_small(self):
         with self.assertRaises(GSFDecodeError) as cm:
             (head, segments) = await loads(b"SSBBgrsg\x07\x00\x00\x00" +
@@ -344,7 +352,7 @@ class TestAsyncGSFLoads(TestCase):
 
         self.assertEqual(cm.exception.offset, 77)
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_decodes_tils(self):
         src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
         flow_id = UUID('da78668a-1596-11e8-a577-dca904824eec')
@@ -387,7 +395,7 @@ class TestAsyncGSFLoads(TestCase):
                                                                                              'frame_rate_denominator': 1,
                                                                                              'drop_frame': False}}])
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_raises_when_grain_type_unknown(self):
         with self.assertRaises(GSFDecodeError) as cm:
             src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
@@ -414,7 +422,7 @@ class TestAsyncGSFLoads(TestCase):
 
         self.assertEqual(cm.exception.offset, 179)
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_decodes_empty_grains(self):
         src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
         flow_id = UUID('da78668a-1596-11e8-a577-dca904824eec')
@@ -456,7 +464,7 @@ class TestAsyncGSFLoads(TestCase):
         self.assertEqual(segments[1][1].grain_type, "empty")
         self.assertIsNone(segments[1][1].data)
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_coded_audio(self):
         (head, segments) = await loads(CODED_AUDIO_DATA)
 
@@ -499,7 +507,7 @@ class TestAsyncGSFLoads(TestCase):
             total_samples += grain.samples
             ots = start_ots + TimeOffset.from_count(total_samples, grain.sample_rate)
 
-    @async_test
+    @async_test(suppress_warnings=True)
     async def test_loads_event(self):
         self.maxDiff = None
         (head, segments) = await loads(EVENT_DATA)
