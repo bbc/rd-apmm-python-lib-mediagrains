@@ -29,23 +29,20 @@ class GrainWrapper(object):
     """Raw input and wrap it in Grains"""
     def __init__(
         self,
-        grain_constructor: typing.Callable,
-        input_data: typing.IO[bytes],
-        **kwargs
+        template_grain: GRAIN,
+        input_data: typing.IO[bytes]
     ):
         """Set up the wrapper and the Grains that will be generated
 
-        :param grain_constructor: One of the Grain constructor functions, used to generate Grains for this media.
+        :param template_grain: A Grain to use as the template for wrapping the Grains read from the input source. Rate
+                               and origin_timestamp should be set, along with the relevant metadata to make
+                               `template_grain.expected_length` work.
         :param input_data: An object to read video data from
-        :param **kwargs: Remaining arguments will be passed through to Grain constructor (and Grain defaults will be
-                         used for any that are missing)
         """
-        self.template_grain = grain_constructor(**kwargs)
+        self.template_grain = template_grain
         self.input_data = input_data
 
-        # The constructor for a Grain should allocate the right amount of storage for the frame if no data are given,
-        # so we take advantage of this calculation to work out how long the frames are
-        self.frame_size = len(self.template_grain.data)
+        self.frame_size = template_grain.expected_length
 
     def grains(self) -> typing.Iterator[GRAIN]:
         """Generator that yields Grains read from the input given
