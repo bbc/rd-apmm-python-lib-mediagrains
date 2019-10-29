@@ -511,7 +511,7 @@ class TestGSFDumps(TestCase):
                     (head, segments) = loads(dumps([grain]))
 
     @suppress_deprecation_warnings
-    def test_dump_progressively(self):
+    def test_dump_progressively__deprecated(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
@@ -537,6 +537,45 @@ class TestGSFDumps(TestCase):
                 dump2 = file.getvalue()
                 (head2, segments2) = loads(dump2)
                 enc.end_dump()
+                dump3 = file.getvalue()
+                (head3, segments3) = loads(dump3)
+
+        self.assertEqual(head0['segments'][0]['count'], -1)
+        self.assertEqual(head1['segments'][0]['count'], -1)
+        self.assertEqual(head2['segments'][0]['count'], -1)
+        self.assertEqual(head3['segments'][0]['count'], 2)
+
+        if 1 in segments0:
+            self.assertEqual(len(segments0[1]), 0)
+        self.assertEqual(len(segments1[1]), 1)
+        self.assertEqual(len(segments2[1]), 2)
+        self.assertEqual(len(segments3[1]), 2)
+
+    def test_dump_progressively(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+
+        file = BytesIO()
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                enc = GSFEncoder(file, streaming=True)
+                enc.add_segment()
+                self.assertEqual(len(file.getvalue()), 0)
+                with enc:
+                    dump0 = file.getvalue()
+                    (head0, segments0) = loads(dump0)
+                    enc.add_grain(grain0)
+                    dump1 = file.getvalue()
+                    (head1, segments1) = loads(dump1)
+                    enc.add_grain(grain1, segment_local_id=1)
+                    dump2 = file.getvalue()
+                    (head2, segments2) = loads(dump2)
                 dump3 = file.getvalue()
                 (head3, segments3) = loads(dump3)
 
@@ -605,7 +644,7 @@ class TestGSFDumps(TestCase):
         self.assertEqual(enc.segments[1].tags, (('rainbow', 'dash'),))
 
     @suppress_deprecation_warnings
-    def test_encoder_raises_when_adding_to_active_encode(self):
+    def test_encoder_raises_when_adding_to_active_encode__deprecated(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
         created = datetime(1983, 3, 29, 15, 15)
@@ -629,6 +668,30 @@ class TestGSFDumps(TestCase):
             enc.add_segment()
         with self.assertRaises(GSFEncodeAddToActiveDump):
             seg.add_tag('upside', 'down')
+
+    def test_encoder_raises_when_adding_to_active_encode(self):
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+        file = BytesIO()
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                enc = GSFEncoder(file, tags=[('potato', 'harvest')], streaming=True)
+                seg = enc.add_segment(tags=[('rainbow', 'dash')])
+
+        with self.assertRaises(GSFEncodeError):
+            enc.add_segment(local_id=1)
+
+        with self.assertRaises(GSFEncodeError):
+            enc.add_segment(tags=[None])
+
+        with enc:
+            with self.assertRaises(GSFEncodeAddToActiveDump):
+                enc.add_tag('upside', 'down')
+            with self.assertRaises(GSFEncodeAddToActiveDump):
+                enc.add_segment()
+            with self.assertRaises(GSFEncodeAddToActiveDump):
+                seg.add_tag('upside', 'down')
 
     def test_encoder_can_add_grains_to_nonexistent_segment(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
