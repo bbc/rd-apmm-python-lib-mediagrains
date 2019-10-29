@@ -10,6 +10,9 @@ that nicely wrap those grains, as well as a full serialisation and
 deserialisation library for GSF format. Please read the pydoc
 documentation for more details.
 
+Some useful tools for handling the Grain Sequence Format (GSF) file format
+are also included - see [Tools](#tools).
+
 ## Installation
 
 ### Requirements
@@ -191,6 +194,30 @@ The API is well documented in the docstrings of the module mediagrains, to view:
 
 ```bash
 pydoc mediagrains
+```
+
+## Tools
+Some tools are installed with the library to make working with the Grain Sequence Format (GSF) file format easier.
+
+* `wrap_video_in_gsf` - Provides a means to read raw video essence and generate a GSF file.
+* `wrap_audio_in_gsf` - As above, but for audio.
+* `extract_from_gsf` - Read a GSF file and dump out the raw essence within.
+* `gsf_probe` - Read metadata about the segments in a GSF file.
+
+For example, to generate a GSF file containing a test pattern from `ffmpeg`, dump the metadata and then play it out
+again:
+```bash
+ffmpeg -f lavfi -i testsrc=duration=20:size=1920x1080:rate=25 -pix_fmt yuv422p10le -c:v rawvideo -f rawvideo - | \
+wrap_video_in_gsf - output.gsf --size 1920x1080 --format S16_422_10BIT --rate 25
+gsf_probe output.gsf
+extract_gsf_essence output.gsf - | ffplay -f rawvideo -pixel_format yuv422p10 -video_size 1920x1080 -framerate 25 pipe:0
+```
+
+To do the same with a sine wave:
+```bash
+ffmpeg -f lavfi -i "sine=frequency=1000:duration=5" -f s16le -ac 2 - | wrap_audio_in_gsf - output_audio.gsf --sample-rate 44100
+gsf_probe output_audio.gsf
+extract_gsf_essence output_audio.gsf - | ffplay -f s16le -ac 2 -ar 44100 pipe:0
 ```
 
 ## Development

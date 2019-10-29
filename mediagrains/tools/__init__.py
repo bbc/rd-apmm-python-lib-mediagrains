@@ -11,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
 
-from .iobytes import IOBytes
-from .grain_wrapper import GrainWrapper
+from .wrap_in_gsf import wrap_video_in_gsf, wrap_audio_in_gsf
+from .extract_from_gsf import extract_gsf_essence, gsf_probe
 
-__all__ = ["IOBytes", "GrainWrapper"]
+__all__ = ["wrap_video_in_gsf", "wrap_audio_in_gsf", "extract_gsf_essence", "gsf_probe"]

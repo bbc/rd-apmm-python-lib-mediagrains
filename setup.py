@@ -23,21 +23,30 @@ packages = {
     'mediagrains.comparison': 'mediagrains/comparison',
     'mediagrains.utils': 'mediagrains/utils',
     'mediagrains.asyncio': 'mediagrains/asyncio',
-    'mediagrains.numpy': 'mediagrains/numpy'
+    'mediagrains.numpy': 'mediagrains/numpy',
+    'mediagrains.tools': 'mediagrains/tools'
 }
 
 packages_required = [
-    "mediatimestamp >= 1.2.0",
+    "mediatimestamp >= 1.3.0",
     "frozendict >= 1.2",
     'numpy >= 1.17.2',
+    "mediajson"
 ]
 
 deps_required = []
 
 package_names = list(packages.keys())
 
+console_scripts = [
+    'wrap_video_in_gsf=mediagrains.tools:wrap_video_in_gsf',
+    'wrap_audio_in_gsf=mediagrains.tools:wrap_audio_in_gsf',
+    'extract_gsf_essence=mediagrains.tools:extract_gsf_essence',
+    'gsf_probe=mediagrains.tools:gsf_probe'
+]
+
 setup(name="mediagrains",
-      version="2.7.0.dev1",
+      version="2.7.0.dev2",
       python_requires='>=3.6.0',
       description="Simple utility for grain-based media",
       url='https://github.com/bbc/rd-apmm-python-lib-mediagrains',
@@ -48,7 +57,9 @@ setup(name="mediagrains",
       package_dir=packages,
       package_data={name: ['py.typed'] for name in package_names},
       install_requires=packages_required,
-      scripts=[],
+      entry_points={
+          'console_scripts': console_scripts
+      },
       data_files=[],
       long_description="""
 Simple python library for dealing with grain data in a python-native format.
