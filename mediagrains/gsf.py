@@ -30,6 +30,11 @@ from .utils import IOBytes
 from os import SEEK_SET
 import warnings
 
+from typing import Callable, Optional, BinaryIO, Iterable, Tuple, List, Dict, Mapping, cast
+from .typing import GrainMetadataDict, GrainDataParameterType
+
+from .grain import GRAIN, VIDEOGRAIN, EVENTGRAIN, AUDIOGRAIN, CODEDAUDIOGRAIN, CODEDVIDEOGRAIN
+
 from contextlib import contextmanager
 
 from deprecated import deprecated
@@ -392,7 +397,10 @@ class GSFDecoder(object):
 
     Can also be used to make a one-off decode of a GSF file from a bytes-like object by calling `decode(bytes_like)`.
     """
-    def __init__(self, parse_grain=Grain, file_data=None, **kwargs):
+    def __init__(self,
+                 parse_grain: Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN] = Grain,
+                 file_data: Optional[BinaryIO] = None,
+                 **kwargs):
         """Constructor
 
         :param parse_grain: Function that takes a (metadata dict, buffer) and returns a grain representation
@@ -748,20 +756,31 @@ class GSFEncoder(object):
     The current version of the library is designed for compatibility with v.7.0 of the GSF format. Setting a
     different version number will simply change the reported version number in the file, but will not alter the
     syntax at all. If future versions of this code add support for other versions of GSF then this will change."""
-    def __init__(self, file, major=7, minor=0, id=None, created=None, tags=None, streaming=False):
+    def __init__(self,
+                 file: BinaryIO,
+                 major: int = 7,
+                 minor: int = 0,
+                 id: Optional[UUID] = None,
+                 created: Optional[datetime] = None,
+                 tags: Iterable[Tuple[str, str]] = None,
+                 streaming: bool = False):
         self.file = file
         self.major = major
         self.minor = minor
-        self.id = id
-        self.created = created
-        self._tags = []
+        self._tags: List["GSFEncoderTag"] = []
         self.streaming = streaming
 
-        if self.id is None:
+        if id is None:
             self.id = uuid1()
-        if self.created is None:
+        else:
+            self.id = id
+
+        if created is None:
             self.created = datetime.now()
-        self._segments = {}
+        else:
+            self.created = created
+
+        self._segments: Dict[int, "GSFEncoderSegment"] = {}
         self._next_local = 1
         self._active_dump = False
 
@@ -783,21 +802,21 @@ class GSFEncoder(object):
         self._end_dump()
 
     @property
-    def tags(self):
+    def tags(self) -> Tuple["GSFEncoderTag", ...]:
         return tuple(self._tags)
 
     @property
-    def segments(self):
+    def segments(self) -> Mapping[int, "GSFEncoderSegment"]:
         return frozendict(self._segments)
 
-    def add_tag(self, key, value):
+    def add_tag(self, key: str, value: str):
         """Add a tag to the file"""
         if self._active_dump:
             raise GSFEncodeAddToActiveDump("Cannot add a new tag to an encoder that is currently dumping")
 
         self._tags.append(GSFEncoderTag(key, value))
 
-    def add_segment(self, id=None, local_id=None, tags=None):
+    def add_segment(self, id: Optional[UUID] = None, local_id: Optional[int] = None, tags: Optional[Iterable[Tuple[str, str]]] = None) -> "GSFEncoderSegment":
         """Add a segment to the file, if id is specified it should be a uuid,
         otherwise one will be generated. If local_id is specified it should be an
         integer, otherwise the next available integer will be used. Returns the newly
@@ -820,7 +839,10 @@ class GSFEncoder(object):
         self._segments[local_id] = seg
         return seg
 
-    def add_grain(self, grain, segment_id=None, segment_local_id=None):
+    def add_grain(self,
+                  grain: GRAIN,
+                  segment_id: Optional[UUID] = None,
+                  segment_local_id: Optional[int] = None):
         """Add a grain to one of the segments of the file. If no local_segment_id
         is provided then a segment with id equal to segment_id will be used if one
         exists, or the lowest numeric segmemnt if segment_id was not provided.
@@ -829,7 +851,10 @@ class GSFEncoder(object):
         """
         self.add_grains((grain,), segment_id=segment_id, segment_local_id=segment_local_id)
 
-    def add_grains(self, grains, segment_id=None, segment_local_id=None):
+    def add_grains(self,
+                   grains: Iterable[GRAIN],
+                   segment_id: Optional[UUID] = None,
+                   segment_local_id: Optional[int] = None):
         """Add several grains to one of the segments of the file. If no local_segment_id
         is provided then a segment with id equal to segment_id will be used if one
         exists, or the lowest numeric segmemnt if segment_id was not provided.
@@ -861,7 +886,7 @@ class GSFEncoder(object):
         it will append."""
         self._start_dump(all_at_once=all_at_once)
 
-    def _start_dump(self, all_at_once=False):
+    def _start_dump(self, all_at_once: bool = False):
         self._active_dump = True
 
         if self.file.seekable():
@@ -893,7 +918,7 @@ class GSFEncoder(object):
         _write_uint(self.file, self.major, 2)
         _write_uint(self.file, self.minor, 2)
 
-    def _write_head_block(self, all_at_once=False):
+    def _write_head_block(self, all_at_once: bool = False):
         size = (31 +
                 sum(seg.segm_block_size for seg in self._segments.values()) +
                 sum(tag.tag_block_size for tag in self._tags))
@@ -929,23 +954,23 @@ class GSFEncoderTag(object):
 
     both strings."""
 
-    def __init__(self, key, value):
+    def __init__(self, key: str, value: str):
         self.key = key
         self.value = value
 
     @property
-    def encoded_key(self):
+    def encoded_key(self) -> bytes:
         return self.key.encode("utf-8")[:65535]
 
     @property
-    def encoded_value(self):
+    def encoded_value(self) -> bytes:
         return self.value.encode("utf-8")[:65535]
 
     @property
-    def tag_block_size(self):
+    def tag_block_size(self) -> int:
         return 12 + len(self.encoded_key) + len(self.encoded_value)
 
-    def write_to(self, file):
+    def write_to(self, file: BinaryIO):
         file.write(b"tag ")
         _write_uint(file, self.tag_block_size, 4)
         _write_uint(file, len(self.encoded_key), 2)
@@ -953,21 +978,21 @@ class GSFEncoderTag(object):
         _write_uint(file, len(self.encoded_value), 2)
         file.write(self.encoded_value)
 
-    def __eq__(self, other):
-        return other.__eq__((self.key, self.value))
+    def __eq__(self, other: object) -> bool:
+        return other == (self.key, self.value)
 
 
 class GSFEncoderSegment(object):
     """A class to represent a segment within a GSF file, used for constructing them."""
 
-    def __init__(self, id, local_id, tags=None):
+    def __init__(self, id: UUID, local_id: int, tags: Iterable[Tuple[str, str]] = None):
         self.id = id
         self.local_id = local_id
         self._write_count = 0
         self._count_pos = -1
-        self._file = None
-        self._tags = []
-        self._grains = []
+        self._file: Optional[BinaryIO] = None
+        self._tags: List[GSFEncoderTag] = []
+        self._grains: List[GRAIN] = []
 
         if tags is not None:
             for tag in tags:
@@ -977,18 +1002,18 @@ class GSFEncoderSegment(object):
                     raise GSFEncodeError("No idea how to turn {!r} into a tag".format(tag))
 
     @property
-    def count(self):
+    def count(self) -> int:
         return len(self._grains) + self._write_count
 
     @property
-    def segm_block_size(self):
+    def segm_block_size(self) -> int:
         return 34 + sum(tag.tag_block_size for tag in self._tags)
 
     @property
-    def tags(self):
+    def tags(self) -> Tuple[GSFEncoderTag, ...]:
         return tuple(self._tags)
 
-    def write_to(self, file, all_at_once=False):
+    def write_to(self, file: BinaryIO, all_at_once: bool = False):
         self._file = file
         file.write(b"segm")
         _write_uint(file, self.segm_block_size, 4)
@@ -1010,7 +1035,10 @@ class GSFEncoderSegment(object):
             self._write_grain(grain)
         self._grains = []
 
-    def _write_grain(self, grain):
+    def _write_grain(self, grain: GRAIN):
+        if self._file is None:
+            raise RuntimeError("Output file has not been set")
+
         gbhd_size = self._gbhd_size_for_grain(grain)
 
         self._file.write(b"grai")
@@ -1044,15 +1072,15 @@ class GSFEncoderSegment(object):
                 _write_uint(self._file, 1 if label['timelabel']['drop_frame'] else 0, 1)
 
         if grain.grain_type == "video":
-            self._write_vghd_for_grain(grain)
+            self._write_vghd_for_grain(cast(VIDEOGRAIN, grain))
         elif grain.grain_type == "coded_video":
-            self._write_cghd_for_grain(grain)
+            self._write_cghd_for_grain(cast(CODEDVIDEOGRAIN, grain))
         elif grain.grain_type == "audio":
-            self._write_aghd_for_grain(grain)
+            self._write_aghd_for_grain(cast(AUDIOGRAIN, grain))
         elif grain.grain_type == "coded_audio":
-            self._write_cahd_for_grain(grain)
+            self._write_cahd_for_grain(cast(CODEDAUDIOGRAIN, grain))
         elif grain.grain_type == "event":
-            self._write_eghd_for_grain(grain)
+            self._write_eghd_for_grain(cast(EVENTGRAIN, grain))
         elif grain.grain_type != "empty":  # pragma: no cover (should be unreachable)
             raise GSFEncodeError("Unknown grain type: {}".format(grain.grain_type))
 
@@ -1060,35 +1088,38 @@ class GSFEncoderSegment(object):
         _write_uint(self._file, 8 + grain.length, 4)
 
         if grain.data is not None:
-            self._file.write(grain.data)
+            self._file.write(bytes(grain.data))
 
         self._write_count += 1
 
-    def _gbhd_size_for_grain(self, grain):
+    def _gbhd_size_for_grain(self, grain: GRAIN) -> int:
         size = 92
         if len(grain.timelabels) > 0:
             size += 10 + 29*len(grain.timelabels)
         if grain.grain_type == "video":
-            size += self._vghd_size_for_grain(grain)
+            size += self._vghd_size_for_grain(cast(VIDEOGRAIN, grain))
         elif grain.grain_type == "coded_video":
-            size += self._cghd_size_for_grain(grain)
+            size += self._cghd_size_for_grain(cast(CODEDVIDEOGRAIN, grain))
         elif grain.grain_type == "audio":
-            size += self._aghd_size_for_grain(grain)
+            size += self._aghd_size_for_grain(cast(AUDIOGRAIN, grain))
         elif grain.grain_type == "coded_audio":
-            size += self._cahd_size_for_grain(grain)
+            size += self._cahd_size_for_grain(cast(CODEDAUDIOGRAIN, grain))
         elif grain.grain_type == "event":
-            size += self._eghd_size_for_grain(grain)
+            size += self._eghd_size_for_grain(cast(EVENTGRAIN, grain))
         elif grain.grain_type != "empty":
             raise GSFEncodeError("Unknown grain type: {}".format(grain.grain_type))
         return size
 
-    def _vghd_size_for_grain(self, grain):
+    def _vghd_size_for_grain(self, grain: VIDEOGRAIN) -> int:
         size = 44
         if len(grain.components) > 0:
             size += 10 + 16*len(grain.components)
         return size
 
-    def _write_vghd_for_grain(self, grain):
+    def _write_vghd_for_grain(self, grain: VIDEOGRAIN):
+        if self._file is None:
+            raise RuntimeError("Output file has not been set")
+
         self._file.write(b"vghd")
         _write_uint(self._file, self._vghd_size_for_grain(grain), 4)
 
@@ -1118,19 +1149,25 @@ class GSFEncoderSegment(object):
                 _write_uint(self._file, comp.stride, 4)
                 _write_uint(self._file, comp.length, 4)
 
-    def _eghd_size_for_grain(self, grain):
+    def _eghd_size_for_grain(self, grain: EVENTGRAIN) -> int:
         return 9
 
-    def _write_eghd_for_grain(self, grain):
+    def _write_eghd_for_grain(self, grain: EVENTGRAIN):
+        if self._file is None:
+            raise RuntimeError("Output file has not been set")
+
         self._file.write(b"eghd")
         _write_uint(self._file, self._eghd_size_for_grain(grain), 4)
 
         _write_uint(self._file, 0x00, 1)
 
-    def _aghd_size_for_grain(self, grain):
+    def _aghd_size_for_grain(self, grain: AUDIOGRAIN) -> int:
         return 22
 
-    def _write_aghd_for_grain(self, grain):
+    def _write_aghd_for_grain(self, grain: AUDIOGRAIN):
+        if self._file is None:
+            raise RuntimeError("Output file has not been set")
+
         self._file.write(b"aghd")
         _write_uint(self._file, self._aghd_size_for_grain(grain), 4)
 
@@ -1139,13 +1176,16 @@ class GSFEncoderSegment(object):
         _write_uint(self._file, int(grain.samples), 4)
         _write_uint(self._file, int(grain.sample_rate), 4)
 
-    def _cghd_size_for_grain(self, grain):
+    def _cghd_size_for_grain(self, grain: CODEDVIDEOGRAIN) -> int:
         size = 37
         if len(grain.unit_offsets) > 0:
             size += 10 + 4*len(grain.unit_offsets)
         return size
 
-    def _write_cghd_for_grain(self, grain):
+    def _write_cghd_for_grain(self, grain: CODEDVIDEOGRAIN):
+        if self._file is None:
+            raise RuntimeError("Output file has not been set")
+
         self._file.write(b"cghd")
         _write_uint(self._file, self._cghd_size_for_grain(grain), 4)
 
@@ -1167,10 +1207,13 @@ class GSFEncoderSegment(object):
             for i in range(0, len(grain.unit_offsets)):
                 _write_uint(self._file, grain.unit_offsets[i], 4)
 
-    def _cahd_size_for_grain(self, grain):
+    def _cahd_size_for_grain(self, grain: CODEDAUDIOGRAIN) -> int:
         return 30
 
-    def _write_cahd_for_grain(self, grain):
+    def _write_cahd_for_grain(self, grain: CODEDAUDIOGRAIN):
+        if self._file is None:
+            raise RuntimeError("Output file has not been set")
+
         self._file.write(b"cahd")
         _write_uint(self._file, self._cahd_size_for_grain(grain), 4)
 
@@ -1194,20 +1237,20 @@ class GSFEncoderSegment(object):
         self._file = None
         self._count_pos = -1
 
-    def add_tag(self, key, value):
+    def add_tag(self, key: str, value: str):
         """Add a tag to the segment"""
         if self._file is not None:
             raise GSFEncodeAddToActiveDump("Cannot add a tag to a segment which is part of an active export")
         self._tags.append(GSFEncoderTag(key, value))
 
-    def add_grain(self, grain):
+    def add_grain(self, grain: GRAIN):
         """Add a grain to the segment, which should be a Grain object"""
         if self._file is not None:
             self._write_grain(grain)
         else:
             self._grains.append(grain)
 
-    def add_grains(self, grains):
+    def add_grains(self, grains: Iterable[GRAIN]):
         """Add several grains to the segment, the parameter should be an
         iterable of grain objects"""
         for grain in grains:
