@@ -95,13 +95,10 @@ def dump(grains, fp, cls=None, segment_tags=None, **kwargs):
     This method will serialise the grains in a single segment."""
     if cls is None:
         cls = GSFEncoder
-    enc = cls(fp, **kwargs)
-    seg = enc.add_segment(tags=segment_tags)
-    seg.add_grains(grains)
 
-    # TODO: Remove this when new mechanism is implemented
-    with no_deprecation_warnings():
-        enc.dump()
+    with cls(fp, **kwargs) as enc:
+        seg = enc.add_segment(tags=segment_tags)
+        seg.add_grains(grains)
 
 
 def dumps(grains, cls=None, segment_tags=None, **kwargs):
@@ -732,8 +729,7 @@ class GSFEncoder(object):
     manager the grains will be written to the file. If the `streaming=True` parameter is passed to the constructor
     then calls to add_grain within the context manager will instead cause the grain to be written immediately.
 
-
-    And older depreceted interface exists for synchronous work: the method add_grain and dump which add a grain to
+    And older deprecated interface exists for synchronous work: the method add_grain and dump which add a grain to
     the file and dump the file the the buffer respectively.
 
     If a streaming format is required then you can instead use the "start_dump" method, followed by adding
@@ -775,6 +771,16 @@ class GSFEncoder(object):
                     self.add_tag(tag[0], tag[1])
                 except (TypeError, IndexError):
                     raise GSFEncodeError("No idea how to turn {!r} into a tag".format(tag))
+
+    def __enter__(self):
+        if self.streaming:
+            self._start_dump(all_at_once=False)
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        if not self.streaming:
+            self._start_dump(all_at_once=True)
+        self._end_dump()
 
     @property
     def tags(self):
@@ -845,14 +851,17 @@ class GSFEncoder(object):
         """Dump the whole contents of this encoder to the file in one go,
         replacing anything that's already there."""
 
-        self.start_dump(all_at_once=True)
-        self.end_dump()
+        self._start_dump(all_at_once=True)
+        self._end_dump()
 
     @deprecated(version="2.7.0", reason="This mechanism is deprecated, use a context manager instead")
     def start_dump(self, all_at_once=False):
         """Start dumping the contents of this encoder to the specified file, if
         the file is seakable then it will replace the current content, otherwise
         it will append."""
+        self._start_dump(all_at_once=all_at_once)
+
+    def _start_dump(self, all_at_once=False):
         self._active_dump = True
 
         if self.file.seekable():
@@ -867,7 +876,9 @@ class GSFEncoder(object):
     def end_dump(self, all_at_once=False):
         """End the current dump to the file. In a seakable stream this will write
         all segment counts, in a non-seakable stream it will not."""
+        self._end_dump()
 
+    def _end_dump(self):
         for seg in self._segments.values():
             seg.complete_write()
 
