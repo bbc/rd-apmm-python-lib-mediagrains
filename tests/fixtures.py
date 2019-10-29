@@ -67,6 +67,19 @@ def attribute_and_pairs_of_grains_of_type_differing_only_in_one_attribute(grain_
         return grain_strat
 
 
+def suppress_deprecation_warnings(f):
+    @wraps(f)
+    def __inner(*args, **kwargs):
+        with warnings.catch_warnings(record=True) as warns:
+            r = f(*args, **kwargs)
+
+        for w in warns:
+            if w.category != DeprecationWarning:
+                warnings.showwarning(w.message, w.category, w.filename, w.lineno)
+
+        return r
+
+
 def async_test(suppress_warnings):
     def __outer(f):
         @wraps(f)

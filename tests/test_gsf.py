@@ -34,6 +34,8 @@ from io import BytesIO
 from frozendict import frozendict
 from os import SEEK_SET
 
+from fixtures import suppress_deprecation_warnings
+
 from unittest import mock
 
 with open('examples/video.gsf', 'rb') as f:
@@ -508,6 +510,7 @@ class TestGSFDumps(TestCase):
                 with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                     (head, segments) = loads(dumps([grain]))
 
+    @suppress_deprecation_warnings
     def test_dump_progressively(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
@@ -548,6 +551,7 @@ class TestGSFDumps(TestCase):
         self.assertEqual(len(segments2[1]), 2)
         self.assertEqual(len(segments3[1]), 2)
 
+    @suppress_deprecation_warnings
     def test_end_dump_without_start_does_nothing(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -600,6 +604,7 @@ class TestGSFDumps(TestCase):
         self.assertIsInstance(enc.segments, frozendict)
         self.assertEqual(enc.segments[1].tags, (('rainbow', 'dash'),))
 
+    @suppress_deprecation_warnings
     def test_encoder_raises_when_adding_to_active_encode(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
