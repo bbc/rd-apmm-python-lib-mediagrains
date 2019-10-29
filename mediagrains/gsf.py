@@ -28,11 +28,26 @@ from fractions import Fraction
 from frozendict import frozendict
 from .utils import IOBytes
 from os import SEEK_SET
+import warnings
+
+from contextlib import contextmanager
+
+from deprecated import deprecated
 
 __all__ = ["GSFDecoder", "load", "loads", "GSFError", "GSFDecodeError",
            "GSFDecodeBadFileTypeError", "GSFDecodeBadVersionError",
            "GSFEncoder", "dump", "dumps", "GSFEncodeError",
            "GSFEncodeAddToActiveDump"]
+
+
+@contextmanager
+def no_deprecation_warnings():
+    with warnings.catch_warnings(record=True) as warns:
+        yield
+
+    for w in warns:
+        if w.category != DeprecationWarning:
+            warnings.showwarning(w.message, w.category, w.filename, w.lineno)
 
 
 def loads(s, cls=None, parse_grain=None, **kwargs):
@@ -83,7 +98,10 @@ def dump(grains, fp, cls=None, segment_tags=None, **kwargs):
     enc = cls(fp, **kwargs)
     seg = enc.add_segment(tags=segment_tags)
     seg.add_grains(grains)
-    enc.dump()
+
+    # TODO: Remove this when new mechanism is implemented
+    with no_deprecation_warnings():
+        enc.dump()
 
 
 def dumps(grains, cls=None, segment_tags=None, **kwargs):
@@ -708,8 +726,15 @@ class GSFEncoder(object):
     optional arguments exist for specifying file-level metadata, if no created time is specified the current time
     will be used, if no id is specified one will be generated randomly.
 
-    The main interface are the methods add_grain and dump which add a grain to the file and dump the file to
-    the buffer respectively.
+
+    The next recommended interface is to use the encoder as either a context manager or an asynchronous context
+    manager. Whilst in the context manager new grains can be added with add_grain, and upon leaving the context
+    manager the grains will be written to the file. If the `streaming=True` parameter is passed to the constructor
+    then calls to add_grain within the context manager will instead cause the grain to be written immediately.
+
+
+    And older depreceted interface exists for synchronous work: the method add_grain and dump which add a grain to
+    the file and dump the file the the buffer respectively.
 
     If a streaming format is required then you can instead use the "start_dump" method, followed by adding
     grains as needed, and then the "end_dump" method. Each new grain will be written as it is added. In this mode
@@ -727,13 +752,14 @@ class GSFEncoder(object):
     The current version of the library is designed for compatibility with v.7.0 of the GSF format. Setting a
     different version number will simply change the reported version number in the file, but will not alter the
     syntax at all. If future versions of this code add support for other versions of GSF then this will change."""
-    def __init__(self, file, major=7, minor=0, id=None, created=None, tags=None):
+    def __init__(self, file, major=7, minor=0, id=None, created=None, tags=None, streaming=False):
         self.file = file
         self.major = major
         self.minor = minor
         self.id = id
         self.created = created
         self._tags = []
+        self.streaming = streaming
 
         if self.id is None:
             self.id = uuid1()
@@ -814,6 +840,7 @@ class GSFEncoder(object):
             segment = self.add_segment(id=segment_id, local_id=segment_local_id)
         segment.add_grains(grains)
 
+    @deprecated(version="2.7.0", reason="This mechanism is deprecated, use a context manager instead")
     def dump(self):
         """Dump the whole contents of this encoder to the file in one go,
         replacing anything that's already there."""
@@ -821,6 +848,7 @@ class GSFEncoder(object):
         self.start_dump(all_at_once=True)
         self.end_dump()
 
+    @deprecated(version="2.7.0", reason="This mechanism is deprecated, use a context manager instead")
     def start_dump(self, all_at_once=False):
         """Start dumping the contents of this encoder to the specified file, if
         the file is seakable then it will replace the current content, otherwise
@@ -835,6 +863,7 @@ class GSFEncoder(object):
         self._write_head_block(all_at_once=all_at_once)
         self._write_all_grains()
 
+    @deprecated(version="2.7.0", reason="This mechanism is deprecated, use a context manager instead")
     def end_dump(self, all_at_once=False):
         """End the current dump to the file. In a seakable stream this will write
         all segment counts, in a non-seakable stream it will not."""
