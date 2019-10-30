@@ -713,47 +713,19 @@ def _encode_uint(val: int, size: int) -> bytes:
     return bytes(d)
 
 
-def _write_uint(file, val, size):
-    file.write(_encode_uint(val, size))
-
-
-async def _awrite_uint(file: OpenAsyncBinaryIO, val: int, size: int):
-    await file.write(_encode_uint(val, size))
-
-
 def _encode_sint(val: int, size: int) -> bytes:
     if val < 0:
         val = val + (1 << (8*size))
     return _encode_uint(val, size)
 
 
-def _write_sint(file, val, size):
-    file.write(_encode_sint(val, size))
-
-
-async def _awrite_sint(file: OpenAsyncBinaryIO, val: int, size: int):
-    await file.write(_encode_sint(val, size))
-
-
 def _encode_uuid(val: UUID) -> bytes:
     return val.bytes
-
-
-def _write_uuid(file, val):
-    file.write(val.bytes)
-
-
-async def _awrite_uuid(file: OpenAsyncBinaryIO, val: UUID):
-    await file.write(val.bytes)
 
 
 def _encode_ts(ts: Timestamp) -> bytes:
     return (_encode_uint(ts.sec, 6) +
             _encode_uint(ts.ns, 4))
-
-
-def _write_ts(file: IO[bytes], ts: Timestamp):
-    file.write(_encode_ts(ts))
 
 
 def _encode_rational(value: RationalTypes) -> bytes:
@@ -762,13 +734,8 @@ def _encode_rational(value: RationalTypes) -> bytes:
             _encode_uint(value.denominator, 4))
 
 
-def _write_rational(file: IO[bytes], value: RationalTypes):
-    file.write(_encode_rational(value))
-
-
-class OpenGSFEncoder(object):
+class OpenGSFEncoderBase(object):
     def __init__(self,
-                 file: IO[bytes],
                  major: int,
                  minor: int,
                  id: UUID,
@@ -777,7 +744,6 @@ class OpenGSFEncoder(object):
                  segments: Dict[int, "GSFEncoderSegment"],
                  streaming: bool,
                  next_local: int):
-        self.file = file
         self.major = major
         self.minor = minor
         self._tags = tags
@@ -825,6 +791,78 @@ class OpenGSFEncoder(object):
         seg = GSFEncoderSegment(id, local_id, tags=tags)
         self._segments[local_id] = seg
         return seg
+
+    def _get_segment(self, segment_id: Optional[UUID], segment_local_id: Optional[int]) -> "GSFEncoderSegment":
+        if segment_local_id is None:
+            segments = sorted([local_id for local_id in self._segments if segment_id is None or self._segments[local_id].id == segment_id])
+            if len(segments) > 0:
+                segment_local_id = segments[0]
+        if segment_local_id is not None and segment_local_id in self._segments:
+            segment = self._segments[segment_local_id]
+        else:
+            if self._active_dump:
+                raise GSFEncodeError("Cannot add a segment to a progressive dump")
+            segment = self.add_segment(id=segment_id, local_id=segment_local_id)
+
+        return segment
+
+    def _set_segment_offsets(self, segment_offsets: Iterable[Tuple["GSFEncoderSegment", int]], pos: int) -> None:
+        for (seg, offset) in segment_offsets:
+            seg.set_size_position(pos + offset)
+
+    def _encode_file_header(self):
+        return (b"SSBB" +
+                b"grsg" +
+                _encode_uint(self.major, 2) +
+                _encode_uint(self.minor, 2))
+
+    def _encode_head_block(self, all_at_once: bool = False) -> Tuple[bytes, List[Tuple["GSFEncoderSegment", int]]]:
+        size = (31 +
+                sum(seg.segm_block_size for seg in self._segments.values()) +
+                sum(tag.tag_block_size for tag in self._tags))
+
+        data = (
+            b"head" +
+            _encode_uint(size, 4) +
+            _encode_uuid(self.id) +
+            _encode_sint(self.created.year, 2) +
+            _encode_uint(self.created.month, 1) +
+            _encode_uint(self.created.day, 1) +
+            _encode_uint(self.created.hour, 1) +
+            _encode_uint(self.created.minute, 1) +
+            _encode_uint(self.created.second, 1))
+        offsets = []
+
+        for seg in self._segments.values():
+            (seg_data, offset) = seg._encode_header(all_at_once=all_at_once)
+            offsets.append((seg, len(data) + offset))
+            data += seg_data
+
+        for tag in self._tags:
+            data += bytes(tag)
+
+        return (data, offsets)
+
+    def _encode_all_grains(self):
+        data = b''
+        for seg in self._segments.values():
+            data += seg.encode_all_grains()
+        return data
+
+
+class OpenGSFEncoder(OpenGSFEncoderBase):
+    def __init__(self,
+                 file: IO[bytes],
+                 major: int,
+                 minor: int,
+                 id: UUID,
+                 created: datetime,
+                 tags: List["GSFEncoderTag"],
+                 segments: Dict[int, "GSFEncoderSegment"],
+                 streaming: bool,
+                 next_local: int):
+        super().__init__(major, minor, id, created, tags, segments, streaming, next_local)
+        self.file = file
 
     def add_grain(self,
                   grain: GRAIN,
@@ -848,69 +886,49 @@ class OpenGSFEncoder(object):
 
         If no segment matching the criteria exists then one will be created.
         """
-        if segment_local_id is None:
-            segments = sorted([local_id for local_id in self._segments if segment_id is None or self._segments[local_id].id == segment_id])
-            if len(segments) > 0:
-                segment_local_id = segments[0]
-        if segment_local_id is not None and segment_local_id in self._segments:
-            segment = self._segments[segment_local_id]
+        segment = self._get_segment(segment_id, segment_local_id)
+
+        if self._active_dump:
+            for grain in grains:
+                self.file.write(segment.encode_grain(grain))
         else:
-            segment = self.add_segment(id=segment_id, local_id=segment_local_id)
-        segment.add_grains(grains)
+            segment.add_grains(grains)
 
-    def _start_dump(self, all_at_once: bool = False):
-        self._active_dump = True
-
+    def _truncate(self):
         if self.file.seekable():
             self.file.seek(0)
             self.file.truncate()
 
-        self._write_file_header()
-        self._write_head_block(all_at_once=all_at_once)
-        self._write_all_grains()
+    def _start_dump(self, all_at_once: bool = False):
+        self._active_dump = True
+
+        self._truncate()
+
+        file_header = self._encode_file_header()
+
+        (head_block, segment_offsets) = self._encode_head_block(all_at_once=all_at_once)
+        if not all_at_once and self.file.seekable():
+            self._set_segment_offsets(segment_offsets, self.file.tell() + len(file_header))
+
+        self.file.write(file_header +
+                        head_block +
+                        self._encode_all_grains())
 
     def _end_dump(self):
         for seg in self._segments.values():
-            seg.complete_write()
+            if self.file.seekable() and seg._count_pos != -1:
+                curpos = self.file.tell()
+                self.file.seek(seg._count_pos)
+                self.file.write(_encode_sint(seg.get_write_count(), 8))
+                self.file.seek(curpos)
 
         if self._active_dump:
-            self.file.write(b"grai")
-            _write_uint(self.file, 0, 4)
+            self.file.write(b"grai" +
+                            _encode_uint(0, 4))
             self._active_dump = False
 
-    def _write_file_header(self):
-        self.file.write(b"SSBB")  # signature
-        self.file.write(b"grsg")  # file type
-        _write_uint(self.file, self.major, 2)
-        _write_uint(self.file, self.minor, 2)
 
-    def _write_head_block(self, all_at_once: bool = False):
-        size = (31 +
-                sum(seg.segm_block_size for seg in self._segments.values()) +
-                sum(tag.tag_block_size for tag in self._tags))
-
-        self.file.write(b"head")
-        _write_uint(self.file, size, 4)
-        _write_uuid(self.file, self.id)
-        _write_sint(self.file, self.created.year, 2)
-        _write_uint(self.file, self.created.month, 1)
-        _write_uint(self.file, self.created.day, 1)
-        _write_uint(self.file, self.created.hour, 1)
-        _write_uint(self.file, self.created.minute, 1)
-        _write_uint(self.file, self.created.second, 1)
-
-        for seg in self._segments.values():
-            seg.write_to(self.file, all_at_once=all_at_once)
-
-        for tag in self._tags:
-            tag.write_to(self.file)
-
-    def _write_all_grains(self):
-        for seg in self._segments.values():
-            seg.write_all_grains()
-
-
-class OpenAsyncGSFEncoder(object):
+class OpenAsyncGSFEncoder(OpenGSFEncoderBase):
     def __init__(self,
                  file: Union[AsyncBinaryIO, OpenAsyncBinaryIO],
                  major: int,
@@ -921,6 +939,7 @@ class OpenAsyncGSFEncoder(object):
                  segments: Dict[int, "GSFEncoderSegment"],
                  streaming: bool,
                  next_local: int):
+        super().__init__(major, minor, id, created, tags, segments, streaming, next_local)
         self.file: Optional[AsyncBinaryIO]
         self._open_file: Optional[OpenAsyncBinaryIO]
 
@@ -930,53 +949,6 @@ class OpenAsyncGSFEncoder(object):
         else:
             self.file = None
             self._open_file = file
-        self.major = major
-        self.minor = minor
-        self._tags = tags
-        self.streaming = streaming
-        self.id = id
-        self.created = created
-        self._segments = segments
-        self._next_local = next_local
-        self._active_dump = False
-
-    @property
-    def tags(self) -> Tuple["GSFEncoderTag", ...]:
-        return tuple(self._tags)
-
-    @property
-    def segments(self) -> Mapping[int, "GSFEncoderSegment"]:
-        return frozendict(self._segments)
-
-    def add_tag(self, key: str, value: str):
-        """Add a tag to the file"""
-        if self._active_dump:
-            raise GSFEncodeAddToActiveDump("Cannot add a new tag to an encoder that is currently dumping")
-
-        self._tags.append(GSFEncoderTag(key, value))
-
-    def add_segment(self, id: Optional[UUID] = None, local_id: Optional[int] = None, tags: Optional[Iterable[Tuple[str, str]]] = None) -> "GSFEncoderSegment":
-        """Add a segment to the file, if id is specified it should be a uuid,
-        otherwise one will be generated. If local_id is specified it should be an
-        integer, otherwise the next available integer will be used. Returns the newly
-        created segment."""
-
-        if local_id is None:
-            local_id = self._next_local
-        if local_id >= self._next_local:
-            self._next_local = local_id + 1
-        if local_id in self._segments:
-            raise GSFEncodeError("Segment local id {} already in use".format(local_id))
-
-        if id is None:
-            id = uuid1()
-
-        if self._active_dump:
-            raise GSFEncodeAddToActiveDump("Cannot add a new segment {} ({!s}) to an encoder that is currently dumping".format(local_id, id))
-
-        seg = GSFEncoderSegment(id, local_id, tags=tags)
-        self._segments[local_id] = seg
-        return seg
 
     async def add_grain(self,
                         grain: GRAIN,
@@ -1000,79 +972,56 @@ class OpenAsyncGSFEncoder(object):
 
         If no segment matching the criteria exists then one will be created.
         """
-        if segment_local_id is None:
-            segments = sorted([local_id for local_id in self._segments if segment_id is None or self._segments[local_id].id == segment_id])
-            if len(segments) > 0:
-                segment_local_id = segments[0]
-        if segment_local_id is not None and segment_local_id in self._segments:
-            segment = self._segments[segment_local_id]
+        segment = self._get_segment(segment_id, segment_local_id)
+
+        if self._open_file is not None and self._active_dump:
+            for grain in grains:
+                await self._open_file.write(segment.encode_grain(grain))
         else:
-            segment = self.add_segment(id=segment_id, local_id=segment_local_id)
-        await segment.aadd_grains(grains)
+            segment.add_grains(grains)
 
-    async def _start_dump(self, all_at_once: bool = False):
-        self._active_dump = True
-
-        if self._open_file is None and self.file is not None:
-            self._open_file = await self.file.__aenter__()
-
+    async def _truncate(self) -> None:
         if self._open_file is not None and self._open_file.seekable():
             self._open_file.seek(0)
             await self._open_file.truncate()
 
-        await self._write_file_header()
-        await self._write_head_block(all_at_once=all_at_once)
-        await self._write_all_grains()
+    async def _start_dump(self, all_at_once: bool = False):
+        self._active_dump = True
+
+        if self._open_file is None:
+            if self.file is not None:
+                self._open_file = await self.file.__aenter__()
+            else:
+                raise GSFEncodeError("Tried to encode to a file without a file")
+
+        await self._truncate()
+
+        file_header = self._encode_file_header()
+
+        (head_block, segment_offsets) = self._encode_head_block(all_at_once=all_at_once)
+
+        if not all_at_once and self._open_file.seekable():
+            self._set_segment_offsets(segment_offsets, self._open_file.tell() + len(file_header))
+
+        await self._open_file.write(file_header +
+                                    head_block +
+                                    self._encode_all_grains())
 
     async def _end_dump(self):
         for seg in self._segments.values():
-            await seg.complete_awrite()
+            if self._open_file.seekable() and seg._count_pos != -1:
+                curpos = self._open_file.tell()
+                self._open_file.seek(seg._count_pos)
+
+                await self._open_file.write(_encode_sint(seg.get_write_count(), 8))
+
+                self._open_file.seek(curpos)
 
         if self._active_dump:
-            await self._open_file.write(b"grai")
-            await _awrite_uint(self._open_file, 0, 4)
+            await self._open_file.write(b"grai" +
+                                        _encode_uint(0, 4))
 
-            if self.file is not None:
-                await self.file.__aexit__()
-                self._open_file = None
             self._active_dump = False
-
-    async def _write_file_header(self):
-        if self._open_file is None:
-            raise RuntimeError("Somehow we got to _write_file_header without an open file")
-
-        await self._open_file.write(b"SSBB")  # signature
-        await self._open_file.write(b"grsg")  # file type
-        await _awrite_uint(self._open_file, self.major, 2)
-        await _awrite_uint(self._open_file, self.minor, 2)
-
-    async def _write_head_block(self, all_at_once: bool = False):
-        if self._open_file is None:
-            raise RuntimeError("Somehow we got to _write_head_block without an open file")
-
-        size = (31 +
-                sum(seg.segm_block_size for seg in self._segments.values()) +
-                sum(tag.tag_block_size for tag in self._tags))
-
-        await self._open_file.write(b"head")
-        await _awrite_uint(self._open_file, size, 4)
-        await _awrite_uuid(self._open_file, self.id)
-        await _awrite_sint(self._open_file, self.created.year, 2)
-        await _awrite_uint(self._open_file, self.created.month, 1)
-        await _awrite_uint(self._open_file, self.created.day, 1)
-        await _awrite_uint(self._open_file, self.created.hour, 1)
-        await _awrite_uint(self._open_file, self.created.minute, 1)
-        await _awrite_uint(self._open_file, self.created.second, 1)
-
-        for seg in self._segments.values():
-            await seg.awrite_to(self._open_file, all_at_once=all_at_once)
-
-        for tag in self._tags:
-            await tag.awrite_to(self._open_file)
-
-    async def _write_all_grains(self):
-        for seg in self._segments.values():
-            await seg.awrite_all_grains()
 
 
 class SegmentDict(TypedDict, total=False):
@@ -1346,22 +1295,6 @@ class GSFEncoderTag(object):
             _encode_uint(len(self.encoded_value), 2) +
             self.encoded_value)
 
-    def write_to(self, file: IO[bytes]):
-        file.write(b"tag ")
-        _write_uint(file, self.tag_block_size, 4)
-        _write_uint(file, len(self.encoded_key), 2)
-        file.write(self.encoded_key)
-        _write_uint(file, len(self.encoded_value), 2)
-        file.write(self.encoded_value)
-
-    async def awrite_to(self, file: OpenAsyncBinaryIO):
-        await file.write(b"tag ")
-        await _awrite_uint(file, self.tag_block_size, 4)
-        await _awrite_uint(file, len(self.encoded_key), 2)
-        await file.write(self.encoded_key)
-        await _awrite_uint(file, len(self.encoded_value), 2)
-        await file.write(self.encoded_value)
-
     def __eq__(self, other: object) -> bool:
         return other == (self.key, self.value)
 
@@ -1374,8 +1307,7 @@ class GSFEncoderSegment(object):
         self.local_id = local_id
         self._write_count = 0
         self._count_pos = -1
-        self._file: Optional[IO[bytes]] = None
-        self._afile: Optional[OpenAsyncBinaryIO] = None
+        self._active_dump: bool = False
         self._tags: List[GSFEncoderTag] = []
         self._grains: List[GRAIN] = []
 
@@ -1398,7 +1330,11 @@ class GSFEncoderSegment(object):
     def tags(self) -> Tuple[GSFEncoderTag, ...]:
         return tuple(self._tags)
 
+    def get_write_count(self) -> int:
+        return self._write_count
+
     def _encode_header(self, all_at_once: bool = False) -> Tuple[bytes, int]:
+        self._active_dump = True
         data = (
             b"segm" +
             _encode_uint(self.segm_block_size, 4) +
@@ -1416,41 +1352,18 @@ class GSFEncoderSegment(object):
 
         return (data, count_pos)
 
-    def write_to(self, file: IO[bytes], all_at_once: bool = False):
-        self._file = file
-        (data, count_pos) = self._encode_header(all_at_once=all_at_once)
-        if not all_at_once and file.seekable():
-            self._count_pos = file.tell() + count_pos
-        file.write(data)
+    def set_size_position(self, pos: int):
+        self._count_pos = pos
 
-    async def awrite_to(self, file: OpenAsyncBinaryIO, all_at_once: bool = False):
-        self._afile = file
-        (data, count_pos) = self._encode_header(all_at_once=all_at_once)
-        if not all_at_once and file.seekable():
-            self._count_pos = file.tell() + count_pos
-        await file.write(data)
-
-    def write_all_grains(self):
-        if self._file is None:
-            raise RuntimeError("Output file has not been set")
-
+    def encode_all_grains(self) -> bytes:
+        data = b''
         for grain in self._grains:
-            self._file.write(self._encode_grain(grain))
+            data += self.encode_grain(grain)
 
-            self._write_count += 1
         self._grains = []
+        return data
 
-    async def awrite_all_grains(self):
-        if self._afile is None:
-            raise RuntimeError("Output file has not been set")
-
-        for grain in self._grains:
-            await self._afile.write(self._encode_grain(grain))
-
-            self._write_count += 1
-        self._grains = []
-
-    def _encode_grain(self, grain: GRAIN) -> bytes:
+    def encode_grain(self, grain: GRAIN) -> bytes:
         gbhd_size = self._gbhd_size_for_grain(grain)
 
         data = (
@@ -1504,6 +1417,8 @@ class GSFEncoderSegment(object):
 
         if grain.data is not None:
             data += bytes(grain.data)
+
+        self._write_count += 1
 
         return data
 
@@ -1564,12 +1479,6 @@ class GSFEncoderSegment(object):
 
         return data
 
-    def _write_vghd_for_grain(self, grain: VIDEOGRAIN):
-        if self._file is None:
-            raise RuntimeError("Output file has not been set")
-
-        self._file.write(self._encode_vghd_for_grain(grain))
-
     def _eghd_size_for_grain(self, grain: EVENTGRAIN) -> int:
         return 9
 
@@ -1577,12 +1486,6 @@ class GSFEncoderSegment(object):
         return (b"eghd" +
                 _encode_uint(self._eghd_size_for_grain(grain), 4) +
                 _encode_uint(0x00, 1))
-
-    def _write_eghd_for_grain(self, grain: EVENTGRAIN):
-        if self._file is None:
-            raise RuntimeError("Output file has not been set")
-
-        self._file.write(self._encode_eghd_for_grain(grain))
 
     def _aghd_size_for_grain(self, grain: AUDIOGRAIN) -> int:
         return 22
@@ -1595,12 +1498,6 @@ class GSFEncoderSegment(object):
                 _encode_uint(int(grain.channels), 2) +
                 _encode_uint(int(grain.samples), 4) +
                 _encode_uint(int(grain.sample_rate), 4))
-
-    def _write_aghd_for_grain(self, grain: AUDIOGRAIN):
-        if self._file is None:
-            raise RuntimeError("Output file has not been set")
-
-        self._file.write(self._encode_aghd_for_grain(grain))
 
     def _cghd_size_for_grain(self, grain: CODEDVIDEOGRAIN) -> int:
         size = 37
@@ -1631,12 +1528,6 @@ class GSFEncoderSegment(object):
 
         return data
 
-    def _write_cghd_for_grain(self, grain: CODEDVIDEOGRAIN):
-        if self._file is None:
-            raise RuntimeError("Output file has not been set")
-
-        self._file.write(self._encode_cghd_for_grain(grain))
-
     def _cahd_size_for_grain(self, grain: CODEDAUDIOGRAIN) -> int:
         return 30
 
@@ -1651,68 +1542,18 @@ class GSFEncoderSegment(object):
                 _encode_uint(int(grain.remainder), 4) +
                 _encode_uint(int(grain.sample_rate), 4))
 
-    def _write_cahd_for_grain(self, grain: CODEDAUDIOGRAIN):
-        if self._file is None:
-            raise RuntimeError("Output file has not been set")
-
-        self._file.write(self._encode_cahd_for_grain(grain))
-
-    def complete_write(self):
-        if self._file is None:
-            return
-
-        if self._file.seekable() and self._count_pos != -1:
-            curpos = self._file.tell()
-            self._file.seek(self._count_pos)
-            _write_sint(self._file, self._write_count, 8)
-            self._file.seek(curpos)
-
-        self._file = None
-        self._count_pos = -1
-
-    async def complete_awrite(self):
-        if self._afile is None:
-            return
-
-        if self._afile.seekable() and self._count_pos != -1:
-            curpos = self._afile.tell()
-            self._afile.seek(self._count_pos)
-            await self._afile.write(_encode_sint(self._write_count, 8))
-            self._afile.seek(curpos)
-
-        self._afile = None
-        self._count_pos = -1
-
     def add_tag(self, key: str, value: str):
         """Add a tag to the segment"""
-        if self._file is not None:
+        if self._active_dump:
             raise GSFEncodeAddToActiveDump("Cannot add a tag to a segment which is part of an active export")
         self._tags.append(GSFEncoderTag(key, value))
 
     def add_grain(self, grain: GRAIN):
         """Add a grain to the segment, which should be a Grain object"""
-        if self._file is not None:
-            self._file.write(self._encode_grain(grain))
-            self._write_count += 1
-        else:
-            self._grains.append(grain)
-
-    async def aadd_grain(self, grain: GRAIN):
-        """Add a grain to the segment, which should be a Grain object"""
-        if self._afile is not None:
-            await self._afile.write(self._encode_grain(grain))
-            self._write_count += 1
-        else:
-            self._grains.append(grain)
+        self._grains.append(grain)
 
     def add_grains(self, grains: Iterable[GRAIN]):
         """Add several grains to the segment, the parameter should be an
         iterable of grain objects"""
         for grain in grains:
             self.add_grain(grain)
-
-    async def aadd_grains(self, grains: Iterable[GRAIN]):
-        """Add several grains to the segment, the parameter should be an
-        iterable of grain objects"""
-        for grain in grains:
-            await self.aadd_grain(grain)
