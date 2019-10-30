@@ -31,10 +31,11 @@ from mediatimestamp.immutable import Timestamp, TimeOffset
 from datetime import datetime
 from fractions import Fraction
 from io import BytesIO
+from mediagrains.utils.asyncbinaryio import AsyncBytesIO
 from frozendict import frozendict
 from os import SEEK_SET
 
-from fixtures import suppress_deprecation_warnings
+from fixtures import suppress_deprecation_warnings, async_test
 
 from unittest import mock
 
@@ -64,6 +65,42 @@ class TestGSFDumps(TestCase):
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 (head, segments) = loads(dumps([], tags=[('potato', 'harvest')], segment_tags=[('upside', 'down')]))
+
+        self.assertIn('id', head)
+        self.assertIn(head['id'], uuids)
+        self.assertIn('tags', head)
+        self.assertEqual(head['tags'], [('potato', 'harvest')])
+        self.assertIn('created', head)
+        self.assertEqual(head['created'], created)
+        self.assertIn('segments', head)
+        self.assertEqual(len(head['segments']), 1)
+        self.assertIn('count', head['segments'][0])
+        self.assertEqual(head['segments'][0]['count'], 0)
+        self.assertIn('local_id', head['segments'][0])
+        self.assertEqual(head['segments'][0]['local_id'], 1)
+        self.assertIn('id', head['segments'][0])
+        self.assertIn(head['segments'][0]['id'], uuids)
+        self.assertNotIn(head['segments'][0]['id'], [head['id']])
+        self.assertIn('tags', head['segments'][0])
+        self.assertEqual(head['segments'][0]['tags'], [('upside', 'down')])
+
+        if len(segments) > 0:
+            self.assertEqual(len(segments), 1)
+            self.assertIn(1, segments)
+            self.assertEqual(len(segments[1]), 0)
+
+    @async_test
+    async def test_async_encode_no_grains(self):
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'), UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                f = AsyncBytesIO()
+                async with GSFEncoder(f,
+                                      tags=[('potato', 'harvest')],
+                                      segments=[{'tags': [('upside', 'down')]}]):
+                    pass
+                (head, segments) = loads(f.value())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)

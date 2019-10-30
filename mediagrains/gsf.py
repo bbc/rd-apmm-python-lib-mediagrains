@@ -22,7 +22,7 @@ objects.
 from . import Grain
 from uuid import UUID, uuid1
 from datetime import datetime
-from io import BytesIO
+from io import BytesIO, BufferedIOBase
 from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
 from frozendict import frozendict
@@ -30,10 +30,13 @@ from .utils import IOBytes
 from os import SEEK_SET
 import warnings
 
-from typing import Callable, Optional, BinaryIO, Iterable, Tuple, List, Dict, Mapping, cast
+from typing import Callable, Optional, Iterable, Tuple, List, Dict, Mapping, cast, Union
+from typing_extensions import TypedDict
 from .typing import GrainMetadataDict, GrainDataParameterType
 
 from .grain import GRAIN, VIDEOGRAIN, EVENTGRAIN, AUDIOGRAIN, CODEDAUDIOGRAIN, CODEDVIDEOGRAIN
+
+from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO
 
 from contextlib import contextmanager
 
@@ -399,7 +402,7 @@ class GSFDecoder(object):
     """
     def __init__(self,
                  parse_grain: Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN] = Grain,
-                 file_data: Optional[BinaryIO] = None,
+                 file_data: Optional[BufferedIOBase] = None,
                  **kwargs):
         """Constructor
 
@@ -703,14 +706,32 @@ def _write_uint(file, val, size):
     file.write(d)
 
 
+async def _awrite_uint(file: OpenAsyncBinaryIO, val: int, size: int):
+    d = bytearray(size)
+    for i in range(0, size):
+        d[i] = (val & 0xFF)
+        val >>= 8
+    await file.write(d)
+
+
 def _write_sint(file, val, size):
     if val < 0:
         val = val + (1 << (8*size))
     _write_uint(file, val, size)
 
 
+async def _awrite_sint(file: OpenAsyncBinaryIO, val: int, size: int):
+    if val < 0:
+        val = val + (1 << (8*size))
+    await _awrite_uint(file, val, size)
+
+
 def _write_uuid(file, val):
     file.write(val.bytes)
+
+
+async def _awrite_uuid(file: OpenAsyncBinaryIO, val: UUID):
+    await file.write(val.bytes)
 
 
 def _write_ts(file, ts):
@@ -724,82 +745,27 @@ def _write_rational(file, value):
     _write_uint(file, value.denominator, 4)
 
 
-class GSFEncoder(object):
-    """An encoder for GSF format.
-
-    Constructor takes a single mandatory argument, an io.BytesIO-like object to which the result will be written,
-    optional arguments exist for specifying file-level metadata, if no created time is specified the current time
-    will be used, if no id is specified one will be generated randomly.
-
-
-    The next recommended interface is to use the encoder as either a context manager or an asynchronous context
-    manager. Whilst in the context manager new grains can be added with add_grain, and upon leaving the context
-    manager the grains will be written to the file. If the `streaming=True` parameter is passed to the constructor
-    then calls to add_grain within the context manager will instead cause the grain to be written immediately.
-
-    And older deprecated interface exists for synchronous work: the method add_grain and dump which add a grain to
-    the file and dump the file the the buffer respectively.
-
-    If a streaming format is required then you can instead use the "start_dump" method, followed by adding
-    grains as needed, and then the "end_dump" method. Each new grain will be written as it is added. In this mode
-    any segments in use MUST be added first before start_dump is called.
-
-    In addition the following properties provide access to file-level metadata:
-
-    major    -- an integer (default 7)
-    minor    -- an integer (default 0)
-    id       -- a uuid.UUID
-    created  -- a datetime.datetime
-    tags     -- a tuple of tags
-    segments -- a frozendict of GSFEncoderSegments
-
-    The current version of the library is designed for compatibility with v.7.0 of the GSF format. Setting a
-    different version number will simply change the reported version number in the file, but will not alter the
-    syntax at all. If future versions of this code add support for other versions of GSF then this will change."""
+class OpenGSFEncoder(object):
     def __init__(self,
-                 file: BinaryIO,
-                 major: int = 7,
-                 minor: int = 0,
-                 id: Optional[UUID] = None,
-                 created: Optional[datetime] = None,
-                 tags: Iterable[Tuple[str, str]] = None,
-                 streaming: bool = False):
+                 file: BufferedIOBase,
+                 major: int,
+                 minor: int,
+                 id: UUID,
+                 created: datetime,
+                 tags: List["GSFEncoderTag"],
+                 segments: Dict[int, "GSFEncoderSegment"],
+                 streaming: bool,
+                 next_local: int):
         self.file = file
         self.major = major
         self.minor = minor
-        self._tags: List["GSFEncoderTag"] = []
+        self._tags = tags
         self.streaming = streaming
-
-        if id is None:
-            self.id = uuid1()
-        else:
-            self.id = id
-
-        if created is None:
-            self.created = datetime.now()
-        else:
-            self.created = created
-
-        self._segments: Dict[int, "GSFEncoderSegment"] = {}
-        self._next_local = 1
+        self.id = id
+        self.created = created
+        self._segments = segments
+        self._next_local = next_local
         self._active_dump = False
-
-        if tags is not None:
-            for tag in tags:
-                try:
-                    self.add_tag(tag[0], tag[1])
-                except (TypeError, IndexError):
-                    raise GSFEncodeError("No idea how to turn {!r} into a tag".format(tag))
-
-    def __enter__(self):
-        if self.streaming:
-            self._start_dump(all_at_once=False)
-        return self
-
-    def __exit__(self, *args, **kwargs):
-        if not self.streaming:
-            self._start_dump(all_at_once=True)
-        self._end_dump()
 
     @property
     def tags(self) -> Tuple["GSFEncoderTag", ...]:
@@ -871,21 +837,6 @@ class GSFEncoder(object):
             segment = self.add_segment(id=segment_id, local_id=segment_local_id)
         segment.add_grains(grains)
 
-    @deprecated(version="2.7.0", reason="This mechanism is deprecated, use a context manager instead")
-    def dump(self):
-        """Dump the whole contents of this encoder to the file in one go,
-        replacing anything that's already there."""
-
-        self._start_dump(all_at_once=True)
-        self._end_dump()
-
-    @deprecated(version="2.7.0", reason="This mechanism is deprecated, use a context manager instead")
-    def start_dump(self, all_at_once=False):
-        """Start dumping the contents of this encoder to the specified file, if
-        the file is seakable then it will replace the current content, otherwise
-        it will append."""
-        self._start_dump(all_at_once=all_at_once)
-
     def _start_dump(self, all_at_once: bool = False):
         self._active_dump = True
 
@@ -896,12 +847,6 @@ class GSFEncoder(object):
         self._write_file_header()
         self._write_head_block(all_at_once=all_at_once)
         self._write_all_grains()
-
-    @deprecated(version="2.7.0", reason="This mechanism is deprecated, use a context manager instead")
-    def end_dump(self, all_at_once=False):
-        """End the current dump to the file. In a seakable stream this will write
-        all segment counts, in a non-seakable stream it will not."""
-        self._end_dump()
 
     def _end_dump(self):
         for seg in self._segments.values():
@@ -944,6 +889,398 @@ class GSFEncoder(object):
             seg.write_all_grains()
 
 
+class OpenAsyncGSFEncoder(object):
+    def __init__(self,
+                 file: Union[AsyncBinaryIO, OpenAsyncBinaryIO],
+                 major: int,
+                 minor: int,
+                 id: UUID,
+                 created: datetime,
+                 tags: List["GSFEncoderTag"],
+                 segments: Dict[int, "GSFEncoderSegment"],
+                 streaming: bool,
+                 next_local: int):
+        if isinstance(file, AsyncBinaryIO):
+            self.file = file
+            self._open_file = None
+        else:
+            self.file = None
+            self._open_file = file
+        self.major = major
+        self.minor = minor
+        self._tags = tags
+        self.streaming = streaming
+        self.id = id
+        self.created = created
+        self._segments = segments
+        self._next_local = next_local
+        self._active_dump = False
+
+    @property
+    def tags(self) -> Tuple["GSFEncoderTag", ...]:
+        return tuple(self._tags)
+
+    @property
+    def segments(self) -> Mapping[int, "GSFEncoderSegment"]:
+        return frozendict(self._segments)
+
+    def add_tag(self, key: str, value: str):
+        """Add a tag to the file"""
+        if self._active_dump:
+            raise GSFEncodeAddToActiveDump("Cannot add a new tag to an encoder that is currently dumping")
+
+        self._tags.append(GSFEncoderTag(key, value))
+
+    def add_segment(self, id: Optional[UUID] = None, local_id: Optional[int] = None, tags: Optional[Iterable[Tuple[str, str]]] = None) -> "GSFEncoderSegment":
+        """Add a segment to the file, if id is specified it should be a uuid,
+        otherwise one will be generated. If local_id is specified it should be an
+        integer, otherwise the next available integer will be used. Returns the newly
+        created segment."""
+
+        if local_id is None:
+            local_id = self._next_local
+        if local_id >= self._next_local:
+            self._next_local = local_id + 1
+        if local_id in self._segments:
+            raise GSFEncodeError("Segment local id {} already in use".format(local_id))
+
+        if id is None:
+            id = uuid1()
+
+        if self._active_dump:
+            raise GSFEncodeAddToActiveDump("Cannot add a new segment {} ({!s}) to an encoder that is currently dumping".format(local_id, id))
+
+        seg = GSFEncoderSegment(id, local_id, tags=tags)
+        self._segments[local_id] = seg
+        return seg
+
+    async def add_grain(self,
+                        grain: GRAIN,
+                        segment_id: Optional[UUID] = None,
+                        segment_local_id: Optional[int] = None):
+        """Add a grain to one of the segments of the file. If no local_segment_id
+        is provided then a segment with id equal to segment_id will be used if one
+        exists, or the lowest numeric segmemnt if segment_id was not provided.
+
+        If no segment matching the criteria exists then one will be created.
+        """
+        await self.add_grains((grain,), segment_id=segment_id, segment_local_id=segment_local_id)
+
+    async def add_grains(self,
+                         grains: Iterable[GRAIN],
+                         segment_id: Optional[UUID] = None,
+                         segment_local_id: Optional[int] = None):
+        """Add several grains to one of the segments of the file. If no local_segment_id
+        is provided then a segment with id equal to segment_id will be used if one
+        exists, or the lowest numeric segmemnt if segment_id was not provided.
+
+        If no segment matching the criteria exists then one will be created.
+        """
+        if segment_local_id is None:
+            segments = sorted([local_id for local_id in self._segments if segment_id is None or self._segments[local_id].id == segment_id])
+            if len(segments) > 0:
+                segment_local_id = segments[0]
+        if segment_local_id is not None and segment_local_id in self._segments:
+            segment = self._segments[segment_local_id]
+        else:
+            segment = self.add_segment(id=segment_id, local_id=segment_local_id)
+        segment.add_grains(grains)
+
+    async def _start_dump(self, all_at_once: bool = False):
+        self._active_dump = True
+
+        if self._open_file is None and self.file is not None:
+            self._open_file = await self.file.__aenter__()
+
+        if self._open_file.seekable():
+            self._open_file.seek(0)
+            await self._open_file.truncate()
+
+        await self._write_file_header()
+        await self._write_head_block(all_at_once=all_at_once)
+        await self._write_all_grains()
+
+    async def _end_dump(self):
+        for seg in self._segments.values():
+            seg.complete_write()
+
+        if self._active_dump:
+            await self._open_file.write(b"grai")
+            await _awrite_uint(self._open_file, 0, 4)
+
+            if self.file is not None:
+                await self.file.__aexit__()
+                self._open_file = None
+            self._active_dump = False
+
+    async def _write_file_header(self):
+        await self._open_file.write(b"SSBB")  # signature
+        await self._open_file.write(b"grsg")  # file type
+        await _awrite_uint(self._open_file, self.major, 2)
+        await _awrite_uint(self._open_file, self.minor, 2)
+
+    async def _write_head_block(self, all_at_once: bool = False):
+        size = (31 +
+                sum(seg.segm_block_size for seg in self._segments.values()) +
+                sum(tag.tag_block_size for tag in self._tags))
+
+        await self._open_file.write(b"head")
+        await _awrite_uint(self._open_file, size, 4)
+        await _awrite_uuid(self._open_file, self.id)
+        await _awrite_sint(self._open_file, self.created.year, 2)
+        await _awrite_uint(self._open_file, self.created.month, 1)
+        await _awrite_uint(self._open_file, self.created.day, 1)
+        await _awrite_uint(self._open_file, self.created.hour, 1)
+        await _awrite_uint(self._open_file, self.created.minute, 1)
+        await _awrite_uint(self._open_file, self.created.second, 1)
+
+        for seg in self._segments.values():
+            await seg.awrite_to(self._open_file, all_at_once=all_at_once)
+
+        for tag in self._tags:
+            await tag.awrite_to(self._open_file)
+
+    async def _write_all_grains(self):
+        for seg in self._segments.values():
+            await seg.awrite_all_grains()
+
+
+class SegmentDict(TypedDict, total=False):
+    id: UUID
+    local_id: int
+    tags: Iterable[Tuple[str, str]]
+
+
+class GSFEncoder(object):
+    """An encoder for GSF format.
+
+    Constructor takes a single mandatory argument, an io.BytesIO-like object to which the result will be written,
+    optional arguments exist for specifying file-level metadata, if no created time is specified the current time
+    will be used, if no id is specified one will be generated randomly.
+
+
+    The recommended interface is to use the encoder as either a context manager or an asynchronous context
+    manager. Whilst in the context manager new grains can be added with add_grain, and upon leaving the context
+    manager the grains will be written to the file. If the `streaming=True` parameter is passed to the constructor
+    then calls to add_grain within the context manager will instead cause the grain to be written immediately.
+
+    And older deprecated interface exists for synchronous work: the method add_grain and dump which add a grain to
+    the file and dump the file the the buffer respectively.
+
+    If a streaming format is required then you can instead use the "start_dump" method, followed by adding
+    grains as needed, and then the "end_dump" method. Each new grain will be written as it is added. In this mode
+    any segments in use MUST be added first before start_dump is called.
+
+    In addition the following properties provide access to file-level metadata:
+
+    major    -- an integer (default 7)
+    minor    -- an integer (default 0)
+    id       -- a uuid.UUID
+    created  -- a datetime.datetime
+    tags     -- a tuple of tags
+    segments -- a frozendict of GSFEncoderSegments
+
+    The current version of the library is designed for compatibility with v.7.0 of the GSF format. Setting a
+    different version number will simply change the reported version number in the file, but will not alter the
+    syntax at all. If future versions of this code add support for other versions of GSF then this will change."""
+    def __init__(self,
+                 file: Union[BufferedIOBase, AsyncBinaryIO, OpenAsyncBinaryIO],
+                 major: int = 7,
+                 minor: int = 0,
+                 id: Optional[UUID] = None,
+                 created: Optional[datetime] = None,
+                 tags: Iterable[Tuple[str, str]] = None,
+                 segments: Iterable[SegmentDict] = [],
+                 streaming: bool = False):
+        self.file = file
+        self.major = major
+        self.minor = minor
+        self._tags: List["GSFEncoderTag"] = []
+        self.streaming = streaming
+        self._open_encoder: Optional[OpenGSFEncoder] = None
+        self._open_async_encoder: Optional[OpenAsyncGSFEncoder] = None
+        self._next_local = 1
+
+        if id is None:
+            self.id = uuid1()
+        else:
+            self.id = id
+
+        if created is None:
+            self.created = datetime.now()
+        else:
+            self.created = created
+
+        self._segments: Dict[int, "GSFEncoderSegment"] = {}
+
+        if segments is not None:
+            for seg in segments:
+                try:
+                    self.add_segment(**seg)
+                except (TypeError, IndexError):
+                    raise GSFEncodeError("No idea how to turn {!r} into a segment".format(seg))
+
+        if tags is not None:
+            for tag in tags:
+                try:
+                    self.add_tag(tag[0], tag[1])
+                except (TypeError, IndexError):
+                    raise GSFEncodeError("No idea how to turn {!r} into a tag".format(tag))
+
+    def __enter__(self) -> OpenGSFEncoder:
+        if not isinstance(self.file, BufferedIOBase):
+            raise ValueError("To use in synchronous mode the file must be a synchronously writeable file")
+        self._open_encoder = OpenGSFEncoder(self.file,
+                                            self.major,
+                                            self.minor,
+                                            self.id,
+                                            self.created,
+                                            self._tags,
+                                            self._segments,
+                                            self.streaming,
+                                            self._next_local)
+        if self.streaming:
+            self._open_encoder._start_dump(all_at_once=False)
+        return self._open_encoder
+
+    def __exit__(self, *args, **kwargs):
+        if self._open_encoder is not None:
+            if not self.streaming:
+                self._open_encoder._start_dump(all_at_once=True)
+            self._open_encoder._end_dump()
+            self._next_local = self._open_encoder._next_local
+            self._open_encoder = None
+
+    async def __aenter__(self):
+        if not isinstance(self.file, AsyncBinaryIO) and not isinstance(self.file, OpenAsyncBinaryIO):
+            raise ValueError("To use in asynchronous mode the file must be an asynchronously writeable file-like object")
+        self._open_async_encoder = OpenAsyncGSFEncoder(self.file,
+                                                       self.major,
+                                                       self.minor,
+                                                       self.id,
+                                                       self.created,
+                                                       self._tags,
+                                                       self._segments,
+                                                       self.streaming,
+                                                       self._next_local)
+        if self.streaming:
+            await self._open_async_encoder._start_dump(all_at_once=False)
+        return self._open_async_encoder
+
+    async def __aexit__(self, *args, **kwargs):
+        if self._open_async_encoder is not None:
+            if not self.streaming:
+                await self._open_async_encoder._start_dump(all_at_once=True)
+            await self._open_async_encoder._end_dump()
+            self._next_local = self._open_async_encoder._next_local
+            self._open_async_encoder = None
+
+    @property
+    def tags(self) -> Tuple["GSFEncoderTag", ...]:
+        return tuple(self._tags)
+
+    @property
+    def segments(self) -> Mapping[int, "GSFEncoderSegment"]:
+        return frozendict(self._segments)
+
+    def add_tag(self, key: str, value: str):
+        """Add a tag to the file"""
+        if self._open_encoder is not None:
+            raise GSFEncodeAddToActiveDump("Cannot add a new tag to an encoder that is currently dumping")
+
+        self._tags.append(GSFEncoderTag(key, value))
+
+    def add_segment(self, id: Optional[UUID] = None, local_id: Optional[int] = None, tags: Optional[Iterable[Tuple[str, str]]] = None) -> "GSFEncoderSegment":
+        """Add a segment to the file, if id is specified it should be a uuid,
+        otherwise one will be generated. If local_id is specified it should be an
+        integer, otherwise the next available integer will be used. Returns the newly
+        created segment."""
+
+        if self._open_encoder is not None:
+            raise GSFEncodeAddToActiveDump("Cannot add a new segment {} ({!s}) to an encoder that is currently dumping".format(local_id, id))
+
+        if local_id is None:
+            local_id = self._next_local
+        if local_id >= self._next_local:
+            self._next_local = local_id + 1
+        if local_id in self._segments:
+            raise GSFEncodeError("Segment local id {} already in use".format(local_id))
+
+        if id is None:
+            id = uuid1()
+
+        seg = GSFEncoderSegment(id, local_id, tags=tags)
+        self._segments[local_id] = seg
+        return seg
+
+    def add_grain(self,
+                  grain: GRAIN,
+                  segment_id: Optional[UUID] = None,
+                  segment_local_id: Optional[int] = None):
+        """Add a grain to one of the segments of the file. If no local_segment_id
+        is provided then a segment with id equal to segment_id will be used if one
+        exists, or the lowest numeric segmemnt if segment_id was not provided.
+
+        If no segment matching the criteria exists then one will be created.
+        """
+        self.add_grains((grain,), segment_id=segment_id, segment_local_id=segment_local_id)
+
+    def add_grains(self,
+                   grains: Iterable[GRAIN],
+                   segment_id: Optional[UUID] = None,
+                   segment_local_id: Optional[int] = None):
+        """Add several grains to one of the segments of the file. If no local_segment_id
+        is provided then a segment with id equal to segment_id will be used if one
+        exists, or the lowest numeric segmemnt if segment_id was not provided.
+
+        If no segment matching the criteria exists then one will be created.
+        """
+        if self._open_encoder is not None:
+            self._open_encoder.add_grains(grains, segment_id, segment_local_id)
+        else:
+            if segment_local_id is None:
+                segments = sorted([local_id for local_id in self._segments if segment_id is None or self._segments[local_id].id == segment_id])
+                if len(segments) > 0:
+                    segment_local_id = segments[0]
+            if segment_local_id is not None and segment_local_id in self._segments:
+                segment = self._segments[segment_local_id]
+            else:
+                segment = self.add_segment(id=segment_id, local_id=segment_local_id)
+            segment.add_grains(grains)
+
+    @deprecated(version="2.7.0", reason="This mechanism is deprecated, use a context manager instead")
+    def dump(self):
+        """Dump the whole contents of this encoder to the file in one go,
+        replacing anything that's already there."""
+        with self:
+            pass
+
+    @deprecated(version="2.7.0", reason="This mechanism is deprecated, use a context manager instead")
+    def start_dump(self, all_at_once=False):
+        """Start dumping the contents of this encoder to the specified file, if
+        the file is seakable then it will replace the current content, otherwise
+        it will append."""
+        self._open_encoder = OpenGSFEncoder(self.file,
+                                            self.major,
+                                            self.minor,
+                                            self.id,
+                                            self.created,
+                                            self._tags,
+                                            self._segments,
+                                            self.streaming,
+                                            self._next_local)
+        self._open_encoder._start_dump(all_at_once=all_at_once)
+
+    @deprecated(version="2.7.0", reason="This mechanism is deprecated, use a context manager instead")
+    def end_dump(self, all_at_once=False):
+        """End the current dump to the file. In a seakable stream this will write
+        all segment counts, in a non-seakable stream it will not."""
+        if self._open_encoder is not None:
+            self._open_encoder._end_dump()
+            self._next_local = self._open_encoder._next_local
+            self._open_encoder = None
+
+
 class GSFEncoderTag(object):
     """A class to represent a tag,
 
@@ -970,13 +1307,21 @@ class GSFEncoderTag(object):
     def tag_block_size(self) -> int:
         return 12 + len(self.encoded_key) + len(self.encoded_value)
 
-    def write_to(self, file: BinaryIO):
+    def write_to(self, file: BufferedIOBase):
         file.write(b"tag ")
         _write_uint(file, self.tag_block_size, 4)
         _write_uint(file, len(self.encoded_key), 2)
         file.write(self.encoded_key)
         _write_uint(file, len(self.encoded_value), 2)
         file.write(self.encoded_value)
+
+    async def awrite_to(self, file: OpenAsyncBinaryIO):
+        await file.write(b"tag ")
+        await _awrite_uint(file, self.tag_block_size, 4)
+        await _awrite_uint(file, len(self.encoded_key), 2)
+        await file.write(self.encoded_key)
+        await _awrite_uint(file, len(self.encoded_value), 2)
+        await file.write(self.encoded_value)
 
     def __eq__(self, other: object) -> bool:
         return other == (self.key, self.value)
@@ -990,7 +1335,8 @@ class GSFEncoderSegment(object):
         self.local_id = local_id
         self._write_count = 0
         self._count_pos = -1
-        self._file: Optional[BinaryIO] = None
+        self._file: Optional[BufferedIOBase] = None
+        self._afile: Optional[OpenAsyncBinaryIO] = None
         self._tags: List[GSFEncoderTag] = []
         self._grains: List[GRAIN] = []
 
@@ -1013,7 +1359,7 @@ class GSFEncoderSegment(object):
     def tags(self) -> Tuple[GSFEncoderTag, ...]:
         return tuple(self._tags)
 
-    def write_to(self, file: BinaryIO, all_at_once: bool = False):
+    def write_to(self, file: BufferedIOBase, all_at_once: bool = False):
         self._file = file
         file.write(b"segm")
         _write_uint(file, self.segm_block_size, 4)
@@ -1030,9 +1376,31 @@ class GSFEncoderSegment(object):
         for tag in self._tags:
             tag.write_to(file)
 
+    async def awrite_to(self, file: OpenAsyncBinaryIO, all_at_once: bool = False):
+        self._afile = file
+        await file.write(b"segm")
+        await _awrite_uint(file, self.segm_block_size, 4)
+
+        await _awrite_uint(file, self.local_id, 2)
+        await _awrite_uuid(file, self.id)
+        if all_at_once:
+            await _awrite_sint(file, self.count, 8)
+        else:
+            if file.seekable():
+                self._count_pos = file.tell()
+            await _awrite_sint(file, -1, 8)
+
+        for tag in self._tags:
+            await tag.awrite_to(file)
+
     def write_all_grains(self):
         for grain in self._grains:
             self._write_grain(grain)
+        self._grains = []
+
+    async def awrite_all_grains(self):
+        for grain in self._grains:
+            await self._awrite_grain(grain)
         self._grains = []
 
     def _write_grain(self, grain: GRAIN):
