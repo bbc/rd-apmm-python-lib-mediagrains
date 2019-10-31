@@ -53,7 +53,7 @@ from .typing import GrainMetadataDict, GrainDataParameterType, RationalTypes
 
 from .grain import GRAIN, VIDEOGRAIN, EVENTGRAIN, AUDIOGRAIN, CODEDAUDIOGRAIN, CODEDVIDEOGRAIN
 
-from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper, AsyncBytesIO
+from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper
 
 from contextlib import contextmanager
 
@@ -141,7 +141,7 @@ def load(fp,
 
     results = [None, None]
 
-    async def __ainner(fp: AsyncBinaryIO):
+    async def _asynchronously_decode(fp: AsyncBinaryIO):
         try:
             async with cls(file_data=fp, **kwargs) as dec:
                 grains = {}
@@ -153,41 +153,36 @@ def load(fp,
         except Exception as e:
             results[1] = e
 
+    def _run_async_decode_inside_new_runloop(results):
+        def _inner():
+            loop = asyncio.new_event_loop()
+            try:
+                rval = loop.run_until_complete(_asynchronously_decode(AsyncFileWrapper(fp)))
+            except Exception as e:
+                results[1] = e
+            else:
+                results[0] = rval
+            loop.close()
+        return _inner
+
     if isinstance(fp, AsyncBinaryIO):
-        return __ainner(fp)
+        return _asynchronously_decode(fp)
     else:
         try:
-            loop = asyncio.get_event_loop()
+            asyncio.get_event_loop()
         except RuntimeError:
-            # There's no existing loop, so we can run one:
-            loop = asyncio.new_event_loop()
-            rval = loop.run_until_complete(__ainner(AsyncFileWrapper(fp)))
-            if results[1] is not None:
-                raise results[1]
-            return rval
+            _run_async_decode_inside_new_runloop(results)
         else:
             # Right, sadly to avoid clashing with another global event loop we need to thread this:
             # This is ugly, but honestly you shouldn't be doing synchronous IO in an AIO environment
-            def __inner(results):
-                def _____inner():
-                    loop = asyncio.new_event_loop()
-                    try:
-                        rval = loop.run_until_complete(__ainner(AsyncFileWrapper(fp)))
-                    except Exception as e:
-                        results[1] = e
-                    else:
-                        results[0] = rval
-                    loop.close()
-                return _____inner
-
-            t = threading.Thread(target=__inner(results))
+            t = threading.Thread(target=_run_async_decode_inside_new_runloop(results))
             t.start()
             t.join()
 
-            if results[1] is not None:
-                raise results[1]
-            else:
-                return results[0]
+        if results[1] is not None:
+            raise results[1]
+        else:
+            return results[0]
 
 
 def dump(grains: Iterable[GRAIN],
