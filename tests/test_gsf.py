@@ -1512,6 +1512,56 @@ class TestGSFDecoder(TestCase):
 
         self.assertEqual(10, grain_count)  # There are 10 grains in the file
 
+    @async_test
+    async def test_async_decode_headers(self):
+        video_data_stream = AsyncBytesIO(VIDEO_DATA)
+
+        async with GSFDecoder(file_data=video_data_stream) as dec:
+            head = dec.file_headers
+
+        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 22))
+        self.assertEqual(head['id'], UUID('163fd9b7-bef4-4d92-8488-31f3819be008'))
+        self.assertEqual(len(head['segments']), 1)
+        self.assertEqual(head['segments'][0]['id'], UUID('c6a3d3ff-74c0-446d-b59e-de1041f27e8a'))
+
+    @async_test
+    async def test_async_generate_grains(self):
+        """Test that the generator yields each grain"""
+        video_data_stream = AsyncBytesIO(VIDEO_DATA)
+
+        async with GSFDecoder(file_data=video_data_stream) as dec:
+            grain_count = 0
+            async for (grain, local_id) in dec.grains(load_lazily=False):
+                self.assertIsInstance(grain, VIDEOGRAIN)
+                self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
+                self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
+
+                grain_count += 1
+
+        self.assertEqual(10, grain_count)  # There are 10 grains in the file
+
+    @async_test
+    async def test_async_generate_grains_load_lazily(self):
+        """Test that the generator yields each grain"""
+        video_data_stream = AsyncBytesIO(VIDEO_DATA)
+
+        async with GSFDecoder(file_data=video_data_stream) as dec:
+            grain_count = 0
+            async for (grain, local_id) in dec.grains(load_lazily=True):
+                self.assertIsInstance(grain, VIDEOGRAIN)
+                self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
+                self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
+
+                self.assertIsNone(grain.data)
+
+                await grain
+
+                self.assertIsNotNone(grain.data)
+
+                grain_count += 1
+
+        self.assertEqual(10, grain_count)  # There are 10 grains in the file
+
     @suppress_deprecation_warnings
     def test_decode_headers__deprecated(self):
         video_data_stream = BytesIO(VIDEO_DATA)
@@ -1542,6 +1592,18 @@ class TestGSFDecoder(TestCase):
 
         self.assertEqual(10, grain_count)  # There are 10 grains in the file
 
+    @async_test
+    async def test_async_comparison_of_lazy_loaded_grains(self):
+        async with GSFDecoder(file_data=AsyncBytesIO(VIDEO_DATA)) as dec:
+            grains = [grain async for (grain, local_id) in dec.grains(load_lazily=False)]
+
+        # Restart the decoder
+        async with GSFDecoder(file_data=AsyncBytesIO(VIDEO_DATA)) as dec:
+            # Annoyingly anext isn't a global in python 3.6
+            grain = (await dec.grains(load_lazily=True).__anext__())[0]
+            await grain
+            self.assertTrue(compare_grain(grains[0], grain))
+
     def test_comparison_of_lazy_loaded_grains(self):
         video_data_stream = BytesIO(VIDEO_DATA)
 
@@ -1568,6 +1630,35 @@ class TestGSFDecoder(TestCase):
         UUT.decode_file_headers()
 
         self.assertTrue(compare_grain(grains[0], next(UUT.grains(load_lazily=True))[0]))
+
+    @async_test
+    async def test_async_local_id_filtering(self):
+        interleaved_data_stream = AsyncBytesIO(INTERLEAVED_DATA)
+
+        async with GSFDecoder(file_data=interleaved_data_stream) as dec:
+            local_ids = set()
+            flow_ids = set()
+            async for (grain, local_id) in dec.grains():
+                local_ids.add(local_id)
+                flow_ids.add(grain.flow_id)
+
+        self.assertEqual(local_ids, set([1, 2]))
+        self.assertEqual(flow_ids, set([UUID('28e4e09e-3517-11e9-8da2-5065f34ed007'),
+                                        UUID('2472f38e-3517-11e9-8da2-5065f34ed007')]))
+
+        async with GSFDecoder(file_data=interleaved_data_stream) as dec:
+            async for (grain, local_id) in dec.grains(local_ids=[1]):
+                self.assertIsInstance(grain, AUDIOGRAIN)
+                self.assertEqual(grain.source_id, UUID('1f8fd27e-3517-11e9-8da2-5065f34ed007'))
+                self.assertEqual(grain.flow_id, UUID('28e4e09e-3517-11e9-8da2-5065f34ed007'))
+                self.assertEqual(local_id, 1)
+
+        async with GSFDecoder(file_data=interleaved_data_stream) as dec:
+            async for (grain, local_id) in dec.grains(local_ids=[2]):
+                self.assertIsInstance(grain, VIDEOGRAIN)
+                self.assertEqual(grain.source_id, UUID('1f8fd27e-3517-11e9-8da2-5065f34ed007'))
+                self.assertEqual(grain.flow_id, UUID('2472f38e-3517-11e9-8da2-5065f34ed007'))
+                self.assertEqual(local_id, 2)
 
     def test_local_id_filtering(self):
         interleaved_data_stream = BytesIO(INTERLEAVED_DATA)
@@ -2036,6 +2127,50 @@ class TestGSFLoads(TestCase):
                                     b"\x19\x00\x00\x00\x01\x00\x00\x00" +
                                     b"\x00"))) +
                                  (b"grai\x08\x00\x00\x00"))
+
+        self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
+        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))
+        self.assertEqual(len(head['segments']), 1)
+        self.assertEqual(head['segments'][0]['local_id'], 1)
+        self.assertEqual(head['segments'][0]['id'], UUID('d3e191f0-1594-11e8-91ac-dca904824eec'))
+        self.assertEqual(head['segments'][0]['tags'], [])
+        self.assertEqual(head['segments'][0]['count'], 1)
+        self.assertEqual(head['tags'], [])
+        self.assertEqual(segments[1][0].timelabels, [{'tag': 'dummy timecode', 'timelabel': {'frames_since_midnight': 7,
+                                                                                             'frame_rate_numerator': 25,
+                                                                                             'frame_rate_denominator': 1,
+                                                                                             'drop_frame': False}}])
+
+    @async_test
+    async def test_async_load_decodes_tils(self):
+        src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
+        flow_id = UUID('da78668a-1596-11e8-a577-dca904824eec')
+        fp = AsyncBytesIO(b"SSBBgrsg\x07\x00\x00\x00" +
+                          (b"head\x41\x00\x00\x00" +
+                           b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+                           b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
+                           (b"segm\x22\x00\x00\x00" +
+                            b"\x01\x00" +
+                            b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
+                            b"\x01\x00\x00\x00\x00\x00\x00\x00")) +
+                          (b"grai\x8d\x00\x00\x00" +
+                           b"\x01\x00" +
+                           (b"gbhd\x83\x00\x00\x00" +
+                            src_id.bytes +
+                            flow_id.bytes +
+                            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
+                            b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                            b"\x00\x00\x00\x00\x00\x00\x00\x00" +
+                            (b"tils\x27\x00\x00\x00" +
+                             b"\x01\x00" +
+                             b"dummy timecode\x00\x00" +
+                             b"\x07\x00\x00\x00" +
+                             b"\x19\x00\x00\x00\x01\x00\x00\x00" +
+                             b"\x00"))) +
+                          (b"grai\x08\x00\x00\x00"))
+        (head, segments) = await load(fp)
 
         self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
         self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))

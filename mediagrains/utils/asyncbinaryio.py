@@ -32,7 +32,9 @@ class OpenAsyncBinaryIO(metaclass=ABCMeta):
             return await self.readall()
         else:
             b = bytearray(size)
-            await self.readinto(b)
+            s = await self.readinto(b)
+            if s < size:
+                raise EOFError
             return bytes(b)
 
     @abstractmethod
@@ -89,10 +91,15 @@ class OpenAsyncBytesIO(OpenAsyncBinaryIO):
         self._pos = 0
         self._len = len(b)
 
+    async def __open__(self) -> None:
+        "This coroutine should include any code that is to be run when the io stream is opened"
+        self._pos = 0
+
     async def readinto(self, b: MutableSequence[int]) -> int:
         length = min(self._len - self._pos, len(b))
         if length > 0:
             b[:length] = self._buffer[self._pos:self._pos + length]
+            self._pos += length
             return length
         else:
             return 0
