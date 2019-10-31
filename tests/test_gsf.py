@@ -1489,6 +1489,33 @@ class TestGSFDecoder(TestCase):
     def test_decode_headers(self):
         video_data_stream = BytesIO(VIDEO_DATA)
 
+        with GSFDecoder(file_data=video_data_stream) as dec:
+            head = dec.file_headers
+
+        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 22))
+        self.assertEqual(head['id'], UUID('163fd9b7-bef4-4d92-8488-31f3819be008'))
+        self.assertEqual(len(head['segments']), 1)
+        self.assertEqual(head['segments'][0]['id'], UUID('c6a3d3ff-74c0-446d-b59e-de1041f27e8a'))
+
+    def test_generate_grains(self):
+        """Test that the generator yields each grain"""
+        video_data_stream = BytesIO(VIDEO_DATA)
+
+        with GSFDecoder(file_data=video_data_stream) as dec:
+            grain_count = 0
+            for (grain, local_id) in dec.grains():
+                self.assertIsInstance(grain, VIDEOGRAIN)
+                self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
+                self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
+
+                grain_count += 1
+
+        self.assertEqual(10, grain_count)  # There are 10 grains in the file
+
+    @suppress_deprecation_warnings
+    def test_decode_headers__deprecated(self):
+        video_data_stream = BytesIO(VIDEO_DATA)
+
         UUT = GSFDecoder(file_data=video_data_stream)
         head = UUT.decode_file_headers()
 
@@ -1497,7 +1524,8 @@ class TestGSFDecoder(TestCase):
         self.assertEqual(len(head['segments']), 1)
         self.assertEqual(head['segments'][0]['id'], UUID('c6a3d3ff-74c0-446d-b59e-de1041f27e8a'))
 
-    def test_generate_grains(self):
+    @suppress_deprecation_warnings
+    def test_generate_grains__deprecated(self):
         """Test that the generator yields each grain"""
         video_data_stream = BytesIO(VIDEO_DATA)
 
@@ -1517,6 +1545,18 @@ class TestGSFDecoder(TestCase):
     def test_comparison_of_lazy_loaded_grains(self):
         video_data_stream = BytesIO(VIDEO_DATA)
 
+        with GSFDecoder(file_data=video_data_stream) as dec:
+            grains = [grain for (grain, local_id) in dec.grains(load_lazily=False)]
+
+        # Restart the decoder
+        video_data_stream.seek(0)
+        with GSFDecoder(file_data=video_data_stream) as dec:
+            self.assertTrue(compare_grain(grains[0], next(dec.grains(load_lazily=True))[0]))
+
+    @suppress_deprecation_warnings
+    def test_comparison_of_lazy_loaded_grains__deprecated(self):
+        video_data_stream = BytesIO(VIDEO_DATA)
+
         UUT = GSFDecoder(file_data=video_data_stream)
         UUT.decode_file_headers()
 
@@ -1530,6 +1570,37 @@ class TestGSFDecoder(TestCase):
         self.assertTrue(compare_grain(grains[0], next(UUT.grains(load_lazily=True))[0]))
 
     def test_local_id_filtering(self):
+        interleaved_data_stream = BytesIO(INTERLEAVED_DATA)
+
+        with GSFDecoder(file_data=interleaved_data_stream) as dec:
+            local_ids = set()
+            flow_ids = set()
+            for (grain, local_id) in dec.grains():
+                local_ids.add(local_id)
+                flow_ids.add(grain.flow_id)
+
+        self.assertEqual(local_ids, set([1, 2]))
+        self.assertEqual(flow_ids, set([UUID('28e4e09e-3517-11e9-8da2-5065f34ed007'),
+                                        UUID('2472f38e-3517-11e9-8da2-5065f34ed007')]))
+
+        interleaved_data_stream.seek(0)
+        with GSFDecoder(file_data=interleaved_data_stream) as dec:
+            for (grain, local_id) in dec.grains(local_ids=[1]):
+                self.assertIsInstance(grain, AUDIOGRAIN)
+                self.assertEqual(grain.source_id, UUID('1f8fd27e-3517-11e9-8da2-5065f34ed007'))
+                self.assertEqual(grain.flow_id, UUID('28e4e09e-3517-11e9-8da2-5065f34ed007'))
+                self.assertEqual(local_id, 1)
+
+        interleaved_data_stream.seek(0)
+        with GSFDecoder(file_data=interleaved_data_stream) as dec:
+            for (grain, local_id) in dec.grains(local_ids=[2]):
+                self.assertIsInstance(grain, VIDEOGRAIN)
+                self.assertEqual(grain.source_id, UUID('1f8fd27e-3517-11e9-8da2-5065f34ed007'))
+                self.assertEqual(grain.flow_id, UUID('2472f38e-3517-11e9-8da2-5065f34ed007'))
+                self.assertEqual(local_id, 2)
+
+    @suppress_deprecation_warnings
+    def test_local_id_filtering__deprecated(self):
         interleaved_data_stream = BytesIO(INTERLEAVED_DATA)
 
         UUT = GSFDecoder(file_data=interleaved_data_stream)
@@ -1563,7 +1634,8 @@ class TestGSFDecoder(TestCase):
             self.assertEqual(grain.flow_id, UUID('2472f38e-3517-11e9-8da2-5065f34ed007'))
             self.assertEqual(local_id, 2)
 
-    def test_skip_grain_data(self):
+    @suppress_deprecation_warnings
+    def test_skip_grain_data__deprecated(self):
         """Test that the `skip_data` parameter causes grain data to be seeked over"""
         grain_size = 194612  # Parsed from examples/video.gsf hex dump
         grdt_block_size = 194408  # Parsed from examples/video.gsf hex dump
@@ -1591,6 +1663,51 @@ class TestGSFDecoder(TestCase):
                 self.assertLessEqual(bytes_read, grain_header_size)
 
     def test_lazy_load_grain_data(self):
+        """Test that the `load_lazily` parameter causes grain data to be seeked over,
+        but then loaded invisibly when needed later"""
+        grain_size = 194612  # Parsed from examples/video.gsf hex dump
+        grdt_block_size = 194408  # Parsed from examples/video.gsf hex dump
+        grain_header_size = grain_size - grdt_block_size
+        grain_data_size = grdt_block_size - 8
+
+        video_data_stream = BytesIO(VIDEO_DATA)
+
+        reader_mock = mock.MagicMock(side_effect=video_data_stream.read)
+        with mock.patch.object(video_data_stream, "read", new=reader_mock):
+            grains = []
+            with GSFDecoder(file_data=video_data_stream) as dec:
+                reader_mock.reset_mock()
+
+                for (grain, local_id) in dec.grains(load_lazily=True):
+                    grains.append(grain)
+                    # Add up the bytes read for this grain, then reset the read counter
+                    bytes_read = 0
+                    for args, _ in reader_mock.call_args_list:
+                        bytes_read += args[0]
+
+                    reader_mock.reset_mock()
+
+                    # No more than the number of bytes in the header should have been read
+                    # However some header bytes may be seeked over instead
+                    self.assertGreater(bytes_read, 0)
+                    self.assertLessEqual(bytes_read, grain_header_size)
+
+            for grain in grains:
+                reader_mock.reset_mock()
+
+                self.assertEqual(grain.length, grain_data_size)
+                reader_mock.assert_not_called()
+
+                x = grain.data[grain_data_size-1]  # noqa: F841
+                bytes_read = 0
+                for (args, _) in reader_mock.call_args_list:
+                    bytes_read += args[0]
+
+                self.assertEqual(bytes_read, grain_data_size)
+                self.assertEqual(grain.length, grain_data_size)
+
+    @suppress_deprecation_warnings
+    def test_lazy_load_grain_data__deprecated(self):
         """Test that the `load_lazily` parameter causes grain data to be seeked over,
         but then loaded invisibly when needed later"""
         grain_size = 194612  # Parsed from examples/video.gsf hex dump
