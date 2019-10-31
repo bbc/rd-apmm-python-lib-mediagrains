@@ -30,7 +30,7 @@ from .utils import IOBytes
 from os import SEEK_SET
 import warnings
 
-from typing import Callable, Optional, Iterable, Tuple, List, Dict, Mapping, cast, Union, Type, IO
+from typing import Callable, Optional, Iterable, Tuple, List, Dict, Mapping, cast, Union, Type, IO, Sequence
 from typing_extensions import TypedDict
 from .typing import GrainMetadataDict, GrainDataParameterType, RationalTypes
 
@@ -58,7 +58,13 @@ def no_deprecation_warnings():
             warnings.showwarning(w.message, w.category, w.filename, w.lineno)
 
 
-def loads(s, cls=None, parse_grain=None, **kwargs):
+GSFFileHeaderDict = dict
+
+
+def loads(s: bytes,
+          cls: Optional[Type["GSFDecoder"]] = None,
+          parse_grain: Optional[Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN]] = None,
+          **kwargs) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
     """Deserialise a GSF file from a string (or similar) into python,
     returns a pair of (head, segments) where head is a python dict
     containing general metadata from the file, and segments is a dictionary
@@ -72,11 +78,13 @@ def loads(s, cls=None, parse_grain=None, **kwargs):
         cls = GSFDecoder
     if parse_grain is None:
         parse_grain = Grain
-    dec = cls(parse_grain=parse_grain, **kwargs)
-    return dec.decode(s)
+    return cls(parse_grain=parse_grain, **kwargs).decode(s)
 
 
-def load(fp, cls=None, parse_grain=None, **kwargs):
+def load(fp: IO[bytes],
+         cls: Optional[Type["GSFDecoder"]] = None,
+         parse_grain: Optional[Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN]] = None,
+         **kwargs) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
     """Deserialise a GSF file from a file object (or similar) into python,
     returns a pair of (head, segments) where head is a python dict
     containing general metadata from the file, and segments is a dictionary
@@ -86,8 +94,11 @@ def load(fp, cls=None, parse_grain=None, **kwargs):
     wish to use a custom Grain constructor pass it as parse_grain. The
     defaults are GSFDecoder and Grain. Extra kwargs will be passed to the
     decoder constructor."""
-    s = fp.read()
-    return loads(s, cls=cls, parse_grain=parse_grain, **kwargs)
+    if cls is None:
+        cls = GSFDecoder
+    if parse_grain is None:
+        parse_grain = Grain
+    return cls(file_data=fp).decode()
 
 
 def dump(grains: Iterable[GRAIN],
@@ -399,25 +410,13 @@ class GSFBlock():
             return Fraction(numerator, denominator)
 
 
-class GSFDecoder(object):
-    """A decoder for GSF format.
-
-    Provides methods to decode the header of a GSF file, followed by a generator to get each grain, wrapped in some
-    grain method (mediagrains.Grain by default.)
-
-    Can also be used to make a one-off decode of a GSF file from a bytes-like object by calling `decode(bytes_like)`.
-    """
+class GSFDecoderSession(object):
     def __init__(self,
-                 parse_grain: Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN] = Grain,
-                 file_data: Optional[IO[bytes]] = None,
-                 **kwargs):
-        """Constructor
-
-        :param parse_grain: Function that takes a (metadata dict, buffer) and returns a grain representation
-        :param file_data: BufferedReader (or similar) containing GSF data to decode
-        """
-        self.Grain = parse_grain
+                 parse_grain: Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN],
+                 file_data: IO[bytes]):
         self.file_data = file_data
+        self.Grain = parse_grain
+        self.file_headers: Optional[GSFFileHeaderDict] = None
 
     def _decode_ssb_header(self):
         """Find and read the SSB header in the GSF file
@@ -614,10 +613,9 @@ class GSFDecoder(object):
 
         return meta
 
-    def decode_file_headers(self):
-        """Verify the file is a supported version, and get the file header
+    def _decode_file_headers(self) -> None:
+        """Verify the file is a supported version, get the file header and store it in the file_headers property
 
-        :returns: File header data (segments and tags) as a dict
         :raises GSFDecodeBadVersionError: If the file version is not supported
         :raises GSFDecodeBadFileTypeError: If this isn't a GSF file
         :raises GSFDecodeError: If the file doesn't have a "head" block
@@ -628,20 +626,23 @@ class GSFDecoder(object):
 
         try:
             with GSFBlock(self.file_data, want_tag="head") as head_block:
-                return self._decode_head(head_block)
+                self.file_headers = self._decode_head(head_block)
         except EOFError:
             raise GSFDecodeError("No head block found in file", self.file_data.tell())
 
-    def grains(self, local_ids=None, skip_data=False, load_lazily=False):
+    def _grains(self,
+                local_ids: Optional[Sequence[int]] = None,
+                skip_data: bool = False,
+                load_lazily: bool = True) -> Iterable[Tuple[GRAIN, int]]:
         """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
 
         The file_data will be positioned after the `grai` block.
 
         :param local_ids: A list of local-ids to include in the output. If None (the default) then all local-ids will be
                           included
-        :param skip_data: If True, grain data blocks will be seeked over and only grain headers will be read
+        :param skip_data: If True, grain data blocks will be seeked over and only grain headers will be read (This parameter is deprecated)
         :param load_lazily: If True, the grains returned will be designed to lazily load data from the underlying stream
-                            only when it is needed. In this case the "skip_data" parameter will be ignored.
+                            only when it is needed. In this case the "skip_data" parameter will be ignored. Default is True.
         :yields: (Grain, local_id) tuple for each grain
         :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
         """
@@ -673,7 +674,92 @@ class GSFDecoder(object):
             except EOFError:
                 return  # We ran out of grains to read and hit EOF
 
-    def decode(self, s=None):
+    def grains(self,
+               local_ids: Optional[Sequence[int]] = None,
+               load_lazily: bool = True) -> Iterable[Tuple[GRAIN, int]]:
+        """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
+
+        The file_data will be positioned after the `grai` block.
+
+        :param local_ids: A list of local-ids to include in the output. If None (the default) then all local-ids will be
+                          included
+        :param load_lazily: If True, the grains returned will be designed to lazily load data from the underlying stream
+                            only when it is needed. In this case the "skip_data" parameter will be ignored. Default is True.
+        :yields: (Grain, local_id) tuple for each grain
+        :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
+        """
+        return self._grains(local_ids=local_ids, skip_data=False, load_lazily=load_lazily)
+
+
+class GSFDecoder(object):
+    """A decoder for GSF format.
+
+    The preferred interface for usage is to use this class as a context manager, which provides an instance of
+    GSFDecoderSession.
+
+    For backwards compatibility provides methods to decode the header of a GSF file, followed by a generator to
+    get each grain, wrapped in some grain method (mediagrains.Grain by default.) These methods are deprecated
+    and should not be used in new code.
+
+    Can also be used to make a one-off decode of a GSF file from a bytes-like object by calling `decode(bytes_like)`.
+    """
+    def __init__(self,
+                 parse_grain: Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN] = Grain,
+                 file_data: Optional[IO[bytes]] = None,
+                 **kwargs):
+        """Constructor
+
+        :param parse_grain: Function that takes a (metadata dict, buffer) and returns a grain representation
+        :param file_data: BufferedReader (or similar) containing GSF data to decode
+        """
+        self.Grain = parse_grain
+        self.file_data = file_data
+
+        self._open_session: Optional[GSFDecoderSession] = None
+
+    def __enter__(self) -> GSFDecoderSession:
+        session = GSFDecoderSession(file_data=self.file_data, parse_grain=self.Grain)
+        session._decode_file_headers()
+        return session
+
+    def __exit__(self, *args, **kwargs):
+        pass
+
+    @deprecated(version="2.7.0", reason="This method is old, use the class as a context manager instead")
+    def decode_file_headers(self) -> GSFFileHeaderDict:
+        """Verify the file is a supported version, and get the file header
+
+        :returns: File header data (segments and tags) as a dict
+        :raises GSFDecodeBadVersionError: If the file version is not supported
+        :raises GSFDecodeBadFileTypeError: If this isn't a GSF file
+        :raises GSFDecodeError: If the file doesn't have a "head" block
+        """
+        self._open_session = self.__enter__()
+        return self._open_session.file_headers
+
+    @deprecated(version="2.7.0", reason="This method is old, use the class as a context manager instead")
+    def grains(self,
+               local_ids: Optional[Sequence[int]] = None,
+               skip_data: bool = False,
+               load_lazily: bool = False):
+        """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
+
+        The file_data will be positioned after the `grai` block.
+
+        :param local_ids: A list of local-ids to include in the output. If None (the default) then all local-ids will be
+                          included
+        :param skip_data: If True, grain data blocks will be seeked over and only grain headers will be read
+        :param load_lazily: If True, the grains returned will be designed to lazily load data from the underlying stream
+                            only when it is needed. In this case the "skip_data" parameter will be ignored.
+        :yields: (Grain, local_id) tuple for each grain
+        :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
+        """
+        if self._open_session is None:
+            raise RuntimeError("Cannot access grains when no headers have been decoded")
+
+        return self._open_session._grains(local_ids=local_ids, skip_data=skip_data, load_lazily=load_lazily)
+
+    def decode(self, s: Optional[bytes] = None) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
         """Decode a GSF formatted bytes object
 
         :param s: GSF-formatted bytes object, optional if `file_data` supplied to constructor
@@ -682,16 +768,15 @@ class GSFDecoder(object):
         if (s is not None):
             self.file_data = BytesIO(s)
 
-        head = self.decode_file_headers()
+        with self as session:
+            segments = {}
 
-        segments = {}
+            for (grain, local_id) in session._grains(load_lazily=False):
+                if local_id not in segments:
+                    segments[local_id] = []
+                segments[local_id].append(grain)
 
-        for (grain, local_id) in self.grains():
-            if local_id not in segments:
-                segments[local_id] = []
-            segments[local_id].append(grain)
-
-        return (head, segments)
+            return (session.file_headers, segments)
 
 
 class GSFEncodeError(GSFError):
