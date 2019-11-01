@@ -19,7 +19,7 @@ from unittest import TestCase
 from uuid import UUID
 from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
-from mediagrains.gsf import loads, load, dumps, GSFEncoder, GSFDecoder, GSFBlock
+from mediagrains.gsf import loads, load, dumps, GSFEncoder, GSFDecoder, AsyncGSFBlock
 from mediagrains.gsf import GSFDecodeError
 from mediagrains.gsf import GSFEncodeError
 from mediagrains.gsf import GSFDecodeBadVersionError
@@ -1241,115 +1241,141 @@ class TestGSFDumps(TestCase):
 class TestGSFBlock(TestCase):
     """Test the GSF decoder block handler correctly parses various types"""
 
-    def test_read_uint(self):
+    @async_test
+    async def test_read_uint(self):
         test_number = 4132
         test_data = b"\x24\x10\x00\x00"
 
-        UUT = GSFBlock(BytesIO(test_data))
+        async with AsyncBytesIO(test_data) as fp:
+            UUT = AsyncGSFBlock(fp)
 
-        self.assertEqual(test_number, UUT.read_uint(4))
+            self.assertEqual(test_number, await UUT.read_uint(4))
 
-    def test_read_bool(self):
+    @async_test
+    async def test_read_bool(self):
         test_data = b"\x00\x01\x02"  # False, True (0x01 != 0), True (0x02 != 0)
 
-        UUT = GSFBlock(BytesIO(test_data))
+        async with AsyncBytesIO(test_data) as fp:
+            UUT = AsyncGSFBlock(fp)
 
-        self.assertFalse(UUT.read_bool())
-        self.assertTrue(UUT.read_bool())
-        self.assertTrue(UUT.read_bool())
+            self.assertFalse(await UUT.read_bool())
+            self.assertTrue(await UUT.read_bool())
+            self.assertTrue(await UUT.read_bool())
 
-    def test_read_sint(self):
+    @async_test
+    async def test_read_sint(self):
         test_number = -12856
         test_data = b"\xC8\xCD\xFF"
 
-        UUT = GSFBlock(BytesIO(test_data))
+        async with AsyncBytesIO(test_data) as fp:
+            UUT = AsyncGSFBlock(fp)
 
-        self.assertEqual(test_number, UUT.read_sint(3))
+            self.assertEqual(test_number, await UUT.read_sint(3))
 
-    def test_read_string(self):
+    @async_test
+    async def test_read_string(self):
         """Test we can read a string, with Unicode characters"""
         test_string = u"Strings😁✔"
 
         test_data = b"Strings\xf0\x9f\x98\x81\xe2\x9c\x94"
 
-        UUT = GSFBlock(BytesIO(test_data))
+        async with AsyncBytesIO(test_data) as fp:
+            UUT = AsyncGSFBlock(fp)
 
-        self.assertEqual(test_string, UUT.read_string(14))
+            self.assertEqual(test_string, await UUT.read_string(14))
 
-    def test_read_varstring(self):
+    @async_test
+    async def test_read_varstring(self):
         test_string = u"Strings😁✔"
         test_data = b"\x0e\x00Strings\xf0\x9f\x98\x81\xe2\x9c\x94"
 
-        UUT = GSFBlock(BytesIO(test_data))
+        async with AsyncBytesIO(test_data) as fp:
+            UUT = AsyncGSFBlock(fp)
 
-        self.assertEqual(test_string, UUT.read_varstring())
+            self.assertEqual(test_string, await UUT.read_varstring())
 
-    def test_read_uuid(self):
+    @async_test
+    async def test_read_uuid(self):
         test_uuid = UUID("b06c65c8-51ac-4ad1-a839-2ef37107cc16")
         test_data = b"\xb0\x6c\x65\xc8\x51\xac\x4a\xd1\xa8\x39\x2e\xf3\x71\x07\xcc\x16"
 
-        UUT = GSFBlock(BytesIO(test_data))
+        async with AsyncBytesIO(test_data) as fp:
+            UUT = AsyncGSFBlock(fp)
 
-        self.assertEqual(test_uuid, UUT.read_uuid())
+            self.assertEqual(test_uuid, await UUT.read_uuid())
 
-    def test_read_timestamp(self):
+    @async_test
+    async def test_read_timestamp(self):
         test_timestamp = datetime(2018, 9, 8, 16, 0, 0)
         test_data = b"\xe2\x07\x09\x08\x10\x00\x00"
 
-        UUT = GSFBlock(BytesIO(test_data))
+        async with AsyncBytesIO(test_data) as fp:
+            UUT = AsyncGSFBlock(fp)
 
-        self.assertEqual(test_timestamp, UUT.read_timestamp())
+            self.assertEqual(test_timestamp, await UUT.read_timestamp())
 
-    def test_read_ippts(self):
+    @async_test
+    async def test_read_ippts(self):
         test_timestamp = Timestamp(1536422400, 500)
         test_data = b"\x00\xf2\x93\x5b\x00\x00\xf4\x01\x00\x00"
 
-        UUT = GSFBlock(BytesIO(test_data))
+        async with AsyncBytesIO(test_data) as fp:
+            UUT = AsyncGSFBlock(fp)
 
-        self.assertEqual(test_timestamp, UUT.read_ippts())
+            self.assertEqual(test_timestamp, await UUT.read_ippts())
 
-    def test_read_rational(self):
+    @async_test
+    async def test_read_rational(self):
         test_fraction = Fraction(4, 3)
         test_data = b"\x04\x00\x00\x00\x03\x00\x00\x00"
 
-        UUT = GSFBlock(BytesIO(test_data))
+        async with AsyncBytesIO(test_data) as fp:
+            UUT = AsyncGSFBlock(fp)
 
-        self.assertEqual(test_fraction, UUT.read_rational())
+            self.assertEqual(test_fraction, await UUT.read_rational())
 
-    def test_read_rational_zero_denominator(self):
+    @async_test
+    async def test_read_rational_zero_denominator(self):
         """Ensure the reader considers a Rational with zero denominator to be 0, not an error"""
         test_data = b"\x04\x00\x00\x00\x00\x00\x00\x00"
 
-        UUT = GSFBlock(BytesIO(test_data))
+        async with AsyncBytesIO(test_data) as fp:
+            UUT = AsyncGSFBlock(fp)
 
-        self.assertEqual(Fraction(0), UUT.read_rational())
+            self.assertEqual(Fraction(0), await UUT.read_rational())
 
-    def test_read_uint_past_eof(self):
+    @async_test
+    async def test_read_uint_past_eof(self):
         """read_uint calls read() directly - test it raises EOFError correctly"""
         test_data = b"\x04\x00"
 
-        UUT = GSFBlock(BytesIO(test_data))
+        async with AsyncBytesIO(test_data) as fp:
+            UUT = AsyncGSFBlock(fp)
 
-        with self.assertRaises(EOFError):
-            UUT.read_uint(4)
+            with self.assertRaises(EOFError):
+                await UUT.read_uint(4)
 
-    def test_read_string_past_eof(self):
+    @async_test
+    async def test_read_string_past_eof(self):
         """read_string() calls read() directly - test it raises EOFError correctly"""
         test_data = b"Strin"
 
-        UUT = GSFBlock(BytesIO(test_data))
+        async with AsyncBytesIO(test_data) as fp:
+            UUT = AsyncGSFBlock(fp)
 
-        with self.assertRaises(EOFError):
-            UUT.read_string(6)
+            with self.assertRaises(EOFError):
+                await UUT.read_string(6)
 
-    def test_read_uuid_past_eof(self):
+    @async_test
+    async def test_read_uuid_past_eof(self):
         """read_uuid() calls read() directly - test it raises EOFError correctly"""
         test_data = b"\xb0\x6c\x65\xc8\x51\xac\x4a\xd1\xa8\x39\x2e"
 
-        UUT = GSFBlock(BytesIO(test_data))
+        async with AsyncBytesIO(test_data) as fp:
+            UUT = AsyncGSFBlock(fp)
 
-        with self.assertRaises(EOFError):
-            UUT.read_uuid()
+            with self.assertRaises(EOFError):
+                await UUT.read_uuid()
 
     def _make_sample_stream(self, post_child_len=0):
         """Generate a stream of sample blocks for testing the context manager
@@ -1362,7 +1388,7 @@ class TestGSFBlock(TestCase):
         blok (8 bytes)
 
         :param post_child_len: Number of bytes to include after last child block - must be <256
-        :returns: BytesIO containing some blocks
+        :returns: AsyncBytesIO containing some blocks
         """
         first_block_length = 28 + post_child_len
         test_stream = BytesIO()
@@ -1380,105 +1406,107 @@ class TestGSFBlock(TestCase):
 
         test_stream.seek(0, SEEK_SET)
 
-        return test_stream
+        return AsyncBytesIO(test_stream.getvalue())
 
-    def test_block_start_recorded(self):
-        """Test that a GSFBlock records the block start point"""
-        test_stream = self._make_sample_stream()
-        test_stream.seek(28, SEEK_SET)
+    @async_test
+    async def test_block_start_recorded(self):
+        """Test that a AsyncGSFBlock records the block start point"""
+        async with self._make_sample_stream() as test_stream:
+            test_stream.seek(28, SEEK_SET)
 
-        UUT = GSFBlock(test_stream)
-        self.assertEqual(28, UUT.block_start)
+            UUT = AsyncGSFBlock(test_stream)
+            self.assertEqual(28, UUT.block_start)
 
-    def test_contextmanager_read_tag_size(self):
+    @async_test
+    async def test_contextmanager_read_tag_size(self):
         """Test that the block tag and size are read when used in a context manager"""
-        test_stream = self._make_sample_stream()
+        async with self._make_sample_stream() as test_stream:
+            async with AsyncGSFBlock(test_stream) as UUT:
+                self.assertEqual("blok", UUT.tag)
+                self.assertEqual(28, UUT.size)
 
-        with GSFBlock(test_stream) as UUT:
-            self.assertEqual("blok", UUT.tag)
-            self.assertEqual(28, UUT.size)
+    @async_test
+    async def test_contextmanager_skips_unwanted_blocks(self):
+        """Test that AsyncGSFBlock() seeks over unwanted blocks"""
+        async with self._make_sample_stream() as test_stream:
+            async with AsyncGSFBlock(test_stream, want_tag="blk2") as UUT:
+                self.assertEqual("blk2", UUT.tag)
 
-    def test_contextmanager_skips_unwanted_blocks(self):
-        """Test that GSFBlock() seeks over unwanted blocks"""
-        test_stream = self._make_sample_stream()
+                # blok is 28 bytes long, we should skip it, plus 8 bytes of blk2
+                self.assertEqual(28 + 8, test_stream.tell())
 
-        with GSFBlock(test_stream, want_tag="blk2") as UUT:
-            self.assertEqual("blk2", UUT.tag)
+    @async_test
+    async def test_contextmanager_errors_unwanted_blocks(self):
+        """Test that AsyncGSFBlock() raises GSFDecodeError when finding an unwanted block"""
+        async with self._make_sample_stream() as test_stream:
+            with self.assertRaises(GSFDecodeError):
+                async with AsyncGSFBlock(test_stream, want_tag="chil", raise_on_wrong_tag=True):
+                    pass
 
-            # blok is 28 bytes long, we should skip it, plus 8 bytes of blk2
-            self.assertEqual(28 + 8, test_stream.tell())
-
-    def test_contextmanager_errors_unwanted_blocks(self):
-        """Test that GSFBlock() raises GSFDecodeError when finding an unwanted block"""
-        test_stream = self._make_sample_stream()
-
-        with self.assertRaises(GSFDecodeError):
-            with GSFBlock(test_stream, want_tag="chil", raise_on_wrong_tag=True):
+    @async_test
+    async def test_contextmanager_seeks_on_exit(self):
+        """Test that the context manager seeks to the end of a block on exit"""
+        async with self._make_sample_stream() as test_stream:
+            async with AsyncGSFBlock(test_stream):
                 pass
 
-    def test_contextmanager_seeks_on_exit(self):
-        """Test that the context manager seeks to the end of a block on exit"""
-        test_stream = self._make_sample_stream()
+            # First block is 28 bytes long, so we should be zero-index position 28 afterwards
+            self.assertEqual(28, test_stream.tell())
 
-        with GSFBlock(test_stream):
-            pass
-
-        # First block is 28 bytes long, so we should be zero-index position 28 afterwards
-        self.assertEqual(28, test_stream.tell())
-
-    def test_contextmanager_get_remaining(self):
+    @async_test
+    async def test_contextmanager_get_remaining(self):
         """Test the context manager gets the number of bytes left in the block correctly"""
-        test_stream = self._make_sample_stream()
+        async with self._make_sample_stream() as test_stream:
+            async with AsyncGSFBlock(test_stream) as UUT:
+                await UUT.read_uint(4)  # Use a read to skip ahead a bit
+                self.assertEqual(28 - 8 - 4, UUT.get_remaining())  # Block was 28 bytes, 8 bytes header, 4 bytes read_uint
 
-        with GSFBlock(test_stream) as UUT:
-            UUT.read_uint(4)  # Use a read to skip ahead a bit
-            self.assertEqual(28 - 8 - 4, UUT.get_remaining())  # Block was 28 bytes, 8 bytes header, 4 bytes read_uint
-
-    def test_contextmanager_has_child(self):
+    @async_test
+    async def test_contextmanager_has_child(self):
         """Test the context manager detects whether another child is present correctly"""
-        test_stream = self._make_sample_stream()
+        async with self._make_sample_stream() as test_stream:
+            async with AsyncGSFBlock(test_stream) as UUT:
+                self.assertTrue(UUT.has_child_block())
+                await test_stream.read(12)
+                self.assertTrue(UUT.has_child_block())
+                await test_stream.read(8)
+                self.assertFalse(UUT.has_child_block())
 
-        with GSFBlock(test_stream) as UUT:
-            self.assertTrue(UUT.has_child_block())
-            test_stream.read(12)
-            self.assertTrue(UUT.has_child_block())
-            test_stream.read(8)
-            self.assertFalse(UUT.has_child_block())
-
-    def test_contextmanager_has_child_strict_blocks(self):
+    @async_test
+    async def test_contextmanager_has_child_strict_blocks(self):
         """Ensure that when strict mode is enabled, has_child errors on partial blocks"""
-        test_stream = self._make_sample_stream(post_child_len=4)
+        async with self._make_sample_stream(post_child_len=4) as test_stream:
+            async with AsyncGSFBlock(test_stream) as UUT:
+                await test_stream.read(12 + 8)  # Read to the end of the child blocks
 
-        with GSFBlock(test_stream) as UUT:
-            test_stream.read(12 + 8)  # Read to the end of the child blocks
+                with self.assertRaises(GSFDecodeError):
+                    UUT.has_child_block(strict_blocks=True)
 
-            with self.assertRaises(GSFDecodeError):
-                UUT.has_child_block(strict_blocks=True)
-
-    def test_contextmanager_has_child_no_strict_blocks(self):
+    @async_test
+    async def test_contextmanager_has_child_no_strict_blocks(self):
         """Ensure that when strict mode is off, has_child doesn't error on partial blocks"""
-        test_stream = self._make_sample_stream(post_child_len=4)
+        async with self._make_sample_stream(post_child_len=4) as test_stream:
+            async with AsyncGSFBlock(test_stream) as UUT:
+                await test_stream.read(12 + 8)  # Read to the end of the child blocks
 
-        with GSFBlock(test_stream) as UUT:
-            test_stream.read(12 + 8)  # Read to the end of the child blocks
+                self.assertFalse(UUT.has_child_block(strict_blocks=False))
 
-            self.assertFalse(UUT.has_child_block(strict_blocks=False))
-
-    def test_contextmanager_child_blocks_generator(self):
+    @async_test
+    async def test_contextmanager_child_blocks_generator(self):
         """Ensure the child blocks generator returns a block, and seeks afterwards"""
-        test_stream = self._make_sample_stream()
-        with GSFBlock(test_stream) as UUT:
-            loop_count = 0
-            child_bytes_consumed = 0
-            for block in UUT.child_blocks():
-                child_bytes_consumed += block.size
-                loop_count += 1
+        async with self._make_sample_stream() as test_stream:
+            async with AsyncGSFBlock(test_stream) as UUT:
+                loop_count = 0
+                child_bytes_consumed = 0
+                async for block in UUT.child_blocks():
+                    child_bytes_consumed += block.size
+                    loop_count += 1
 
-            # Did we get both child blocks?
-            self.assertEqual(2, loop_count)
+                # Did we get both child blocks?
+                self.assertEqual(2, loop_count)
 
-            # Did we seek on exit from each loop iteration
-            self.assertEqual(child_bytes_consumed + UUT.block_start + 8, test_stream.tell())
+                # Did we seek on exit from each loop iteration
+                self.assertEqual(child_bytes_consumed + UUT.block_start + 8, test_stream.tell())
 
 
 class TestGSFDecoder(TestCase):
