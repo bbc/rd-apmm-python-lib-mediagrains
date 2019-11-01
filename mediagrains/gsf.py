@@ -28,7 +28,7 @@ from fractions import Fraction
 from frozendict import frozendict
 from .utils import IOBytes
 from .utils.synchronise import run_awaitable_synchronously, Synchronised
-from os import SEEK_SET
+from os import SEEK_SET, SEEK_CUR
 import warnings
 
 from inspect import isawaitable
@@ -59,6 +59,9 @@ from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrap
 from contextlib import contextmanager
 
 from deprecated import deprecated
+
+from enum import Enum
+
 
 __all__ = ["GSFDecoder", "load", "loads", "GSFError", "GSFDecodeError",
            "GSFDecodeBadFileTypeError", "GSFDecodeBadVersionError",
@@ -453,12 +456,41 @@ class AsyncGSFBlock():
             return Fraction(numerator, denominator)
 
 
+class GrainDataLoadingMode (Enum):
+    """This enumeration describes the mode for loading grains from the input.
+
+    For a Non-seekable input:
+        LOAD_IMMEDIATELY -- Grain data will be read as the stream is processed
+        ALWAYS_LOAD_DEFER_IF_POSSIBLE -- Grain data will be read as the stream is processed
+        ALWAYS_DEFER_LOAD_IF_POSSIBLE -- Grain data will be skipped over
+        LOAD_NEVER -- Grain data will be skipped over
+
+    For a Seekable input:
+        LOAD_IMMEDIATELY -- Grain data will be read as the stream is processed
+        ALWAYS_LOAD_DEFER_IF_POSSIBLE -- Grain data will be skipped initially, but loaded
+                                         upon request. All unloaded grains will be loaded when
+                                         the context manager is exited.
+        ALWAYS_DEFER_LOAD_IF_POSSIBLE -- Grain data will be skipped initially, but loaded
+                                         upon request. All unloaded grains will have their data
+                                         loading canceled when the context manager is exited.
+        LOAD_NEVER -- Grain data will be skipped over
+    """
+    LOAD_IMMEDIATELY = 0
+    ALWAYS_LOAD_DEFER_IF_POSSIBLE = 1
+    ALWAYS_DEFER_LOAD_IF_POSSIBLE = 2
+    LOAD_NEVER = 3
+
+
 class GSFAsyncDecoderSession(object):
     def __init__(self,
                  parse_grain: Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN],
                  file_data: OpenAsyncBinaryIO,
                  sync_compatibility_mode: bool):
         self.file_data = file_data
+
+        if not self.file_data.seekable_forwards():
+            raise RuntimeError("Cannot decode a stream that is not at least forward seekable")
+
         self.Grain = parse_grain
         self.file_headers: Optional[GSFFileHeaderDict] = None
 
@@ -698,21 +730,27 @@ class GSFAsyncDecoderSession(object):
 
     async def grains(self,
                      local_ids: Optional[Sequence[int]] = None,
-                     load_lazily: bool = True) -> AsyncIterable[Tuple[GRAIN, int]]:
+                     loading_mode: GrainDataLoadingMode = GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE) -> AsyncIterable[Tuple[GRAIN, int]]:
         """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
 
         The file_data will be positioned after the `grai` block.
 
         :param local_ids: A list of local-ids to include in the output. If None (the default) then all local-ids will be
                           included
-        :param load_lazily: If True, the grains returned will be designed to lazily load data from the underlying stream
-                            when it is awaited. Default is True. Note, lazily loaded grains will all be cancelled when the
-                            context manager is exited, so if you need to read their data await them first.
+        :param loading_mode: The mode to use when loading grain data elements. For modes ALWAYS_DEFER_LOAD_IF_POSSIBLE and
+                             ALWAYS_LOAD_DEFER_IF_POSSIBLE with a seekable input the grain data can be loaded later by awaiting the
+                             grain object itself. as long as you are still inside this context manager. When the context manager exits
+                             all grains are either implicitly loaded or rendered permanently empty.
         :yields: (Grain, local_id) tuple for each grain
         :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
         """
-        async def _read_out_of_order(parent: GSFAsyncDecoderSession, key: int, file_data: OpenAsyncBinaryIO, pos: int, length: int) -> Optional[bytes]:
-            if not parent._exiting:
+        async def _read_out_of_order(parent: GSFAsyncDecoderSession,
+                                     key: int,
+                                     file_data: OpenAsyncBinaryIO,
+                                     pos: int,
+                                     length: int,
+                                     load_on_exit=False) -> Optional[bytes]:
+            if load_on_exit or not parent._exiting:
                 parent._remove_lazy_grain(key)
 
                 oldpos = file_data.tell()
@@ -743,7 +781,8 @@ class GSFAsyncDecoderSession(object):
                     if grai_block.has_child_block():
                         async with AsyncGSFBlock(self.file_data, want_tag="grdt") as grdt_block:
                             if grdt_block.get_remaining() > 0:
-                                if load_lazily:
+                                if self.file_data.seekable_backwards() and loading_mode in [GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE,
+                                                                                            GrainDataLoadingMode.ALWAYS_LOAD_DEFER_IF_POSSIBLE]:
                                     if not self._sync_compatibility_mode:
                                         # It is correct that this is not awaited here
                                         # It will be awaited when the data is actually needed.
@@ -751,13 +790,20 @@ class GSFAsyncDecoderSession(object):
                                                                   self._next_lazy_grain_number,
                                                                   self.file_data,
                                                                   self.file_data.tell(),
-                                                                  grdt_block.get_remaining())
+                                                                  grdt_block.get_remaining(),
+                                                                  load_on_exit=(loading_mode == GrainDataLoadingMode.ALWAYS_LOAD_DEFER_IF_POSSIBLE))
                                         data_length = grdt_block.get_remaining()
                                     else:
                                         # This is compatibility mode with the old code
                                         data = IOBytes(cast(OpenAsyncFileWrapper, self.file_data).getsync(),
                                                        self.file_data.tell(),
                                                        grdt_block.get_remaining())
+                                elif (loading_mode == GrainDataLoadingMode.LOAD_NEVER or
+                                      (not self.file_data.seekable_backwards() and loading_mode == GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE)):
+                                    if self.file_data.seekable_forwards():
+                                        self.file_data.seek(grdt_block.get_remaining(), SEEK_CUR)
+                                    else:
+                                        await self.file_data.read(grdt_block.get_remaining())
                                 else:
                                     data = await self.file_data.read(grdt_block.get_remaining())
 
@@ -889,12 +935,19 @@ class GSFDecoder(object):
         if self._open_session is None:
             raise RuntimeError("Cannot access grains when no headers have been decoded")
 
-        return self._open_session._grains(local_ids=local_ids, skip_data=skip_data, load_lazily=load_lazily)
+        if load_lazily:
+            mode = GrainDataLoadingMode.ALWAYS_LOAD_DEFER_IF_POSSIBLE
+        elif skip_data:
+            mode = GrainDataLoadingMode.LOAD_NEVER
+        else:
+            mode = GrainDataLoadingMode.LOAD_IMMEDIATELY
+
+        return self._open_session._grains(local_ids=local_ids, loading_mode=mode)
 
     async def _asynchronously_decode(self) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
         async with self as dec:
             grains: Dict[int, List[GRAIN]] = {}
-            async for (grain, key) in dec.grains(load_lazily=False):
+            async for (grain, key) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY):
                 if key not in grains:
                     grains[key] = []
                 grains[key].append(grain)
