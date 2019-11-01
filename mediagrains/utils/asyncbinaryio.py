@@ -62,6 +62,12 @@ class OpenAsyncBinaryIO(metaclass=ABCMeta):
     @abstractmethod
     def seekable(self) -> bool: ...
 
+    def seekable_forwards(self) -> bool:
+        return self.seekable()
+
+    def seekable_backwards(self) -> bool:
+        return self.seekable()
+
     @abstractmethod
     def readable(self) -> bool: ...
 

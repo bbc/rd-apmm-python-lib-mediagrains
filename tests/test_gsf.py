@@ -19,7 +19,7 @@ from unittest import TestCase
 from uuid import UUID
 from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
-from mediagrains.gsf import loads, load, dumps, GSFEncoder, GSFDecoder, AsyncGSFBlock
+from mediagrains.gsf import loads, load, dumps, GSFEncoder, GSFDecoder, AsyncGSFBlock, GrainDataLoadingMode
 from mediagrains.gsf import GSFDecodeError
 from mediagrains.gsf import GSFEncodeError
 from mediagrains.gsf import GSFDecodeBadVersionError
@@ -1559,7 +1559,7 @@ class TestGSFDecoder(TestCase):
 
         async with GSFDecoder(file_data=video_data_stream) as dec:
             grain_count = 0
-            async for (grain, local_id) in dec.grains(load_lazily=False):
+            async for (grain, local_id) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY):
                 self.assertIsInstance(grain, VIDEOGRAIN)
                 self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
                 self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
@@ -1575,7 +1575,7 @@ class TestGSFDecoder(TestCase):
 
         async with GSFDecoder(file_data=video_data_stream) as dec:
             grain_count = 0
-            async for (grain, local_id) in dec.grains(load_lazily=True):
+            async for (grain, local_id) in dec.grains(loading_mode=GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE):
                 self.assertIsInstance(grain, VIDEOGRAIN)
                 self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
                 self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
@@ -1623,12 +1623,12 @@ class TestGSFDecoder(TestCase):
     @async_test
     async def test_async_comparison_of_lazy_loaded_grains(self):
         async with GSFDecoder(file_data=AsyncBytesIO(VIDEO_DATA)) as dec:
-            grains = [grain async for (grain, local_id) in dec.grains(load_lazily=False)]
+            grains = [grain async for (grain, local_id) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY)]
 
         # Restart the decoder
         async with GSFDecoder(file_data=AsyncBytesIO(VIDEO_DATA)) as dec:
             # Annoyingly anext isn't a global in python 3.6
-            grain = (await dec.grains(load_lazily=True).__anext__())[0]
+            grain = (await dec.grains(loading_mode=GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE).__anext__())[0]
             await grain
             comp = compare_grain(grains[0], grain)
             self.assertTrue(comp, msg="{!r}".format(comp))
@@ -1637,12 +1637,12 @@ class TestGSFDecoder(TestCase):
         video_data_stream = BytesIO(VIDEO_DATA)
 
         with GSFDecoder(file_data=video_data_stream) as dec:
-            grains = [grain for (grain, local_id) in dec.grains(load_lazily=False)]
+            grains = [grain for (grain, local_id) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY)]
 
         # Restart the decoder
         video_data_stream.seek(0)
         with GSFDecoder(file_data=video_data_stream) as dec:
-            comp = compare_grain(grains[0], next(dec.grains(load_lazily=True))[0])
+            comp = compare_grain(grains[0], next(dec.grains(loading_mode=GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE))[0])
             self.assertTrue(comp, msg="{!s}".format(comp))
 
     @suppress_deprecation_warnings
@@ -1652,7 +1652,7 @@ class TestGSFDecoder(TestCase):
         UUT = GSFDecoder(file_data=video_data_stream)
         UUT.decode_file_headers()
 
-        grains = [grain for (grain, local_id) in UUT.grains(load_lazily=False)]
+        grains = [grain for (grain, local_id) in UUT.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY)]
 
         # Restart the decoder
         video_data_stream.seek(0)
@@ -1799,7 +1799,7 @@ class TestGSFDecoder(TestCase):
             with GSFDecoder(file_data=video_data_stream) as dec:
                 reader_mock.reset_mock()
 
-                for (grain, local_id) in dec.grains(load_lazily=True):
+                for (grain, local_id) in dec.grains(loading_mode=GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE):
                     grains.append(grain)
                     # Add up the bytes read for this grain, then reset the read counter
                     bytes_read = 0
