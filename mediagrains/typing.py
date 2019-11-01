@@ -248,4 +248,4 @@ GrainMetadataDict = Union[
 # This is the type that defines what can go in a grain data element, there may be some corner cases not covered by this
 GrainDataType = Union[SupportsBytes, bytes]
 
-GrainDataParameterType = Optional[Union[GrainDataType, Awaitable[GrainDataType]]]
+GrainDataParameterType = Optional[Union[GrainDataType, Awaitable[Optional[GrainDataType]]]]

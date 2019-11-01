@@ -27,6 +27,7 @@ from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
 from frozendict import frozendict
 from .utils import IOBytes
+from .utils.synchronise import run_awaitable_synchronously, Synchronised
 from os import SEEK_SET
 import warnings
 
@@ -53,15 +54,11 @@ from .typing import GrainMetadataDict, GrainDataParameterType, RationalTypes
 
 from .grain import GRAIN, VIDEOGRAIN, EVENTGRAIN, AUDIOGRAIN, CODEDAUDIOGRAIN, CODEDVIDEOGRAIN
 
-from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper
+from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper, OpenAsyncFileWrapper
 
 from contextlib import contextmanager
 
 from deprecated import deprecated
-
-import threading
-
-import asyncio
 
 __all__ = ["GSFDecoder", "load", "loads", "GSFError", "GSFDecodeError",
            "GSFDecodeBadFileTypeError", "GSFDecodeBadVersionError",
@@ -139,50 +136,10 @@ def load(fp,
     if parse_grain is None:
         parse_grain = Grain
 
-    results = [None, None]
-
-    async def _asynchronously_decode(fp: AsyncBinaryIO):
-        try:
-            async with cls(file_data=fp, **kwargs) as dec:
-                grains = {}
-                async for (grain, key) in dec.grains(load_lazily=False):
-                    if key not in grains:
-                        grains[key] = []
-                    grains[key].append(grain)
-                return (dec.file_headers, grains)
-        except Exception as e:
-            results[1] = e
-
-    def _run_async_decode_inside_new_runloop(results):
-        def _inner():
-            loop = asyncio.new_event_loop()
-            try:
-                rval = loop.run_until_complete(_asynchronously_decode(AsyncFileWrapper(fp)))
-            except Exception as e:
-                results[1] = e
-            else:
-                results[0] = rval
-            loop.close()
-        return _inner
-
     if isinstance(fp, AsyncBinaryIO):
-        return _asynchronously_decode(fp)
+        return cls(file_data=fp, **kwargs)._asynchronously_decode()
     else:
-        try:
-            asyncio.get_event_loop()
-        except RuntimeError:
-            _run_async_decode_inside_new_runloop(results)
-        else:
-            # Right, sadly to avoid clashing with another global event loop we need to thread this:
-            # This is ugly, but honestly you shouldn't be doing synchronous IO in an AIO environment
-            t = threading.Thread(target=_run_async_decode_inside_new_runloop(results))
-            t.start()
-            t.join()
-
-        if results[1] is not None:
-            raise results[1]
-        else:
-            return results[0]
+        return run_awaitable_synchronously(cls(file_data=AsyncFileWrapper(fp), **kwargs)._asynchronously_decode())
 
 
 def dump(grains: Iterable[GRAIN],
@@ -602,7 +559,7 @@ class AsyncGSFBlock():
         assert self.size is not None, "get_remaining() only works in a context manager"
         return (self.block_start + self.size) - self.file_data.tell()
 
-    async def read_uint(self, length):
+    async def read_uint(self, length) -> int:
         """Read an unsigned integer of length `length`
 
         :param length: Number of bytes used to store the integer
@@ -966,7 +923,7 @@ class GSFDecoderSession(object):
                     with GSFBlock(self.file_data, want_tag="gbhd", raise_on_wrong_tag=True) as gbhd_block:
                         meta = self._decode_gbhd(gbhd_block)
 
-                    data = None
+                    data: Optional[Union[IOBytes, bytes]] = None
 
                     if grai_block.has_child_block():
                         with GSFBlock(self.file_data, want_tag="grdt") as grdt_block:
@@ -1000,7 +957,8 @@ class GSFDecoderSession(object):
 class GSFAsyncDecoderSession(object):
     def __init__(self,
                  parse_grain: Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN],
-                 file_data: OpenAsyncBinaryIO):
+                 file_data: OpenAsyncBinaryIO,
+                 sync_compatibility_mode: bool):
         self.file_data = file_data
         self.Grain = parse_grain
         self.file_headers: Optional[GSFFileHeaderDict] = None
@@ -1008,6 +966,8 @@ class GSFAsyncDecoderSession(object):
         self._exiting = False
         self._unloaded_lazy_grains: Dict[int, GRAIN] = {}
         self._next_lazy_grain_number = 0
+
+        self._sync_compatibility_mode = sync_compatibility_mode
 
     async def _decode_ssb_header(self):
         """Find and read the SSB header in the GSF file
@@ -1034,7 +994,7 @@ class GSFAsyncDecoderSession(object):
         :param head_block: GSFBlock representing the "head" block
         :returns: Head block as a dict
         """
-        head = {}
+        head: GSFFileHeaderDict = {}
         head['id'] = await head_block.read_uuid()
         head['created'] = await head_block.read_timestamp()
 
@@ -1099,7 +1059,7 @@ class GSFAsyncDecoderSession(object):
         :returns: Grain data dict
         :raises GSFDecodeError: If "gbhd" block contains an unkown child block
         """
-        meta = {
+        meta: dict = {
             "grain": {
             }
         }
@@ -1203,7 +1163,7 @@ class GSFAsyncDecoderSession(object):
                     length=gbhd_child.size
                 )
 
-        return meta
+        return cast(GrainMetadataDict, meta)
 
     async def _decode_file_headers(self) -> None:
         """Verify the file is a supported version, get the file header and store it in the file_headers property
@@ -1231,6 +1191,10 @@ class GSFAsyncDecoderSession(object):
     async def _kill_unused_lazy_loaders(self):
         self._exiting = True
         for (key, grain) in self._unloaded_lazy_grains.items():
+            await grain
+
+    async def _load_unused_lazy_loaders(self):
+        for (key, grain) in list(self._unloaded_lazy_grains.items()):
             await grain
 
     async def grains(self,
@@ -1274,31 +1238,43 @@ class GSFAsyncDecoderSession(object):
                     async with AsyncGSFBlock(self.file_data, want_tag="gbhd", raise_on_wrong_tag=True) as gbhd_block:
                         meta = await self._decode_gbhd(gbhd_block)
 
-                    data = None
+                    data: Optional[Union[bytes, Awaitable[Optional[bytes]]]] = None
 
+                    data_length = 0
                     if grai_block.has_child_block():
                         async with AsyncGSFBlock(self.file_data, want_tag="grdt") as grdt_block:
                             if grdt_block.get_remaining() > 0:
                                 if load_lazily:
-                                    # It is correct that this is not awaited here
-                                    # It will be awaited when the data is actually needed.
-                                    data = _read_out_of_order(self,
-                                                              self._next_lazy_grain_number,
-                                                              self.file_data,
-                                                              self.file_data.tell(),
-                                                              grdt_block.get_remaining())
+                                    if not self._sync_compatibility_mode:
+                                        # It is correct that this is not awaited here
+                                        # It will be awaited when the data is actually needed.
+                                        data = _read_out_of_order(self,
+                                                                  self._next_lazy_grain_number,
+                                                                  self.file_data,
+                                                                  self.file_data.tell(),
+                                                                  grdt_block.get_remaining())
+                                        data_length = grdt_block.get_remaining()
+                                    else:
+                                        # This is compatibility mode with the old code
+                                        data = IOBytes(cast(OpenAsyncFileWrapper, self.file_data).getsync(),
+                                                       self.file_data.tell(),
+                                                       grdt_block.get_remaining())
                                 else:
                                     data = await self.file_data.read(grdt_block.get_remaining())
 
                 grain = self.Grain(meta, data)
 
                 if isawaitable(data):
+                    grain.length = data_length
                     self._add_lazy_grain(self._next_lazy_grain_number, grain)
                     self._next_lazy_grain_number += 1
 
                 yield (grain, local_id)
             except EOFError:
                 return  # We ran out of grains to read and hit EOF
+
+
+GSFSyncDecoderSession = Synchronised[GSFAsyncDecoderSession]
 
 
 class GSFDecoder(object):
@@ -1324,7 +1300,7 @@ class GSFDecoder(object):
         """
         self._file_data: Optional[Union[RawIOBase, BufferedIOBase]]
         self._afile_data: Optional[AsyncBinaryIO]
-        self._open_afile: Optional[AsyncBinaryIO]
+        self._open_afile: Optional[OpenAsyncBinaryIO]
 
         self.Grain = parse_grain
 
@@ -1334,28 +1310,29 @@ class GSFDecoder(object):
         elif isinstance(file_data, OpenAsyncBinaryIO):
             self._afile_data = None
             self._open_afile = file_data
+        elif isinstance(file_data, (RawIOBase, BufferedIOBase)):
+            self._afile_data = AsyncFileWrapper(file_data)
+            self._open_afile = None
         else:
             self._afile_data = None
             self._open_afile = None
 
-        if isinstance(file_data, (RawIOBase, BufferedIOBase)):
-            self._file_data = file_data
-        else:
-            self._file_data = None
-
-        self._open_session: Optional[GSFDecoderSession] = None
+        self._open_session: Optional[GSFSyncDecoderSession] = None
         self._open_asession: Optional[GSFAsyncDecoderSession] = None
 
-    def __enter__(self) -> GSFDecoderSession:
-        if self._file_data is None:
-            raise TypeError("file_data must be a synchronous binary file to use this class as a context manager")
+        self._sync_compatibility_mode: bool = False
 
-        session = GSFDecoderSession(file_data=self._file_data, parse_grain=self.Grain)
-        session._decode_file_headers()
-        return session
+    def __enter__(self) -> GSFSyncDecoderSession:
+        self._sync_compatibility_mode = True
+        a_session = run_awaitable_synchronously(self.__aenter__())
+        if a_session is None:
+            raise RuntimeError("Running __aenter__ synchronously returned nothing!")
+        return Synchronised(a_session)
 
     def __exit__(self, *args, **kwargs):
-        pass
+        run_awaitable_synchronously(self._open_asession._load_unused_lazy_loaders())
+        run_awaitable_synchronously(self.__aexit__(*args, **kwargs))
+        self._sync_compatibility_mode = False
 
     async def __aenter__(self) -> GSFAsyncDecoderSession:
         if self._open_afile is None:
@@ -1364,7 +1341,9 @@ class GSFDecoder(object):
             else:
                 raise TypeError("file_data must be an asynchronous binary file to use this class as an async context manager")
 
-        self._open_asession = GSFAsyncDecoderSession(file_data=self._open_afile, parse_grain=self.Grain)
+        self._open_asession = GSFAsyncDecoderSession(file_data=self._open_afile,
+                                                     parse_grain=self.Grain,
+                                                     sync_compatibility_mode=self._sync_compatibility_mode)
         await self._open_asession._decode_file_headers()
         return self._open_asession
 
@@ -1387,6 +1366,8 @@ class GSFDecoder(object):
         :raises GSFDecodeError: If the file doesn't have a "head" block
         """
         self._open_session = self.__enter__()
+        if self._open_session.file_headers is None:
+            raise RuntimeError("There should be some file headers here!")
         return self._open_session.file_headers
 
     @deprecated(version="2.7.0", reason="This method is old, use the class as a context manager instead")
@@ -1411,6 +1392,17 @@ class GSFDecoder(object):
 
         return self._open_session._grains(local_ids=local_ids, skip_data=skip_data, load_lazily=load_lazily)
 
+    async def _asynchronously_decode(self) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
+        async with self as dec:
+            grains: Dict[int, List[GRAIN]] = {}
+            async for (grain, key) in dec.grains(load_lazily=False):
+                if key not in grains:
+                    grains[key] = []
+                grains[key].append(grain)
+            if dec.file_headers is None:
+                raise RuntimeError("There ought to be file headers here")
+            return (dec.file_headers, grains)
+
     def decode(self, s: Optional[bytes] = None) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
         """Decode a GSF formatted bytes object
 
@@ -1418,17 +1410,14 @@ class GSFDecoder(object):
         :returns: A dictionary mapping sequence ids to lists of GRAIN objects (or subclasses of such).
         """
         if (s is not None):
-            self._file_data = BytesIO(s)
+            # Unclear why this cast is needed, since a BytesIO is already a BufferedIOBase ...
+            self._file_data = cast(BufferedIOBase, BytesIO(s))
 
-        with self as session:
-            segments = {}
+        rval = run_awaitable_synchronously(self._asynchronously_decode())
 
-            for (grain, local_id) in session._grains(load_lazily=False):
-                if local_id not in segments:
-                    segments[local_id] = []
-                segments[local_id].append(grain)
-
-            return (session.file_headers, segments)
+        if rval is None:
+            raise RuntimeError("Running asynchronous decode synchronously returned nothing")
+        return rval
 
 
 class GSFEncodeError(GSFError):

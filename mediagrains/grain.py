@@ -173,11 +173,12 @@ normalise_time(value)
     def __init__(self, meta: GrainMetadataDict, data: GrainDataParameterType):
         self.meta = meta
 
-        self._data_fetcher_coroutine: Optional[Awaitable[GrainDataType]]
+        self._data_fetcher_coroutine: Optional[Awaitable[Optional[GrainDataType]]]
+        self._data_fetcher_length: int = 0
         self._data: Optional[GrainDataType]
 
         if isawaitable(data):
-            self._data_fetcher_coroutine = cast(Optional[Awaitable[GrainDataType]], data)
+            self._data_fetcher_coroutine = cast(Awaitable[Optional[GrainDataType]], data)
             self._data = None
         else:
             self._data_fetcher_coroutine = None
@@ -290,7 +291,7 @@ normalise_time(value)
     def data(self, value: GrainDataParameterType):
         if isawaitable(value):
             self._data = None
-            self._data_fetcher_coroutine = cast(Awaitable[GrainDataType], value)
+            self._data_fetcher_coroutine = cast(Awaitable[Optional[GrainDataType]], value)
         else:
             self._data = cast(Optional[GrainDataType], value)
             self._data_fetcher_coroutine = None
@@ -546,8 +547,17 @@ normalise_time(value)
             return len(cast(Sized, self.data))
         elif hasattr(self.data, "__bytes__"):
             return len(bytes(cast(SupportsBytes, self.data)))
+        elif self.data is None and self._data_fetcher_coroutine is not None:
+            return self._data_fetcher_length
         else:
             return 0
+
+    @length.setter
+    def length(self, L: int) -> None:
+        if self.data is None and self._data_fetcher_coroutine is not None:
+            self._data_fetcher_length = L
+        else:
+            raise AttributeError
 
     @property
     def expected_length(self) -> int:
@@ -643,7 +653,7 @@ append(path, pre=None, post=None)
                 'topic': "",
                 'data': []}
         if isawaitable(data):
-            self._data_fetcher_coroutine = cast(Awaitable[GrainDataType], data)
+            self._data_fetcher_coroutine = cast(Awaitable[Optional[GrainDataType]], data)
         elif data is not None:
             if isinstance(data, bytes):
                 self.data = data
