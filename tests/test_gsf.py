@@ -1602,7 +1602,8 @@ class TestGSFDecoder(TestCase):
             # Annoyingly anext isn't a global in python 3.6
             grain = (await dec.grains(load_lazily=True).__anext__())[0]
             await grain
-            self.assertTrue(compare_grain(grains[0], grain))
+            comp = compare_grain(grains[0], grain)
+            self.assertTrue(comp, msg="{!r}".format(comp))
 
     def test_comparison_of_lazy_loaded_grains(self):
         video_data_stream = BytesIO(VIDEO_DATA)
@@ -1613,7 +1614,8 @@ class TestGSFDecoder(TestCase):
         # Restart the decoder
         video_data_stream.seek(0)
         with GSFDecoder(file_data=video_data_stream) as dec:
-            self.assertTrue(compare_grain(grains[0], next(dec.grains(load_lazily=True))[0]))
+            comp = compare_grain(grains[0], next(dec.grains(load_lazily=True))[0])
+            self.assertTrue(comp, msg="{!s}".format(comp))
 
     @suppress_deprecation_warnings
     def test_comparison_of_lazy_loaded_grains__deprecated(self):

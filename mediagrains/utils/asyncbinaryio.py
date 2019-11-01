@@ -23,7 +23,8 @@ interface a little.
 from abc import ABCMeta, abstractmethod
 from io import SEEK_SET, SEEK_CUR
 
-from typing import Type, MutableSequence, Union, Optional, IO
+from typing import Type, Union, Optional, IO, cast
+from io import RawIOBase
 
 
 class OpenAsyncBinaryIO(metaclass=ABCMeta):
@@ -183,21 +184,29 @@ class AsyncBytesIO(AsyncBinaryIO):
 
 class OpenAsyncFileWrapper(OpenAsyncBinaryIO):
     def __init__(self, fp: IO[bytes]):
-        self.fp = fp
+        self.fp = cast(RawIOBase, fp)
 
     async def __open__(self) -> None:
-        self.fp.__enter__()
+        # self.fp.__enter__()
+        pass
 
     async def __close__(self) -> None:
-        self.fp.__exit__()
+        # self.fp.__exit__(None, None, None)
+        pass
 
-    async def readinto(self, b: MutableSequence[int]) -> int:
+    async def read(self, s: int = -1) -> bytes:
+        while True:
+            r = self.fp.read(s)
+            if r is not None:
+                return r
+
+    async def readinto(self, b: bytearray) -> Optional[int]:
         return self.fp.readinto(b)
 
     async def readall(self) -> bytes:
         return self.fp.readall()
 
-    async def write(self, b: bytes) -> int:
+    async def write(self, b: bytes) -> Optional[int]:
         return self.fp.write(b)
 
     async def truncate(self, size: Optional[int] = None) -> int:
@@ -215,8 +224,11 @@ class OpenAsyncFileWrapper(OpenAsyncBinaryIO):
     def readable(self) -> bool:
         return self.fp.readable()
 
-    def writeable(self) -> bool:
-        return self.fp.writeable()
+    def writable(self) -> bool:
+        return self.fp.writable()
+
+    def getsync(self) -> IO[bytes]:
+        return cast(IO[bytes], self.fp)
 
 
 class AsyncFileWrapper(AsyncBinaryIO):
