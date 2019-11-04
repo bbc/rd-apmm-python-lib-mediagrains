@@ -668,7 +668,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.length, 0)
         self.assertEqual(grain.expected_length, 8192*1080)
 
-
     def test_video_grain_normalise(self):
         with mock.patch.object(Timestamp, "get_time", return_value=ots):
             grain = VideoGrain(src_id, flow_id, origin_timestamp=ots,
