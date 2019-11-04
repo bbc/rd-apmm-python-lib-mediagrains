@@ -25,8 +25,22 @@ from mediatimestamp.immutable import Timestamp, TimeOffset, TimeRange
 from collections.abc import Sequence, MutableSequence, Mapping
 from fractions import Fraction
 from copy import copy, deepcopy
+from inspect import isawaitable
 
-from typing import List, Dict, Any, Union, SupportsBytes, Optional, overload, Tuple, cast, Sized, Iterator, Iterable
+from typing import (
+    List,
+    Dict,
+    Any,
+    Union,
+    SupportsBytes,
+    Optional,
+    overload,
+    Tuple,
+    cast,
+    Sized,
+    Iterator,
+    Iterable,
+    Awaitable)
 from typing_extensions import Literal
 from .typing import (
     RationalTypes,
@@ -42,7 +56,8 @@ from .typing import (
     VideoGrainMetadataDict,
     CodedVideoGrainMetadataDict,
     AudioGrainMetadataDict,
-    CodedAudioGrainMetadataDict)
+    CodedAudioGrainMetadataDict,
+    GrainDataParameterType)
 
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
@@ -79,8 +94,10 @@ Any grain can be freely cast to a tuple:
 
   (meta, data)
 
-where meta is a dictionary containing the grain metadata, and data is a python
-buffer object representing the payload (or None for an empty grain).
+where meta is a dictionary containing the grain metadata, and data is None or one of the following:
+* a bytes-like object
+* An object supporting the __bytes__ magic method
+* An awaitable returning a valid data element
 
 In addition the class provides a number of properties which can be used to
 access parts of the standard grain metadata, and all other grain classes
@@ -90,10 +107,17 @@ meta
     The meta dictionary object
 
 data
-    Either None or an object which can be cast to bytes by passing it to the bytes
-    constructor and will in of itself respond to the python-level portions of the bytes-like
-    object protocol. It is not guaranteed that this object will always respond correctly to the
-    C buffer-protocol, but it can always be converted into something that will by calling bytes on it.
+    One of the following:
+        * A byteslike object -- This becomes the grain's data element
+        * An object that has a method __bytes__ which returns a bytes-like object, which will be the grain's data element
+        * None -- This grain has no data
+
+    If the data parameter passed on construction is an awaitable which will return a valid data element when awaited then the grain's data element is
+    initially None, but the grain can be awaited to populate it
+
+    For convenience any grain can be awaited and will return the data element, regardless of whether the underlying data is asynchronous or not
+
+    For additional convenience using a grain as an async context manager will ensure that the data element is populated if it needs to be and can be.
 
 grain_type
     A string containing the type of the grain, any value is possible
@@ -146,9 +170,18 @@ normalise_time(value)
     Returns a normalised Timestamp, TimeOffset or TimeRange using the video frame rate or audio sample rate.
 
     """
-    def __init__(self, meta: GrainMetadataDict, data: Optional[GrainDataType]):
+    def __init__(self, meta: GrainMetadataDict, data: GrainDataParameterType):
         self.meta = meta
-        self._data = data
+
+        self._data_fetcher_coroutine: Optional[Awaitable[GrainDataType]]
+        self._data: Optional[GrainDataType]
+
+        if isawaitable(data):
+            self._data_fetcher_coroutine = cast(Optional[Awaitable[GrainDataType]], data)
+            self._data = None
+        else:
+            self._data_fetcher_coroutine = None
+            self._data = cast(Optional[GrainDataType], data)
         self._factory = "Grain"
 
         # This code is here to deal with malformed inputs, and as such needs to cast away the type safety to operate
@@ -234,13 +267,33 @@ normalise_time(value)
             return None
         return bytes(self._data)
 
+    def has_data(self) -> bool:
+        return self._data is not None
+
+    async def __await__(self) -> Optional[GrainDataType]:
+        if self._data is None and self._data_fetcher_coroutine is not None:
+            self._data = await self._data_fetcher_coroutine
+        return self._data
+
+    async def __aenter__(self):
+        await self
+        return self
+
+    async def __aexit__(self, *args, **kwargs):
+        pass
+
     @property
-    def data(self) -> "Optional[GrainDataType]":
+    def data(self) -> Optional[GrainDataType]:
         return self._data
 
     @data.setter
-    def data(self, value: "Optional[GrainDataType]"):
-        self._data = value
+    def data(self, value: GrainDataParameterType):
+        if isawaitable(value):
+            self._data = None
+            self._data_fetcher_coroutine = cast(Awaitable[GrainDataType], value)
+        else:
+            self._data = cast(Optional[GrainDataType], value)
+            self._data_fetcher_coroutine = None
 
     @property
     def grain_type(self) -> str:
@@ -578,7 +631,7 @@ append(path, pre=None, post=None)
     provided string, and pre and post set optionally. All calls should use
     only json serialisable objects for the values of pre and post.
     """
-    def __init__(self, meta: EventGrainMetadataDict, data: Optional[GrainDataType]):
+    def __init__(self, meta: EventGrainMetadataDict, data: GrainDataParameterType):
         super(EVENTGRAIN, self).__init__(meta, None)
         self.meta: EventGrainMetadataDict
 
@@ -589,11 +642,13 @@ append(path, pre=None, post=None)
                 'type': "",
                 'topic': "",
                 'data': []}
-        if data is not None:
+        if isawaitable(data):
+            self._data_fetcher_coroutine = cast(Awaitable[GrainDataType], data)
+        elif data is not None:
             if isinstance(data, bytes):
                 self.data = data
             else:
-                self.data = bytes(data)
+                self.data = bytes(cast(SupportsBytes, data))
         if 'type' not in self.meta['grain']['event_payload']:
             self.meta['grain']['event_payload']['type'] = ""
         if 'topic' not in self.meta['grain']['event_payload']:
@@ -964,7 +1019,7 @@ length
         def __ne__(self, other: object) -> bool:
             return not (self == other)
 
-    def __init__(self, meta: VideoGrainMetadataDict, data: Optional[GrainDataType]):
+    def __init__(self, meta: VideoGrainMetadataDict, data: GrainDataParameterType):
         super(VIDEOGRAIN, self).__init__(meta, data)
         self.meta: VideoGrainMetadataDict
 
@@ -1148,7 +1203,7 @@ unit_offsets
     A list-like object containing integer offsets of coded units within the
     data array.
 """
-    def __init__(self, meta: CodedVideoGrainMetadataDict, data: GrainDataType):
+    def __init__(self, meta: CodedVideoGrainMetadataDict, data: GrainDataParameterType):
         super(CODEDVIDEOGRAIN, self).__init__(meta, data)
         self.meta: CodedVideoGrainMetadataDict
 
@@ -1407,7 +1462,7 @@ sample_rate
     An integer indicating the number of samples per channel per second in this
     audio flow.
 """
-    def __init__(self, meta: AudioGrainMetadataDict, data: Optional[GrainDataType]):
+    def __init__(self, meta: AudioGrainMetadataDict, data: GrainDataParameterType):
         super(AUDIOGRAIN, self).__init__(meta, data)
         self.meta: AudioGrainMetadataDict
 
@@ -1545,7 +1600,7 @@ priming
 remainder
     An integer
 """
-    def __init__(self, meta: CodedAudioGrainMetadataDict, data: Optional[GrainDataType]):
+    def __init__(self, meta: CodedAudioGrainMetadataDict, data: GrainDataParameterType):
         super(CODEDAUDIOGRAIN, self).__init__(meta, data)
         self.meta: CodedAudioGrainMetadataDict
 

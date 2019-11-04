@@ -30,8 +30,10 @@ import uuid
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
 
-from typing import Callable, Dict, Tuple, Optional
-from ..typing import VideoGrainMetadataDict, GrainDataType
+from typing import Callable, Dict, Tuple, Optional, Awaitable, cast
+from ..typing import VideoGrainMetadataDict, GrainDataType, GrainDataParameterType
+
+from inspect import isawaitable
 
 from enum import Enum, auto
 
@@ -225,23 +227,36 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
 
     _grain_conversions: Dict[Tuple[CogFrameFormat, CogFrameFormat], ConversionFunc] = {}
 
-    def __init__(self, meta: VideoGrainMetadataDict, data: Optional[GrainDataType]):
+    def __init__(self, meta: VideoGrainMetadataDict, data: GrainDataParameterType):
         super().__init__(meta, data)
-        self._data: np.ndarray = np.frombuffer(self._data, dtype=_dtype_from_cogframeformat(self.format))
-        self.component_data = ComponentDataList(
-            _component_arrays_for_data_and_type(self._data, self.format, self.components),
-            arrangement=_component_arrangement_from_format(self.format))
+        self._data: np.ndarray
+        self._data_fetcher_coroutine: Optional[Awaitable[GrainDataType]]
+        self.component_data: ComponentDataList
+
+        if self._data is not None:
+            self._data = np.frombuffer(self._data, dtype=_dtype_from_cogframeformat(self.format))
+            self.component_data = ComponentDataList(
+                _component_arrays_for_data_and_type(self._data, self.format, self.components),
+                arrangement=_component_arrangement_from_format(self.format))
+        else:
+            self.component_data = ComponentDataList([])
 
     @property
     def data(self) -> np.ndarray:
         return self._data
 
     @data.setter
-    def data(self, value: GrainDataType):
-        self._data = np.frombuffer(value, dtype=_dtype_from_cogframeformat(self.format))
-        self.component_data = ComponentDataList(
-            _component_arrays_for_data_and_type(self._data, self.format, self.components),
-            arrangement=_component_arrangement_from_format(self.format))
+    def data(self, value: GrainDataParameterType):
+        if isawaitable(value):
+            self._data_fetcher_coroutine = cast(Awaitable[GrainDataType], value)
+            self._data = None
+            self.component_data = ComponentDataList([])
+        else:
+            self._data_fetcher_coroutine = None
+            self._data = np.frombuffer(cast(GrainDataType, value), dtype=_dtype_from_cogframeformat(self.format))
+            self.component_data = ComponentDataList(
+                _component_arrays_for_data_and_type(self._data, self.format, self.components),
+                arrangement=_component_arrangement_from_format(self.format))
 
     def __array__(self) -> np.ndarray:
         return np.array(self.data)
@@ -260,6 +275,18 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
             return "{}({!r})".format(self._factory, self.meta)
         else:
             return "{}({!r},< numpy data of length {} >)".format(self._factory, self.meta, len(self.data))
+
+    async def __await__(self):
+        if self._data is None and self._data_fetcher_coroutine is not None:
+            self.data = await self._data_fetcher_coroutine
+        return self.data
+
+    async def __aenter__(self) -> "VIDEOGRAIN":
+        await self
+        return self
+
+    async def __aexit__(self, *args, **kwargs):
+        pass
 
     @classmethod
     def grain_conversion(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat) -> Callable[["VIDEOGRAIN.ConversionFunc"], "VIDEOGRAIN.ConversionFunc"]:
@@ -339,4 +366,7 @@ def VideoGrain(*args, **kwargs) -> VIDEOGRAIN:
     else:
         rawgrain = bytesgrain_constructors.VideoGrain(*args, **kwargs)
 
-    return VIDEOGRAIN(rawgrain.meta, rawgrain.data)
+    if rawgrain.data is not None:
+        return VIDEOGRAIN(rawgrain.meta, rawgrain.data)
+    else:
+        return VIDEOGRAIN(rawgrain.meta, rawgrain._data_fetcher_coroutine)

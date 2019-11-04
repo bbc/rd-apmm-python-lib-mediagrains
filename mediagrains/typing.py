@@ -20,7 +20,7 @@ Types used for type checking other parts of the library
 
 from .cogenums import CogFrameFormat, CogAudioFormat, CogFrameLayout
 
-from typing import Any, Union, SupportsBytes, Sequence, Mapping, List, Optional
+from typing import Any, Union, SupportsBytes, Sequence, Mapping, List, Optional, Awaitable
 from typing_extensions import TypedDict, Literal
 
 from decimal import Decimal
@@ -248,4 +248,4 @@ GrainMetadataDict = Union[
 # This is the type that defines what can go in a grain data element, there may be some corner cases not covered by this
 GrainDataType = Union[SupportsBytes, bytes]
 
-GrainDataParameterType = Optional[GrainDataType]
+GrainDataParameterType = Optional[Union[GrainDataType, Awaitable[GrainDataType]]]
