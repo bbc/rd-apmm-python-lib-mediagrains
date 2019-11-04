@@ -20,7 +20,7 @@ Types used for type checking other parts of the library
 
 from .cogenums import CogFrameFormat, CogAudioFormat, CogFrameLayout
 
-from typing import Any, Union, SupportsBytes, Sequence, Mapping, List
+from typing import Any, Union, SupportsBytes, Sequence, Mapping, List, Optional
 from typing_extensions import TypedDict, Literal
 
 from decimal import Decimal
@@ -39,7 +39,9 @@ __all__ = ["RationalTypes",
            "CodedAudioGrainMetadataDict",
            "VideoGrainMetadataDict",
            "EventGrainMetadataDict",
-           "FractionDict"]
+           "FractionDict",
+           "GrainDataType",
+           "GrainDataParameterType"]
 
 # These are the types that can be freely converted into a Fraction
 RationalTypes = Union[str, float, Decimal, Rational]
@@ -245,3 +247,5 @@ GrainMetadataDict = Union[
 
 # This is the type that defines what can go in a grain data element, there may be some corner cases not covered by this
 GrainDataType = Union[SupportsBytes, bytes]
+
+GrainDataParameterType = Optional[GrainDataType]

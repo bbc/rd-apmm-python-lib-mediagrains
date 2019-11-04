@@ -24,6 +24,11 @@ from mediagrains.grain import attributes_for_grain_type
 
 from copy import deepcopy
 
+import asyncio
+import warnings
+
+from functools import wraps
+
 
 def pairs_of(strategy):
     return lists(strategy, min_size=2, max_size=2).map(tuple)
@@ -60,3 +65,58 @@ def attribute_and_pairs_of_grains_of_type_differing_only_in_one_attribute(grain_
         return grain_strat | grains(grain_type).flatmap(lambda g: tuples(just("data"), pairs_of(grains_from_template_with_data(g))))
     else:
         return grain_strat
+
+
+def suppress_deprecation_warnings(f):
+    @wraps(f)
+    def __inner(*args, **kwargs):
+        with warnings.catch_warnings(record=True) as warns:
+            r = f(*args, **kwargs)
+
+        for w in warns:
+            if w.category != DeprecationWarning:
+                warnings.showwarning(w.message, w.category, w.filename, w.lineno)
+
+        return r
+
+
+def async_test(suppress_warnings):
+    def __outer(f):
+        @wraps(f)
+        def __inner(*args, **kwargs):
+            loop = asyncio.get_event_loop()
+            loop.set_debug(True)
+            E = None
+            warns = []
+
+            try:
+                with warnings.catch_warnings(record=True) as warns:
+                    loop.run_until_complete(f(*args, **kwargs))
+
+            except AssertionError as e:
+                E = e
+            except Exception as e:
+                E = e
+
+            runtime_warnings = [w for w in warns if w.category == RuntimeWarning]
+
+            for w in (runtime_warnings if suppress_warnings else warns):
+                warnings.showwarning(w.message,
+                                     w.category,
+                                     w.filename,
+                                     w.lineno)
+            if E is None:
+                args[0].assertEqual(len(runtime_warnings), 0,
+                                    msg="asyncio subsystem generated warnings due to unawaited coroutines")
+            else:
+                raise E
+
+        return __inner
+
+    if callable(suppress_warnings):
+        # supress_warnings is actually f
+        f = suppress_warnings
+        suppress_warnings = False
+        return __outer(f)
+    else:
+        return __outer

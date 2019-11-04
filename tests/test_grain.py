@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
 from unittest import TestCase
 import uuid
 from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
@@ -25,13 +24,65 @@ from fractions import Fraction
 import json
 from copy import copy, deepcopy
 
+src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+cts = Timestamp.from_tai_sec_nsec("417798915:0")
+ots = Timestamp.from_tai_sec_nsec("417798915:5")
+sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+VIDEOGRAIN_TEST_METADATA = {
+    "@_ns": "urn:x-ipstudio:ns:0.1",
+    "grain": {
+        "grain_type": "video",
+        "source_id": str(src_id),
+        "flow_id": str(flow_id),
+        "origin_timestamp": str(ots),
+        "sync_timestamp": str(sts),
+        "creation_timestamp": str(cts),
+        "rate": {
+            "numerator": 25,
+            "denominator": 1,
+        },
+        "duration": {
+            "numerator": 1,
+            "denominator": 25,
+        },
+        "cog_frame": {
+            "format": CogFrameFormat.S16_422_10BIT,
+            "width": 1920,
+            "height": 1080,
+            "layout": CogFrameLayout.FULL_FRAME,
+            "extension": 0,
+            "components": [
+                {
+                    'stride': 4096,
+                    'width': 1920,
+                    'height': 1080,
+                    'offset': 0,
+                    'length': 4096*1080
+                },
+                {
+                    'stride': 2048,
+                    'width': 960,
+                    'height': 1080,
+                    'offset': 4096*1080,
+                    'length': 2048*1080
+                },
+                {
+                    'stride': 2048,
+                    'width': 960,
+                    'height': 1080,
+                    'offset': 4096*1080 + 2048*1080,
+                    'length': 2048*1080
+                }
+            ]
+        }
+    },
+}
+
 
 class TestGrain (TestCase):
     def test_empty_grain_creation(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = Grain(src_id, flow_id)
 
@@ -62,12 +113,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.creation_timestamp, cts)
 
     def test_empty_grain_creation_with_odd_data(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         meta = {
             "grain": {
                 "source_id": src_id,
@@ -98,11 +143,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.expected_length, 23)
 
     def test_empty_grain_creation_with_ots(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = Grain(src_id, flow_id, origin_timestamp=ots)
 
@@ -119,12 +159,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.timelabels, [])
 
     def test_empty_grain_creation_with_ots_and_sts(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = Grain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts)
 
@@ -141,12 +175,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.timelabels, [])
 
     def test_empty_grain_castable_to_tuple(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = Grain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts)
 
@@ -160,12 +188,6 @@ class TestGrain (TestCase):
         self.assertIsInstance(tuple(grain[0]), tuple)
 
     def test_empty_grain_with_meta(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         meta = {
             "@_ns": "urn:x-ipstudio:ns:0.1",
             "grain": {
@@ -222,41 +244,35 @@ class TestGrain (TestCase):
         self.assertEqual(repr(grain), "Grain({!r})".format(meta))
 
     def test_empty_grain_setters(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = Grain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts)
 
-        src_id = uuid.UUID("18d1a52e-0a67-11e8-ba57-776dc8ceabcb")
-        flow_id = uuid.UUID("1ed4cfb4-0a67-11e8-b803-733e0764879a")
-        cts = Timestamp.from_tai_sec_nsec("417798915:15")
-        ots = Timestamp.from_tai_sec_nsec("417798915:20")
-        sts = Timestamp.from_tai_sec_nsec("417798915:25")
-        grain_type = "potato"
+        new_src_id = uuid.UUID("18d1a52e-0a67-11e8-ba57-776dc8ceabcb")
+        new_flow_id = uuid.UUID("1ed4cfb4-0a67-11e8-b803-733e0764879a")
+        new_cts = Timestamp.from_tai_sec_nsec("417798915:15")
+        new_ots = Timestamp.from_tai_sec_nsec("417798915:20")
+        new_sts = Timestamp.from_tai_sec_nsec("417798915:25")
+        new_grain_type = "potato"
 
-        grain.grain_type = grain_type
-        self.assertEqual(grain.grain_type, grain_type)
+        grain.grain_type = new_grain_type
+        self.assertEqual(grain.grain_type, new_grain_type)
 
-        grain.source_id = src_id
-        self.assertEqual(grain.source_id, src_id)
+        grain.source_id = new_src_id
+        self.assertEqual(grain.source_id, new_src_id)
 
-        grain.flow_id = flow_id
-        self.assertEqual(grain.flow_id, flow_id)
+        grain.flow_id = new_flow_id
+        self.assertEqual(grain.flow_id, new_flow_id)
 
-        grain.origin_timestamp = ots
-        self.assertEqual(grain.origin_timestamp, ots)
-        self.assertEqual(grain.final_origin_timestamp(), ots)
-        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
+        grain.origin_timestamp = new_ots
+        self.assertEqual(grain.origin_timestamp, new_ots)
+        self.assertEqual(grain.final_origin_timestamp(), new_ots)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(new_ots))
 
-        grain.sync_timestamp = sts
-        self.assertEqual(grain.sync_timestamp, sts)
+        grain.sync_timestamp = new_sts
+        self.assertEqual(grain.sync_timestamp, new_sts)
 
-        grain.creation_timestamp = cts
-        self.assertEqual(grain.creation_timestamp, cts)
+        grain.creation_timestamp = new_cts
+        self.assertEqual(grain.creation_timestamp, new_cts)
 
         grain.rate = 50
         self.assertEqual(grain.rate, Fraction(50, 1))
@@ -318,12 +334,6 @@ class TestGrain (TestCase):
             }
 
     def test_video_grain_create_YUV422_10bit(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
@@ -410,12 +420,6 @@ class TestGrain (TestCase):
                 (CogFrameFormat.v216, (1920*1080*4,)),
                 (CogFrameFormat.UNKNOWN, ()),
                 ]:
-            src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-            flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-            cts = Timestamp.from_tai_sec_nsec("417798915:0")
-            ots = Timestamp.from_tai_sec_nsec("417798915:5")
-            sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
             with mock.patch.object(Timestamp, "get_time", return_value=cts):
                 grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                    cog_frame_format=fmt,
@@ -431,12 +435,6 @@ class TestGrain (TestCase):
             self.assertEqual(len(grain.data), offset)
 
     def test_video_component_setters(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
@@ -485,12 +483,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.components[0].length, 1920*1080)
 
     def test_video_grain_with_sparse_meta(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         meta = {
             "@_ns": "urn:x-ipstudio:ns:0.1",
             "grain": {
@@ -522,12 +514,6 @@ class TestGrain (TestCase):
         self.assertEqual(len(grain.components), 0)
 
     def test_video_grain_with_numeric_identifiers(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=0x2805,
@@ -584,12 +570,6 @@ class TestGrain (TestCase):
                                                      'length': 1920*1080*2})
 
     def test_video_grain_setters(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
@@ -633,11 +613,6 @@ class TestGrain (TestCase):
             VideoGrain(None)
 
     def test_video_grain_create_with_ots_and_no_sts(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain(src_id, flow_id, origin_timestamp=ots,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
@@ -650,10 +625,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.creation_timestamp, cts)
 
     def test_video_grain_create_with_no_ots_and_no_sts(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain(src_id, flow_id,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
@@ -666,11 +637,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.creation_timestamp, cts)
 
     def test_videograin_meta_is_json_serialisable(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain(src_id, flow_id, origin_timestamp=ots,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
@@ -679,62 +645,7 @@ class TestGrain (TestCase):
         self.assertEqual(json.loads(json.dumps(grain.meta)), grain.meta)
 
     def test_grain_makes_videograin(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
-        meta = {
-            "@_ns": "urn:x-ipstudio:ns:0.1",
-            "grain": {
-                "grain_type": "video",
-                "source_id": str(src_id),
-                "flow_id": str(flow_id),
-                "origin_timestamp": str(ots),
-                "sync_timestamp": str(sts),
-                "creation_timestamp": str(cts),
-                "rate": {
-                    "numerator": 25,
-                    "denominator": 1,
-                },
-                "duration": {
-                    "numerator": 1,
-                    "denominator": 25,
-                },
-                "cog_frame": {
-                    "format": CogFrameFormat.S16_422_10BIT,
-                    "width": 1920,
-                    "height": 1080,
-                    "layout": CogFrameLayout.FULL_FRAME,
-                    "extension": 0,
-                    "components": [
-                        {
-                            'stride': 4096,
-                            'width': 1920,
-                            'height': 1080,
-                            'offset': 0,
-                            'length': 4096*1080
-                        },
-                        {
-                            'stride': 2048,
-                            'width': 960,
-                            'height': 1080,
-                            'offset': 4096*1080,
-                            'length': 2048*1080
-                        },
-                        {
-                            'stride': 2048,
-                            'width': 960,
-                            'height': 1080,
-                            'offset': 4096*1080 + 2048*1080,
-                            'length': 2048*1080
-                        }
-                    ]
-                }
-            },
-        }
-
+        meta = VIDEOGRAIN_TEST_METADATA
         data = bytearray(8192*1080)
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -746,61 +657,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.data, data)
 
     def test_grain_makes_videograin_without_data(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
-        meta = {
-            "@_ns": "urn:x-ipstudio:ns:0.1",
-            "grain": {
-                "grain_type": "video",
-                "source_id": str(src_id),
-                "flow_id": str(flow_id),
-                "origin_timestamp": str(ots),
-                "sync_timestamp": str(sts),
-                "creation_timestamp": str(cts),
-                "rate": {
-                    "numerator": 25,
-                    "denominator": 1,
-                },
-                "duration": {
-                    "numerator": 1,
-                    "denominator": 25,
-                },
-                "cog_frame": {
-                    "format": CogFrameFormat.S16_422_10BIT,
-                    "width": 1920,
-                    "height": 1080,
-                    "layout": CogFrameLayout.FULL_FRAME,
-                    "extension": 0,
-                    "components": [
-                        {
-                            'stride': 4096,
-                            'width': 1920,
-                            'height': 1080,
-                            'offset': 0,
-                            'length': 4096*1080
-                        },
-                        {
-                            'stride': 2048,
-                            'width': 960,
-                            'height': 1080,
-                            'offset': 4096*1080,
-                            'length': 2048*1080
-                        },
-                        {
-                            'stride': 2048,
-                            'width': 960,
-                            'height': 1080,
-                            'offset': 4096*1080 + 2048*1080,
-                            'length': 2048*1080
-                        }
-                    ]
-                }
-            },
-        }
+        meta = VIDEOGRAIN_TEST_METADATA
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = Grain(meta)
@@ -812,10 +669,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.expected_length, 8192*1080)
 
     def test_video_grain_normalise(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-
         with mock.patch.object(Timestamp, "get_time", return_value=ots):
             grain = VideoGrain(src_id, flow_id, origin_timestamp=ots,
                                rate=Fraction(25, 1),
@@ -834,12 +687,6 @@ class TestGrain (TestCase):
                          TimeRange.from_single_timestamp(ots).normalise(25, 1))
 
     def test_audio_grain_create_S16_PLANES(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = AudioGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_audio_format=CogAudioFormat.S16_PLANES,
@@ -868,11 +715,6 @@ class TestGrain (TestCase):
         self.assertEqual(repr(grain), "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_audio_grain_create_fills_in_missing_sts(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = AudioGrain(src_id, flow_id, origin_timestamp=ots,
                                cog_audio_format=CogAudioFormat.S16_PLANES,
@@ -900,10 +742,6 @@ class TestGrain (TestCase):
         self.assertEqual(repr(grain), "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_audio_grain_create_fills_in_missing_ots(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = AudioGrain(src_id, flow_id,
                                cog_audio_format=CogAudioFormat.S16_PLANES,
@@ -935,12 +773,6 @@ class TestGrain (TestCase):
             AudioGrain(None)
 
     def test_audio_grain_create_all_formats(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         for (fmt, length) in [(CogAudioFormat.S16_PLANES,         1920*2*2),
                               (CogAudioFormat.S16_PAIRS,          1920*2*2),
                               (CogAudioFormat.S16_INTERLEAVED,    1920*2*2),
@@ -969,8 +801,6 @@ class TestGrain (TestCase):
 
     def test_audio_grain_create_fills_in_missing_meta(self):
         meta = {}
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = AudioGrain(meta)
 
@@ -984,8 +814,6 @@ class TestGrain (TestCase):
 
     def test_audio_grain_setters(self):
         meta = {}
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = AudioGrain(meta)
 
@@ -1004,10 +832,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.sample_rate, 48000)
 
     def test_audiograin_meta_is_json_serialisable(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = AudioGrain(src_id, flow_id,
                                cog_audio_format=CogAudioFormat.S16_PLANES,
@@ -1019,12 +843,6 @@ class TestGrain (TestCase):
             self.fail(msg="Json serialisation produces: {} which is not json deserialisable".format(json.dumps(grain.meta)))
 
     def test_grain_makes_audiograin(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         meta = {
             "@_ns": "urn:x-ipstudio:ns:0.1",
             "grain": {
@@ -1062,10 +880,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.data, data)
 
     def test_audio_grain_normalise(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        ots = Timestamp.from_tai_sec_nsec("417798915:2")
-
         with mock.patch.object(Timestamp, "get_time", return_value=ots):
             grain = AudioGrain(src_id, flow_id,
                                cog_audio_format=CogAudioFormat.S16_PLANES,
@@ -1085,12 +899,6 @@ class TestGrain (TestCase):
                          TimeRange(ots, final_ts).normalise(48000, 1))
 
     def test_coded_video_grain_create_VC2(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedVideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                     cog_frame_format=CogFrameFormat.VC2,
@@ -1123,9 +931,7 @@ class TestGrain (TestCase):
         self.assertEqual(repr(grain), "CodedVideoGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_video_grain_create_fills_empty_meta(self):
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
         meta = {}
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedVideoGrain(meta)
 
@@ -1146,7 +952,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.unit_offsets, [])
 
     def test_coded_video_grain_create_corrects_numeric_data(self):
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
         meta = {
             'grain': {
                 'cog_coded_frame': {
@@ -1176,12 +981,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.unit_offsets, [])
 
     def test_coded_video_grain_setters(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedVideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                     cog_frame_format=CogFrameFormat.VC2,
@@ -1237,11 +1036,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.unit_offsets, [])
 
     def test_coded_video_grain_create_with_data(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
         data = bytearray(500)
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -1255,11 +1049,6 @@ class TestGrain (TestCase):
         self.assertEqual(len(grain.data), grain.length)
 
     def test_coded_video_grain_create_with_cts_and_ots(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedVideoGrain(src_id, flow_id, origin_timestamp=ots,
                                     cog_frame_format=CogFrameFormat.VC2,
@@ -1271,10 +1060,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.sync_timestamp, ots)
 
     def test_coded_video_grain_create_with_cts(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedVideoGrain(src_id, flow_id,
                                     cog_frame_format=CogFrameFormat.VC2,
@@ -1290,10 +1075,6 @@ class TestGrain (TestCase):
             CodedVideoGrain(None)
 
     def test_coded_video_grain_meta_is_json_serialisable(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedVideoGrain(src_id, flow_id,
                                     cog_frame_format=CogFrameFormat.VC2,
@@ -1303,12 +1084,6 @@ class TestGrain (TestCase):
         self.assertEqual(json.loads(json.dumps(grain.meta)), grain.meta)
 
     def test_grain_makes_codedvideograin(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         meta = {
             "@_ns": "urn:x-ipstudio:ns:0.1",
             "grain": {
@@ -1349,10 +1124,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.data, data)
 
     def test_coded_video_grain_normalise(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-
         with mock.patch.object(Timestamp, "get_time", return_value=ots):
             grain = CodedVideoGrain(src_id, flow_id, origin_timestamp=ots,
                                     rate=Fraction(25, 1),
@@ -1372,12 +1143,6 @@ class TestGrain (TestCase):
                          TimeRange.from_single_timestamp(ots).normalise(25, 1))
 
     def test_coded_audio_grain_create_MP1(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedAudioGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                     cog_audio_format=CogAudioFormat.MP1,
@@ -1413,11 +1178,6 @@ class TestGrain (TestCase):
         self.assertEqual(repr(grain), "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_audio_grain_create_without_sts(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedAudioGrain(src_id, flow_id, origin_timestamp=ots,
                                     cog_audio_format=CogAudioFormat.MP1,
@@ -1453,10 +1213,6 @@ class TestGrain (TestCase):
         self.assertEqual(repr(grain), "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_audio_grain_create_without_sts_or_ots(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedAudioGrain(src_id, flow_id,
                                     cog_audio_format=CogAudioFormat.MP1,
@@ -1492,7 +1248,6 @@ class TestGrain (TestCase):
         self.assertEqual(repr(grain), "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_audio_grain_create_fills_empty_meta(self):
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
         meta = {}
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -1514,7 +1269,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.length, 0)
 
     def test_coded_audio_grain_create_corrects_numeric_data(self):
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
         meta = {
             'grain': {
                 'cog_coded_audio': {
@@ -1543,7 +1297,6 @@ class TestGrain (TestCase):
 
     def test_coded_audio_grain_setters(self):
         meta = {}
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedAudioGrain(meta)
@@ -1571,7 +1324,6 @@ class TestGrain (TestCase):
     def test_coded_audio_grain_with_data(self):
         meta = {}
         data = bytearray(15360)
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedAudioGrain(meta, data)
@@ -1584,10 +1336,6 @@ class TestGrain (TestCase):
             CodedAudioGrain(None)
 
     def test_codedaudiograin_meta_is_json_serialisable(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedAudioGrain(src_id, flow_id,
                                     cog_audio_format=CogAudioFormat.MP1,
@@ -1604,12 +1352,6 @@ class TestGrain (TestCase):
             self.fail(msg="Json serialisation produces: {} which is not json deserialisable".format(json.dumps(grain.meta)))
 
     def test_grain_makes_codedaudiograin(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         meta = {
             "@_ns": "urn:x-ipstudio:ns:0.1",
             "grain": {
@@ -1649,10 +1391,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.data, data)
 
     def test_coded_audio_grain_normalise(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        ots = Timestamp.from_tai_sec_nsec("417798915:2")
-
         with mock.patch.object(Timestamp, "get_time", return_value=ots):
             grain = CodedAudioGrain(src_id, flow_id, origin_timestamp=ots,
                                     cog_audio_format=CogAudioFormat.MP1,
@@ -1677,12 +1415,6 @@ class TestGrain (TestCase):
                          TimeRange(ots, final_ts).normalise(48000, 1))
 
     def test_event_grain_create(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = EventGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                event_type='urn:x-ipstudio:format:event.query', topic='/dummy')
@@ -1708,11 +1440,6 @@ class TestGrain (TestCase):
         self.assertEqual(repr(grain), "EventGrain({!r})".format(grain.meta))
 
     def test_event_grain_create_without_sts(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = EventGrain(src_id, flow_id, origin_timestamp=ots,
                                event_type='urn:x-ipstudio:format:event.query', topic='/dummy')
@@ -1735,10 +1462,6 @@ class TestGrain (TestCase):
         self.assertEqual(repr(grain), "EventGrain({!r})".format(grain.meta))
 
     def test_event_grain_create_without_sts_or_ots(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = EventGrain(src_id, flow_id,
                                event_type='urn:x-ipstudio:format:event.query', topic='/dummy')
@@ -1761,7 +1484,6 @@ class TestGrain (TestCase):
         self.assertEqual(repr(grain), "EventGrain({!r})".format(grain.meta))
 
     def test_event_grain_create_fills_in_empty_meta(self):
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
         meta = {}
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -1785,12 +1507,6 @@ class TestGrain (TestCase):
             EventGrain(None)
 
     def test_event_grain_create_from_meta_and_data(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         meta = {
             "@_ns": "urn:x-ipstudio:ns:0.1",
             "grain": {
@@ -1853,7 +1569,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.event_data[1].post, 'bong')
 
     def test_event_grain_setters(self):
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
         meta = {}
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -1914,12 +1629,6 @@ class TestGrain (TestCase):
             grain.data = bytearray(json.dumps({'potato': "masher"}).encode('utf-8'))
 
     def test_copy(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
@@ -1940,12 +1649,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.data[1], clone.data[1])
 
     def test_deepcopy(self):
-        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
-        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
-        cts = Timestamp.from_tai_sec_nsec("417798915:0")
-        ots = Timestamp.from_tai_sec_nsec("417798915:5")
-        sts = Timestamp.from_tai_sec_nsec("417798915:10")
-
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,

@@ -14,15 +14,11 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
-from __future__ import absolute_import
-
 from unittest import TestCase
 
 from uuid import UUID
 from mediatimestamp.immutable import Timestamp, TimeOffset
 from fractions import Fraction
-from six import next
 import struct
 from math import sin, pi
 

@@ -16,7 +16,15 @@
 
 """\
 Library for handling mediagrains in pure python asyncio compatibility layer.
+
+THIS SUBLIBRARY IS DEPRECATED.
+
+DO NOT USE IT IN NEW WORK, IT WILL SOON BE REMOVED.
+
+THE ASYNCIO CAPABILITIES ARE NOW INCLUDED IN mediagrains.gsf
 """
+
+from deprecated import deprecated
 
 import asyncio
 
@@ -36,6 +44,7 @@ from mediagrains.gsf import GSFDecodeBadVersionError, GSFDecodeBadFileTypeError,
 __all__ = ["AsyncGSFDecoder", "AsyncLazyLoaderUnloadedError", "loads"]
 
 
+@deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
 async def loads(s, cls=None, parse_grain=None, **kwargs):
     """Deserialise a GSF file from a string (or similar) into python,
     returns a pair of (head, segments) where head is a python dict
@@ -67,6 +76,7 @@ class AsyncGSFBlock():
     Must be used as an asynchronous context manager, which will automatically decode the block tag and size,
     exposed by the `tag` and `size` attributes.
     """
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     def __init__(self, file_data, want_tag=None, raise_on_wrong_tag=False):
         """Constructor. Unlike the synchronous version does not record the start byte of the block in `block_start`
 
@@ -81,6 +91,7 @@ class AsyncGSFBlock():
         self.size = None
         self.block_start = None
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def __aenter__(self):
         """When used as a context manager record file position and read block size and tag on entry
 
@@ -116,10 +127,12 @@ class AsyncGSFBlock():
                 await self.file_data.seek(self.block_start + self.size, SEEK_SET)
                 self.block_start = await self.file_data.tell()
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def __aexit__(self, *args):
         """When used as a context manager, exiting context should seek to the block end"""
         await self.file_data.seek(self.block_start + self.size, SEEK_SET)
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def has_child_block(self, strict_blocks=True):
         """Checks if there is space for another child block in this block
 
@@ -144,6 +157,7 @@ class AsyncGSFBlock():
         else:
             return False
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def child_blocks(self, strict_blocks=True):
         """Asynchronous generator for each child block - each yielded block sits within the context manager
 
@@ -157,6 +171,7 @@ class AsyncGSFBlock():
             async with AsyncGSFBlock(self.file_data) as child_block:
                 yield child_block
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def get_remaining(self):
         """Get the number of bytes left in this block
 
@@ -167,6 +182,7 @@ class AsyncGSFBlock():
         assert self.size is not None, "get_remaining() only works in a context manager"
         return (self.block_start + self.size) - await self.file_data.tell()
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def read_uint(self, length):
         """Read an unsigned integer of length `length`
 
@@ -184,6 +200,7 @@ class AsyncGSFBlock():
             r += (uint_bytes[n] << (n*8))
         return r
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def read_bool(self):
         """Read a boolean value
 
@@ -192,6 +209,7 @@ class AsyncGSFBlock():
         n = await self.read_uint(1)
         return (n != 0)
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def read_sint(self, length):
         """Read a 2's complement signed integer
 
@@ -204,6 +222,7 @@ class AsyncGSFBlock():
             r -= (1 << (8*length))
         return r
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def read_string(self, length):
         """Read a fixed-length string, treating it as UTF-8
 
@@ -217,6 +236,7 @@ class AsyncGSFBlock():
 
         return string_data.decode(encoding='utf-8')
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def read_varstring(self):
         """Read a variable length string
 
@@ -228,6 +248,7 @@ class AsyncGSFBlock():
         length = await self.read_uint(2)
         return await self.read_string(length)
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def read_uuid(self):
         """Read a UUID
 
@@ -241,6 +262,7 @@ class AsyncGSFBlock():
 
         return UUID(bytes=uuid_data)
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def read_timestamp(self):
         """Read a date-time (with seconds resolution) stored in 7 bytes
 
@@ -255,6 +277,7 @@ class AsyncGSFBlock():
         second = await self.read_uint(1)
         return datetime(year, month, day, hour, minute, second)
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def read_ippts(self):
         """Read a mediatimestamp.Timestamp
 
@@ -265,6 +288,7 @@ class AsyncGSFBlock():
         nano = await self.read_uint(4)
         return Timestamp(secs, nano)
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def read_rational(self):
         """Read a rational (fraction)
 
@@ -281,6 +305,7 @@ class AsyncGSFBlock():
             return Fraction(numerator, denominator)
 
 
+@deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
 def asynchronise(f):
     async def __inner(*args, **kwargs):
         return f(*args, **kwargs)
@@ -293,6 +318,7 @@ class AsyncGSFDecoder(object):
     Provides coroutines to decode the header of a GSF file, followed by an asynchronous generator to get each grain,
     wrapped in some grain method (mediagrains.Grain by default.)
     """
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     def __init__(self, file_data, parse_grain=Grain, **kwargs):
         """Constructor
 
@@ -307,6 +333,7 @@ class AsyncGSFDecoder(object):
         self.head = None
         self.start_loc = None
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def _decode_ssb_header(self):
         """Find and read the SSB header in the GSF file
 
@@ -326,6 +353,7 @@ class AsyncGSFDecoder(object):
 
         return (major, minor)
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def _decode_head(self, head_block):
         """Decode the "head" block and extract ID, created date, segments and tags
 
@@ -367,6 +395,7 @@ class AsyncGSFDecoder(object):
 
         return head
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def _decode_tils(self, tils_block):
         """Decode timelabels (tils) block
 
@@ -390,6 +419,7 @@ class AsyncGSFDecoder(object):
 
         return tils
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def _decode_gbhd(self, gbhd_block):
         """Decode grain block header ("gbhd") to get grain metadata
 
@@ -503,6 +533,7 @@ class AsyncGSFDecoder(object):
 
         return meta
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def decode_file_headers(self):
         """Verify the file is a supported version, and get the file header
 
@@ -525,20 +556,24 @@ class AsyncGSFDecoder(object):
         except EOFError:
             raise GSFDecodeError("No head block found in file", await self.file_data.tell())
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def __aenter__(self):
         if self.start_loc is None:
             self.start_loc = await self.file_data.tell()
         await self.decode_file_headers()
         return self
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def __aexit__(self, *args, **kwargs):
         if self.start_loc is not None:
             await self.file_data.seek(self.start_loc)
             self.start_loc = None
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     def __aiter__(self):
         return self.grains()
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def grains(self, local_ids=None, load_lazily=True):
         """Asynchronous generator to get grains from the GSF file. Skips blocks which aren't "grai".
 
@@ -586,6 +621,7 @@ class AsyncGSFDecoder(object):
             except EOFError:
                 return  # We ran out of grains to read and hit EOF
 
+    @deprecated(version="2.7.0", reason="Asyncio is now supported directly in mediagrains.gsf")
     async def decode(self, load_lazily=False):
         """Decode a GSF formatted bytes object
 
