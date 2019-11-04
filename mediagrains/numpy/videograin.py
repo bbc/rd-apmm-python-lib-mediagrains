@@ -17,8 +17,9 @@
 Library for handling mediagrains in numpy arrays
 """
 
-from mediagrains.cogenums import (
+from ..cogenums import (
     CogFrameFormat,
+    CogFrameLayout,
     COG_FRAME_IS_PLANAR,
     COG_FRAME_FORMAT_BYTES_PER_VALUE,
     COG_FRAME_IS_PLANAR_RGB)
@@ -30,12 +31,15 @@ import uuid
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
 
-from typing import Callable, Dict, Tuple, Optional, Awaitable, cast
+from typing import Callable, Dict, Tuple, Optional, Awaitable, cast, overload
 from ..typing import VideoGrainMetadataDict, GrainDataType, GrainDataParameterType
 
 from inspect import isawaitable
 
 from enum import Enum, auto
+from uuid import UUID
+from fractions import Fraction
+from mediatimestamp.immutable import Timestamp
 
 
 __all__ = ['VideoGrain', 'VIDEOGRAIN']
@@ -356,7 +360,36 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
             return self.convert(fmt)
 
 
-def VideoGrain(*args, **kwargs) -> VIDEOGRAIN:
+@overload
+def VideoGrain(grain: bytesgrain.VIDEOGRAIN) -> VIDEOGRAIN: ...
+
+
+@overload
+def VideoGrain(src_id_or_meta: VideoGrainMetadataDict,
+               flow_id_or_data: GrainDataParameterType = None) -> VIDEOGRAIN: ...
+
+
+@overload
+def VideoGrain(src_id_or_meta: Optional[UUID] = None,
+               flow_id_or_data: Optional[UUID] = None,
+               origin_timestamp: Optional[Timestamp] = None,
+               creation_timestamp: Optional[Timestamp] = None,
+               sync_timestamp: Optional[Timestamp] = None,
+               rate: Fraction = Fraction(25, 1),
+               duration: Fraction = Fraction(1, 25),
+               cog_frame_format: CogFrameFormat = CogFrameFormat.UNKNOWN,
+               width: int = 1920,
+               height: int = 1080,
+               cog_frame_layout: CogFrameLayout = CogFrameLayout.UNKNOWN,
+               src_id: Optional[UUID] = None,
+               source_id: Optional[UUID] = None,
+               format: Optional[CogFrameFormat] = None,
+               layout: Optional[CogFrameLayout] = None,
+               flow_id: Optional[UUID] = None,
+               data: GrainDataParameterType = None) -> VIDEOGRAIN: ...
+
+
+def VideoGrain(*args, **kwargs):
     """If the first argument is a mediagrains.VIDEOGRAIN then return a mediagrains.numpy.VIDEOGRAIN representing the same data.
 
     Otherwise takes the same parameters as mediagrains.VideoGrain and returns the same grain converted into a mediagrains.numpy.VIDEOGRAIN
