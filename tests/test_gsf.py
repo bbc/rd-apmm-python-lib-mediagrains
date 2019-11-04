@@ -1934,6 +1934,37 @@ class TestGSFLoads(TestCase):
 
             self.assertEqual(len(grain.data), grain.components[0].length + grain.components[1].length + grain.components[2].length)
 
+    def test_load_uses_custom_grain_function(self):
+        file = BytesIO(VIDEO_DATA)
+        grain_parser = mock.MagicMock(name="grain_parser")
+        (head, segments) = load(file, parse_grain=grain_parser)
+
+        self.assertEqual(len(segments), 1)
+        self.assertIn(1, segments)
+        self.assertEqual(len(segments[1]), 10)
+        self.assertEqual(grain_parser.call_count, 10)
+
+    @async_test
+    async def test_async_load_uses_custom_grain_function(self):
+        file = AsyncBytesIO(VIDEO_DATA)
+        grain_parser = mock.MagicMock(name="grain_parser")
+        (head, segments) = await load(file, parse_grain=grain_parser)
+
+        self.assertEqual(len(segments), 1)
+        self.assertIn(1, segments)
+        self.assertEqual(len(segments[1]), 10)
+        self.assertEqual(grain_parser.call_count, 10)
+
+    def test_loads_uses_custom_grain_function(self):
+        s = VIDEO_DATA
+        grain_parser = mock.MagicMock(name="grain_parser")
+        (head, segments) = loads(s, parse_grain=grain_parser)
+
+        self.assertEqual(len(segments), 1)
+        self.assertIn(1, segments)
+        self.assertEqual(len(segments[1]), 10)
+        self.assertEqual(grain_parser.call_count, 10)
+
     def test_loads_audio(self):
         (head, segments) = loads(AUDIO_DATA)
 

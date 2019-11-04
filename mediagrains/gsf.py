@@ -134,7 +134,7 @@ def load(fp,
         parse_grain = Grain
 
     async def __ainner():
-        async with cls(file_data=fp, **kwargs) as dec:
+        async with cls(file_data=fp, parse_grain=parse_grain, **kwargs) as dec:
             grains = {}
             async for (grain, key) in dec.grains(load_lazily=False):
                 if key not in grains:
@@ -145,7 +145,7 @@ def load(fp,
     if isinstance(fp, AsyncBinaryIO):
         return __ainner()
     else:
-        return cls(file_data=fp, **kwargs).decode()
+        return cls(file_data=fp, parse_grain=parse_grain, **kwargs).decode()
 
 
 def dump(grains: Iterable[GRAIN],
