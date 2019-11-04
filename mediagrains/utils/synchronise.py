@@ -96,7 +96,7 @@ def run_asyncgenerator_synchronously(gen):
         try:
             yield run_awaitable_synchronously(__get_next(gen))
         except StopAsyncIteration:
-            raise StopIteration
+            return
 
 
 class Synchronised(Generic[T]):
