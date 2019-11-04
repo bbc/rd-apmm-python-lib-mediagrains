@@ -23,7 +23,7 @@ interface a little.
 from abc import ABCMeta, abstractmethod
 from io import SEEK_SET, SEEK_CUR
 
-from typing import Type, MutableSequence, Union, Optional
+from typing import Type, Union, Optional
 
 
 class OpenAsyncBinaryIO(metaclass=ABCMeta):
@@ -31,20 +31,23 @@ class OpenAsyncBinaryIO(metaclass=ABCMeta):
         if size == -1:
             return await self.readall()
         else:
-            b = bytearray(size)
-            s = await self.readinto(b)
-            if s < size:
-                raise EOFError
-            return bytes(b)
+            while True:
+                b = bytearray(size)
+                s = await self.readinto(b)
+                if s is None:
+                    continue
+                if s < size:
+                    raise EOFError
+                return bytes(b)
 
     @abstractmethod
-    async def readinto(self, b: MutableSequence[int]) -> Union[int, None]: ...
+    async def readinto(self, b: bytearray) -> Union[int, None]: ...
 
     @abstractmethod
     async def readall(self) -> bytes: ...
 
     @abstractmethod
-    async def write(self, b: bytes) -> int: ...
+    async def write(self, b: bytes) -> Optional[int]: ...
 
     @abstractmethod
     async def truncate(self, s: Optional[int] = None) -> int: ...
@@ -58,11 +61,17 @@ class OpenAsyncBinaryIO(metaclass=ABCMeta):
     @abstractmethod
     def seekable(self) -> bool: ...
 
+    def seekable_forwards(self) -> bool:
+        return self.seekable()
+
+    def seekable_backwards(self) -> bool:
+        return self.seekable()
+
     @abstractmethod
     def readable(self) -> bool: ...
 
     @abstractmethod
-    def writeable(self) -> bool: ...
+    def writable(self) -> bool: ...
 
     async def __open__(self) -> None:
         "This coroutine should include any code that is to be run when the io stream is opened"
@@ -95,7 +104,7 @@ class OpenAsyncBytesIO(OpenAsyncBinaryIO):
         "This coroutine should include any code that is to be run when the io stream is opened"
         self._pos = 0
 
-    async def readinto(self, b: MutableSequence[int]) -> int:
+    async def readinto(self, b: bytearray) -> int:
         length = min(self._len - self._pos, len(b))
         if length > 0:
             b[:length] = self._buffer[self._pos:self._pos + length]
@@ -150,7 +159,7 @@ class OpenAsyncBytesIO(OpenAsyncBinaryIO):
     def readable(self) -> bool:
         return True
 
-    def writeable(self) -> bool:
+    def writable(self) -> bool:
         return True
 
     def getbuffer(self) -> bytearray:

@@ -562,7 +562,7 @@ class AsyncGSFBlock():
         assert self.size is not None, "get_remaining() only works in a context manager"
         return (self.block_start + self.size) - self.file_data.tell()
 
-    async def read_uint(self, length):
+    async def read_uint(self, length) -> int:
         """Read an unsigned integer of length `length`
 
         :param length: Number of bytes used to store the integer
@@ -926,13 +926,13 @@ class GSFDecoderSession(object):
                     with GSFBlock(self.file_data, want_tag="gbhd", raise_on_wrong_tag=True) as gbhd_block:
                         meta = self._decode_gbhd(gbhd_block)
 
-                    data = None
+                    data: Optional[bytes] = None
 
                     if grai_block.has_child_block():
                         with GSFBlock(self.file_data, want_tag="grdt") as grdt_block:
                             if grdt_block.get_remaining() > 0:
                                 if load_lazily:
-                                    data = IOBytes(self.file_data, self.file_data.tell(), grdt_block.get_remaining())
+                                    data = cast(bytes, IOBytes(self.file_data, self.file_data.tell(), grdt_block.get_remaining()))
                                 elif not skip_data:
                                     data = self.file_data.read(grdt_block.get_remaining())
 
@@ -994,7 +994,7 @@ class GSFAsyncDecoderSession(object):
         :param head_block: GSFBlock representing the "head" block
         :returns: Head block as a dict
         """
-        head = {}
+        head: dict = {}
         head['id'] = await head_block.read_uuid()
         head['created'] = await head_block.read_timestamp()
 
@@ -1013,7 +1013,7 @@ class GSFAsyncDecoderSession(object):
 
                 # Segment blocks can have child tags as well
                 while head_child.has_child_block():
-                    async with GSFBlock(self.file_data) as segm_tag:
+                    async with AsyncGSFBlock(self.file_data) as segm_tag:
                         if segm_tag.tag == "tag ":
                             key = await segm_tag.read_varstring()
                             value = await segm_tag.read_varstring()
@@ -1027,7 +1027,7 @@ class GSFAsyncDecoderSession(object):
                 value = await head_child.read_varstring()
                 head['tags'].append((key, value))
 
-        return head
+        return cast(GSFFileHeaderDict, head)
 
     async def _decode_tils(self, tils_block: AsyncGSFBlock) -> List[dict]:
         """Decode timelabels (tils) block
@@ -1059,7 +1059,7 @@ class GSFAsyncDecoderSession(object):
         :returns: Grain data dict
         :raises GSFDecodeError: If "gbhd" block contains an unkown child block
         """
-        meta = {
+        meta: dict = {
             "grain": {
             }
         }
@@ -1163,7 +1163,7 @@ class GSFAsyncDecoderSession(object):
                     length=gbhd_child.size
                 )
 
-        return meta
+        return cast(GrainMetadataDict, meta)
 
     async def _decode_file_headers(self) -> None:
         """Verify the file is a supported version, get the file header and store it in the file_headers property
@@ -1234,7 +1234,7 @@ class GSFAsyncDecoderSession(object):
                     async with AsyncGSFBlock(self.file_data, want_tag="gbhd", raise_on_wrong_tag=True) as gbhd_block:
                         meta = await self._decode_gbhd(gbhd_block)
 
-                    data = None
+                    data: Optional[Union[bytes, Awaitable[Optional[bytes]]]] = None
 
                     if grai_block.has_child_block():
                         async with AsyncGSFBlock(self.file_data, want_tag="grdt") as grdt_block:
@@ -1284,7 +1284,7 @@ class GSFDecoder(object):
         """
         self._file_data: Optional[Union[RawIOBase, BufferedIOBase]]
         self._afile_data: Optional[AsyncBinaryIO]
-        self._open_afile: Optional[AsyncBinaryIO]
+        self._open_afile: Optional[OpenAsyncBinaryIO]
 
         self.Grain = parse_grain
 
@@ -1310,7 +1310,7 @@ class GSFDecoder(object):
         if self._file_data is None:
             raise TypeError("file_data must be a synchronous binary file to use this class as a context manager")
 
-        session = GSFDecoderSession(file_data=self._file_data, parse_grain=self.Grain)
+        session = GSFDecoderSession(file_data=cast(IO[bytes], self._file_data), parse_grain=self.Grain)
         session._decode_file_headers()
         return session
 
@@ -1347,6 +1347,8 @@ class GSFDecoder(object):
         :raises GSFDecodeError: If the file doesn't have a "head" block
         """
         self._open_session = self.__enter__()
+        if self._open_session.file_headers is None:
+            raise RuntimeError("There should be some file headers here!")
         return self._open_session.file_headers
 
     @deprecated(version="2.7.0", reason="This method is old, use the class as a context manager instead")
@@ -1378,10 +1380,14 @@ class GSFDecoder(object):
         :returns: A dictionary mapping sequence ids to lists of GRAIN objects (or subclasses of such).
         """
         if (s is not None):
-            self._file_data = BytesIO(s)
+            # Unclear why this cast is needed, since a BytesIO is already a BufferedIOBase ...
+            self._file_data = cast(BufferedIOBase, BytesIO(s))
 
         with self as session:
-            segments = {}
+            if session.file_headers is None:
+                raise RuntimeError("There should be some file headers here!")
+
+            segments: Dict[int, List[GRAIN]] = {}
 
             for (grain, local_id) in session._grains(load_lazily=False):
                 if local_id not in segments:
