@@ -9,6 +9,7 @@
 - Added MyPy as a dependency
 - Deprecated old asyncio code from v2.6
 - Added Asynchronous GSFEncoding using the standard Encoder in a context-manager type workflow.
+- Added Asynchronous GSFDecoding using the standard Decoder in a context-manager type workflow.
 
 ## 2.6.0
 - Added support for async methods to gsf decoder in python 3.6+
