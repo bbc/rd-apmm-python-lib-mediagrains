@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #
 # Copyright 2018 British Broadcasting Corporation
 #
@@ -18,9 +17,6 @@
 The submodule of mediagrains which contains code for generating test video
 grains.
 """
-
-from __future__ import print_function
-from __future__ import absolute_import
 
 from fractions import Fraction
 from mediatimestamp.immutable import TimeOffset
@@ -124,7 +120,6 @@ def LumaSteps(src_id, flow_id, width, height,
         vg.sync_timestamp = vg.origin_timestamp
 
 
-
 def ColourBars(src_id, flow_id, width, height,
                intensity=0.75,
                rate=Fraction(25, 1),
@@ -175,10 +170,12 @@ def ColourBars(src_id, flow_id, width, height,
                 lines[c][2*x + 0] = values[pos][c] & 0xFF
                 lines[c][2*x + 1] = (values[pos][c] >> 8) & 0xFF
 
-
     for c in range(0, 3):
         for y in range(0, vg.components[c].height):
-            vg.data[vg.components[c].offset + y*vg.components[c].stride:vg.components[c].offset + y*vg.components[c].stride + vg.components[c].width*_bpp] = lines[c]
+            vg.data[vg.components[c].offset +
+                    y*vg.components[c].stride:vg.components[c].offset +
+                    y*vg.components[c].stride +
+                    vg.components[c].width*_bpp] = lines[c]
 
     origin_timestamp = vg.origin_timestamp
     count = 0
@@ -209,7 +206,9 @@ def MovingBarOverlay(grain_gen, height=100, speed=1.0):
 
             _bpp = pixel_ranges[grain.format][0]
 
-            bar = [bytearray(grain.components[0].width*_bpp * height), bytearray(grain.components[1].width*_bpp * height // v_subs), bytearray(grain.components[2].width*_bpp * height // v_subs)]
+            bar = [bytearray(grain.components[0].width*_bpp * height),
+                   bytearray(grain.components[1].width*_bpp * height // v_subs),
+                   bytearray(grain.components[2].width*_bpp * height // v_subs)]
             for y in range(0, height):
                 for x in range(0, grain.components[0].width):
                     bar[0][y*grain.components[0].width * _bpp + _bpp*x + 0] = pixel_ranges[grain.format][1][0] & 0xFF
@@ -229,18 +228,17 @@ def MovingBarOverlay(grain_gen, height=100, speed=1.0):
         for y in range(0, height):
             grain.data[
                 grain.components[0].offset + ((fnum + y) % grain.components[0].height)*grain.components[0].stride:
-                grain.components[0].offset + ((fnum + y) % grain.components[0].height)*grain.components[0].stride + grain.components[0].width*_bpp ] = (
+                grain.components[0].offset + ((fnum + y) % grain.components[0].height)*grain.components[0].stride + grain.components[0].width*_bpp] = (
                     bar[0][y*grain.components[0].width * _bpp: (y+1)*grain.components[0].width * _bpp])
         for y in range(0, height // v_subs):
             grain.data[
                 grain.components[1].offset + ((fnum//v_subs + y) % grain.components[1].height)*grain.components[1].stride:
-                grain.components[1].offset + ((fnum//v_subs + y) % grain.components[1].height)*grain.components[1].stride + grain.components[1].width*_bpp ] = (
+                grain.components[1].offset + ((fnum//v_subs + y) % grain.components[1].height)*grain.components[1].stride + grain.components[1].width*_bpp] = (
                     bar[1][y*grain.components[1].width * _bpp: (y+1)*grain.components[1].width * _bpp])
             grain.data[
                 grain.components[2].offset + ((fnum//v_subs + y) % grain.components[2].height)*grain.components[2].stride:
-                grain.components[2].offset + ((fnum//v_subs + y) % grain.components[2].height)*grain.components[2].stride + grain.components[2].width*_bpp ] = (
+                grain.components[2].offset + ((fnum//v_subs + y) % grain.components[2].height)*grain.components[2].stride + grain.components[2].width*_bpp] = (
                     bar[2][y*grain.components[2].width * _bpp: (y+1)*grain.components[2].width * _bpp])
-
 
         yield grain
 

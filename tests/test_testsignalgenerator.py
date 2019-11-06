@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #
 # Copyright 2018 British Broadcasting Corporation
 #
@@ -15,15 +14,11 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
-from __future__ import absolute_import
-
 from unittest import TestCase
 
 from uuid import UUID
 from mediatimestamp.immutable import Timestamp, TimeOffset
 from fractions import Fraction
-from six import next
 import struct
 from math import sin, pi
 
@@ -642,7 +637,6 @@ class TestMovingBarOverlay(TestCase):
                         self.assertEqual(U[y*grain.components[1].stride + 2*x + 1], expected[x//(width//16)][1] >> 8)
                         self.assertEqual(V[y*grain.components[2].stride + 2*x + 0], expected[x//(width//16)][2] & 0xFF)
                         self.assertEqual(V[y*grain.components[2].stride + 2*x + 1], expected[x//(width//16)][2] >> 8)
-
 
             ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
 

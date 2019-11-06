@@ -1,9 +1,7 @@
-PYTHON=`which python`
-PYTHON2=`which python2`
 PYTHON3=`which python3`
 PY2DSC=`which py2dsc`
 
-PY2DSC_PARAMS?=--with-python2=true --with-python3=true
+PY2DSC_PARAMS?=--with-python2=false --with-python3=true
 
 topdir := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 topbuilddir := $(realpath .)
@@ -15,7 +13,7 @@ MODNAME=$(PROJECT)
 
 # The rules for names and versions in python, rpm, and deb are different
 # and not entirely compatible. As such py2dsc will automatically convert
-# your package name into a suitable deb name and version number, and this 
+# your package name into a suitable deb name and version number, and this
 # code replicates that.
 DEBNAME=$(shell echo $(MODNAME) | tr '[:upper:]_' '[:lower:]-')
 DEBVERSION=$(shell echo $(VERSION) | sed 's/\.dev/~dev/')
@@ -49,15 +47,15 @@ $(topbuilddir)/dist:
 	mkdir -p $@
 
 source: $(topbuilddir)/dist
-	$(PYTHON) $(topdir)/setup.py sdist $(COMPILE) --dist-dir=$(topbuilddir)/dist
+	$(PYTHON3) $(topdir)/setup.py sdist $(COMPILE) --dist-dir=$(topbuilddir)/dist
 
 $(topbuilddir)/dist/$(MODNAME)-$(VERSION).tar.gz: source
 
 install:
-	$(PYTHON) $(topdir)/setup.py install --root $(DESTDIR) $(COMPILE)
+	$(PYTHON3) $(topdir)/setup.py install --root $(DESTDIR) $(COMPILE)
 
 clean:
-	$(PYTHON) $(topdir)/setup.py clean || true
+	$(PYTHON3) $(topdir)/setup.py clean || true
 	rm -rf $(topbuilddir)/.tox
 	rm -rf $(topbuilddir)/build/ MANIFEST
 	rm -rf $(topbuilddir)/dist
@@ -67,13 +65,10 @@ clean:
 	find $(topdir) -name '*.py,cover' -delete
 	rm -rf $(topbuilddir)/docs
 
-testenv: $(TOXDIR)/py27/bin/activate $(TOXDIR)/py3/bin/activate
+testenv: $(TOXDIR)/py36/bin/activate
 
-$(TOXDIR)/py3/bin/activate: tox.ini
-	tox -e py3 --recreate --workdir $(TOXDIR)
-
-$(TOXDIR)/py27/bin/activate: tox.ini
-	tox -e py27 --recreate --workdir $(TOXDIR)
+$(TOXDIR)/py36/bin/activate: tox.ini
+	tox -e py36 --recreate --notest --workdir $(TOXDIR)
 
 test:
 	tox --workdir $(TOXDIR)
@@ -117,11 +112,9 @@ rpm: $(RPM_PREFIX)/SPECS/$(MODNAME).spec $(RPM_PREFIX)/SOURCES/$(MODNAME)-$(VERS
 	cp $(RPM_PREFIX)/RPMS/*/*.rpm $(topbuilddir)/dist
 
 wheel:
-	$(PYTHON2) $(topdir)/setup.py bdist_wheel
 	$(PYTHON3) $(topdir)/setup.py bdist_wheel
 
 egg:
-	$(PYTHON2) $(topdir)/setup.py bdist_egg
 	$(PYTHON3) $(topdir)/setup.py bdist_egg
 
 docs: $(topbuilddir)/docs/$(MODNAME).html
@@ -130,7 +123,13 @@ $(topbuilddir)/docs/$(MODNAME):
 	mkdir -p $(topbuilddir)/docs
 	ln -s $(topdir)/$(MODNAME) $(topbuilddir)/docs/
 
-$(topbuilddir)/docs/$(MODNAME).html: $(topbuilddir)/docs/$(MODNAME) $(TOXDIR)/py3/bin/activate
-	. $(TOXDIR)/py3/bin/activate && cd $(topbuilddir)/docs/ && pydoc -w ./
+$(topbuilddir)/docs/$(MODNAME).html: $(topbuilddir)/docs/$(MODNAME) $(TOXDIR)/py36/bin/activate
+	. $(TOXDIR)/py36/bin/activate && cd $(topbuilddir)/docs/ && pydoc -w ./
 
-.PHONY: test testenv clean install source deb dsc rpm wheel egg all rpm_dirs rpm_spec docs
+lint: $(TOXDIR)/py36/bin/activate
+	. $(TOXDIR)/py36/bin/activate && python -m flake8
+
+mypy: $(TOXDIR)/py36/bin/activate
+	. $(TOXDIR)/py36/bin/activate && python -m mypy -p $(MODNAME)
+
+.PHONY: test testenv clean install source deb dsc rpm wheel egg all rpm_dirs rpm_spec docs lint mypy

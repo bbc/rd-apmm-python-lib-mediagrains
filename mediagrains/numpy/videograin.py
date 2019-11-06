@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright 2019 British Broadcasting Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,10 +17,9 @@
 Library for handling mediagrains in numpy arrays
 """
 
-from mediagrains.cogenums import (
+from ..cogenums import (
     CogFrameFormat,
-    COG_FRAME_IS_PACKED,
-    COG_FRAME_IS_COMPRESSED,
+    CogFrameLayout,
     COG_FRAME_IS_PLANAR,
     COG_FRAME_FORMAT_BYTES_PER_VALUE,
     COG_FRAME_IS_PLANAR_RGB)
@@ -34,9 +31,15 @@ import uuid
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
 
-from typing import Callable
+from typing import Callable, Dict, Tuple, Optional, Awaitable, cast, overload
+from ..typing import VideoGrainMetadataDict, GrainDataType, GrainDataParameterType
+
+from inspect import isawaitable
 
 from enum import Enum, auto
+from uuid import UUID
+from fractions import Fraction
+from mediatimestamp.immutable import Timestamp
 
 
 __all__ = ['VideoGrain', 'VIDEOGRAIN']
@@ -82,9 +85,9 @@ class ComponentDataList(list):
         YUV = auto()
         RGB = auto()
         BGR = auto()
-        X   = auto()
+        X = auto()
 
-    def __init__(self, data: list, arrangement: ComponentOrder=ComponentOrder.X):
+    def __init__(self, data: list, arrangement: ComponentOrder = ComponentOrder.X):
         super().__init__(data)
         if arrangement == ComponentDataList.ComponentOrder.YUV:
             self.Y = self[0]
@@ -136,7 +139,14 @@ def _component_arrays_for_interleaved_422(data0: np.ndarray, data1: np.ndarray, 
                    strides=(stride, itemsize*4)).transpose()]
 
 
-def _component_arrays_for_interleaved_444_take_three(data0: np.ndarray, data1: np.ndarray, data2: np.ndarray, width: int, height: int, stride: int, itemsize: int, num_components: int = 3):
+def _component_arrays_for_interleaved_444_take_three(data0: np.ndarray,
+                                                     data1: np.ndarray,
+                                                     data2: np.ndarray,
+                                                     width: int,
+                                                     height: int,
+                                                     stride: int,
+                                                     itemsize: int,
+                                                     num_components: int = 3):
     return [
         as_strided(data0,
                    shape=(height, width),
@@ -173,20 +183,40 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
         return _component_arrays_for_interleaved_422(data, data[1:], data[3:], components[0].width, components[0].height, components[0].stride, data.itemsize)
     elif fmt == CogFrameFormat.RGB:
         # 8 bit 4:4:4 three components interleaved in RGB order
-        return _component_arrays_for_interleaved_444_take_three(data, data[1:], data[2:], components[0].width, components[0].height, components[0].stride, data.itemsize)
+        return _component_arrays_for_interleaved_444_take_three(data,
+                                                                data[1:],
+                                                                data[2:],
+                                                                components[0].width,
+                                                                components[0].height,
+                                                                components[0].stride,
+                                                                data.itemsize)
     elif fmt in [CogFrameFormat.RGBx,
                  CogFrameFormat.RGBA,
                  CogFrameFormat.BGRx,
                  CogFrameFormat.BGRx]:
         # 8 bit 4:4:4:4 four components interleave dropping the fourth component
-        return _component_arrays_for_interleaved_444_take_three(data, data[1:], data[2:], components[0].width, components[0].height, components[0].stride, data.itemsize, num_components=4)
+        return _component_arrays_for_interleaved_444_take_three(data,
+                                                                data[1:],
+                                                                data[2:],
+                                                                components[0].width,
+                                                                components[0].height,
+                                                                components[0].stride,
+                                                                data.itemsize,
+                                                                num_components=4)
     elif fmt in [CogFrameFormat.ARGB,
                  CogFrameFormat.xRGB,
                  CogFrameFormat.ABGR,
                  CogFrameFormat.xBGR,
                  CogFrameFormat.AYUV]:
         # 8 bit 4:4:4:4 four components interleave dropping the first component
-        return _component_arrays_for_interleaved_444_take_three(data[1:], data[2:], data[3:], components[0].width, components[0].height, components[0].stride, data.itemsize, num_components=4)
+        return _component_arrays_for_interleaved_444_take_three(data[1:],
+                                                                data[2:],
+                                                                data[3:],
+                                                                components[0].width,
+                                                                components[0].height,
+                                                                components[0].stride,
+                                                                data.itemsize,
+                                                                num_components=4)
     elif fmt == CogFrameFormat.v210:
         # v210 is barely supported. Convert it to something else to actually use it!
         # This method returns an empty list because component access isn't supported, but
@@ -197,37 +227,75 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
 
 
 class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
-    _grain_conversions = {}
+    ConversionFunc = Callable[["VIDEOGRAIN", "VIDEOGRAIN"], None]
 
-    def __init__(self, meta, data):
+    _grain_conversions: Dict[Tuple[CogFrameFormat, CogFrameFormat], ConversionFunc] = {}
+
+    def __init__(self, meta: VideoGrainMetadataDict, data: GrainDataParameterType):
         super().__init__(meta, data)
-        self._data = np.frombuffer(self._data, dtype=_dtype_from_cogframeformat(self.format))
-        self.component_data = ComponentDataList(
-            _component_arrays_for_data_and_type(self._data, self.format, self.components),
-            arrangement=_component_arrangement_from_format(self.format))
+        self._data: np.ndarray
+        self._data_fetcher_coroutine: Optional[Awaitable[GrainDataType]]
+        self.component_data: ComponentDataList
 
-    def __array__(self):
+        if self._data is not None:
+            self._data = np.frombuffer(self._data, dtype=_dtype_from_cogframeformat(self.format))
+            self.component_data = ComponentDataList(
+                _component_arrays_for_data_and_type(self._data, self.format, self.components),
+                arrangement=_component_arrangement_from_format(self.format))
+        else:
+            self.component_data = ComponentDataList([])
+
+    @property
+    def data(self) -> np.ndarray:
+        return self._data
+
+    @data.setter
+    def data(self, value: GrainDataParameterType):
+        if isawaitable(value):
+            self._data_fetcher_coroutine = cast(Awaitable[GrainDataType], value)
+            self._data = None
+            self.component_data = ComponentDataList([])
+        else:
+            self._data_fetcher_coroutine = None
+            self._data = np.frombuffer(cast(GrainDataType, value), dtype=_dtype_from_cogframeformat(self.format))
+            self.component_data = ComponentDataList(
+                _component_arrays_for_data_and_type(self._data, self.format, self.components),
+                arrangement=_component_arrangement_from_format(self.format))
+
+    def __array__(self) -> np.ndarray:
         return np.array(self.data)
 
-    def __bytes__(self):
-        return bytes(self.data)
+    def __bytes__(self) -> bytes:
+        return bytes(self._data)
 
-    def __copy__(self):
+    def __copy__(self) -> "VIDEOGRAIN":
         return VideoGrain(copy(self.meta), self.data)
 
-    def __deepcopy__(self, memo):
-        return VideoGrain(deepcopy(self.meta), self.data.copy())
+    def __deepcopy__(self, memo) -> "VIDEOGRAIN":
+        return VideoGrain(deepcopy(self.meta), self._data.copy())
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.data is None:
             return "{}({!r})".format(self._factory, self.meta)
         else:
             return "{}({!r},< numpy data of length {} >)".format(self._factory, self.meta, len(self.data))
 
+    async def __await__(self):
+        if self._data is None and self._data_fetcher_coroutine is not None:
+            self.data = await self._data_fetcher_coroutine
+        return self.data
+
+    async def __aenter__(self) -> "VIDEOGRAIN":
+        await self
+        return self
+
+    async def __aexit__(self, *args, **kwargs):
+        pass
+
     @classmethod
-    def grain_conversion(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat):
+    def grain_conversion(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat) -> Callable[["VIDEOGRAIN.ConversionFunc"], "VIDEOGRAIN.ConversionFunc"]:
         """Decorator to apply to all grain conversion functions"""
-        def _inner(f: Callable[[cls, cls], None]) -> None:
+        def _inner(f: "VIDEOGRAIN.ConversionFunc") -> "VIDEOGRAIN.ConversionFunc":
             cls._grain_conversions[(fmt_in, fmt_out)] = f
             return f
         return _inner
@@ -242,7 +310,7 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
         cls.grain_conversion(fmt_in, fmt_out)(_inner)
 
     @classmethod
-    def _get_grain_conversion_function(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat) -> Callable[["VIDEOGRAIN", "VIDEOGRAIN"], None]:
+    def _get_grain_conversion_function(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat) -> "VIDEOGRAIN.ConversionFunc":
         """Return the registered grain conversion function for a specified type conversion, or raise NotImplementedError"""
         if (fmt_in, fmt_out) in cls._grain_conversions:
             return cls._grain_conversions[(fmt_in, fmt_out)]
@@ -292,7 +360,36 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
             return self.convert(fmt)
 
 
-def VideoGrain(*args, **kwargs) -> VIDEOGRAIN:
+@overload
+def VideoGrain(grain: bytesgrain.VIDEOGRAIN) -> VIDEOGRAIN: ...
+
+
+@overload
+def VideoGrain(src_id_or_meta: VideoGrainMetadataDict,
+               flow_id_or_data: GrainDataParameterType = None) -> VIDEOGRAIN: ...
+
+
+@overload
+def VideoGrain(src_id_or_meta: Optional[UUID] = None,
+               flow_id_or_data: Optional[UUID] = None,
+               origin_timestamp: Optional[Timestamp] = None,
+               creation_timestamp: Optional[Timestamp] = None,
+               sync_timestamp: Optional[Timestamp] = None,
+               rate: Fraction = Fraction(25, 1),
+               duration: Fraction = Fraction(1, 25),
+               cog_frame_format: CogFrameFormat = CogFrameFormat.UNKNOWN,
+               width: int = 1920,
+               height: int = 1080,
+               cog_frame_layout: CogFrameLayout = CogFrameLayout.UNKNOWN,
+               src_id: Optional[UUID] = None,
+               source_id: Optional[UUID] = None,
+               format: Optional[CogFrameFormat] = None,
+               layout: Optional[CogFrameLayout] = None,
+               flow_id: Optional[UUID] = None,
+               data: GrainDataParameterType = None) -> VIDEOGRAIN: ...
+
+
+def VideoGrain(*args, **kwargs):
     """If the first argument is a mediagrains.VIDEOGRAIN then return a mediagrains.numpy.VIDEOGRAIN representing the same data.
 
     Otherwise takes the same parameters as mediagrains.VideoGrain and returns the same grain converted into a mediagrains.numpy.VIDEOGRAIN
@@ -302,4 +399,7 @@ def VideoGrain(*args, **kwargs) -> VIDEOGRAIN:
     else:
         rawgrain = bytesgrain_constructors.VideoGrain(*args, **kwargs)
 
-    return VIDEOGRAIN(rawgrain.meta, rawgrain.data)
+    if rawgrain.data is not None:
+        return VIDEOGRAIN(rawgrain.meta, rawgrain.data)
+    else:
+        return VIDEOGRAIN(rawgrain.meta, rawgrain._data_fetcher_coroutine)

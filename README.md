@@ -10,11 +10,14 @@ that nicely wrap those grains, as well as a full serialisation and
 deserialisation library for GSF format. Please read the pydoc
 documentation for more details.
 
+Some useful tools for handling the Grain Sequence Format (GSF) file format
+are also included - see [Tools](#tools).
+
 ## Installation
 
 ### Requirements
 
-* A working Python 2.7 or Python 3.6+ installation
+* A working Python 3.6+ installation
 * BBC R&D's internal deb repository set up as a source for apt (if installing via apt-get)
 * The tool [tox](https://tox.readthedocs.io/en/latest/) is needed to run the unittests, but not required to use the library.
 
@@ -25,7 +28,7 @@ documentation for more details.
 $ pip install mediagrains
 
 # Install via apt-get
-$ apt-get install python-mediagrains python3-mediagrains
+$ apt-get install python3-mediagrains
 
 # Install directly from source repo
 $ git clone git@github.com:bbc/rd-apmm-python-lib-mediagrains.git
@@ -85,7 +88,7 @@ it with colour-bars:
 ...             i += 1
 ```
 
-(In python3.6+ a more natural interface for accessing data exists in the form of numpy arrays. See later.)
+(a more natural interface for accessing data exists in the form of numpy arrays. See later.)
 
 The object grain can then be freely used for whatever video processing
 is desired, or it can be serialised into a GSF file as follows:
@@ -161,9 +164,9 @@ between two grains, both as a printed string (as seen above) and also
 in a data-centric fashion as a tree structure which can be
 interrogated in code.
 
-### Numpy arrays (Python 3.6+)
+### Numpy arrays
 
-In python 3.6 or higher an additional feature is provided in the form of numpy array access to the data in a grain. As such the above example of creating colourbars can be done more easily:
+An additional feature is provided in the form of numpy array access to the data in a grain. As such the above example of creating colourbars can be done more easily:
 
 ```Python console
 >>> from mediagrains.numpy import VideoGrain
@@ -191,6 +194,30 @@ The API is well documented in the docstrings of the module mediagrains, to view:
 
 ```bash
 pydoc mediagrains
+```
+
+## Tools
+Some tools are installed with the library to make working with the Grain Sequence Format (GSF) file format easier.
+
+* `wrap_video_in_gsf` - Provides a means to read raw video essence and generate a GSF file.
+* `wrap_audio_in_gsf` - As above, but for audio.
+* `extract_from_gsf` - Read a GSF file and dump out the raw essence within.
+* `gsf_probe` - Read metadata about the segments in a GSF file.
+
+For example, to generate a GSF file containing a test pattern from `ffmpeg`, dump the metadata and then play it out
+again:
+```bash
+ffmpeg -f lavfi -i testsrc=duration=20:size=1920x1080:rate=25 -pix_fmt yuv422p10le -c:v rawvideo -f rawvideo - | \
+wrap_video_in_gsf - output.gsf --size 1920x1080 --format S16_422_10BIT --rate 25
+gsf_probe output.gsf
+extract_gsf_essence output.gsf - | ffplay -f rawvideo -pixel_format yuv422p10 -video_size 1920x1080 -framerate 25 pipe:0
+```
+
+To do the same with a sine wave:
+```bash
+ffmpeg -f lavfi -i "sine=frequency=1000:duration=5" -f s16le -ac 2 - | wrap_audio_in_gsf - output_audio.gsf --sample-rate 44100
+gsf_probe output_audio.gsf
+extract_gsf_essence output_audio.gsf - | ffplay -f s16le -ac 2 -ar 44100 pipe:0
 ```
 
 ## Development
