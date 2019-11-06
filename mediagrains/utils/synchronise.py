@@ -140,6 +140,7 @@ def run_asyncgenerator_synchronously(gen: AsyncIterator[T]) -> Iterator[T]:
                 loop.close()
 
             t = threading.Thread(target=__inner)
+            t.daemon = True
             t.start()
 
             return (t, agen_should_yield, agen_has_yielded)
