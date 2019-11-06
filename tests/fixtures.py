@@ -14,9 +14,6 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
-from __future__ import absolute_import
-
 from hypothesis.strategies import lists, sampled_from, just, tuples, fixed_dictionaries
 from mediagrains.hypothesis.strategies import grains, strategy_for_grain_attribute, grains_from_template_with_data
 

@@ -22,7 +22,6 @@ packages = {
     'mediagrains.hypothesis': 'mediagrains/hypothesis',
     'mediagrains.comparison': 'mediagrains/comparison',
     'mediagrains.utils': 'mediagrains/utils',
-    'mediagrains.asyncio': 'mediagrains/asyncio',
     'mediagrains.numpy': 'mediagrains/numpy',
     'mediagrains.tools': 'mediagrains/tools'
 }
@@ -48,7 +47,7 @@ console_scripts = [
 ]
 
 setup(name="mediagrains",
-      version="2.7.2",
+      version="3.0.0.dev1",
       python_requires='>=3.6.0',
       description="Simple utility for grain-based media",
       url='https://github.com/bbc/rd-apmm-python-lib-mediagrains',

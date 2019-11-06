@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 3.0.0 (Under Construction)
+- Removed deprecated asyncio sublibrary
+
 ## 2.7.2
 - Bugfix: Restore behaviour whereby grains can be added to a segment object during an active progressive encode
 
