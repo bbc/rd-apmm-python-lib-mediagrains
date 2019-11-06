@@ -1,5 +1,9 @@
 # Mediagrains Library Changelog
 
+## 2.7.1
+- Bugfix: Restore behaviour whereby `gsf.GSFEncoder.dump` calls `gsf.GSFEncoder.start_dump` and `gsf.GSFEncoder.end_dump`
+  (this matters if subclasses have overridden these methods)
+
 ## 2.7.0
 - Dropped all support for Python2.7
 - Moved python3.6 specific submodules in tree
