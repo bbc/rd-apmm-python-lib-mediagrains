@@ -1514,8 +1514,8 @@ class GSFEncoder(object):
     def dump(self):
         """Dump the whole contents of this encoder to the file in one go,
         replacing anything that's already there."""
-        with self:
-            pass
+        self.start_dump(all_at_once=True)
+        self.end_dump(all_at_once=True)
 
     @deprecated(version="2.7.0", reason="This mechanism is deprecated, use a context manager instead")
     def start_dump(self, all_at_once=False):
