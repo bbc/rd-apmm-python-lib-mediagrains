@@ -30,6 +30,47 @@ class SynchronisationError(RuntimeError):
         super().__init__(*args, **kwargs)
 
 
+def get_non_running_loop() -> Optional[asyncio.AbstractEventLoop]:
+    """If there is an existing runloop on this thread and it isn't running return it.
+    If there isn't one create one and return it.
+    If there is an existing running loop on this thread then return None.
+    """
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        # In Python 3.6 trying to get an event loop when none can be automatically created is a an exception
+        return asyncio.new_event_loop()
+    else:
+        if loop.is_running():
+            # There is already a running loop on this thread so we will need to spawn a new thread if we want to run one
+            return None
+        else:
+            # We have An existing event loop, but it is not running, so we can run it.
+            return loop
+
+
+class ResultsType(Generic[T]):
+    def __init__(self):
+        self.rval: Optional[Tuple[T]] = None
+        self.exception: Optional[Exception] = None
+
+    async def capture(self, a: Awaitable[T]) -> None:
+        try:
+            rval = await a
+        except Exception as e:
+            self.exception = e
+        else:
+            self.rval = (rval,)
+
+    def restore(self) -> T:
+        if self.exception is not None:
+            raise self.exception
+        elif self.rval is None:
+            raise SynchronisationError("Expected a result but none was produced")
+        else:
+            return self.rval[0]
+
+
 def run_awaitable_synchronously(f: Awaitable[T]) -> T:
     """Runs an awaitable coroutine object as a synchronous call.
 
@@ -37,73 +78,84 @@ def run_awaitable_synchronously(f: Awaitable[T]) -> T:
     Works from code running outside a run-loop.
     Works when there is a runloop already for this thread, but this code is not called from it.
     """
-    class ResultsType:
-        def __init__(self):
-            self.rval: Optional[Tuple[T]] = None
-            self.exception: Optional[Exception] = None
-
-    results = ResultsType()
-
-    async def _capture_results_async(a: Awaitable[T], results: ResultsType) -> None:
-        try:
-            rval = await a
-        except Exception as e:
-            results.exception = e
-        else:
-            results.rval = (rval,)
-
-    def _restore_results(results: ResultsType) -> T:
-        if results.exception is not None:
-            raise results.exception
-        elif results.rval is None:
-            raise SynchronisationError("Expected a result when calling {!r} but none was produced".format(f))
-        else:
-            return results.rval[0]
+    results = ResultsType[T]()
 
     def _run_awaitable_in_existing_run_loop(a: Awaitable[T], loop: asyncio.AbstractEventLoop) -> T:
-        loop.run_until_complete(_capture_results_async(a, results))
-        return _restore_results(results)
-
-    def _run_awaitable_inside_new_runloop(a: Awaitable[T]) -> T:
-        loop = asyncio.new_event_loop()
-        rval = _run_awaitable_in_existing_run_loop(a, loop)
-        return rval
+        loop.run_until_complete(results.capture(a))
+        return results.restore()
 
     def _run_awaitable_in_new_thread(a: Awaitable[T]) -> T:
         def __inner() -> None:
             loop = asyncio.new_event_loop()
-            loop.run_until_complete(_capture_results_async(a, results))
+            loop.run_until_complete(results.capture(a))
             loop.close()
 
         t = threading.Thread(target=__inner)
         t.start()
         t.join()
 
-        return _restore_results(results)
+        return results.restore()
 
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        # In Python 3.6 trying to get an event loop when none can be automatically created is a an exception
-        return _run_awaitable_inside_new_runloop(f)
+    loop = get_non_running_loop()
+    if loop is not None:
+        return _run_awaitable_in_existing_run_loop(f, loop)
     else:
-        if loop.is_running():
-            # There is already a running loop on this thread so we need to spawn a new thread
-            return _run_awaitable_in_new_thread(f)
-        else:
-            # We have An existing event loop, but it is not running, so we can run it.
-            return _run_awaitable_in_existing_run_loop(f, loop)
+        return _run_awaitable_in_new_thread(f)
 
 
 def run_asyncgenerator_synchronously(gen: AsyncIterator[T]) -> Iterator[T]:
     async def __get_next(gen):
         return await gen.__anext__()
 
-    while True:
-        try:
-            yield run_awaitable_synchronously(__get_next(gen))
-        except StopAsyncIteration:
-            return
+    if get_non_running_loop() is not None:
+        while True:
+            try:
+                yield run_awaitable_synchronously(__get_next(gen))
+            except StopAsyncIteration:
+                return
+    else:
+        results = ResultsType[T]()
+
+        def _run_generator_in_new_thread(gen: AsyncIterator[T]) -> Tuple[threading.Thread, threading.Event, threading.Event]:
+            agen_should_yield = threading.Event()
+            agen_has_yielded = threading.Event()
+
+            def __inner() -> None:
+                async def _run_asyncgen_with_events(gen: AsyncIterator[T], agen_should_yield: threading.Event, agen_has_yielded: threading.Event) -> T:
+                    try:
+                        async for x in gen:
+                            agen_should_yield.wait()
+                            agen_should_yield.clear()
+                            results.rval = (x,)
+                            agen_has_yielded.set()
+
+                        agen_should_yield.wait()
+                        agen_should_yield.clear()
+                        raise StopAsyncIteration
+                    finally:
+                        agen_has_yielded.set()
+
+                loop = asyncio.new_event_loop()
+                loop.run_until_complete(results.capture(_run_asyncgen_with_events(gen, agen_should_yield, agen_has_yielded)))
+                loop.close()
+
+            t = threading.Thread(target=__inner)
+            t.start()
+
+            return (t, agen_should_yield, agen_has_yielded)
+
+        (t, agen_should_yield, agen_has_yielded) = _run_generator_in_new_thread(gen)
+        agen_should_yield.set()
+        agen_has_yielded.wait()
+        while t.is_alive():
+            agen_has_yielded.clear()
+            try:
+                yield results.restore()
+            except StopAsyncIteration:
+                agen_should_yield.set()
+                return
+            agen_should_yield.set()
+            agen_has_yielded.wait()
 
 
 class Synchronised(Generic[T]):

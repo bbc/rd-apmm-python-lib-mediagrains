@@ -1569,6 +1569,22 @@ class TestGSFDecoder(TestCase):
         self.assertEqual(10, grain_count)  # There are 10 grains in the file
 
     @async_test
+    async def test_async_to_sync_generate_grains(self):
+        """Test that the generator yields each grain when run snchronously from asynchronous code"""
+        video_data_stream = BytesIO(VIDEO_DATA)
+
+        with GSFDecoder(file_data=video_data_stream) as dec:
+            grain_count = 0
+            for (grain, local_id) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY):
+                self.assertIsInstance(grain, VIDEOGRAIN)
+                self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
+                self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
+
+                grain_count += 1
+
+        self.assertEqual(10, grain_count)  # There are 10 grains in the file
+
+    @async_test
     async def test_async_generate_grains_load_lazily(self):
         """Test that the generator yields each grain"""
         video_data_stream = AsyncBytesIO(VIDEO_DATA)
