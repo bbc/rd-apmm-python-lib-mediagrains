@@ -462,7 +462,7 @@ class GrainDataLoadingMode (Enum):
     For a Non-seekable input:
         LOAD_IMMEDIATELY -- Grain data will be read as the stream is processed
         ALWAYS_LOAD_DEFER_IF_POSSIBLE -- Grain data will be read as the stream is processed
-        ALWAYS_DEFER_LOAD_IF_POSSIBLE -- Grain data will be skipped over
+        ALWAYS_DEFER_LOAD_IF_POSSIBLE -- Grain data will be read as the stream is processed
         LOAD_NEVER -- Grain data will be skipped over
 
     For a Seekable input:
@@ -798,8 +798,7 @@ class GSFAsyncDecoderSession(object):
                                         data = IOBytes(cast(OpenAsyncFileWrapper, self.file_data).getsync(),
                                                        self.file_data.tell(),
                                                        grdt_block.get_remaining())
-                                elif (loading_mode == GrainDataLoadingMode.LOAD_NEVER or
-                                      (not self.file_data.seekable_backwards() and loading_mode == GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE)):
+                                elif loading_mode == GrainDataLoadingMode.LOAD_NEVER:
                                     if self.file_data.seekable_forwards():
                                         self.file_data.seek(grdt_block.get_remaining(), SEEK_CUR)
                                     else:
@@ -942,7 +941,7 @@ class GSFDecoder(object):
         else:
             mode = GrainDataLoadingMode.LOAD_IMMEDIATELY
 
-        return self._open_session._grains(local_ids=local_ids, loading_mode=mode)
+        return self._open_session.grains(local_ids=local_ids, loading_mode=mode)
 
     async def _asynchronously_decode(self) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
         async with self as dec:
