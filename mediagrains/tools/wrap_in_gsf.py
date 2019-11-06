@@ -44,15 +44,12 @@ def wrap_to_gsf(
         wrapper = GrainWrapper(template_grain, input_data)
 
         # Write a GSF file with the grains read from the input
-        encoder = GSFEncoder(output_data)
+        encoder = GSFEncoder(output_data, streaming=True)
         segment = encoder.add_segment(id=wrapper.template_grain.flow_id)
-        encoder.start_dump()
-
-        for grain in wrapper.grains():
-            print("Got grain with TS {}".format(grain.origin_timestamp.to_sec_nsec()), file=sys.stderr)
-            segment.add_grains([grain])
-
-        encoder.end_dump()
+        with encoder:
+            for grain in wrapper.grains():
+                print("Got grain with TS {}".format(grain.origin_timestamp.to_sec_nsec()), file=sys.stderr)
+                segment.add_grains([grain])
 
 
 def wrap_video_in_gsf():

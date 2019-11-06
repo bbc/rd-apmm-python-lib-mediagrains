@@ -35,7 +35,7 @@ from mediagrains.utils.asyncbinaryio import AsyncBytesIO
 from frozendict import frozendict
 from os import SEEK_SET
 
-from fixtures import suppress_deprecation_warnings, async_test
+from fixtures import async_test
 
 from unittest import mock
 
@@ -999,88 +999,6 @@ class TestGSFDumps(TestCase):
                     async with GSFEncoder(AsyncBytesIO()) as enc:
                         await enc.add_grains([grain])
 
-    @suppress_deprecation_warnings
-    def test_dump_progressively__deprecated(self):
-        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
-        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-
-        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
-                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
-
-        file = BytesIO()
-        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
-            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                enc = GSFEncoder(file)
-                enc.add_segment()
-                self.assertEqual(len(file.getvalue()), 0)
-                enc.start_dump()
-                dump0 = file.getvalue()
-                (head0, segments0) = loads(dump0)
-                enc.add_grain(grain0)
-                dump1 = file.getvalue()
-                (head1, segments1) = loads(dump1)
-                enc.add_grain(grain1, segment_local_id=1)
-                dump2 = file.getvalue()
-                (head2, segments2) = loads(dump2)
-                enc.end_dump()
-                dump3 = file.getvalue()
-                (head3, segments3) = loads(dump3)
-
-        self.assertEqual(head0['segments'][0]['count'], -1)
-        self.assertEqual(head1['segments'][0]['count'], -1)
-        self.assertEqual(head2['segments'][0]['count'], -1)
-        self.assertEqual(head3['segments'][0]['count'], 2)
-
-        if 1 in segments0:
-            self.assertEqual(len(segments0[1]), 0)
-        self.assertEqual(len(segments1[1]), 1)
-        self.assertEqual(len(segments2[1]), 2)
-        self.assertEqual(len(segments3[1]), 2)
-
-    @suppress_deprecation_warnings
-    def test_dump_progressively_with_segments__deprecated(self):
-        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
-        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-
-        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
-                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
-
-        file = BytesIO()
-        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
-            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                enc = GSFEncoder(file)
-                seg = enc.add_segment()
-                self.assertEqual(len(file.getvalue()), 0)
-                enc.start_dump()
-                dump0 = file.getvalue()
-                (head0, segments0) = loads(dump0)
-                seg.add_grain(grain0)
-                dump1 = file.getvalue()
-                (head1, segments1) = loads(dump1)
-                seg.add_grain(grain1, segment_local_id=1)
-                dump2 = file.getvalue()
-                (head2, segments2) = loads(dump2)
-                enc.end_dump()
-                dump3 = file.getvalue()
-                (head3, segments3) = loads(dump3)
-
-        self.assertEqual(head0['segments'][0]['count'], -1)
-        self.assertEqual(head1['segments'][0]['count'], -1)
-        self.assertEqual(head2['segments'][0]['count'], -1)
-        self.assertEqual(head3['segments'][0]['count'], 2)
-
-        if 1 in segments0:
-            self.assertEqual(len(segments0[1]), 0)
-        self.assertEqual(len(segments1[1]), 1)
-        self.assertEqual(len(segments2[1]), 2)
-        self.assertEqual(len(segments3[1]), 2)
-
     def test_dump_progressively(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
@@ -1159,23 +1077,6 @@ class TestGSFDumps(TestCase):
         self.assertEqual(len(segments2[1]), 2)
         self.assertEqual(len(segments3[1]), 2)
 
-    @suppress_deprecation_warnings
-    def test_end_dump_without_start_does_nothing(self):
-        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
-                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
-
-        file = BytesIO()
-        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
-            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                enc = GSFEncoder(file)
-                enc.add_segment()
-                dump0 = file.getvalue()
-                enc.end_dump()
-                dump1 = file.getvalue()
-
-        self.assertEqual(dump0, dump1)
-
     def test_dumps_fails_with_invalid_tags(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1211,32 +1112,6 @@ class TestGSFDumps(TestCase):
         self.assertEqual(enc.tags, (('potato', 'harvest'),))
         self.assertIsInstance(enc.segments, frozendict)
         self.assertEqual(enc.segments[1].tags, (('rainbow', 'dash'),))
-
-    @suppress_deprecation_warnings
-    def test_encoder_raises_when_adding_to_active_encode__deprecated(self):
-        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
-                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
-        file = BytesIO()
-        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
-            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                enc = GSFEncoder(file, tags=[('potato', 'harvest')])
-                seg = enc.add_segment(tags=[('rainbow', 'dash')])
-
-        with self.assertRaises(GSFEncodeError):
-            enc.add_segment(local_id=1)
-
-        with self.assertRaises(GSFEncodeError):
-            enc.add_segment(tags=[None])
-
-        enc.start_dump()
-
-        with self.assertRaises(GSFEncodeAddToActiveDump):
-            enc.add_tag('upside', 'down')
-        with self.assertRaises(GSFEncodeAddToActiveDump):
-            enc.add_segment()
-        with self.assertRaises(GSFEncodeAddToActiveDump):
-            seg.add_tag('upside', 'down')
 
     def test_encoder_raises_when_adding_to_active_encode(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
@@ -1647,36 +1522,6 @@ class TestGSFDecoder(TestCase):
 
         self.assertEqual(10, grain_count)  # There are 10 grains in the file
 
-    @suppress_deprecation_warnings
-    def test_decode_headers__deprecated(self):
-        video_data_stream = BytesIO(VIDEO_DATA)
-
-        UUT = GSFDecoder(file_data=video_data_stream)
-        head = UUT.decode_file_headers()
-
-        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 22))
-        self.assertEqual(head['id'], UUID('163fd9b7-bef4-4d92-8488-31f3819be008'))
-        self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('c6a3d3ff-74c0-446d-b59e-de1041f27e8a'))
-
-    @suppress_deprecation_warnings
-    def test_generate_grains__deprecated(self):
-        """Test that the generator yields each grain"""
-        video_data_stream = BytesIO(VIDEO_DATA)
-
-        UUT = GSFDecoder(file_data=video_data_stream)
-        UUT.decode_file_headers()
-
-        grain_count = 0
-        for (grain, local_id) in UUT.grains():
-            self.assertIsInstance(grain, VIDEOGRAIN)
-            self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
-            self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
-
-            grain_count += 1
-
-        self.assertEqual(10, grain_count)  # There are 10 grains in the file
-
     @async_test
     async def test_async_comparison_of_lazy_loaded_grains(self):
         async with GSFDecoder(file_data=AsyncBytesIO(VIDEO_DATA)) as dec:
@@ -1701,22 +1546,6 @@ class TestGSFDecoder(TestCase):
         with GSFDecoder(file_data=video_data_stream) as dec:
             comp = compare_grain(grains[0], next(dec.grains(loading_mode=GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE))[0])
             self.assertTrue(comp, msg="{!s}".format(comp))
-
-    @suppress_deprecation_warnings
-    def test_comparison_of_lazy_loaded_grains__deprecated(self):
-        video_data_stream = BytesIO(VIDEO_DATA)
-
-        UUT = GSFDecoder(file_data=video_data_stream)
-        UUT.decode_file_headers()
-
-        grains = [grain for (grain, local_id) in UUT.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY)]
-
-        # Restart the decoder
-        video_data_stream.seek(0)
-        UUT = GSFDecoder(file_data=video_data_stream)
-        UUT.decode_file_headers()
-
-        self.assertTrue(compare_grain(grains[0], next(UUT.grains(load_lazily=True))[0]))
 
     @async_test
     async def test_async_local_id_filtering(self):
@@ -1777,69 +1606,6 @@ class TestGSFDecoder(TestCase):
                 self.assertEqual(grain.flow_id, UUID('2472f38e-3517-11e9-8da2-5065f34ed007'))
                 self.assertEqual(local_id, 2)
 
-    @suppress_deprecation_warnings
-    def test_local_id_filtering__deprecated(self):
-        interleaved_data_stream = BytesIO(INTERLEAVED_DATA)
-
-        UUT = GSFDecoder(file_data=interleaved_data_stream)
-        UUT.decode_file_headers()
-
-        local_ids = set()
-        flow_ids = set()
-        for (grain, local_id) in UUT.grains():
-            local_ids.add(local_id)
-            flow_ids.add(grain.flow_id)
-
-        self.assertEqual(local_ids, set([1, 2]))
-        self.assertEqual(flow_ids, set([UUID('28e4e09e-3517-11e9-8da2-5065f34ed007'),
-                                        UUID('2472f38e-3517-11e9-8da2-5065f34ed007')]))
-
-        interleaved_data_stream.seek(0)
-        UUT.decode_file_headers()
-
-        for (grain, local_id) in UUT.grains(local_ids=[1]):
-            self.assertIsInstance(grain, AUDIOGRAIN)
-            self.assertEqual(grain.source_id, UUID('1f8fd27e-3517-11e9-8da2-5065f34ed007'))
-            self.assertEqual(grain.flow_id, UUID('28e4e09e-3517-11e9-8da2-5065f34ed007'))
-            self.assertEqual(local_id, 1)
-
-        interleaved_data_stream.seek(0)
-        UUT.decode_file_headers()
-
-        for (grain, local_id) in UUT.grains(local_ids=[2]):
-            self.assertIsInstance(grain, VIDEOGRAIN)
-            self.assertEqual(grain.source_id, UUID('1f8fd27e-3517-11e9-8da2-5065f34ed007'))
-            self.assertEqual(grain.flow_id, UUID('2472f38e-3517-11e9-8da2-5065f34ed007'))
-            self.assertEqual(local_id, 2)
-
-    @suppress_deprecation_warnings
-    def test_skip_grain_data__deprecated(self):
-        """Test that the `skip_data` parameter causes grain data to be seeked over"""
-        grain_size = 194612  # Parsed from examples/video.gsf hex dump
-        grdt_block_size = 194408  # Parsed from examples/video.gsf hex dump
-        grain_header_size = grain_size - grdt_block_size
-
-        video_data_stream = BytesIO(VIDEO_DATA)
-
-        UUT = GSFDecoder(file_data=video_data_stream)
-        UUT.decode_file_headers()
-
-        reader_mock = mock.MagicMock(side_effect=video_data_stream.read)
-        with mock.patch.object(video_data_stream, "read", new=reader_mock):
-            for (grain, local_id) in UUT.grains(skip_data=True):
-                self.assertEqual(0, len(grain.data))
-
-                # Add up the bytes read for this grain, then reset the read counter
-                bytes_read = 0
-                for args, _ in reader_mock.call_args_list:
-                    bytes_read += args[0]
-
-                reader_mock.reset_mock()
-
-                # No more than the number of bytes in the header should have been read
-                # However some header bytes may be seeked over instead
-                self.assertLessEqual(bytes_read, grain_header_size)
-
     def test_lazy_load_grain_data(self):
         """Test that the `load_lazily` parameter causes grain data to be seeked over,
         but then loaded invisibly when needed later"""
@@ -1869,51 +1635,6 @@ class TestGSFDecoder(TestCase):
                     # However some header bytes may be seeked over instead
                     self.assertGreater(bytes_read, 0)
                     self.assertLessEqual(bytes_read, grain_header_size)
-
-            for grain in grains:
-                reader_mock.reset_mock()
-
-                self.assertEqual(grain.length, grain_data_size)
-                reader_mock.assert_not_called()
-
-                x = grain.data[grain_data_size-1]  # noqa: F841
-                bytes_read = 0
-                for (args, _) in reader_mock.call_args_list:
-                    bytes_read += args[0]
-
-                self.assertEqual(bytes_read, grain_data_size)
-                self.assertEqual(grain.length, grain_data_size)
-
-    @suppress_deprecation_warnings
-    def test_lazy_load_grain_data__deprecated(self):
-        """Test that the `load_lazily` parameter causes grain data to be seeked over,
-        but then loaded invisibly when needed later"""
-        grain_size = 194612  # Parsed from examples/video.gsf hex dump
-        grdt_block_size = 194408  # Parsed from examples/video.gsf hex dump
-        grain_header_size = grain_size - grdt_block_size
-        grain_data_size = grdt_block_size - 8
-
-        video_data_stream = BytesIO(VIDEO_DATA)
-
-        UUT = GSFDecoder(file_data=video_data_stream)
-        UUT.decode_file_headers()
-
-        grains = []
-        reader_mock = mock.MagicMock(side_effect=video_data_stream.read)
-        with mock.patch.object(video_data_stream, "read", new=reader_mock):
-            for (grain, local_id) in UUT.grains(load_lazily=True):
-                grains.append(grain)
-                # Add up the bytes read for this grain, then reset the read counter
-                bytes_read = 0
-                for args, _ in reader_mock.call_args_list:
-                    bytes_read += args[0]
-
-                reader_mock.reset_mock()
-
-                # No more than the number of bytes in the header should have been read
-                # However some header bytes may be seeked over instead
-                self.assertGreater(bytes_read, 0)
-                self.assertLessEqual(bytes_read, grain_header_size)
 
             for grain in grains:
                 reader_mock.reset_mock()

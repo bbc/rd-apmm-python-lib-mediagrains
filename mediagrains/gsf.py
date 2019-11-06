@@ -29,7 +29,6 @@ from frozendict import frozendict
 from .utils import IOBytes
 from .utils.synchronise import run_awaitable_synchronously, Synchronised
 from os import SEEK_SET, SEEK_CUR
-import warnings
 
 from inspect import isawaitable
 
@@ -56,10 +55,6 @@ from .grain import GRAIN, VIDEOGRAIN, EVENTGRAIN, AUDIOGRAIN, CODEDAUDIOGRAIN, C
 
 from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper, OpenAsyncFileWrapper
 
-from contextlib import contextmanager
-
-from deprecated import deprecated
-
 from enum import Enum
 
 
@@ -67,16 +62,6 @@ __all__ = ["GSFDecoder", "load", "loads", "GSFError", "GSFDecodeError",
            "GSFDecodeBadFileTypeError", "GSFDecodeBadVersionError",
            "GSFEncoder", "dump", "dumps", "GSFEncodeError",
            "GSFEncodeAddToActiveDump"]
-
-
-@contextmanager
-def no_deprecation_warnings():
-    with warnings.catch_warnings(record=True) as warns:
-        yield
-
-    for w in warns:
-        if w.category != DeprecationWarning:
-            warnings.showwarning(w.message, w.category, w.filename, w.lineno)
 
 
 GSFFileHeaderDict = dict
@@ -835,10 +820,6 @@ class GSFDecoder(object):
     The preferred interface for usage is to use this class as a context manager, which provides an instance of
     GSFDecoderSession.
 
-    For backwards compatibility provides methods to decode the header of a GSF file, followed by a generator to
-    get each grain, wrapped in some grain method (mediagrains.Grain by default.) These methods are deprecated
-    and should not be used in new code.
-
     Can also be used to make a one-off decode of a GSF file from a bytes-like object by calling `decode(bytes_like)`.
     """
     def __init__(self,
@@ -905,49 +886,6 @@ class GSFDecoder(object):
         if self._open_afile is not None and self._afile_data is not None:
             await self._afile_data.__aexit__(*args, **kwargs)
             self._open_afile = None
-
-    @deprecated(version="2.7.0", reason="This method is old, use the class as a context manager instead")
-    def decode_file_headers(self) -> GSFFileHeaderDict:
-        """Verify the file is a supported version, and get the file header
-
-        :returns: File header data (segments and tags) as a dict
-        :raises GSFDecodeBadVersionError: If the file version is not supported
-        :raises GSFDecodeBadFileTypeError: If this isn't a GSF file
-        :raises GSFDecodeError: If the file doesn't have a "head" block
-        """
-        self._open_session = self.__enter__()
-        if self._open_session.file_headers is None:
-            raise RuntimeError("There should be some file headers here!")
-        return self._open_session.file_headers
-
-    @deprecated(version="2.7.0", reason="This method is old, use the class as a context manager instead")
-    def grains(self,
-               local_ids: Optional[Sequence[int]] = None,
-               skip_data: bool = False,
-               load_lazily: bool = False):
-        """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
-
-        The file_data will be positioned after the `grai` block.
-
-        :param local_ids: A list of local-ids to include in the output. If None (the default) then all local-ids will be
-                          included
-        :param skip_data: If True, grain data blocks will be seeked over and only grain headers will be read
-        :param load_lazily: If True, the grains returned will be designed to lazily load data from the underlying stream
-                            only when it is needed. In this case the "skip_data" parameter will be ignored.
-        :yields: (Grain, local_id) tuple for each grain
-        :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
-        """
-        if self._open_session is None:
-            raise RuntimeError("Cannot access grains when no headers have been decoded")
-
-        if load_lazily:
-            mode = GrainDataLoadingMode.ALWAYS_LOAD_DEFER_IF_POSSIBLE
-        elif skip_data:
-            mode = GrainDataLoadingMode.LOAD_NEVER
-        else:
-            mode = GrainDataLoadingMode.LOAD_IMMEDIATELY
-
-        return self._open_session.grains(local_ids=local_ids, loading_mode=mode)
 
     async def _asynchronously_decode(self) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
         async with self as dec:
@@ -1326,13 +1264,6 @@ class GSFEncoder(object):
     manager the grains will be written to the file. If the `streaming=True` parameter is passed to the constructor
     then calls to add_grain within the context manager will instead cause the grain to be written immediately.
 
-    And older deprecated interface exists for synchronous work: the method add_grain and dump which add a grain to
-    the file and dump the file the the buffer respectively.
-
-    If a streaming format is required then you can instead use the "start_dump" method, followed by adding
-    grains as needed, and then the "end_dump" method. Each new grain will be written as it is added. In this mode
-    any segments in use MUST be added first before start_dump is called.
-
     In addition the following properties provide access to file-level metadata:
 
     major    -- an integer (default 7)
@@ -1509,38 +1440,6 @@ class GSFEncoder(object):
             else:
                 segment = self.add_segment(id=segment_id, local_id=segment_local_id)
             segment.add_grains(grains)
-
-    @deprecated(version="2.7.0", reason="This mechanism is deprecated, use a context manager instead")
-    def dump(self):
-        """Dump the whole contents of this encoder to the file in one go,
-        replacing anything that's already there."""
-        self.start_dump(all_at_once=True)
-        self.end_dump(all_at_once=True)
-
-    @deprecated(version="2.7.0", reason="This mechanism is deprecated, use a context manager instead")
-    def start_dump(self, all_at_once=False):
-        """Start dumping the contents of this encoder to the specified file, if
-        the file is seakable then it will replace the current content, otherwise
-        it will append."""
-        self._open_encoder = OpenGSFEncoder(self.file,
-                                            self.major,
-                                            self.minor,
-                                            self.id,
-                                            self.created,
-                                            self._tags,
-                                            self._segments,
-                                            self.streaming,
-                                            self._next_local)
-        self._open_encoder._start_dump(all_at_once=all_at_once)
-
-    @deprecated(version="2.7.0", reason="This mechanism is deprecated, use a context manager instead")
-    def end_dump(self, all_at_once=False):
-        """End the current dump to the file. In a seakable stream this will write
-        all segment counts, in a non-seakable stream it will not."""
-        if self._open_encoder is not None:
-            self._open_encoder._end_dump()
-            self._next_local = self._open_encoder._next_local
-            self._open_encoder = None
 
 
 class GSFEncoderTag(object):
