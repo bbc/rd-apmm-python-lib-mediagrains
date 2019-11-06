@@ -1,6 +1,6 @@
 # Mediagrains Library Changelog
 
-## 2.7.0 (Under Construction)
+## 2.7.0
 - Dropped all support for Python2.7
 - Moved python3.6 specific submodules in tree
 - Added `GrainWrapper` class to wrap raw essence in Grains.
