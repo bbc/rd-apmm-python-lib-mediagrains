@@ -148,7 +148,7 @@ def _grain_strategy(builder, grain_type, **kwargs):
     return builds(builder, **new_kwargs)
 
 
-def empty_grains(src_id=None,
+def empty_grains(source_id=None,
                  flow_id=None,
                  creation_timestamp=None,
                  origin_timestamp=None,
@@ -178,7 +178,7 @@ def empty_grains(src_id=None,
                      used with min_value set to 0.
     """
     return _grain_strategy(Grain, "empty",
-                           source_id=src_id,
+                           source_id=source_id,
                            flow_id=flow_id,
                            creation_timestamp=creation_timestamp,
                            origin_timestamp=origin_timestamp,
@@ -187,7 +187,7 @@ def empty_grains(src_id=None,
                            duration=duration)
 
 
-def audio_grains(src_id=None,
+def audio_grains(source_id=None,
                  flow_id=None,
                  creation_timestamp=None,
                  origin_timestamp=None,
@@ -226,7 +226,7 @@ def audio_grains(src_id=None,
     :param sample_rate: either a positive integer or a strategy that generates them, the default strategy will always generate either 48000 or 44100.
     """
     return _grain_strategy(AudioGrain, "audio",
-                           source_id=src_id,
+                           source_id=source_id,
                            flow_id=flow_id,
                            creation_timestamp=creation_timestamp,
                            origin_timestamp=origin_timestamp,
@@ -239,7 +239,7 @@ def audio_grains(src_id=None,
                            sample_rate=sample_rate)
 
 
-def coded_audio_grains(src_id=None,
+def coded_audio_grains(source_id=None,
                        flow_id=None,
                        creation_timestamp=None,
                        origin_timestamp=None,
@@ -284,7 +284,7 @@ def coded_audio_grains(src_id=None,
     :param sample_rate: either a positive integer or a strategy that generates them, the default strategy will always generate either 48000 or 44100.
     """
     return _grain_strategy(CodedAudioGrain, "coded_audio",
-                           source_id=src_id,
+                           source_id=source_id,
                            flow_id=flow_id,
                            origin_timestamp=origin_timestamp,
                            sync_timestamp=sync_timestamp,
@@ -298,7 +298,7 @@ def coded_audio_grains(src_id=None,
                            remainder=remainder)
 
 
-def video_grains(src_id=None,
+def video_grains(source_id=None,
                  flow_id=None,
                  creation_timestamp=None,
                  origin_timestamp=None,
@@ -337,7 +337,7 @@ def video_grains(src_id=None,
     :param layout: either a member of cogenums.CogFrameLayout or a strategy that generates them, the default strategy will not generate UNKNOWN layout.
     """
     return _grain_strategy(VideoGrain, "video",
-                           source_id=src_id,
+                           source_id=source_id,
                            flow_id=flow_id,
                            creation_timestamp=creation_timestamp,
                            origin_timestamp=origin_timestamp,
@@ -350,7 +350,7 @@ def video_grains(src_id=None,
                            layout=layout)
 
 
-def coded_video_grains(src_id=None,
+def coded_video_grains(source_id=None,
                        flow_id=None,
                        creation_timestamp=None,
                        origin_timestamp=None,
@@ -399,7 +399,7 @@ def coded_video_grains(src_id=None,
     :param layout: either a member of cogenums.CogFrameLayout or a strategy that generates them, the default strategy will not generate UNKNOWN layout.
     """
     return _grain_strategy(CodedVideoGrain, "coded_video",
-                           source_id=src_id,
+                           source_id=source_id,
                            flow_id=flow_id,
                            creation_timestamp=creation_timestamp,
                            origin_timestamp=origin_timestamp,
@@ -489,7 +489,7 @@ def grains_from_template_with_data(grain, data=None):
     return builds(grain_with_data, just(grain), data)
 
 
-def event_grains(src_id=None,
+def event_grains(source_id=None,
                  flow_id=None,
                  creation_timestamp=None,
                  origin_timestamp=None,
@@ -501,7 +501,7 @@ def event_grains(src_id=None,
                  event_data=None):
     """Draw from this strategy to get event grains.
 
-    :param src_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on hypothesis.strategies.integers
+    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on hypothesis.strategies.integers
                    which shrinks towards smaller numerical values will be used.
     :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on hypothesis.strategies.integers which
                     shrinks towards smaller numerical values will be used.
@@ -535,7 +535,7 @@ def event_grains(src_id=None,
         duration = Fraction(1, 25)
 
     def event_grain(source_id, flow_id, origin_timestamp, sync_timestamp, rate, duration, creation_timestamp, event_type, topic, event_data):
-        grain = EventGrain(src_id=source_id, flow_id=flow_id, creation_timestamp=creation_timestamp, origin_timestamp=origin_timestamp,
+        grain = EventGrain(source_id=source_id, flow_id=flow_id, creation_timestamp=creation_timestamp, origin_timestamp=origin_timestamp,
                            sync_timestamp=sync_timestamp, rate=rate, duration=duration,
                            event_type=event_type, topic=topic)
         for datum in event_data:
@@ -543,7 +543,7 @@ def event_grains(src_id=None,
         return grain
 
     return _grain_strategy(event_grain, "event",
-                           source_id=src_id,
+                           source_id=source_id,
                            flow_id=flow_id,
                            origin_timestamp=origin_timestamp,
                            sync_timestamp=sync_timestamp,
