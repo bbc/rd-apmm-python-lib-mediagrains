@@ -818,7 +818,15 @@ class GSFAsyncDecoderSession(object):
                 return  # We ran out of grains to read and hit EOF
 
 
-GSFSyncDecoderSession = Synchronised[GSFAsyncDecoderSession]
+class GSFSyncDecoderSession (Synchronised[GSFAsyncDecoderSession]):
+    def __init__(self, other: GSFAsyncDecoderSession):
+        super().__init__(other)
+        self.file_headers: Optional[GSFFileHeaderDict]
+
+    def grains(self,
+               local_ids: Optional[Sequence[int]] = None,
+               loading_mode: GrainDataLoadingMode = GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE) -> Iterable[Tuple[GRAIN, int]]:
+        return super().__getattr__('grains')(local_ids, loading_mode)
 
 
 class GSFDecoder(object):
@@ -869,9 +877,7 @@ class GSFDecoder(object):
     def __enter__(self) -> GSFSyncDecoderSession:
         self._sync_compatibility_mode = True
         a_session = run_awaitable_synchronously(self.__aenter__())
-        if a_session is None:
-            raise RuntimeError("Running __aenter__ synchronously returned nothing!")
-        return Synchronised(a_session)
+        return GSFSyncDecoderSession(a_session)
 
     def __exit__(self, *args, **kwargs):
         run_awaitable_synchronously(self._open_asession._load_unused_lazy_loaders())

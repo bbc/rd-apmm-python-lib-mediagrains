@@ -24,7 +24,9 @@ from abc import ABCMeta, abstractmethod
 from io import SEEK_SET, SEEK_CUR
 
 from typing import Type, Union, Optional, IO, cast
-from io import RawIOBase
+from io import RawIOBase, UnsupportedOperation
+
+from asyncio import StreamReader, StreamWriter
 
 
 class OpenAsyncBinaryIO(metaclass=ABCMeta):
@@ -236,3 +238,109 @@ class AsyncFileWrapper(AsyncBinaryIO):
         super().__init__(cls=OpenAsyncFileWrapper, fp=fp)
         self._inst: OpenAsyncFileWrapper
         self.fp = fp
+
+
+class OpenAsyncStreamWrapper(OpenAsyncBinaryIO):
+    def __init__(self, reader: Optional[StreamReader] = None, writer: Optional[StreamWriter] = None):
+        self.reader = reader
+        self.writer = writer
+        self._pos = 0
+        self._next_pos = 0
+
+    async def __open__(self) -> None:
+        self._pos = 0
+        self._next_pos = 0
+
+    async def __close__(self) -> None:
+        if self.writer is not None:
+            self.writer.close()
+
+    async def _align_pos(self):
+        if self._next_pos > self._pos:
+            if self.reader is not None:
+                await self.reader.read(self._next_pos - self._pos)
+            if self.writer is not None:
+                self.writer.write(bytes(self._next_pos - self._pos))
+        self._pos = self._next_pos
+
+    async def read(self, s: int = -1) -> bytes:
+        if self.reader is None:
+            raise UnsupportedOperation("Attempted to read from an output stream")
+        await self._align_pos()
+        d = await self.reader.read(s)
+        self._pos += len(d)
+        return d
+
+    async def readinto(self, b: bytearray) -> Optional[int]:
+        if self.reader is None:
+            raise UnsupportedOperation("Attempted to read from an output stream")
+        await self._align_pos()
+        d = await self.reader.read(len(b))
+        if d is None:
+            return 0
+        else:
+            b[:len(d)] = d
+            self._pos += len(d)
+            return len(d)
+
+    async def readall(self) -> bytes:
+        d = await self.read()
+        self._pos += len(d)
+        return d
+
+    async def write(self, b: bytes) -> Optional[int]:
+        if self.writer is None:
+            raise UnsupportedOperation("Attempted to write to an input stream")
+        await self._align_pos()
+        self.writer.write(b)
+        await self.writer.drain()
+        self._pos += len(b)
+        return len(b)
+
+    async def truncate(self, size: Optional[int] = None) -> int:
+        raise UnsupportedOperation("Cannot truncate a network stream")
+
+    def tell(self) -> int:
+        return self._pos
+
+    def seek(self, offset: int, whence: int = SEEK_SET):
+        next_pos = self._next_pos
+        if whence == SEEK_SET:
+            next_pos = offset
+        elif whence == SEEK_CUR:
+            next_pos += offset
+        else:
+            raise UnsupportedOperation("Cannot seek backwards")
+        if next_pos < self._pos:
+            raise UnsupportedOperation("Cannot seek backwards")
+        self._next_pos = next_pos
+        return self._next_pos
+
+    def seekable(self) -> bool:
+        return False
+
+    def readable(self) -> bool:
+        return (self.reader is not None)
+
+    def writable(self) -> bool:
+        return (self.writer is not None)
+
+    def seekable_backwards(self) -> bool:
+        return False
+
+    def seekable_forwards(self) -> bool:
+        return True
+
+    def getstream(self):
+        return (self.reader, self.writer)
+
+
+class AsyncStreamWrapper(AsyncBinaryIO):
+    def __init__(self, reader: Optional[StreamReader] = None, writer: Optional[StreamWriter] = None):
+        super().__init__(cls=OpenAsyncStreamWrapper, reader=reader, writer=writer)
+        self._inst: OpenAsyncStreamWrapper
+        self.reader = reader
+        self.writer = writer
+
+    def getstream(self):
+        return (self.reader, self.writer)

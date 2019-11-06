@@ -17,7 +17,7 @@
 Some utility functions for running synchronous and asynchronous code together.
 """
 
-from typing import TypeVar, Optional, Awaitable, Any, Generic
+from typing import TypeVar, Optional, Awaitable, Any, Generic, AsyncIterator, Iterator, Tuple
 import asyncio
 import threading
 from inspect import iscoroutinefunction, isawaitable, isasyncgenfunction
@@ -25,7 +25,12 @@ from inspect import iscoroutinefunction, isawaitable, isasyncgenfunction
 T = TypeVar('T')
 
 
-def run_awaitable_synchronously(f: Awaitable[T]) -> Optional[T]:
+class SynchronisationError(RuntimeError):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+def run_awaitable_synchronously(f: Awaitable[T]) -> T:
     """Runs an awaitable coroutine object as a synchronous call.
 
     Works from code running in a run-loop.
@@ -34,7 +39,7 @@ def run_awaitable_synchronously(f: Awaitable[T]) -> Optional[T]:
     """
     class ResultsType:
         def __init__(self):
-            self.rval: Optional[T] = None
+            self.rval: Optional[Tuple[T]] = None
             self.exception: Optional[Exception] = None
 
     results = ResultsType()
@@ -45,24 +50,26 @@ def run_awaitable_synchronously(f: Awaitable[T]) -> Optional[T]:
         except Exception as e:
             results.exception = e
         else:
-            results.rval = rval
+            results.rval = (rval,)
 
-    def _restore_results(results: ResultsType) -> Optional[T]:
+    def _restore_results(results: ResultsType) -> T:
         if results.exception is not None:
             raise results.exception
+        elif results.rval is None:
+            raise SynchronisationError("Expected a result when calling {!r} but none was produced".format(f))
         else:
-            return results.rval
+            return results.rval[0]
 
-    def _run_awaitable_in_existing_run_loop(a: Awaitable[T], loop: asyncio.AbstractEventLoop) -> Optional[T]:
+    def _run_awaitable_in_existing_run_loop(a: Awaitable[T], loop: asyncio.AbstractEventLoop) -> T:
         loop.run_until_complete(_capture_results_async(a, results))
         return _restore_results(results)
 
-    def _run_awaitable_inside_new_runloop(a: Awaitable[T]) -> Optional[T]:
+    def _run_awaitable_inside_new_runloop(a: Awaitable[T]) -> T:
         loop = asyncio.new_event_loop()
         rval = _run_awaitable_in_existing_run_loop(a, loop)
         return rval
 
-    def _run_awaitable_in_new_thread(a: Awaitable[T]) -> Optional[T]:
+    def _run_awaitable_in_new_thread(a: Awaitable[T]) -> T:
         def __inner() -> None:
             loop = asyncio.new_event_loop()
             loop.run_until_complete(_capture_results_async(a, results))
@@ -88,7 +95,7 @@ def run_awaitable_synchronously(f: Awaitable[T]) -> Optional[T]:
             return _run_awaitable_in_existing_run_loop(f, loop)
 
 
-def run_asyncgenerator_synchronously(gen):
+def run_asyncgenerator_synchronously(gen: AsyncIterator[T]) -> Iterator[T]:
     async def __get_next(gen):
         return await gen.__anext__()
 
