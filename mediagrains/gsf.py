@@ -1071,7 +1071,7 @@ class OpenGSFEncoderBase(object):
         if self._active_dump:
             raise GSFEncodeAddToActiveDump("Cannot add a new segment {} ({!s}) to an encoder that is currently dumping".format(local_id, id))
 
-        seg = GSFEncoderSegment(id, local_id, tags=tags)
+        seg = GSFEncoderSegment(id, local_id, tags=tags, parent=self)
         self._segments[local_id] = seg
         return seg
 
@@ -1471,7 +1471,7 @@ class GSFEncoder(object):
         if id is None:
             id = uuid1()
 
-        seg = GSFEncoderSegment(id, local_id, tags=tags)
+        seg = GSFEncoderSegment(id, local_id, tags=tags, parent=self)
         self._segments[local_id] = seg
         return seg
 
@@ -1585,7 +1585,11 @@ class GSFEncoderTag(object):
 class GSFEncoderSegment(object):
     """A class to represent a segment within a GSF file, used for constructing them."""
 
-    def __init__(self, id: UUID, local_id: int, tags: Iterable[Tuple[str, str]] = None):
+    def __init__(self,
+                 id: UUID,
+                 local_id: int,
+                 tags: Iterable[Tuple[str, str]] = None,
+                 parent: Optional[Union[GSFEncoder, OpenGSFEncoderBase]] = None):
         self.id = id
         self.local_id = local_id
         self._write_count = 0
@@ -1593,6 +1597,7 @@ class GSFEncoderSegment(object):
         self._active_dump: bool = False
         self._tags: List[GSFEncoderTag] = []
         self._grains: List[GRAIN] = []
+        self._parent = parent
 
         if tags is not None:
             for tag in tags:
@@ -1600,6 +1605,14 @@ class GSFEncoderSegment(object):
                     self.add_tag(tag[0], tag[1])
                 except (TypeError, IndexError):
                     raise GSFEncodeError("No idea how to turn {!r} into a tag".format(tag))
+
+    def _get_parent_open_encoder(self) -> Optional[OpenGSFEncoder]:
+        if isinstance(self._parent, OpenGSFEncoder):
+            return self._parent
+        elif isinstance(self._parent, GSFEncoder):
+            return self._parent._open_encoder
+        else:
+            return None
 
     @property
     def count(self) -> int:
@@ -1833,10 +1846,18 @@ class GSFEncoderSegment(object):
 
     def add_grain(self, grain: GRAIN):
         """Add a grain to the segment, which should be a Grain object"""
-        self._grains.append(grain)
+        parent = self._get_parent_open_encoder()
+        if parent is not None and parent._active_dump:
+            parent.add_grain(grain, segment_id=self.id, segment_local_id=self.local_id)
+        else:
+            self._grains.append(grain)
 
     def add_grains(self, grains: Iterable[GRAIN]):
         """Add several grains to the segment, the parameter should be an
         iterable of grain objects"""
-        for grain in grains:
-            self.add_grain(grain)
+        parent = self._get_parent_open_encoder()
+        if parent is not None and parent._active_dump:
+            parent.add_grains(grains, segment_id=self.id, segment_local_id=self.local_id)
+        else:
+            for grain in grains:
+                self.add_grain(grain)

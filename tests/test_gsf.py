@@ -1040,6 +1040,47 @@ class TestGSFDumps(TestCase):
         self.assertEqual(len(segments2[1]), 2)
         self.assertEqual(len(segments3[1]), 2)
 
+    @suppress_deprecation_warnings
+    def test_dump_progressively_with_segments__deprecated(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+
+        uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
+                 UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
+        created = datetime(1983, 3, 29, 15, 15)
+
+        file = BytesIO()
+        with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
+            with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
+                enc = GSFEncoder(file)
+                seg = enc.add_segment()
+                self.assertEqual(len(file.getvalue()), 0)
+                enc.start_dump()
+                dump0 = file.getvalue()
+                (head0, segments0) = loads(dump0)
+                seg.add_grain(grain0)
+                dump1 = file.getvalue()
+                (head1, segments1) = loads(dump1)
+                seg.add_grain(grain1, segment_local_id=1)
+                dump2 = file.getvalue()
+                (head2, segments2) = loads(dump2)
+                enc.end_dump()
+                dump3 = file.getvalue()
+                (head3, segments3) = loads(dump3)
+
+        self.assertEqual(head0['segments'][0]['count'], -1)
+        self.assertEqual(head1['segments'][0]['count'], -1)
+        self.assertEqual(head2['segments'][0]['count'], -1)
+        self.assertEqual(head3['segments'][0]['count'], 2)
+
+        if 1 in segments0:
+            self.assertEqual(len(segments0[1]), 0)
+        self.assertEqual(len(segments1[1]), 1)
+        self.assertEqual(len(segments2[1]), 2)
+        self.assertEqual(len(segments3[1]), 2)
+
     def test_dump_progressively(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
