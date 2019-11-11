@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.7.2
+- Bugfix: Restore behaviour whereby grains can be added to a segment object during an active progressive encode
+
 ## 2.7.1
 - Bugfix: Restore behaviour whereby `gsf.GSFEncoder.dump` calls `gsf.GSFEncoder.start_dump` and `gsf.GSFEncoder.end_dump`
   (this matters if subclasses have overridden these methods)
