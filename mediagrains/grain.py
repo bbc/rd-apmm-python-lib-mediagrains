@@ -57,7 +57,8 @@ from .typing import (
     CodedVideoGrainMetadataDict,
     AudioGrainMetadataDict,
     CodedAudioGrainMetadataDict,
-    GrainDataParameterType)
+    GrainDataParameterType,
+    GrainTypeString)
 
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 
@@ -66,7 +67,7 @@ import json
 __all__ = ["GRAIN", "VIDEOGRAIN", "AUDIOGRAIN", "CODEDVIDEOGRAIN", "CODEDAUDIOGRAIN", "EVENTGRAIN", "attributes_for_grain_type"]
 
 
-def attributes_for_grain_type(grain_type: str) -> List[str]:
+def attributes_for_grain_type(grain_type: GrainTypeString) -> List[str]:
     """Returns a list of attributes for a partiggcular grain type. Useful for testing."""
 
     COMMON_ATTRS = ['source_id', 'flow_id', 'origin_timestamp', 'sync_timestamp', 'creation_timestamp', 'rate', 'duration']

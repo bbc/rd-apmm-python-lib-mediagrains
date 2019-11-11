@@ -18,6 +18,7 @@ Contains a number of useful hypothesis strategies which can be used to
 generate mediagrains for hypothesis based testing
 """
 
+from mediatimestamp.immutable import Timestamp
 from mediatimestamp.hypothesis.strategies import immutabletimestamps as timestamps
 from hypothesis.strategies import (
     integers,
@@ -40,9 +41,11 @@ import struct
 from uuid import UUID
 from fractions import Fraction
 from copy import copy
+from typing import Any, Optional, Callable, TypeVar, Union, Sequence, cast
 
-from ..grain import attributes_for_grain_type
+from ..grain import attributes_for_grain_type, GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDAUDIOGRAIN, CODEDVIDEOGRAIN, EVENTGRAIN
 from ..cogenums import CogAudioFormat, CogFrameFormat, CogFrameLayout
+from ..typing import FractionDict, GrainTypeString, RationalTypes, EventGrainDatumDict
 from .. import Grain, EventGrain, AudioGrain, CodedAudioGrain, CodedVideoGrain, VideoGrain
 
 
@@ -61,15 +64,19 @@ __all__ = ["DONOTSET",
            "grains_with_data"]
 
 
-DONOTSET = object()
+class DONOTSETTYPE (object):
+    pass
 
 
-def shrinking_uuids():
+DONOTSET = DONOTSETTYPE()
+
+
+def shrinking_uuids() -> SearchStrategy[UUID]:
     """A strategy that produces uuids, but shrinks towards 0, unlike the standard hypothesis one."""
     return binary(min_size=16, max_size=16).map(lambda b: UUID(bytes=b))
 
 
-def fraction_dicts(*args, **kwargs):
+def fraction_dicts(*args, **kwargs) -> SearchStrategy[FractionDict]:
     """A strategy that produces dictionaries of the form {'numerator': n, 'denominator': d} for fractions generated using the fractions strategy.
     All arguments are passed through to the underlying call to fractions."""
     def _fraction_to_dict(f):
@@ -78,7 +85,7 @@ def fraction_dicts(*args, **kwargs):
     return builds(_fraction_to_dict, fractions(*args, **kwargs))
 
 
-def strategy_for_grain_attribute(attr, grain_type=None):
+def strategy_for_grain_attribute(attr: str, grain_type: Optional[GrainTypeString] = None) -> SearchStrategy[Any]:
     """Returns a default strategy for generating data compatible with a particular attribute of a particular grain_type
 
     :param attr: a string, the name of an attribute of one of the GRAIN subclasses
@@ -133,7 +140,10 @@ def strategy_for_grain_attribute(attr, grain_type=None):
     return strats[attr]
 
 
-def _grain_strategy(builder, grain_type, **kwargs):
+G = TypeVar('G', bound=GRAIN)
+
+
+def _grain_strategy(builder: Callable[..., G], grain_type: GrainTypeString, **kwargs) -> SearchStrategy[G]:
     new_kwargs = {}
     for attr in attributes_for_grain_type(grain_type):
         if attr not in kwargs or kwargs[attr] is None:
@@ -148,13 +158,13 @@ def _grain_strategy(builder, grain_type, **kwargs):
     return builds(builder, **new_kwargs)
 
 
-def empty_grains(source_id=None,
-                 flow_id=None,
-                 creation_timestamp=None,
-                 origin_timestamp=None,
-                 sync_timestamp=None,
-                 rate=DONOTSET,
-                 duration=DONOTSET):
+def empty_grains(source_id: Optional[Union[SearchStrategy[UUID], UUID]] = None,
+                 flow_id: Optional[Union[SearchStrategy[UUID], UUID]] = None,
+                 creation_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                 origin_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                 sync_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                 rate: Union[DONOTSETTYPE, SearchStrategy[RationalTypes], RationalTypes] = DONOTSET,
+                 duration: Union[DONOTSETTYPE, SearchStrategy[RationalTypes], RationalTypes] = DONOTSET) -> SearchStrategy[GRAIN]:
     """Draw from this strategy to get empty grains.
 
     :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
@@ -187,17 +197,17 @@ def empty_grains(source_id=None,
                            duration=duration)
 
 
-def audio_grains(source_id=None,
-                 flow_id=None,
-                 creation_timestamp=None,
-                 origin_timestamp=None,
-                 sync_timestamp=None,
-                 rate=DONOTSET,
-                 duration=DONOTSET,
-                 format=None,
-                 samples=None,
-                 channels=None,
-                 sample_rate=None):
+def audio_grains(source_id: Optional[Union[SearchStrategy[UUID], UUID]] = None,
+                 flow_id: Optional[Union[SearchStrategy[UUID], UUID]] = None,
+                 creation_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                 origin_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                 sync_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                 rate: Union[DONOTSETTYPE, SearchStrategy[RationalTypes], RationalTypes] = DONOTSET,
+                 duration: Union[DONOTSETTYPE, SearchStrategy[RationalTypes], RationalTypes] = DONOTSET,
+                 format: Optional[Union[SearchStrategy[CogAudioFormat], CogAudioFormat]] = None,
+                 samples: Optional[Union[SearchStrategy[int], int]] = None,
+                 channels: Optional[Union[SearchStrategy[int], int]] = None,
+                 sample_rate: Optional[Union[SearchStrategy[int], int]] = None) -> SearchStrategy[AUDIOGRAIN]:
     """Draw from this strategy to get audio grains. The data element of these grains will always be all 0s.
 
     :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
@@ -239,19 +249,19 @@ def audio_grains(source_id=None,
                            sample_rate=sample_rate)
 
 
-def coded_audio_grains(source_id=None,
-                       flow_id=None,
-                       creation_timestamp=None,
-                       origin_timestamp=None,
-                       sync_timestamp=None,
-                       rate=DONOTSET,
-                       duration=DONOTSET,
-                       format=None,
-                       samples=None,
-                       channels=None,
-                       priming=DONOTSET,
-                       remainder=DONOTSET,
-                       sample_rate=None):
+def coded_audio_grains(source_id: Optional[Union[SearchStrategy[UUID], UUID]] = None,
+                       flow_id: Optional[Union[SearchStrategy[UUID], UUID]] = None,
+                       creation_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                       origin_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                       sync_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                       rate: Union[DONOTSETTYPE, SearchStrategy[RationalTypes], RationalTypes] = DONOTSET,
+                       duration: Union[DONOTSETTYPE, SearchStrategy[RationalTypes], RationalTypes] = DONOTSET,
+                       format: Optional[Union[SearchStrategy[CogAudioFormat], CogAudioFormat]] = None,
+                       samples: Optional[Union[SearchStrategy[int], int]] = None,
+                       channels: Optional[Union[SearchStrategy[int], int]] = None,
+                       priming: Optional[Union[DONOTSETTYPE, SearchStrategy[int], int]] = DONOTSET,
+                       remainder: Optional[Union[DONOTSETTYPE, SearchStrategy[int], int]] = DONOTSET,
+                       sample_rate: Optional[Union[SearchStrategy[int], int]] = None) -> SearchStrategy[CODEDAUDIOGRAIN]:
     """Draw from this strategy to get coded audio grains. The data element of these grains will always be all 0s.
 
     :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
@@ -298,17 +308,17 @@ def coded_audio_grains(source_id=None,
                            remainder=remainder)
 
 
-def video_grains(source_id=None,
-                 flow_id=None,
-                 creation_timestamp=None,
-                 origin_timestamp=None,
-                 sync_timestamp=None,
-                 rate=DONOTSET,
-                 duration=DONOTSET,
-                 format=None,
-                 width=None,
-                 height=None,
-                 layout=None):
+def video_grains(source_id: Optional[Union[SearchStrategy[UUID], UUID]] = None,
+                 flow_id: Optional[Union[SearchStrategy[UUID], UUID]] = None,
+                 creation_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                 origin_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                 sync_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                 rate: Union[DONOTSETTYPE, SearchStrategy[RationalTypes], RationalTypes] = DONOTSET,
+                 duration: Union[DONOTSETTYPE, SearchStrategy[RationalTypes], RationalTypes] = DONOTSET,
+                 format: Optional[Union[SearchStrategy[CogFrameFormat], CogFrameFormat]] = None,
+                 width: Optional[Union[SearchStrategy[int], int]] = None,
+                 height: Optional[Union[SearchStrategy[int], int]] = None,
+                 layout: Optional[Union[SearchStrategy[CogFrameLayout], CogFrameLayout]] = None) -> SearchStrategy[VIDEOGRAIN]:
     """Draw from this strategy to get video grains. The data element of these grains will always be all 0s.
 
     :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
@@ -350,22 +360,22 @@ def video_grains(source_id=None,
                            layout=layout)
 
 
-def coded_video_grains(source_id=None,
-                       flow_id=None,
-                       creation_timestamp=None,
-                       origin_timestamp=None,
-                       sync_timestamp=None,
-                       rate=DONOTSET,
-                       duration=DONOTSET,
-                       format=None,
-                       coded_width=None,
-                       coded_height=None,
-                       layout=None,
-                       origin_width=None,
-                       origin_height=None,
-                       is_key_frame=None,
-                       temporal_offset=None,
-                       unit_offsets=None):
+def coded_video_grains(source_id: Optional[Union[SearchStrategy[UUID], UUID]] = None,
+                       flow_id: Optional[Union[SearchStrategy[UUID], UUID]] = None,
+                       creation_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                       origin_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                       sync_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                       rate: Union[DONOTSETTYPE, SearchStrategy[RationalTypes], RationalTypes] = DONOTSET,
+                       duration: Union[DONOTSETTYPE, SearchStrategy[RationalTypes], RationalTypes] = DONOTSET,
+                       format: Optional[Union[SearchStrategy[CogFrameFormat], CogFrameFormat]] = None,
+                       coded_width: Optional[Union[SearchStrategy[int], int]] = None,
+                       coded_height: Optional[Union[SearchStrategy[int], int]] = None,
+                       layout: Optional[Union[SearchStrategy[CogFrameLayout], CogFrameLayout]] = None,
+                       origin_width: Optional[Union[SearchStrategy[int], int]] = None,
+                       origin_height: Optional[Union[SearchStrategy[int], int]] = None,
+                       is_key_frame: Optional[Union[SearchStrategy[bool], bool]] = None,
+                       temporal_offset: Optional[Union[SearchStrategy[int], int]] = None,
+                       unit_offsets: Optional[Union[SearchStrategy[Sequence[int]], Sequence[int]]] = None) -> SearchStrategy[CODEDVIDEOGRAIN]:
     """Draw from this strategy to get coded video grains. The data element of these grains will always be all 0s.
 
     :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
@@ -417,7 +427,7 @@ def coded_video_grains(source_id=None,
                            layout=layout)
 
 
-def grains(grain_type, **kwargs):
+def grains(grain_type: GrainTypeString, **kwargs) -> SearchStrategy[GRAIN]:
     """A strategy that generates grains of the specified type."""
 
     if grain_type == "empty":
@@ -436,7 +446,7 @@ def grains(grain_type, **kwargs):
     raise ValueError("Cannot find a strategy to generate grains of type: {}".format(grain_type))
 
 
-def grains_with_data(grain_type):
+def grains_with_data(grain_type: GrainTypeString) -> SearchStrategy[GRAIN]:
     """Strategy giving grains which have data payloads filled out using an appropriate strategy for the grain type.
 
     :param grain_type: The type of grains to generate"""
@@ -446,7 +456,7 @@ def grains_with_data(grain_type):
         return grains(grain_type)
 
 
-def grains_from_template_with_data(grain, data=None):
+def grains_from_template_with_data(grain: G, data: Optional[Union[SearchStrategy[bytes], bytes]] = None) -> SearchStrategy[G]:
     """A strategy that produces grains which are identical to the input grain but with randomised data based on the format:
 
     :param grain: A grain to use as a template
@@ -455,19 +465,20 @@ def grains_from_template_with_data(grain, data=None):
     """
     if data is None:
         if grain.grain_type == "audio":
-            if grain.format in [CogAudioFormat.FLOAT_PLANES,
-                                CogAudioFormat.FLOAT_PAIRS,
-                                CogAudioFormat.FLOAT_INTERLEAVED]:
-                ln = grain.expected_length//4
+            agrain = cast(AUDIOGRAIN, grain)
+            if agrain.format in [CogAudioFormat.FLOAT_PLANES,
+                                 CogAudioFormat.FLOAT_PAIRS,
+                                 CogAudioFormat.FLOAT_INTERLEAVED]:
+                ln = agrain.expected_length//4
                 data = lists(floats(width=32,
                                     allow_nan=False,
                                     allow_infinity=False),
                              min_size=ln,
                              max_size=ln).map(lambda x: struct.pack('@' + ('f'*ln), *x))
-            elif grain.format in [CogAudioFormat.DOUBLE_PLANES,
-                                  CogAudioFormat.DOUBLE_PAIRS,
-                                  CogAudioFormat.DOUBLE_INTERLEAVED]:
-                ln = grain.expected_length//8
+            elif agrain.format in [CogAudioFormat.DOUBLE_PLANES,
+                                   CogAudioFormat.DOUBLE_PAIRS,
+                                   CogAudioFormat.DOUBLE_INTERLEAVED]:
+                ln = agrain.expected_length//8
                 data = lists(floats(width=64,
                                     allow_nan=False,
                                     allow_infinity=False),
@@ -489,16 +500,17 @@ def grains_from_template_with_data(grain, data=None):
     return builds(grain_with_data, just(grain), data)
 
 
-def event_grains(source_id=None,
-                 flow_id=None,
-                 creation_timestamp=None,
-                 origin_timestamp=None,
-                 sync_timestamp=None,
-                 rate=DONOTSET,
-                 duration=DONOTSET,
-                 event_type=None,
-                 topic=None,
-                 event_data=None):
+def event_grains(source_id: Optional[Union[SearchStrategy[UUID], UUID]] = None,
+                 flow_id: Optional[Union[SearchStrategy[UUID], UUID]] = None,
+                 creation_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                 origin_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                 sync_timestamp: Optional[Union[SearchStrategy[Timestamp], Timestamp, DONOTSETTYPE]] = None,
+                 rate: Union[DONOTSETTYPE, SearchStrategy[RationalTypes], RationalTypes] = DONOTSET,
+                 duration: Union[DONOTSETTYPE, SearchStrategy[RationalTypes], RationalTypes] = DONOTSET,
+                 event_type: Optional[Union[SearchStrategy[str], str]] = None,
+                 topic: Optional[Union[SearchStrategy[str], str]] = None,
+                 event_data: Optional[Union[SearchStrategy[Sequence[EventGrainDatumDict]],
+                                            Sequence[EventGrainDatumDict]]] = None) -> SearchStrategy[EVENTGRAIN]:
     """Draw from this strategy to get event grains.
 
     :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on hypothesis.strategies.integers

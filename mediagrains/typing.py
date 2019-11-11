@@ -41,7 +41,8 @@ __all__ = ["RationalTypes",
            "EventGrainMetadataDict",
            "FractionDict",
            "GrainDataType",
-           "GrainDataParameterType"]
+           "GrainDataParameterType",
+           "GrainTypeString"]
 
 # These are the types that can be freely converted into a Fraction
 RationalTypes = Union[str, float, Decimal, Rational]
@@ -58,6 +59,9 @@ _MediaJSONSerialisable2 = Union[_MediaJSONSerialisable_value, Sequence[_MediaJSO
 _MediaJSONSerialisable3 = Union[_MediaJSONSerialisable_value, Sequence[_MediaJSONSerialisable2], Mapping[str, _MediaJSONSerialisable2]]
 _MediaJSONSerialisable4 = Union[_MediaJSONSerialisable_value, Sequence[_MediaJSONSerialisable3], Mapping[str, _MediaJSONSerialisable3]]
 MediaJSONSerialisable = _MediaJSONSerialisable4
+
+
+GrainTypeString = Literal["empty", "event", "audio", "coded_audio", "video", "coded_video"]
 
 
 # This is weird, but is currently how you specifiy a structured dict with optional entries
