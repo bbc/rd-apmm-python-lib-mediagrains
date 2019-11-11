@@ -2,6 +2,9 @@
 
 ## 3.0.0 (Under Construction)
 - Removed deprecated asyncio sublibrary
+- Changed interface to grain constructors to no longer use the `src_id` parameter, preferring `source_id`
+- Removed deprecated access methods from gsf for encode and decode
+- Added full type hinting to the hypothesis strategies
 
 ## 2.7.2
 - Bugfix: Restore behaviour whereby grains can be added to a segment object during an active progressive encode
