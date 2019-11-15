@@ -54,7 +54,7 @@ from .typing import GrainMetadataDict, GrainDataParameterType, RationalTypes
 
 from .grain import GRAIN, VIDEOGRAIN, EVENTGRAIN, AUDIOGRAIN, CODEDAUDIOGRAIN, CODEDVIDEOGRAIN
 
-from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper, OpenAsyncFileWrapper
+from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper, OpenAsyncFileWrapper, AsyncBytesIO
 
 from contextlib import contextmanager
 
@@ -1415,8 +1415,10 @@ class GSFEncoder(object):
 
     async def __aenter__(self):
         if not isinstance(self.file, AsyncBinaryIO) and not isinstance(self.file, OpenAsyncBinaryIO):
-            raise ValueError("To use in asynchronous mode the file must be an asynchronously writeable file-like object")
-        self._open_async_encoder = OpenAsyncGSFEncoder(self.file,
+            f = AsyncFileWrapper(self.file)
+        else:
+            f = self.file
+        self._open_async_encoder = OpenAsyncGSFEncoder(f,
                                                        self.major,
                                                        self.minor,
                                                        self.id,

@@ -93,12 +93,12 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f,
                                       tags=[('potato', 'harvest')],
                                       segments=[{'tags': [('upside', 'down')]}]):
                     pass
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -183,10 +183,10 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f) as enc:
                     await enc.add_grain(grain)
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -297,10 +297,10 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f) as enc:
                     await enc.add_grains([grain0, grain1])
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -414,10 +414,10 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f) as enc:
                     await enc.add_grains([grain0, grain1])
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -541,10 +541,10 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f) as enc:
                     await enc.add_grains([grain0, grain1])
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -668,10 +668,10 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f) as enc:
                     await enc.add_grains([grain0, grain1])
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -791,10 +791,10 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f) as enc:
                     await enc.add_grains([grain0, grain1])
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -917,10 +917,10 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f) as enc:
                     await enc.add_grains([grain0, grain1])
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -986,7 +986,7 @@ class TestGSFDumps(TestCase):
         with self.assertRaises(GSFEncodeError):
             with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
                 with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                    async with GSFEncoder(AsyncBytesIO()) as enc:
+                    async with GSFEncoder(BytesIO()) as enc:
                         await enc.add_grains([grain])
 
     @suppress_deprecation_warnings
@@ -1120,21 +1120,21 @@ class TestGSFDumps(TestCase):
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
         created = datetime(1983, 3, 29, 15, 15)
 
-        file = AsyncBytesIO()
+        file = BytesIO()
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 enc = GSFEncoder(file, streaming=True, segments=[{}])
-                self.assertEqual(len(file.value()), 0)
+                self.assertEqual(len(file.getvalue()), 0)
                 async with enc as enc:
-                    dump0 = file.value()
+                    dump0 = file.getvalue()
                     (head0, segments0) = loads(dump0)
                     await enc.add_grain(grain0)
-                    dump1 = file.value()
+                    dump1 = file.getvalue()
                     (head1, segments1) = loads(dump1)
                     await enc.add_grain(grain1, segment_local_id=1)
-                    dump2 = file.value()
+                    dump2 = file.getvalue()
                     (head2, segments2) = loads(dump2)
-                dump3 = file.value()
+                dump3 = file.getvalue()
                 (head3, segments3) = loads(dump3)
 
         self.assertEqual(head0['segments'][0]['count'], -1)
