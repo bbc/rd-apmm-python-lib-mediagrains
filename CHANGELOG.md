@@ -1,5 +1,9 @@
 # Mediagrains Library Changelog
 
+## 2.8.0 (Under Construction)
+- Switched to using asynctest for testing asynchronous code
+- Made asynchronous IO wrappers that wrap synchronous IO do so using an executor thread pool
+
 ## 2.7.2
 - Bugfix: Restore behaviour whereby grains can be added to a segment object during an active progressive encode
 
