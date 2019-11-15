@@ -23,10 +23,12 @@ interface a little.
 from abc import ABCMeta, abstractmethod
 from io import SEEK_SET, SEEK_CUR
 
-from typing import Type, Union, Optional, IO, cast
+from typing import Type, Union, Optional, IO, cast, TypeVar, Callable, Awaitable
 from io import RawIOBase, UnsupportedOperation
 
 from asyncio import StreamReader, StreamWriter
+import asyncio
+from functools import wraps
 
 
 class OpenAsyncBinaryIO(metaclass=ABCMeta):
@@ -97,6 +99,16 @@ class AsyncBinaryIO:
         await self._inst.__close__()
 
 
+T = TypeVar("T")
+
+
+def wrap_in_executor(f: Callable[..., T]) -> Callable[..., Awaitable[T]]:
+    @wraps(f)
+    async def __inner(*args, **kwargs):
+        return await asyncio.get_event_loop().run_in_executor(None, lambda: f(*args, **kwargs))
+    return __inner
+
+
 class OpenAsyncBytesIO(OpenAsyncBinaryIO):
     def __init__(self, b: bytes):
         self._buffer = bytearray(b)
@@ -107,7 +119,8 @@ class OpenAsyncBytesIO(OpenAsyncBinaryIO):
         "This coroutine should include any code that is to be run when the io stream is opened"
         self._pos = 0
 
-    async def readinto(self, b: bytearray) -> int:
+    @wrap_in_executor
+    def readinto(self, b: bytearray) -> int:
         length = min(self._len - self._pos, len(b))
         if length > 0:
             b[:length] = self._buffer[self._pos:self._pos + length]
@@ -116,13 +129,15 @@ class OpenAsyncBytesIO(OpenAsyncBinaryIO):
         else:
             return 0
 
-    async def readall(self) -> bytes:
+    @wrap_in_executor
+    def readall(self) -> bytes:
         if self._pos >= 0 and self._pos < self._len:
             return bytes(self._buffer[self._pos:self._len])
         else:
             return bytes()
 
-    async def write(self, b: bytes) -> int:
+    @wrap_in_executor
+    def write(self, b: bytes) -> int:
         if self._pos < 0:
             return 0
 
@@ -189,30 +204,29 @@ class OpenAsyncFileWrapper(OpenAsyncBinaryIO):
         self.fp = cast(RawIOBase, fp)
 
     async def __open__(self) -> None:
-        # self.fp.__enter__()
         pass
 
     async def __close__(self) -> None:
-        # self.fp.__exit__(None, None, None)
         pass
 
-    async def read(self, s: int = -1) -> bytes:
+    @wrap_in_executor
+    def read(self, s: int = -1) -> bytes:
         while True:
             r = self.fp.read(s)
             if r is not None:
                 return r
 
     async def readinto(self, b: bytearray) -> Optional[int]:
-        return self.fp.readinto(b)
+        return await wrap_in_executor(self.fp.readinto)(b)
 
     async def readall(self) -> bytes:
-        return self.fp.readall()
+        return await wrap_in_executor(self.fp.readall)()
 
     async def write(self, b: bytes) -> Optional[int]:
-        return self.fp.write(b)
+        return await wrap_in_executor(self.fp.write)(b)
 
     async def truncate(self, size: Optional[int] = None) -> int:
-        return self.fp.truncate(size)
+        return await wrap_in_executor(self.fp.truncate)(size)
 
     def tell(self) -> int:
         return self.fp.tell()
