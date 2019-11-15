@@ -23,7 +23,7 @@ interface a little.
 from abc import ABCMeta, abstractmethod
 from io import SEEK_SET, SEEK_CUR
 
-from typing import Type, Union, Optional, IO, cast, TypeVar, Callable, Awaitable
+from typing import Type, Union, Optional, IO, cast, TypeVar, Callable, Coroutine
 from io import RawIOBase, UnsupportedOperation
 
 from asyncio import StreamReader, StreamWriter
@@ -102,7 +102,7 @@ class AsyncBinaryIO:
 T = TypeVar("T")
 
 
-def wrap_in_executor(f: Callable[..., T]) -> Callable[..., Awaitable[T]]:
+def wrap_in_executor(f: Callable[..., T]) -> Callable[..., Coroutine[None, None, T]]:
     @wraps(f)
     async def __inner(*args, **kwargs):
         return await asyncio.get_event_loop().run_in_executor(None, lambda: f(*args, **kwargs))
