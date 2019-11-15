@@ -14,8 +14,8 @@
 # limitations under the License.
 #
 
-import unittest
-from unittest import TestCase
+import asynctest as unittest
+from asynctest import TestCase
 
 from hypothesis import given, assume, settings, HealthCheck
 from hypothesis.strategies import sampled_from, just, tuples

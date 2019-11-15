@@ -40,7 +40,8 @@ from typing import (
     Sized,
     Iterator,
     Iterable,
-    Awaitable)
+    Awaitable,
+    Generator)
 from typing_extensions import Literal
 from .typing import (
     RationalTypes,
@@ -271,7 +272,7 @@ normalise_time(value)
     def has_data(self) -> bool:
         return self._data is not None
 
-    def __await__(self) -> Awaitable[Optional[GrainDataType]]:
+    def __await__(self) -> Generator[Any, None, Optional[GrainDataType]]:
         async def __inner():
             if self._data is None and self._data_fetcher_coroutine is not None:
                 self._data = await self._data_fetcher_coroutine
