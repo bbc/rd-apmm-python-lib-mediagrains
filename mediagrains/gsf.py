@@ -54,7 +54,7 @@ from .typing import GrainMetadataDict, GrainDataParameterType, RationalTypes
 
 from .grain import GRAIN, VIDEOGRAIN, EVENTGRAIN, AUDIOGRAIN, CODEDAUDIOGRAIN, CODEDVIDEOGRAIN
 
-from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper, OpenAsyncFileWrapper, AsyncBytesIO
+from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper, OpenAsyncFileWrapper
 
 from contextlib import contextmanager
 
