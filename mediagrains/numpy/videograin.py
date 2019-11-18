@@ -31,7 +31,7 @@ import uuid
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
 
-from typing import Callable, Dict, Tuple, Optional, Awaitable, cast, overload
+from typing import Callable, Dict, Tuple, Optional, Awaitable, cast, overload, Generator, Any
 from ..typing import VideoGrainMetadataDict, GrainDataType, GrainDataParameterType
 
 from inspect import isawaitable
@@ -280,10 +280,12 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
         else:
             return "{}({!r},< numpy data of length {} >)".format(self._factory, self.meta, len(self.data))
 
-    async def __await__(self):
-        if self._data is None and self._data_fetcher_coroutine is not None:
-            self.data = await self._data_fetcher_coroutine
-        return self.data
+    def __await__(self) -> Generator[Any, None, np.ndarray]:
+        async def __inner():
+            if self._data is None and self._data_fetcher_coroutine is not None:
+                self.data = await self._data_fetcher_coroutine
+            return self.data
+        return __inner().__await__()
 
     async def __aenter__(self) -> "VIDEOGRAIN":
         await self

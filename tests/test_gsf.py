@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-from unittest import TestCase
+from asynctest import TestCase, mock
 from uuid import UUID
 from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
@@ -35,9 +35,8 @@ from mediagrains.utils.asyncbinaryio import AsyncBytesIO
 from frozendict import frozendict
 from os import SEEK_SET
 
-from fixtures import suppress_deprecation_warnings, async_test
+from fixtures import suppress_deprecation_warnings
 
-from unittest import mock
 
 with open('examples/video.gsf', 'rb') as f:
     VIDEO_DATA = f.read()
@@ -89,18 +88,17 @@ class TestGSFDumps(TestCase):
             self.assertIn(1, segments)
             self.assertEqual(len(segments[1]), 0)
 
-    @async_test
     async def test_async_encode_no_grains(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'), UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f,
                                       tags=[('potato', 'harvest')],
                                       segments=[{'tags': [('upside', 'down')]}]):
                     pass
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -172,7 +170,6 @@ class TestGSFDumps(TestCase):
 
         self.assertEqual(segments[1][0].data, grain.data)
 
-    @async_test
     async def test_async_encode_videograin(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
@@ -186,10 +183,10 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f) as enc:
                     await enc.add_grain(grain)
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -284,7 +281,6 @@ class TestGSFDumps(TestCase):
 
         self.assertEqual(segments[1][1].data, grain1.data)
 
-    @async_test
     async def test_async_encode_videograins(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
@@ -301,10 +297,10 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f) as enc:
                     await enc.add_grains([grain0, grain1])
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -404,7 +400,6 @@ class TestGSFDumps(TestCase):
 
         self.assertEqual(segments[1][1].data, grain1.data)
 
-    @async_test
     async def test_async_encode_audiograins(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
@@ -419,10 +414,10 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f) as enc:
                     await enc.add_grains([grain0, grain1])
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -530,7 +525,6 @@ class TestGSFDumps(TestCase):
 
         self.assertEqual(segments[1][1].data, grain1.data)
 
-    @async_test
     async def test_async_encode_codedvideograins(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
@@ -547,10 +541,10 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f) as enc:
                     await enc.add_grains([grain0, grain1])
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -660,7 +654,6 @@ class TestGSFDumps(TestCase):
 
         self.assertEqual(segments[1][1].data, grain1.data)
 
-    @async_test
     async def test_async_encode_codedaudiograins(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
@@ -675,10 +668,10 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f) as enc:
                     await enc.add_grains([grain0, grain1])
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -782,7 +775,6 @@ class TestGSFDumps(TestCase):
         self.assertEqual(segments[1][1].event_data[0].pre, "da")
         self.assertIsNone(segments[1][1].event_data[0].post)
 
-    @async_test
     async def test_async_encode_eventgrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
@@ -799,10 +791,10 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f) as enc:
                     await enc.add_grains([grain0, grain1])
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -906,7 +898,6 @@ class TestGSFDumps(TestCase):
         self.assertEqual(segments[1][1].grain_type, 'empty')
         self.assertIsNone(segments[1][1].data)
 
-    @async_test
     async def test_async_encode_emptygrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
@@ -926,10 +917,10 @@ class TestGSFDumps(TestCase):
         created = datetime(1983, 3, 29, 15, 15)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                f = AsyncBytesIO()
+                f = BytesIO()
                 async with GSFEncoder(f) as enc:
                     await enc.add_grains([grain0, grain1])
-                (head, segments) = loads(f.value())
+                (head, segments) = loads(f.getvalue())
 
         self.assertIn('id', head)
         self.assertIn(head['id'], uuids)
@@ -984,7 +975,6 @@ class TestGSFDumps(TestCase):
                 with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                     (head, segments) = loads(dumps([grain]))
 
-    @async_test
     async def test_async_encode_invalidgrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
@@ -996,7 +986,7 @@ class TestGSFDumps(TestCase):
         with self.assertRaises(GSFEncodeError):
             with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
                 with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
-                    async with GSFEncoder(AsyncBytesIO()) as enc:
+                    async with GSFEncoder(BytesIO()) as enc:
                         await enc.add_grains([grain])
 
     @suppress_deprecation_warnings
@@ -1120,7 +1110,6 @@ class TestGSFDumps(TestCase):
         self.assertEqual(len(segments2[1]), 2)
         self.assertEqual(len(segments3[1]), 2)
 
-    @async_test
     async def test_async_encode_progressively(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
@@ -1131,21 +1120,21 @@ class TestGSFDumps(TestCase):
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
         created = datetime(1983, 3, 29, 15, 15)
 
-        file = AsyncBytesIO()
+        file = BytesIO()
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 enc = GSFEncoder(file, streaming=True, segments=[{}])
-                self.assertEqual(len(file.value()), 0)
+                self.assertEqual(len(file.getvalue()), 0)
                 async with enc as enc:
-                    dump0 = file.value()
+                    dump0 = file.getvalue()
                     (head0, segments0) = loads(dump0)
                     await enc.add_grain(grain0)
-                    dump1 = file.value()
+                    dump1 = file.getvalue()
                     (head1, segments1) = loads(dump1)
                     await enc.add_grain(grain1, segment_local_id=1)
-                    dump2 = file.value()
+                    dump2 = file.getvalue()
                     (head2, segments2) = loads(dump2)
-                dump3 = file.value()
+                dump3 = file.getvalue()
                 (head3, segments3) = loads(dump3)
 
         self.assertEqual(head0['segments'][0]['count'], -1)
@@ -1282,7 +1271,6 @@ class TestGSFDumps(TestCase):
 class TestGSFBlock(TestCase):
     """Test the GSF decoder block handler correctly parses various types"""
 
-    @async_test
     async def test_read_uint(self):
         test_number = 4132
         test_data = b"\x24\x10\x00\x00"
@@ -1292,7 +1280,6 @@ class TestGSFBlock(TestCase):
 
             self.assertEqual(test_number, await UUT.read_uint(4))
 
-    @async_test
     async def test_read_bool(self):
         test_data = b"\x00\x01\x02"  # False, True (0x01 != 0), True (0x02 != 0)
 
@@ -1303,7 +1290,6 @@ class TestGSFBlock(TestCase):
             self.assertTrue(await UUT.read_bool())
             self.assertTrue(await UUT.read_bool())
 
-    @async_test
     async def test_read_sint(self):
         test_number = -12856
         test_data = b"\xC8\xCD\xFF"
@@ -1313,7 +1299,6 @@ class TestGSFBlock(TestCase):
 
             self.assertEqual(test_number, await UUT.read_sint(3))
 
-    @async_test
     async def test_read_string(self):
         """Test we can read a string, with Unicode characters"""
         test_string = u"Strings😁✔"
@@ -1325,7 +1310,6 @@ class TestGSFBlock(TestCase):
 
             self.assertEqual(test_string, await UUT.read_string(14))
 
-    @async_test
     async def test_read_varstring(self):
         test_string = u"Strings😁✔"
         test_data = b"\x0e\x00Strings\xf0\x9f\x98\x81\xe2\x9c\x94"
@@ -1335,7 +1319,6 @@ class TestGSFBlock(TestCase):
 
             self.assertEqual(test_string, await UUT.read_varstring())
 
-    @async_test
     async def test_read_uuid(self):
         test_uuid = UUID("b06c65c8-51ac-4ad1-a839-2ef37107cc16")
         test_data = b"\xb0\x6c\x65\xc8\x51\xac\x4a\xd1\xa8\x39\x2e\xf3\x71\x07\xcc\x16"
@@ -1345,7 +1328,6 @@ class TestGSFBlock(TestCase):
 
             self.assertEqual(test_uuid, await UUT.read_uuid())
 
-    @async_test
     async def test_read_timestamp(self):
         test_timestamp = datetime(2018, 9, 8, 16, 0, 0)
         test_data = b"\xe2\x07\x09\x08\x10\x00\x00"
@@ -1355,7 +1337,6 @@ class TestGSFBlock(TestCase):
 
             self.assertEqual(test_timestamp, await UUT.read_timestamp())
 
-    @async_test
     async def test_read_ippts(self):
         test_timestamp = Timestamp(1536422400, 500)
         test_data = b"\x00\xf2\x93\x5b\x00\x00\xf4\x01\x00\x00"
@@ -1365,7 +1346,6 @@ class TestGSFBlock(TestCase):
 
             self.assertEqual(test_timestamp, await UUT.read_ippts())
 
-    @async_test
     async def test_read_rational(self):
         test_fraction = Fraction(4, 3)
         test_data = b"\x04\x00\x00\x00\x03\x00\x00\x00"
@@ -1375,7 +1355,6 @@ class TestGSFBlock(TestCase):
 
             self.assertEqual(test_fraction, await UUT.read_rational())
 
-    @async_test
     async def test_read_rational_zero_denominator(self):
         """Ensure the reader considers a Rational with zero denominator to be 0, not an error"""
         test_data = b"\x04\x00\x00\x00\x00\x00\x00\x00"
@@ -1385,7 +1364,6 @@ class TestGSFBlock(TestCase):
 
             self.assertEqual(Fraction(0), await UUT.read_rational())
 
-    @async_test
     async def test_read_uint_past_eof(self):
         """read_uint calls read() directly - test it raises EOFError correctly"""
         test_data = b"\x04\x00"
@@ -1396,7 +1374,6 @@ class TestGSFBlock(TestCase):
             with self.assertRaises(EOFError):
                 await UUT.read_uint(4)
 
-    @async_test
     async def test_read_string_past_eof(self):
         """read_string() calls read() directly - test it raises EOFError correctly"""
         test_data = b"Strin"
@@ -1407,7 +1384,6 @@ class TestGSFBlock(TestCase):
             with self.assertRaises(EOFError):
                 await UUT.read_string(6)
 
-    @async_test
     async def test_read_uuid_past_eof(self):
         """read_uuid() calls read() directly - test it raises EOFError correctly"""
         test_data = b"\xb0\x6c\x65\xc8\x51\xac\x4a\xd1\xa8\x39\x2e"
@@ -1449,7 +1425,6 @@ class TestGSFBlock(TestCase):
 
         return AsyncBytesIO(test_stream.getvalue())
 
-    @async_test
     async def test_block_start_recorded(self):
         """Test that a AsyncGSFBlock records the block start point"""
         async with self._make_sample_stream() as test_stream:
@@ -1458,7 +1433,6 @@ class TestGSFBlock(TestCase):
             UUT = AsyncGSFBlock(test_stream)
             self.assertEqual(28, UUT.block_start)
 
-    @async_test
     async def test_contextmanager_read_tag_size(self):
         """Test that the block tag and size are read when used in a context manager"""
         async with self._make_sample_stream() as test_stream:
@@ -1466,7 +1440,6 @@ class TestGSFBlock(TestCase):
                 self.assertEqual("blok", UUT.tag)
                 self.assertEqual(28, UUT.size)
 
-    @async_test
     async def test_contextmanager_skips_unwanted_blocks(self):
         """Test that AsyncGSFBlock() seeks over unwanted blocks"""
         async with self._make_sample_stream() as test_stream:
@@ -1476,7 +1449,6 @@ class TestGSFBlock(TestCase):
                 # blok is 28 bytes long, we should skip it, plus 8 bytes of blk2
                 self.assertEqual(28 + 8, test_stream.tell())
 
-    @async_test
     async def test_contextmanager_errors_unwanted_blocks(self):
         """Test that AsyncGSFBlock() raises GSFDecodeError when finding an unwanted block"""
         async with self._make_sample_stream() as test_stream:
@@ -1484,7 +1456,6 @@ class TestGSFBlock(TestCase):
                 async with AsyncGSFBlock(test_stream, want_tag="chil", raise_on_wrong_tag=True):
                     pass
 
-    @async_test
     async def test_contextmanager_seeks_on_exit(self):
         """Test that the context manager seeks to the end of a block on exit"""
         async with self._make_sample_stream() as test_stream:
@@ -1494,7 +1465,6 @@ class TestGSFBlock(TestCase):
             # First block is 28 bytes long, so we should be zero-index position 28 afterwards
             self.assertEqual(28, test_stream.tell())
 
-    @async_test
     async def test_contextmanager_get_remaining(self):
         """Test the context manager gets the number of bytes left in the block correctly"""
         async with self._make_sample_stream() as test_stream:
@@ -1502,7 +1472,6 @@ class TestGSFBlock(TestCase):
                 await UUT.read_uint(4)  # Use a read to skip ahead a bit
                 self.assertEqual(28 - 8 - 4, UUT.get_remaining())  # Block was 28 bytes, 8 bytes header, 4 bytes read_uint
 
-    @async_test
     async def test_contextmanager_has_child(self):
         """Test the context manager detects whether another child is present correctly"""
         async with self._make_sample_stream() as test_stream:
@@ -1513,7 +1482,6 @@ class TestGSFBlock(TestCase):
                 await test_stream.read(8)
                 self.assertFalse(UUT.has_child_block())
 
-    @async_test
     async def test_contextmanager_has_child_strict_blocks(self):
         """Ensure that when strict mode is enabled, has_child errors on partial blocks"""
         async with self._make_sample_stream(post_child_len=4) as test_stream:
@@ -1523,7 +1491,6 @@ class TestGSFBlock(TestCase):
                 with self.assertRaises(GSFDecodeError):
                     UUT.has_child_block(strict_blocks=True)
 
-    @async_test
     async def test_contextmanager_has_child_no_strict_blocks(self):
         """Ensure that when strict mode is off, has_child doesn't error on partial blocks"""
         async with self._make_sample_stream(post_child_len=4) as test_stream:
@@ -1532,7 +1499,6 @@ class TestGSFBlock(TestCase):
 
                 self.assertFalse(UUT.has_child_block(strict_blocks=False))
 
-    @async_test
     async def test_contextmanager_child_blocks_generator(self):
         """Ensure the child blocks generator returns a block, and seeks afterwards"""
         async with self._make_sample_stream() as test_stream:
@@ -1581,7 +1547,6 @@ class TestGSFDecoder(TestCase):
 
         self.assertEqual(10, grain_count)  # There are 10 grains in the file
 
-    @async_test
     async def test_async_decode_headers(self):
         video_data_stream = AsyncBytesIO(VIDEO_DATA)
 
@@ -1593,7 +1558,6 @@ class TestGSFDecoder(TestCase):
         self.assertEqual(len(head['segments']), 1)
         self.assertEqual(head['segments'][0]['id'], UUID('c6a3d3ff-74c0-446d-b59e-de1041f27e8a'))
 
-    @async_test
     async def test_async_generate_grains(self):
         """Test that the generator yields each grain"""
         video_data_stream = AsyncBytesIO(VIDEO_DATA)
@@ -1609,7 +1573,6 @@ class TestGSFDecoder(TestCase):
 
         self.assertEqual(10, grain_count)  # There are 10 grains in the file
 
-    @async_test
     async def test_async_to_sync_generate_grains(self):
         """Test that the generator yields each grain when run snchronously from asynchronous code"""
         video_data_stream = BytesIO(VIDEO_DATA)
@@ -1625,7 +1588,6 @@ class TestGSFDecoder(TestCase):
 
         self.assertEqual(10, grain_count)  # There are 10 grains in the file
 
-    @async_test
     async def test_async_generate_grains_load_lazily(self):
         """Test that the generator yields each grain"""
         video_data_stream = AsyncBytesIO(VIDEO_DATA)
@@ -1677,7 +1639,6 @@ class TestGSFDecoder(TestCase):
 
         self.assertEqual(10, grain_count)  # There are 10 grains in the file
 
-    @async_test
     async def test_async_comparison_of_lazy_loaded_grains(self):
         async with GSFDecoder(file_data=AsyncBytesIO(VIDEO_DATA)) as dec:
             grains = [grain async for (grain, local_id) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY)]
@@ -1718,7 +1679,6 @@ class TestGSFDecoder(TestCase):
 
         self.assertTrue(compare_grain(grains[0], next(UUT.grains(load_lazily=True))[0]))
 
-    @async_test
     async def test_async_local_id_filtering(self):
         interleaved_data_stream = AsyncBytesIO(INTERLEAVED_DATA)
 
@@ -2031,7 +1991,6 @@ class TestGSFLoads(TestCase):
         self.assertEqual(len(segments[1]), 10)
         self.assertEqual(grain_parser.call_count, 10)
 
-    @async_test
     async def test_async_load_uses_custom_grain_function(self):
         file = AsyncBytesIO(VIDEO_DATA)
         grain_parser = mock.MagicMock(name="grain_parser")
@@ -2259,7 +2218,6 @@ class TestGSFLoads(TestCase):
                                                                                              'frame_rate_denominator': 1,
                                                                                              'drop_frame': False}}])
 
-    @async_test
     async def test_async_load_decodes_tils(self):
         src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
         flow_id = UUID('da78668a-1596-11e8-a577-dca904824eec')
