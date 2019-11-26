@@ -21,7 +21,7 @@ interface a little.
 """
 
 from abc import ABCMeta, abstractmethod
-from io import SEEK_SET, SEEK_CUR
+from io import SEEK_SET, SEEK_CUR, BytesIO
 
 from typing import Type, Union, Optional, IO, cast, TypeVar, Callable, Coroutine
 from io import RawIOBase, UnsupportedOperation
@@ -260,6 +260,60 @@ class AsyncFileWrapper(AsyncBinaryIO):
     def __init__(self, fp: IO[bytes]):
         super().__init__(cls=OpenAsyncFileWrapper, fp=fp)
         self._inst: OpenAsyncFileWrapper
+        self.fp = fp
+
+
+class OpenAsyncBytesIOWrapper(OpenAsyncBinaryIO):
+    def __init__(self, fp: BytesIO):
+        self.fp = cast(RawIOBase, fp)
+
+    async def __open__(self) -> None:
+        pass
+
+    async def __close__(self) -> None:
+        pass
+
+    async def read(self, s: int = -1) -> bytes:
+        while True:
+            r = self.fp.read(s)
+            if r is not None:
+                return r
+
+    async def readinto(self, b: bytearray) -> Optional[int]:
+        return self.fp.readinto(b)
+
+    async def readall(self) -> bytes:
+        return self.fp.readall()
+
+    async def write(self, b: bytes) -> Optional[int]:
+        return self.fp.write(b)
+
+    async def truncate(self, size: Optional[int] = None) -> int:
+        return self.fp.truncate(size)
+
+    def tell(self) -> int:
+        return self.fp.tell()
+
+    def seek(self, offset: int, whence: int = SEEK_SET):
+        return self.fp.seek(offset, whence)
+
+    def seekable(self) -> bool:
+        return self.fp.seekable()
+
+    def readable(self) -> bool:
+        return self.fp.readable()
+
+    def writable(self) -> bool:
+        return self.fp.writable()
+
+    def getsync(self) -> IO[bytes]:
+        return cast(IO[bytes], self.fp)
+
+
+class AsyncBytesIOWrapper(AsyncBinaryIO):
+    def __init__(self, fp: BytesIO):
+        super().__init__(cls=OpenAsyncBytesIOWrapper, fp=fp)
+        self._inst: OpenAsyncBytesIOWrapper
         self.fp = fp
 
 

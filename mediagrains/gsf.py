@@ -54,7 +54,7 @@ from .typing import GrainMetadataDict, GrainDataParameterType, RationalTypes
 
 from .grain import GRAIN, VIDEOGRAIN, EVENTGRAIN, AUDIOGRAIN, CODEDAUDIOGRAIN, CODEDVIDEOGRAIN
 
-from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper, OpenAsyncFileWrapper
+from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper, OpenAsyncFileWrapper, AsyncBytesIOWrapper
 
 from contextlib import contextmanager
 
@@ -862,6 +862,9 @@ class GSFDecoder(object):
         elif isinstance(file_data, OpenAsyncBinaryIO):
             self._afile_data = None
             self._open_afile = file_data
+        elif isinstance(file_data, BytesIO):
+            self._afile_data = AsyncBytesIOWrapper(file_data)
+            self._open_afile = None
         elif isinstance(file_data, (RawIOBase, BufferedIOBase)):
             self._afile_data = AsyncFileWrapper(file_data)
             self._open_afile = None
