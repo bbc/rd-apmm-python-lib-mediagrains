@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-from unittest import TestCase
+from asynctest import TestCase, mock
 
 import uuid
 from mediagrains.numpy import VideoGrain, VIDEOGRAIN
@@ -29,12 +29,9 @@ from mediagrains.cogenums import (
     COG_FRAME_IS_PLANAR_RGB,
     COG_FRAME_FORMAT_ACTIVE_BITS)
 from mediatimestamp.immutable import Timestamp, TimeRange
-import mock
 from fractions import Fraction
 from copy import copy, deepcopy
 from typing import Tuple, Optional
-
-from fixtures import async_test
 
 from itertools import chain, repeat
 
@@ -487,7 +484,6 @@ class TestGrain (TestCase):
                 if fmt is not CogFrameFormat.v210:
                     self.assertComponentsAreModifiable(grain)
 
-    @async_test
     async def test_video_grain_async_create(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
         flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")

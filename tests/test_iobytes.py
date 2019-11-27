@@ -14,8 +14,7 @@
 # limitations under the License.
 #
 
-from unittest import TestCase
-import mock
+from asynctest import TestCase, mock
 
 from mediagrains.utils import IOBytes
 

@@ -14,17 +14,15 @@
 # limitations under the License.
 #
 
-from unittest import TestCase
+from asynctest import TestCase
 import uuid
 from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from mediatimestamp.immutable import Timestamp, TimeOffset, TimeRange
-import mock
+from asynctest import mock
 from fractions import Fraction
 import json
 from copy import copy, deepcopy
-
-from fixtures import async_test
 
 
 src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
@@ -671,7 +669,6 @@ class TestGrain (TestCase):
         self.assertEqual(grain.length, 0)
         self.assertEqual(grain.expected_length, 8192*1080)
 
-    @async_test
     async def test_videograin_with_async_data(self):
         meta = VIDEOGRAIN_TEST_METADATA
 
@@ -695,7 +692,6 @@ class TestGrain (TestCase):
         self.assertEqual((await grain)[:16], expected_data[:16])
         self.assertEqual(grain.data[:16], expected_data[:16])
 
-    @async_test
     async def test_videograin_with_async_data_as_acm(self):
         meta = VIDEOGRAIN_TEST_METADATA
 
