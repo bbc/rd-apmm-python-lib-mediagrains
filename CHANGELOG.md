@@ -1,6 +1,6 @@
 # Mediagrains Library Changelog
 
-## 2.8.0 (Under Construction)
+## 2.8.0
 - Switched to using asynctest for testing asynchronous code
 - Made asynchronous IO wrappers that wrap synchronous IO do so using an executor thread pool
 - Added support for automatically wrapping synchronous files in asynchronous wrappers to use them in gsf encoder
