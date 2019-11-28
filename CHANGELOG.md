@@ -1,9 +1,13 @@
 # Mediagrains Library Changelog
 
+## 2.8.1
+- Added a bypass so that when wrapping a BytesIO in an Async wrapper unnecessary and potentially costly threads aren't spawned
+
 ## 2.8.0
 - Switched to using asynctest for testing asynchronous code
 - Made asynchronous IO wrappers that wrap synchronous IO do so using an executor thread pool
 - Added support for automatically wrapping synchronous files in asynchronous wrappers to use them in gsf encoder
+- Added bypass to wrap BytesIO in a lighter weight wrapper to prevent timing irregularities
 
 ## 2.7.2
 - Bugfix: Restore behaviour whereby grains can be added to a segment object during an active progressive encode
