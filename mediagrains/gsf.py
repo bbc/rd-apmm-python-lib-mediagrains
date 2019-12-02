@@ -27,7 +27,6 @@ from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
 from frozendict import frozendict
 from .utils import IOBytes
-from .utils.synchronise import run_awaitable_synchronously, Synchronised
 from os import SEEK_SET, SEEK_CUR
 import warnings
 
@@ -54,7 +53,7 @@ from .typing import GrainMetadataDict, GrainDataParameterType, RationalTypes
 
 from .grain import GRAIN, VIDEOGRAIN, EVENTGRAIN, AUDIOGRAIN, CODEDAUDIOGRAIN, CODEDVIDEOGRAIN
 
-from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper, OpenAsyncFileWrapper, AsyncBytesIOWrapper
+from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper, OpenAsyncFileWrapper
 
 from contextlib import contextmanager
 
@@ -141,7 +140,7 @@ def load(fp,
     if isinstance(fp, AsyncBinaryIO):
         return cls(file_data=fp, parse_grain=parse_grain, **kwargs)._asynchronously_decode()
     else:
-        return run_awaitable_synchronously(cls(file_data=AsyncFileWrapper(fp), parse_grain=parse_grain, **kwargs)._asynchronously_decode())
+        return cls(file_data=fp, parse_grain=parse_grain, **kwargs)._synchronously_decode()
 
 
 def dump(grains: Iterable[GRAIN],
@@ -450,6 +449,230 @@ class AsyncGSFBlock():
         """
         numerator = await self.read_uint(4)
         denominator = await self.read_uint(4)
+        if numerator == 0 or denominator == 0:
+            return Fraction(0)
+        else:
+            return Fraction(numerator, denominator)
+
+
+# This is a near duplicate of the async code above, and should be refactored out
+
+class SyncGSFBlock():
+    """A single block in a GSF file
+
+    Has methods to read various types from the block.
+    Can also be used as a context manager, in which case it will automatically decode the block tag and size, exposed
+    by the `tag` and `size` attributes.
+    """
+    def __init__(self, file_data: IO[bytes], want_tag: Optional[str] = None, raise_on_wrong_tag: bool = False):
+        """Constructor. Records the start byte of the block in `block_start`
+
+        :param file_data: An instance of io.BufferedReader positioned at the start of the block
+        :param want_tag: If set to a tag string, and in a context manager, skip any block without that tag
+        :param raise_on_wrong_tag: Set to True to raise a GSFDecodeError if the next block isn't `want_tag`
+        """
+        self.file_data = file_data
+        self.want_tag = want_tag
+        self.raise_on_wrong_tag = raise_on_wrong_tag
+
+        self.size: Optional[int] = None
+        self.block_start = self.file_data.tell()  # In binary mode, this should always be in bytes
+
+    def __enter__(self) -> "SyncGSFBlock":
+        """When used as a context manager, read block size and tag on entry
+
+        - When entering a block, tag and size should be read
+        - If tag doesn't decode, a GSFDecodeError should be raised
+        - If want_tag was supplied to the constructor, skip blocks that don't have that tag
+        - Unless raise_on_wrong_tag was also supplied, in which case raise
+
+        :returns: Instance of GSFBlock
+        :raises GSFDecodeError: If the block tag failed to decode as UTF-8, or an unwanted tag was found
+        """
+        while True:
+            tag_bytes = self.file_data.read(4)
+
+            try:
+                self.tag = tag_bytes.decode(encoding="utf-8")
+            except UnicodeDecodeError:
+                raise GSFDecodeError(
+                    "Bytes {!r} at location {} do not make a valid tag for a block".format(tag_bytes, self.block_start),
+                    self.block_start
+                )
+
+            self.size = self.read_uint(4)
+
+            if self.want_tag is None or self.tag == self.want_tag:
+                return self
+            elif self.tag != self.want_tag and self.raise_on_wrong_tag:
+                raise GSFDecodeError("Wanted tag {} but got {} at {}".format(self.want_tag, self.tag, self.block_start),
+                                     self.block_start)
+            else:
+                self.file_data.seek(self.block_start + self.size, SEEK_SET)
+                self.block_start = self.file_data.tell()
+
+    def __exit__(self, *args):
+        """When used as a context manager, exiting context should seek to the block end"""
+        try:
+            self.file_data.seek(self.block_start + self.size, SEEK_SET)
+        except Exception:
+            pass
+
+    def has_child_block(self, strict_blocks=True):
+        """Checks if there is space for another child block in this block
+
+        Returns true if there is space for another child block (i.e. >= 8 bytes) in this block.
+        If strict_blocks=True, this block only contains other blocks rather than any other data. As a result, if there
+        are bytes left, but not enough for another block, raise a GSFDecodeError.
+        Must be used in a context manager.
+
+        :param strict_blocks: Set to True to raise if a partial block is found
+        :returns: True if there is spaces for another block
+        :raises GSFDecodeError: If there is a partial block and strict=True
+        """
+        assert self.size is not None, "has_child_block() only works in a context manager"
+
+        bytes_remaining = self.get_remaining()
+        if bytes_remaining >= 8:
+            return True
+        elif bytes_remaining != 0 and strict_blocks:
+            position = self.file_data.tell()
+            raise GSFDecodeError("Found a partial block (or parent too small) in '{}' at {}".format(self.tag, position),
+                                 position)
+        else:
+            return False
+
+    def child_blocks(self, strict_blocks=True):
+        """Generator for each child block - each yielded block sits within the context manager
+
+        Must be used in a context manager.
+
+        :param strict_blocks: Set to True to raise if a partial block is found
+        :yields: GSFBlock for child (already acting as a context manager)
+        :raises GSFDecodeError: If there is a partial block and strict=True
+        """
+        while self.has_child_block(strict_blocks=strict_blocks):
+            with SyncGSFBlock(self.file_data) as child_block:
+                yield child_block
+
+    def get_remaining(self):
+        """Get the number of bytes left in this block
+
+        Only works in a context manager, will raise an AssertionError if not
+
+        :returns: Number of bytes left in the block
+        """
+        assert self.size is not None, "get_remaining() only works in a context manager"
+        return (self.block_start + self.size) - self.file_data.tell()
+
+    def read_uint(self, length) -> int:
+        """Read an unsigned integer of length `length`
+
+        :param length: Number of bytes used to store the integer
+        :returns: Unsigned integer
+        :raises EOFError: If there are fewer than `length` bytes left in the source
+        """
+        r = 0
+        uint_bytes = self.file_data.read(length)
+
+        if len(uint_bytes) != length:
+            raise EOFError("Unable to read enough bytes from source")
+
+        for n in range(0, length):
+            r += (uint_bytes[n] << (n*8))
+        return r
+
+    def read_bool(self):
+        """Read a boolean value
+
+        :returns: Boolean value
+        :raises EOFError: If there are no more bytes left in the source"""
+        n = self.read_uint(1)
+        return (n != 0)
+
+    def read_sint(self, length: int) -> int:
+        """Read a 2's complement signed integer
+
+        :param length: Number of bytes used to store the integer
+        :returns: Signed integer
+        :raises EOFError: If there are fewer than `length` bytes left in the source
+        """
+        r = self.read_uint(length)
+        if (r >> ((8*length) - 1)) == 1:
+            r -= (1 << (8*length))
+        return r
+
+    def read_string(self, length: int) -> str:
+        """Read a fixed-length string, treating it as UTF-8
+
+        :param length: Number of bytes in the string
+        :returns: String
+        :raises EOFError: If there are fewer than `length` bytes left in the source
+        """
+        string_data = self.file_data.read(length)
+        if (len(string_data) != length):
+            raise EOFError("Unable to read enough bytes from source")
+
+        return string_data.decode(encoding='utf-8')
+
+    def read_varstring(self) -> str:
+        """Read a variable length string
+
+        Reads a 2 byte uint to get the string length, then reads a string of that length
+
+        :returns: String
+        :raises EOFError: If there are too few bytes left in the source
+        """
+        length = self.read_uint(2)
+        return self.read_string(length)
+
+    def read_uuid(self) -> UUID:
+        """Read a UUID
+
+        :returns: UUID
+        :raises EOFError: If there are fewer than l bytes left in the source
+        """
+        uuid_data = self.file_data.read(16)
+
+        if (len(uuid_data) != 16):
+            raise EOFError("Unable to read enough bytes from source")
+
+        return UUID(bytes=uuid_data)
+
+    def read_timestamp(self) -> datetime:
+        """Read a date-time (with seconds resolution) stored in 7 bytes
+
+        :returns: Datetime
+        :raises EOFError: If there are fewer than 7 bytes left in the source
+        """
+        year = self.read_sint(2)
+        month = self.read_uint(1)
+        day = self.read_uint(1)
+        hour = self.read_uint(1)
+        minute = self.read_uint(1)
+        second = self.read_uint(1)
+        return datetime(year, month, day, hour, minute, second)
+
+    def read_ippts(self) -> Timestamp:
+        """Read a mediatimestamp.Timestamp
+
+        :returns: Timestamp
+        :raises EOFError: If there are fewer than 10 bytes left in the source
+        """
+        secs = self.read_uint(6)
+        nano = self.read_uint(4)
+        return Timestamp(secs, nano)
+
+    def read_rational(self) -> Fraction:
+        """Read a rational (fraction)
+
+        If numerator or denominator is 0, returns Fraction(0)
+
+        :returns: fraction.Fraction
+        :raises EOFError: If there are fewer than 8 bytes left in the source
+        """
+        numerator = self.read_uint(4)
+        denominator = self.read_uint(4)
         if numerator == 0 or denominator == 0:
             return Fraction(0)
         else:
@@ -818,15 +1041,284 @@ class GSFAsyncDecoderSession(object):
                 return  # We ran out of grains to read and hit EOF
 
 
-class GSFSyncDecoderSession (Synchronised[GSFAsyncDecoderSession]):
-    def __init__(self, other: GSFAsyncDecoderSession):
-        super().__init__(other)
-        self.file_headers: Optional[GSFFileHeaderDict]
+# This is almost a direct copy of the async code above, this could definitely be refactored to fix this
+class GSFSyncDecoderSession(object):
+    def __init__(self,
+                 parse_grain: Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN],
+                 file_data: IO[bytes]):
+        self.file_data = file_data
+
+        self.Grain = parse_grain
+        self.file_headers: Optional[GSFFileHeaderDict] = None
+
+        self._exiting = False
+
+    def _decode_ssb_header(self):
+        """Find and read the SSB header in the GSF file
+
+        :returns: (major, minor) version tuple
+        :raises GSFDecodeBadFileTypeError: If the SSB tag shows this isn't a GSF file
+        """
+        ssb_block = SyncGSFBlock(self.file_data)
+
+        tag = ssb_block.read_string(8)
+
+        if tag != "SSBBgrsg":
+            raise GSFDecodeBadFileTypeError("File lacks correct header", ssb_block.block_start, tag)
+
+        major = ssb_block.read_uint(2)
+        minor = ssb_block.read_uint(2)
+
+        return (major, minor)
+
+    def _decode_head(self,
+                     head_block: SyncGSFBlock) -> GSFFileHeaderDict:
+        """Decode the "head" block and extract ID, created date, segments and tags
+
+        :param head_block: GSFBlock representing the "head" block
+        :returns: Head block as a dict
+        """
+        head: GSFFileHeaderDict = {}
+        head['id'] = head_block.read_uuid()
+        head['created'] = head_block.read_timestamp()
+
+        head['segments'] = []
+        head['tags'] = []
+
+        # Read head block children
+        for head_child in head_block.child_blocks():
+            # Parse a segment block
+            if head_child.tag == "segm":
+                segm = {}
+                segm['local_id'] = head_child.read_uint(2)
+                segm['id'] = head_child.read_uuid()
+                segm['count'] = head_child.read_sint(8)
+                segm['tags'] = []
+
+                # Segment blocks can have child tags as well
+                while head_child.has_child_block():
+                    with SyncGSFBlock(self.file_data) as segm_tag:
+                        if segm_tag.tag == "tag ":
+                            key = segm_tag.read_varstring()
+                            value = segm_tag.read_varstring()
+                            segm['tags'].append((key, value))
+
+                head['segments'].append(segm)
+
+            # Parse a tag block
+            elif head_child.tag == "tag ":
+                key = head_child.read_varstring()
+                value = head_child.read_varstring()
+                head['tags'].append((key, value))
+
+        return cast(GSFFileHeaderDict, head)
+
+    def _decode_tils(self, tils_block: SyncGSFBlock) -> List[dict]:
+        """Decode timelabels (tils) block
+
+        :param tils_block: Instance of GSFBlock() representing a "gbhd" block
+        :returns: tils block as a dict
+        """
+        tils = []
+        timelabel_count = tils_block.read_uint(2)
+        for i in range(0, timelabel_count):
+            tag = tils_block.read_string(16)
+            tag = tag.strip("\x00")
+            count = tils_block.read_uint(4)
+            rate = tils_block.read_rational()
+            drop = tils_block.read_bool()
+
+            tils.append({'tag': tag,
+                         'timelabel': {'frames_since_midnight': count,
+                                       'frame_rate_numerator': rate.numerator,
+                                       'frame_rate_denominator': rate.denominator,
+                                       'drop_frame': drop}})
+
+        return tils
+
+    def _decode_gbhd(self, gbhd_block: SyncGSFBlock) -> GrainMetadataDict:
+        """Decode grain block header ("gbhd") to get grain metadata
+
+        :param gbhd_block: Instance of GSFBlock() representing a "gbhd" block
+        :returns: Grain data dict
+        :raises GSFDecodeError: If "gbhd" block contains an unkown child block
+        """
+        meta: dict = {
+            "grain": {
+            }
+        }
+
+        meta['grain']['source_id'] = gbhd_block.read_uuid()
+        meta['grain']['flow_id'] = gbhd_block.read_uuid()
+        self.file_data.seek(16, 1)  # Skip over deprecated byte array
+        meta['grain']['origin_timestamp'] = gbhd_block.read_ippts()
+        meta['grain']['sync_timestamp'] = gbhd_block.read_ippts()
+        meta['grain']['rate'] = gbhd_block.read_rational()
+        meta['grain']['duration'] = gbhd_block.read_rational()
+
+        for gbhd_child in gbhd_block.child_blocks():
+            if gbhd_child.tag == "tils":
+                meta['grain']['timelabels'] = self._decode_tils(gbhd_child)
+            elif gbhd_child.tag == "vghd":
+                meta['grain']['grain_type'] = 'video'
+                meta['grain']['cog_frame'] = {}
+                meta['grain']['cog_frame']['format'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_frame']['layout'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_frame']['width'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_frame']['height'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_frame']['extension'] = gbhd_child.read_uint(4)
+
+                src_aspect_ratio = gbhd_child.read_rational()
+                if src_aspect_ratio != 0:
+                    meta['grain']['cog_frame']['source_aspect_ratio'] = {
+                        'numerator': src_aspect_ratio.numerator,
+                        'denominator': src_aspect_ratio.denominator
+                    }
+
+                pixel_aspect_ratio = gbhd_child.read_rational()
+                if pixel_aspect_ratio != 0:
+                    meta['grain']['cog_frame']['pixel_aspect_ratio'] = {
+                        'numerator': pixel_aspect_ratio.numerator,
+                        'denominator': pixel_aspect_ratio.denominator
+                    }
+
+                meta['grain']['cog_frame']['components'] = []
+                if gbhd_child.has_child_block():
+                    with SyncGSFBlock(self.file_data) as comp_block:
+                        if comp_block.tag != "comp":
+                            continue  # Skip unknown/unexpected block
+
+                        comp_count = comp_block.read_uint(2)
+                        offset = 0
+                        for i in range(0, comp_count):
+                            comp = {}
+                            comp['width'] = comp_block.read_uint(4)
+                            comp['height'] = comp_block.read_uint(4)
+                            comp['stride'] = comp_block.read_uint(4)
+                            comp['length'] = comp_block.read_uint(4)
+                            comp['offset'] = offset
+                            offset += comp['length']
+                            meta['grain']['cog_frame']['components'].append(comp)
+
+            elif gbhd_child.tag == 'cghd':
+                meta['grain']['grain_type'] = "coded_video"
+                meta['grain']['cog_coded_frame'] = {}
+                meta['grain']['cog_coded_frame']['format'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_frame']['layout'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_frame']['origin_width'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_frame']['origin_height'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_frame']['coded_width'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_frame']['coded_height'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_frame']['is_key_frame'] = gbhd_child.read_bool()
+                meta['grain']['cog_coded_frame']['temporal_offset'] = gbhd_child.read_sint(4)
+
+                if gbhd_child.has_child_block():
+                    with SyncGSFBlock(self.file_data) as unof_block:
+                        meta['grain']['cog_coded_frame']['unit_offsets'] = []
+
+                        unit_offsets = unof_block.read_uint(2)
+                        for i in range(0, unit_offsets):
+                            meta['grain']['cog_coded_frame']['unit_offsets'].append(unof_block.read_uint(4))
+
+            elif gbhd_child.tag == "aghd":
+                meta['grain']['grain_type'] = "audio"
+                meta['grain']['cog_audio'] = {}
+                meta['grain']['cog_audio']['format'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_audio']['channels'] = gbhd_child.read_uint(2)
+                meta['grain']['cog_audio']['samples'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_audio']['sample_rate'] = gbhd_child.read_uint(4)
+
+            elif gbhd_child.tag == "cahd":
+                meta['grain']['grain_type'] = "coded_audio"
+                meta['grain']['cog_coded_audio'] = {}
+                meta['grain']['cog_coded_audio']['format'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_audio']['channels'] = gbhd_child.read_uint(2)
+                meta['grain']['cog_coded_audio']['samples'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_audio']['priming'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_audio']['remainder'] = gbhd_child.read_uint(4)
+                meta['grain']['cog_coded_audio']['sample_rate'] = gbhd_child.read_uint(4)
+
+            elif gbhd_child.tag == "eghd":
+                meta['grain']['grain_type'] = "event"
+            else:
+                raise GSFDecodeError(
+                    "Unknown type {} at offset {}".format(gbhd_child.tag, gbhd_child.block_start),
+                    gbhd_child.block_start,
+                    length=gbhd_child.size
+                )
+
+        return cast(GrainMetadataDict, meta)
+
+    def _decode_file_headers(self) -> None:
+        """Verify the file is a supported version, get the file header and store it in the file_headers property
+
+        :raises GSFDecodeBadVersionError: If the file version is not supported
+        :raises GSFDecodeBadFileTypeError: If this isn't a GSF file
+        :raises GSFDecodeError: If the file doesn't have a "head" block
+        """
+        (major, minor) = self._decode_ssb_header()
+        if (major, minor) != (7, 0):
+            raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
+
+        try:
+            with SyncGSFBlock(self.file_data, want_tag="head") as head_block:
+                self.file_headers = self._decode_head(head_block)
+        except EOFError:
+            raise GSFDecodeError("No head block found in file", self.file_data.tell())
 
     def grains(self,
                local_ids: Optional[Sequence[int]] = None,
                loading_mode: GrainDataLoadingMode = GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE) -> Iterable[Tuple[GRAIN, int]]:
-        return super().__getattr__('grains')(local_ids, loading_mode)
+        """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
+
+        The file_data will be positioned after the `grai` block.
+
+        :param local_ids: A list of local-ids to include in the output. If None (the default) then all local-ids will be
+                          included
+        :param loading_mode: The mode to use when loading grain data elements. For modes ALWAYS_DEFER_LOAD_IF_POSSIBLE and
+                             ALWAYS_LOAD_DEFER_IF_POSSIBLE with a seekable input the grain data can be loaded later by awaiting the
+                             grain object itself. as long as you are still inside this context manager. When the context manager exits
+                             all grains are either implicitly loaded or rendered permanently empty.
+        :yields: (Grain, local_id) tuple for each grain
+        :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
+        """
+        while True:
+            try:
+                with SyncGSFBlock(self.file_data, want_tag="grai") as grai_block:
+                    if grai_block.size == 0:
+                        return  # Terminator block reached
+
+                    local_id = grai_block.read_uint(2)
+
+                    if local_ids is not None and local_id not in local_ids:
+                        continue
+
+                    with SyncGSFBlock(self.file_data, want_tag="gbhd", raise_on_wrong_tag=True) as gbhd_block:
+                        meta = self._decode_gbhd(gbhd_block)
+
+                    data: Optional[Union[bytes, Awaitable[Optional[bytes]]]] = None
+
+                    if grai_block.has_child_block():
+                        with SyncGSFBlock(self.file_data, want_tag="grdt") as grdt_block:
+                            if grdt_block.get_remaining() > 0:
+                                if self.file_data.seekable() and loading_mode in [GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE,
+                                                                                  GrainDataLoadingMode.ALWAYS_LOAD_DEFER_IF_POSSIBLE]:
+                                    data = IOBytes(self.file_data,
+                                                   self.file_data.tell(),
+                                                   grdt_block.get_remaining())
+                                elif loading_mode == GrainDataLoadingMode.LOAD_NEVER:
+                                    if self.file_data.seekable():
+                                        self.file_data.seek(grdt_block.get_remaining(), SEEK_CUR)
+                                    else:
+                                        self.file_data.read(grdt_block.get_remaining())
+                                else:
+                                    data = self.file_data.read(grdt_block.get_remaining())
+
+                grain = self.Grain(meta, data)
+
+                yield (grain, local_id)
+            except EOFError:
+                return  # We ran out of grains to read and hit EOF
 
 
 class GSFDecoder(object):
@@ -859,18 +1351,23 @@ class GSFDecoder(object):
         if isinstance(file_data, AsyncBinaryIO):
             self._afile_data = file_data
             self._open_afile = None
+            self._file_data = None
         elif isinstance(file_data, OpenAsyncBinaryIO):
             self._afile_data = None
             self._open_afile = file_data
+            self._file_data = None
         elif isinstance(file_data, BytesIO):
-            self._afile_data = AsyncBytesIOWrapper(file_data)
+            self._afile_data = None
             self._open_afile = None
+            self._file_data = cast(BufferedIOBase, file_data)
         elif isinstance(file_data, (RawIOBase, BufferedIOBase)):
-            self._afile_data = AsyncFileWrapper(file_data)
+            self._afile_data = None
             self._open_afile = None
+            self._file_data = file_data
         else:
             self._afile_data = None
             self._open_afile = None
+            self._file_data = None
 
         self._open_session: Optional[GSFSyncDecoderSession] = None
         self._open_asession: Optional[GSFAsyncDecoderSession] = None
@@ -878,14 +1375,17 @@ class GSFDecoder(object):
         self._sync_compatibility_mode: bool = False
 
     def __enter__(self) -> GSFSyncDecoderSession:
-        self._sync_compatibility_mode = True
-        a_session = run_awaitable_synchronously(self.__aenter__())
-        return GSFSyncDecoderSession(a_session)
+        if self._file_data is None:
+            raise TypeError("file_data must be a synchronous binary file to use this class as a sync context manager")
+
+        self._open_session = GSFSyncDecoderSession(file_data=cast(IO[bytes], self._file_data),
+                                                   parse_grain=self.Grain)
+        self._open_session._decode_file_headers()
+        return self._open_session
 
     def __exit__(self, *args, **kwargs):
-        run_awaitable_synchronously(self._open_asession._load_unused_lazy_loaders())
-        run_awaitable_synchronously(self.__aexit__(*args, **kwargs))
-        self._sync_compatibility_mode = False
+        if self._open_session is not None:
+            self._open_session = None
 
     async def __aenter__(self) -> GSFAsyncDecoderSession:
         if self._open_afile is None:
@@ -963,6 +1463,17 @@ class GSFDecoder(object):
                 raise RuntimeError("There ought to be file headers here")
             return (dec.file_headers, grains)
 
+    def _synchronously_decode(self) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
+        with self as dec:
+            grains: Dict[int, List[GRAIN]] = {}
+            for (grain, key) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY):
+                if key not in grains:
+                    grains[key] = []
+                grains[key].append(grain)
+            if dec.file_headers is None:
+                raise RuntimeError("There ought to be file headers here")
+            return (dec.file_headers, grains)
+
     def decode(self, s: Optional[bytes] = None) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
         """Decode a GSF formatted bytes object
 
@@ -973,11 +1484,7 @@ class GSFDecoder(object):
             # Unclear why this cast is needed, since a BytesIO is already a BufferedIOBase ...
             self._file_data = cast(BufferedIOBase, BytesIO(s))
 
-        rval = run_awaitable_synchronously(self._asynchronously_decode())
-
-        if rval is None:
-            raise RuntimeError("Running asynchronous decode synchronously returned nothing")
-        return rval
+        return self._synchronously_decode()
 
 
 class GSFEncodeError(GSFError):
