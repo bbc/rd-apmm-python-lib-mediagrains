@@ -1,5 +1,10 @@
 # Mediagrains Library Changelog
 
+## 2.8.2
+- Removed code that used asyncio in synchronous calls to decode gsf and replaced it with a purely synchronous version.
+  It turned out that since asyncio is fundementally incompatible with some third party libraries (eg. gevent) we need
+  a code path that doesn't make any use of it.
+
 ## 2.8.1
 - Added a bypass so that when wrapping a BytesIO in an Async wrapper unnecessary and potentially costly threads aren't spawned
 
