@@ -246,6 +246,15 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
             self.component_data = ComponentDataList([])
 
     @property
+    def length(self) -> int:
+        return self._data.nbytes
+
+    @length.setter
+    def length(self, L: int) -> None:
+        # Get the length Property from the parent class and set the new value L
+        super(VIDEOGRAIN, type(self)).length.fset(self, L)  # type: ignore
+
+    @property
     def data(self) -> np.ndarray:
         return self._data
 
