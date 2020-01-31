@@ -28,6 +28,7 @@ from mediagrains.cogenums import (
     COG_FRAME_IS_PLANAR,
     COG_FRAME_IS_PLANAR_RGB,
     COG_FRAME_FORMAT_ACTIVE_BITS)
+from mediagrains import grain_constructors as bytesgrain_constructors
 from mediatimestamp.immutable import Timestamp, TimeRange
 from fractions import Fraction
 from copy import copy, deepcopy
@@ -726,3 +727,16 @@ class TestGrain (TestCase):
         grain.data[0] = 0xCAFE
 
         self.assertNotEqual(grain.data[0], clone.data[0])
+
+    def test_length(self):
+        """Check that the length override provides the length in bytes"""
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = bytesgrain_constructors.VideoGrain(src_id, flow_id,
+                                                       cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                                                       width=480, height=270)
+            np_grain = VideoGrain(grain).convert(CogFrameFormat.v210)
+
+        self.assertEqual(np_grain.length, (480+47)//48*128*270)

@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.8.3
+- Bugfix: Numpy VideoGrain length should be the bytes length, not the array length.
+
 ## 2.8.2
 - Removed code that used asyncio in synchronous calls to decode gsf and replaced it with a purely synchronous version.
   It turned out that since asyncio is fundementally incompatible with some third party libraries (eg. gevent) we need
