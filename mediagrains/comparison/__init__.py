@@ -65,7 +65,7 @@ def compare_grain(a, b, *options):
     return GrainComparisonResult("{}", a, b, options=options)
 
 
-def compare_grains_pairwise(a, b, *options):
+def compare_grains_pairwise(a, b, *options, return_last_only=False):
     """
     Compare two iterators which produce grains pairwise. Each grain from iterator a will be compared against the corresponding grain in iterator b. The
     comparison will end when any grain fails to match. If one iterator runs out of grains the comparison will end. If both run out at the same time and
@@ -73,6 +73,9 @@ def compare_grains_pairwise(a, b, *options):
 
     :param a: An iterator that generates grains
     :param b: An iterator that generates grains
+    :param return_last_only: Set to True to return only the description of the last comparison, instead of all
+                             comparisons performed. If False, all compared Grains will be retained, which may require
+                             significant memory if the Grain iterators are long.
     :param *options: Additional arguments are passed to the grain comparison mechanism exactly as for compare_grains.
 
     :returns: An object which will evaluate as True if the iterators matched, and False if they did not. In addition it has a rich description of the
@@ -83,4 +86,4 @@ def compare_grains_pairwise(a, b, *options):
     By default all comparisons ignore differences in creation_timestamp, to force this timestamp to be checked use the options.Include.creation_timestamp
     option.
     """
-    return GrainIteratorComparisonResult("{}", a, b, options=options)
+    return GrainIteratorComparisonResult("{}", a, b, return_last_only=return_last_only, options=options)
