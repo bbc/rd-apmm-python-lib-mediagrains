@@ -121,6 +121,7 @@ class CogAudioFormat(IntEnum):
     MP1 = 0x200
     AAC = 0x201
     OPUS = 0x202
+    UNKNOWN = 0xfffffffe
     INVALID = 0xffffffff
 
 

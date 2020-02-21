@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.8.4 (Under Construction)
+- Added CogAudioFormat.UNKNOWN which was erroneously missing from enum
+
 ## 2.8.3
 - Bugfix: Numpy VideoGrain length should be the bytes length, not the array length.
 
