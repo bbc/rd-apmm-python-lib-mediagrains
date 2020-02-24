@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from typing import Iterable, List, Tuple
+from ..grain import GRAIN
 
 from mediatimestamp.immutable import TimeOffset
 from difflib import SequenceMatcher
@@ -425,18 +427,23 @@ class OrderedContainerComparisonResult(ComparisonResult):
 
 
 class GrainIteratorComparisonResult(ComparisonResult):
-    def __init__(self, identifier, a, b, return_last_only=False, **kwargs):
+    def __init__(self,
+                 identifier: str,
+                 a: Iterable[GRAIN],
+                 b: Iterable[GRAIN],
+                 return_last_only: bool = False,
+                 **kwargs):
         self.return_last_only = return_last_only
         super(GrainIteratorComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
-    def compare(self, a, b):
+    def compare(self, a: Iterable[GRAIN], b: Iterable[GRAIN]) -> Tuple[bool, str, List[ComparisonResult]]:
         a = iter(a)
         b = iter(b)
 
-        self.compared_item_count = 0
+        self.compared_item_count: int = 0
         all_success = True
 
-        children = []
+        children: List[ComparisonResult] = []
 
         while True:
             A = next(a, None)
@@ -481,7 +488,7 @@ class GrainIteratorComparisonResult(ComparisonResult):
                 children
             )
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.compared_item_count
 
 
