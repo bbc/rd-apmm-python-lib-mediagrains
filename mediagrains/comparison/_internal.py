@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from typing import Iterable, List, Tuple
+from ..grain import GRAIN
 
 from mediatimestamp.immutable import TimeOffset
 from difflib import SequenceMatcher
@@ -425,16 +427,23 @@ class OrderedContainerComparisonResult(ComparisonResult):
 
 
 class GrainIteratorComparisonResult(ComparisonResult):
-    def __init__(self, identifier, a, b, **kwargs):
+    def __init__(self,
+                 identifier: str,
+                 a: Iterable[GRAIN],
+                 b: Iterable[GRAIN],
+                 return_last_only: bool = False,
+                 **kwargs):
+        self.return_last_only = return_last_only
         super(GrainIteratorComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
-    def compare(self, a, b):
+    def compare(self, a: Iterable[GRAIN], b: Iterable[GRAIN]) -> Tuple[bool, str, List[ComparisonResult]]:
         a = iter(a)
         b = iter(b)
 
-        n = 0
+        self.compared_item_count: int = 0
+        all_success = True
 
-        children = []
+        children: List[ComparisonResult] = []
 
         while True:
             A = next(a, None)
@@ -443,26 +452,44 @@ class GrainIteratorComparisonResult(ComparisonResult):
             if A is None and B is None:
                 break
             elif A is None:
-                children.append(BOnlyComparisonResult("{}", B, options=self._options, key=n))
+                children.append(BOnlyComparisonResult("{}", B, options=self._options, key=self.compared_item_count))
+                all_success = False
                 break
             elif B is None:
-                children.append(AOnlyComparisonResult("{}", A, options=self._options, key=n))
+                children.append(AOnlyComparisonResult("{}", A, options=self._options, key=self.compared_item_count))
+                all_success = False
                 break
             else:
-                comp = GrainComparisonResult("{}", A, B, options=self._options, key=n)
-                children.append(comp)
-                if not comp:
+                comparison_result = GrainComparisonResult("{}", A, B, options=self._options, key=self.compared_item_count)
+                self.compared_item_count += 1
+
+                if self.return_last_only:
+                    last_comparison = comparison_result
+                else:
+                    children.append(comparison_result)
+
+                if not comparison_result:
+                    all_success = False
                     break
 
-                n += 1
+        if self.return_last_only and last_comparison is not None:
+            children.append(last_comparison)
 
-        if all(c or c.excluded() for c in children):
-            return (True, "Iterators Match with length {}".format(len(children)), children)
+        if all_success:
+            return (
+                True,
+                "Iterators Match with length {}".format(self.compared_item_count),
+                children
+            )
         else:
-            return (False, "Iterators differ first at entry {}".format(len(children)), children)
+            return (
+                False,
+                "Iterators differ first at entry {}".format(self.compared_item_count),
+                children
+            )
 
-    def __len__(self):
-        return len(self.children)
+    def __len__(self) -> int:
+        return self.compared_item_count
 
 
 class MappingContainerComparisonResult(ComparisonResult):

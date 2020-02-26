@@ -1,7 +1,8 @@
 # Mediagrains Library Changelog
 
-## 2.8.4 (Under Construction)
+## 2.9.0 (Under Construction)
 - Added CogAudioFormat.UNKNOWN which was erroneously missing from enum
+- Add a flag for compairing grain iterators without retaining all grains in memory.
 
 ## 2.8.3
 - Bugfix: Numpy VideoGrain length should be the bytes length, not the array length.

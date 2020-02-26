@@ -18,10 +18,10 @@ import asynctest as unittest
 from asynctest import TestCase
 
 from hypothesis import given, assume, settings, HealthCheck
-from hypothesis.strategies import sampled_from, just, tuples
-from mediagrains.hypothesis.strategies import grains_with_data
+from hypothesis.strategies import sampled_from, just, tuples, integers
+from mediagrains.hypothesis.strategies import grains_with_data, grains
 
-from mediagrains.comparison import compare_grain
+from mediagrains.comparison import compare_grain, compare_grains_pairwise
 from mediagrains.comparison.options import Exclude, Include
 
 from mediagrains.grain import attributes_for_grain_type
@@ -100,6 +100,87 @@ class TestCompareGrain(TestCase):
         self.assertFalse(c, msg="Comparison of {!r} and {!r} excluding {} was equal when inequality was expected:\n\n{}".format(a, b, excl, str(c)))
         self.assertNotEqual(c.failing_attributes(), [])
         self.assertNotEqual(c.failing_attributes(), [excl])
+
+
+class TestCompareGrainIterators(TestCase):
+    """Test comparing interators of Grains pairwise.
+
+    Note that a maximum of 20 Grains is applied here; there's no significant change to the code path as the number
+    of grains increases beyond that point.
+    """
+    @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains), integers(min_value=1, max_value=20))
+    def test_pairwise_comparison__equal(self, sample_grain, grain_count):
+        a_grains = [sample_grain] * grain_count
+        b_grains = deepcopy(a_grains)
+        c = compare_grains_pairwise(a_grains, b_grains)
+        self.assertTrue(
+            c,
+            msg="Comparison of {!r} and {!r} was unequal when equality was expected:\n\n{}".format(
+                a_grains, b_grains, str(c)
+            )
+        )
+
+        self.assertEqual(len(a_grains), len(c.children))
+
+    @given(pairs_of(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains)), integers(min_value=0, max_value=19))
+    def test_pairwise_comparison__unequal(self, pair, difference_index):
+        (a, b) = pair
+        assume(a != b)
+
+        a_grains = [a] * 20
+        b_grains = deepcopy(a_grains)
+        b_grains[difference_index] = b
+
+        c = compare_grains_pairwise(a_grains, b_grains, Include.creation_timestamp)
+        self.assertFalse(
+            c,
+            msg="Comparison of {!r} and {!r} was unequal when equality was expected:\n\n{}".format(
+                a_grains, b_grains, str(c)
+            )
+        )
+
+        self.assertEqual(difference_index + 1, len(c.children))
+
+    @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains),
+           integers(min_value=1, max_value=20), integers(min_value=1, max_value=20))
+    def test_pairwise_comparison__different_length_unequal(self, sample_grain, grain_count_a, grain_count_b):
+        """Test that pairwise comparison doesn't match if the grain iterators have different lengths"""
+        assume(grain_count_a != grain_count_b)
+
+        a_grains = [sample_grain] * grain_count_a
+        b_grains = [sample_grain] * grain_count_b
+
+        c = compare_grains_pairwise(a_grains, b_grains, Include.creation_timestamp)
+        self.assertFalse(
+            c,
+            msg="Comparison of {!r} and {!r} was unequal when equality was expected:\n\n{}".format(
+                a_grains, b_grains, str(c)
+            )
+        )
+
+    @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains), integers(min_value=1, max_value=20))
+    def test_pairwise_comparison__return_last_only(self, sample_grain, grain_count):
+        a_grains = [sample_grain] * grain_count
+        b_grains = deepcopy(a_grains)
+        c = compare_grains_pairwise(a_grains, b_grains, return_last_only=True)
+        self.assertTrue(
+            c,
+            msg="Comparison of {!r} and {!r} was unequal when equality was expected:\n\n{}".format(
+                a_grains, b_grains, str(c)
+            )
+        )
+
+        self.assertEqual(1, len(c.children))
+
+    def test_pairwise_comparison__empty_iterator(self):
+        """Test that comparing two empty iterators pairwise returns True, but no children"""
+        c = compare_grains_pairwise([], [])
+        self.assertTrue(
+            c,
+            msg="Comparison of {!r} and {!r} was unequal when equality was expected:\n\n{}".format([], [], str(c))
+        )
+
+        self.assertEqual(0, len(c.children))
 
 
 if __name__ == "__main__":
