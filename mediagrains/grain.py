@@ -347,7 +347,11 @@ normalise_time(value)
 
     @property
     def sync_timestamp(self) -> Timestamp:
-        return Timestamp.from_tai_sec_nsec(self.meta['grain']['sync_timestamp'])
+        ts = self.meta['grain']['sync_timestamp']
+        if isinstance(ts, str):
+            return Timestamp.from_tai_sec_nsec(ts)
+        else:
+            return ts
 
     @sync_timestamp.setter
     def sync_timestamp(self, value: Union[TimeOffset, str]) -> None:
@@ -358,7 +362,11 @@ normalise_time(value)
 
     @property
     def creation_timestamp(self) -> Timestamp:
-        return Timestamp.from_tai_sec_nsec(self.meta['grain']['creation_timestamp'])
+        ts = self.meta['grain']['creation_timestamp']
+        if isinstance(ts, str):
+            return Timestamp.from_tai_sec_nsec(ts)
+        else:
+            return ts
 
     @creation_timestamp.setter
     def creation_timestamp(self, value: Union[TimeOffset, str]) -> None:
