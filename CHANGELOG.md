@@ -4,6 +4,12 @@
 - Added CogAudioFormat.UNKNOWN which was erroneously missing from enum
 - Add a flag for compairing grain iterators without retaining all grains in memory.
 
+## 2.8.5
+- Unpin mediatimestamp and mediajson
+
+## 2.8.4
+- Pin back versions of mediatimestamp and mediajson
+
 ## 2.8.3
 - Bugfix: Numpy VideoGrain length should be the bytes length, not the array length.
 

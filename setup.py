@@ -28,8 +28,8 @@ packages = {
 }
 
 packages_required = [
-    "mediatimestamp >= 2.0.0.dev4",
-    "mediajson>=2.0.0.dev4",
+    "mediajson >=2.0.0",
+    "mediatimestamp >=2.0.0",
     "frozendict >= 1.2",
     'numpy >= 1.17.2',
     'mypy',
