@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.8.5
+- Unpin mediatimestamp and mediajson
+
 ## 2.8.4
 - Pin back versions of mediatimestamp and mediajson
 

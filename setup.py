@@ -28,8 +28,8 @@ packages = {
 }
 
 packages_required = [
-    "mediajson >=1.1.3,<2.0.0",
-    "mediatimestamp >=1.3.0,<2.0.0",
+    "mediajson >=2.0.0",
+    "mediatimestamp >=2.0.0",
     "frozendict >= 1.2",
     'numpy >= 1.17.2',
     'mypy',
@@ -48,7 +48,7 @@ console_scripts = [
 ]
 
 setup(name="mediagrains",
-      version="2.8.4",
+      version="2.8.5",
       python_requires='>=3.6.0',
       description="Simple utility for grain-based media",
       url='https://github.com/bbc/rd-apmm-python-lib-mediagrains',
