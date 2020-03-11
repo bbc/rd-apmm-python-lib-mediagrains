@@ -1902,7 +1902,8 @@ class GSFEncoder(object):
     def __enter__(self) -> OpenGSFEncoder:
         if not isinstance(self.file, RawIOBase) and not isinstance(self.file, BufferedIOBase):
             raise ValueError("To use in synchronous mode the file must be a synchronously writeable file")
-        self._open_encoder = OpenGSFEncoder(self.file,
+        file = cast(IO[bytes], self.file)
+        self._open_encoder = OpenGSFEncoder(file,
                                             self.major,
                                             self.minor,
                                             self.id,
