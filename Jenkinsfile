@@ -50,8 +50,9 @@ pipeline {
                             env.lint3_result = "FAILURE"
                         }
                         bbcGithubNotify(context: "lint/flake8_3", status: "PENDING")
-                        // Run the linter
-                        sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-lint make lint'
+                        withBBCRDPythonArtifactory {
+                            sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-lint make lint'
+                        }
                         script {
                             env.lint3_result = "SUCCESS" // This will only run if the sh above succeeded
                         }
@@ -69,7 +70,9 @@ pipeline {
                         }
                         bbcGithubNotify(context: "type/mypy", status: "PENDING")
                         // Run the linter
-                        sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-mypy make mypy'
+                        withBBCRDPythonArtifactory {
+                            sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-mypy make mypy'
+                        }
                         script {
                             env.mypy_result = "SUCCESS" // This will only run if the sh above succeeded
                         }
@@ -82,7 +85,9 @@ pipeline {
                 }
                 stage ("Build Docs") {
                     steps {
-                        sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-docs make docs'
+                        withBBCRDPythonArtifactory {
+                            sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-docs make docs'
+                        }
                     }
                 }
                 stage ("Python 3 Unit Tests") {
@@ -92,7 +97,9 @@ pipeline {
                         }
                         bbcGithubNotify(context: "tests/py36", status: "PENDING")
                         // Use a workdirectory in /tmp to avoid shebang length limitation
-                        sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-py36 make test'
+                        withBBCRDPythonArtifactory {
+                            sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-py36 make test'
+                        }
                         script {
                             env.py36_result = "SUCCESS" // This will only run if the sh above succeeded
                         }
@@ -196,8 +203,10 @@ pipeline {
                         }
                         bbcGithubNotify(context: "pypi/upload", status: "PENDING")
                         sh 'rm -rf dist/*'
-                        bbcMakeGlobalWheel("py36")
-                        bbcTwineUpload(toxenv: "py36", pypi: true)
+                        withBBCRDPythonArtifactory {
+                            bbcMakeGlobalWheel("py36")
+                            bbcTwineUpload(toxenv: "py36", pypi: true)
+                        }
                         script {
                             env.pypiUpload_result = "SUCCESS" // This will only run if the steps above succeeded
                         }
@@ -223,8 +232,10 @@ pipeline {
                         }
                         bbcGithubNotify(context: "artifactory/upload", status: "PENDING")
                         sh 'rm -rf dist/*'
-                        bbcMakeGlobalWheel("py36")
-                        bbcTwineUpload(toxenv: "py36", pypi: false)
+                        withBBCRDPythonArtifactory {
+                            bbcMakeGlobalWheel("py36")
+                            bbcTwineUpload(toxenv: "py36", pypi: false)
+                        }
                         script {
                             env.artifactoryUpload_result = "SUCCESS" // This will only run if the steps above succeeded
                         }

@@ -1,5 +1,9 @@
 # Mediagrains Library Changelog
 
+## 2.9.0
+- Added CogAudioFormat.UNKNOWN which was erroneously missing from enum
+- Add a flag for compairing grain iterators without retaining all grains in memory.
+
 ## 2.8.5
 - Unpin mediatimestamp and mediajson
 
