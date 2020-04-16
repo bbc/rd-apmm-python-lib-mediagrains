@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.9.1
+- Fix a bug where the `--samples_per_grain` option in `wrap_audio_in_gsf` wasn't honoured.
+
 ## 2.9.0
 - Added CogAudioFormat.UNKNOWN which was erroneously missing from enum
 - Add a flag for compairing grain iterators without retaining all grains in memory.
