@@ -19,6 +19,7 @@
 import uuid
 import argparse
 import sys
+import fractions
 
 from mediatimestamp.immutable import Timestamp
 
@@ -127,9 +128,11 @@ def wrap_audio_in_gsf():
     flow_id = args.flow_id if args.flow_id else uuid.uuid4()
     source_id = args.source_id if args.source_id else uuid.uuid4()
 
+    grain_rate = fractions.Fraction(args.sample_rate, args.samples_per_grain)
+
     template_grain = AudioGrain(
-        flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, rate=args.sample_rate,
-        channels=args.channels, samples=args.samples_per_grain, cog_audio_format=args.format
+        flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, sample_rate=args.sample_rate,
+        rate=grain_rate, channels=args.channels, samples=args.samples_per_grain, cog_audio_format=args.format
     )
 
     wrap_to_gsf(input_file=args.input_file, output_file=args.output_file, template_grain=template_grain)
