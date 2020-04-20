@@ -28,6 +28,8 @@ from mediagrains.cogenums import (
     COG_FRAME_IS_PLANAR,
     COG_FRAME_IS_PLANAR_RGB,
     COG_FRAME_FORMAT_ACTIVE_BITS)
+from mediagrains.gsf import loads, dumps
+from mediagrains.comparison import compare_grain
 from mediagrains import grain_constructors as bytesgrain_constructors
 from mediatimestamp.immutable import Timestamp, TimeRange
 from fractions import Fraction
@@ -740,3 +742,60 @@ class TestGrain (TestCase):
             np_grain = VideoGrain(grain).convert(CogFrameFormat.v210)
 
         self.assertEqual(np_grain.length, (480+47)//48*128*270)
+
+    def test_video_grain_gsf_encode_decode(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        for fmt in [CogFrameFormat.S32_444,
+                    CogFrameFormat.S32_422,
+                    CogFrameFormat.S32_420,
+                    CogFrameFormat.S16_444_10BIT,
+                    CogFrameFormat.S16_422_10BIT,
+                    CogFrameFormat.S16_420_10BIT,
+                    CogFrameFormat.S16_444_12BIT,
+                    CogFrameFormat.S16_422_12BIT,
+                    CogFrameFormat.S16_420_12BIT,
+                    CogFrameFormat.S16_444,
+                    CogFrameFormat.S16_422,
+                    CogFrameFormat.S16_420,
+                    CogFrameFormat.U8_444,
+                    CogFrameFormat.U8_422,
+                    CogFrameFormat.U8_420,
+                    CogFrameFormat.U8_444_RGB,
+                    CogFrameFormat.S16_444_RGB,
+                    CogFrameFormat.S16_444_12BIT_RGB,
+                    CogFrameFormat.S16_444_10BIT_RGB,
+                    CogFrameFormat.UYVY,
+                    CogFrameFormat.YUYV,
+                    CogFrameFormat.RGB,
+                    CogFrameFormat.RGBx,
+                    CogFrameFormat.RGBA,
+                    CogFrameFormat.BGRx,
+                    CogFrameFormat.BGRx,
+                    CogFrameFormat.ARGB,
+                    CogFrameFormat.xRGB,
+                    CogFrameFormat.ABGR,
+                    CogFrameFormat.xBGR,
+                    CogFrameFormat.v216,
+                    CogFrameFormat.v210]:
+            with self.subTest(fmt=fmt):
+                with mock.patch.object(Timestamp, "get_time", return_value=cts):
+                    grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                                       cog_frame_format=fmt,
+                                       width=16, height=16, cog_frame_layout=CogFrameLayout.FULL_FRAME)
+
+                self.write_test_pattern(grain)
+
+                (head, segments) = loads(dumps([grain]))
+
+                self.assertEqual(len(segments), 1)
+                self.assertIn(1, segments)
+                self.assertEqual(len(segments[1]), 1)
+
+                new_grain = VideoGrain(segments[1][0])
+                comp = compare_grain(new_grain, grain)
+                self.assertTrue(comp, msg=str(comp))
