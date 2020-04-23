@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.9.2
+- Allow stdin as a valid input file for the tools
+
 ## 2.9.1
 - Fix a bug where the `--samples_per_grain` option in `wrap_audio_in_gsf` wasn't honoured.
 
