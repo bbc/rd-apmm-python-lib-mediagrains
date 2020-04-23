@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.9.3
+- Handle EOFError in `wrap_in_gsf` command line tools.
+
 ## 2.9.2
 - Allow stdin as a valid input file for the tools
 
