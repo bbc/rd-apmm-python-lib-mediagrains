@@ -30,7 +30,7 @@ def extract_gsf_essence():
         description="A utility to dump the essence data out of a GSF file"
     )
 
-    parser.add_argument("input_file", help="Input file (stdin is not supported because it isn't seekable)", type=str)
+    parser.add_argument("input_file", help="Input file. Specify - for stdin", type=str)
     parser.add_argument("output_file", help="Output GSF file path. Specify - for stdout", type=str)
 
     parser.add_argument("--only-id", help="Only include Grains with this GSF local ID. May be specified more than once",
@@ -38,7 +38,7 @@ def extract_gsf_essence():
 
     args = parser.parse_args()
 
-    with open(args.input_file, "rb") as input_data, file_or_pipe(args.output_file, "wb") as output_data:
+    with file_or_pipe(args.input_file, "rb") as input_data, file_or_pipe(args.output_file, "wb") as output_data:
         decoder = GSFDecoder(file_data=input_data)
         decoder.decode_file_headers()
 
@@ -54,11 +54,11 @@ def gsf_probe():
         description="A utility to dump the metadata out of a GSF file"
     )
 
-    parser.add_argument("input_file", help="Input file (stdin is not supported because it isn't seekable)", type=str)
+    parser.add_argument("input_file", help="Input file. Specify - for stdin", type=str)
 
     args = parser.parse_args()
 
-    with open(args.input_file, "rb") as input_data:
+    with file_or_pipe(args.input_file, "rb") as input_data:
         decoder = GSFDecoder(file_data=input_data)
         file_data = decoder.decode_file_headers()
 

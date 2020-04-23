@@ -13,9 +13,36 @@
 # limitations under the License.
 """Utility function to open a file or a pipe"""
 import typing
+from io import BufferedIOBase
 
 import sys
 from contextlib import contextmanager
+
+
+class InputStreamWrapper(typing.IO[bytes], BufferedIOBase):
+    def __init__(self, fp: typing.IO[bytes]):
+        self._file = fp
+        self._pos = 0
+
+    def tell(self) -> int:
+        return self._pos
+
+    def read(self, *args, **kwargs) -> bytes:
+        b = self._file.read(*args, **kwargs)
+        self._pos += len(b)
+        return b
+
+    def seek(self, offset: int, whence: int) -> None:
+        if whence == 0:
+            offset = offset - self._pos
+        elif whence == 2:
+            raise NotImplementedError("Cannot seek relative to the end of a stream")
+
+        if offset < 0:
+            raise NotImplementedError("Cannot seek backwards in a stream")
+        if offset > 0:
+            self._file.read(offset)
+        self._pos += offset
 
 
 @contextmanager
@@ -30,7 +57,7 @@ def file_or_pipe(file_or_pipe: str, mode: str) -> typing.Iterator[typing.IO[byte
         if "w" in mode:
             yield sys.stdout.buffer
         else:
-            yield sys.stdin.buffer
+            yield InputStreamWrapper(sys.stdin.buffer)
     else:
         with open(file_or_pipe, mode) as fp:
             yield fp
