@@ -27,10 +27,21 @@ class InputStreamWrapper(typing.IO[bytes], BufferedIOBase):
     def tell(self) -> int:
         return self._pos
 
-    def read(self, *args, **kwargs) -> bytes:
-        b = self._file.read(*args, **kwargs)
-        self._pos += len(b)
-        return b
+    def read(self, size=-1) -> bytes:
+        out = b""
+        if size == -1:
+            out = self._file.read(-1)
+        else:
+            s = size
+            while len(out) < size:
+                b = self._file.read(s)
+                if len(b) == 0:
+                    raise EOFError
+                s -= len(b)
+                out += b
+
+        self._pos += len(out)
+        return out
 
     def seek(self, offset: int, whence: int) -> None:
         if whence == 0:
