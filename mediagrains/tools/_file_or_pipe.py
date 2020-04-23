@@ -19,7 +19,7 @@ import sys
 from contextlib import contextmanager
 
 
-class InputStreamWrapper(typing.IO[bytes], BufferedIOBase):
+class InputStreamWrapper(BufferedIOBase):
     def __init__(self, fp: typing.IO[bytes]):
         self._file = fp
         self._pos = 0
@@ -43,7 +43,7 @@ class InputStreamWrapper(typing.IO[bytes], BufferedIOBase):
         self._pos += len(out)
         return out
 
-    def seek(self, offset: int, whence: int) -> None:
+    def seek(self, offset: int, whence: int = 0) -> int:
         if whence == 0:
             offset = offset - self._pos
         elif whence == 2:
@@ -54,6 +54,7 @@ class InputStreamWrapper(typing.IO[bytes], BufferedIOBase):
         if offset > 0:
             self._file.read(offset)
         self._pos += offset
+        return self._pos
 
 
 @contextmanager
@@ -68,7 +69,7 @@ def file_or_pipe(file_or_pipe: str, mode: str) -> typing.Iterator[typing.IO[byte
         if "w" in mode:
             yield sys.stdout.buffer
         else:
-            yield InputStreamWrapper(sys.stdin.buffer)
+            yield typing.cast(typing.IO[bytes], InputStreamWrapper(sys.stdin.buffer))
     else:
         with open(file_or_pipe, mode) as fp:
             yield fp
