@@ -55,7 +55,10 @@ class GrainWrapper(object):
             new_grain = copy.deepcopy(self.template_grain)
             new_grain.origin_timestamp = timestamp
 
-            grain_data = self.input_data.read(self.frame_size)
+            try:
+                grain_data = self.input_data.read(self.frame_size)
+            except EOFError:
+                break
 
             if grain_data:
                 new_grain.data = grain_data
