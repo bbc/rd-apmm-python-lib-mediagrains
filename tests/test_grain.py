@@ -82,6 +82,14 @@ VIDEOGRAIN_TEST_METADATA = {
 }
 
 
+class ConvertsToTimestamp (object):
+    def __init__(self, ts: Timestamp):
+        self.ts = ts
+
+    def __mediatimestamp__(self) -> Timestamp:
+        return self.ts
+
+
 class TestGrain (TestCase):
     def test_empty_grain_creation(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -146,6 +154,24 @@ class TestGrain (TestCase):
     def test_empty_grain_creation_with_ots(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = Grain(src_id, flow_id, origin_timestamp=ots)
+
+        self.assertEqual(grain.grain_type, "empty")
+        self.assertEqual(grain.source_id, src_id)
+        self.assertEqual(grain.flow_id, flow_id)
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
+        self.assertEqual(grain.sync_timestamp, ots)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(0, 1))
+        self.assertEqual(grain.duration, Fraction(0, 1))
+        self.assertEqual(grain.timelabels, [])
+
+    def test_empty_grain_creation_with_convertable_ots(self):
+        converts_to_ots = ConvertsToTimestamp(ots)
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = Grain(src_id, flow_id, origin_timestamp=converts_to_ots)
 
         self.assertEqual(grain.grain_type, "empty")
         self.assertEqual(grain.source_id, src_id)
@@ -254,6 +280,7 @@ class TestGrain (TestCase):
         new_ots = Timestamp.from_tai_sec_nsec("417798915:20")
         new_sts = Timestamp.from_tai_sec_nsec("417798915:25")
         new_grain_type = "potato"
+        converts_to_ots = ConvertsToTimestamp(ots)
 
         grain.grain_type = new_grain_type
         self.assertEqual(grain.grain_type, new_grain_type)
@@ -274,6 +301,11 @@ class TestGrain (TestCase):
 
         grain.creation_timestamp = new_cts
         self.assertEqual(grain.creation_timestamp, new_cts)
+
+        grain.origin_timestamp = converts_to_ots
+        self.assertEqual(grain.origin_timestamp, ots)
+        self.assertEqual(grain.final_origin_timestamp(), ots)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(ots))
 
         grain.rate = 50
         self.assertEqual(grain.rate, Fraction(50, 1))

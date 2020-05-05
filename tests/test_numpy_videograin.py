@@ -41,6 +41,14 @@ from itertools import chain, repeat
 import numpy as np
 
 
+class ConvertibleToTimestamp (object):
+    def __init__(self, ts: Timestamp):
+        self.ts = ts
+
+    def __mediatimestamp__(self) -> Timestamp:
+        return self.ts
+
+
 class TestGrain (TestCase):
     def _get_bitdepth(self, fmt):
         if COG_FRAME_IS_PLANAR(fmt):
@@ -486,6 +494,23 @@ class TestGrain (TestCase):
 
                 if fmt is not CogFrameFormat.v210:
                     self.assertComponentsAreModifiable(grain)
+
+    def test_video_grain_create_with_convertible_timestamp(self):
+        src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
+        flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
+        cts = Timestamp.from_tai_sec_nsec("417798915:0")
+        ots = Timestamp.from_tai_sec_nsec("417798915:5")
+        sts = Timestamp.from_tai_sec_nsec("417798915:10")
+
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = VideoGrain(src_id, flow_id,
+                               origin_timestamp=ConvertibleToTimestamp(ots),
+                               sync_timestamp=ConvertibleToTimestamp(sts),
+                               cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                               width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
+
+        self.assertIsVideoGrain(CogFrameFormat.S16_422_10BIT)(grain)
+        self.assertComponentsAreModifiable(grain)
 
     async def test_video_grain_async_create(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")
