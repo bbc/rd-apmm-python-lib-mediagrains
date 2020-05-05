@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.10.0
+- Loosen restrictions on what can be used as a timestamp in grain construction, allowing the use of any object which supports the mediatimestamp protocol.
+
 ## 2.9.3
 - Handle EOFError in `wrap_in_gsf` command line tools.
 
