@@ -232,12 +232,12 @@ normalise_time(value)
             cast(EmptyGrainMetadataDict, self.meta)['grain']['source_id'] = str(self.meta['grain']['source_id'])
         if isinstance(self.meta["grain"]["flow_id"], UUID):
             cast(EmptyGrainMetadataDict, self.meta)['grain']['flow_id'] = str(self.meta['grain']['flow_id'])
-        if isinstance(self.meta["grain"]["origin_timestamp"], Timestamp):
-            cast(EmptyGrainMetadataDict, self.meta)['grain']['origin_timestamp'] = str(self.meta['grain']['origin_timestamp'])
-        if isinstance(self.meta["grain"]["sync_timestamp"], Timestamp):
-            cast(EmptyGrainMetadataDict, self.meta)['grain']['sync_timestamp'] = str(self.meta['grain']['sync_timestamp'])
-        if isinstance(self.meta["grain"]["creation_timestamp"], Timestamp):
-            cast(EmptyGrainMetadataDict, self.meta)['grain']['creation_timestamp'] = str(self.meta['grain']['creation_timestamp'])
+        if not isinstance(self.meta["grain"]["origin_timestamp"], str):
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['origin_timestamp'] = _stringify_timestamp_input(self.meta['grain']['origin_timestamp'])
+        if not isinstance(self.meta["grain"]["sync_timestamp"], str):
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['sync_timestamp'] = _stringify_timestamp_input(self.meta['grain']['sync_timestamp'])
+        if not isinstance(self.meta["grain"]["creation_timestamp"], str):
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['creation_timestamp'] = _stringify_timestamp_input(self.meta['grain']['creation_timestamp'])
         if isinstance(self.meta['grain']['rate'], Fraction):
             cast(EmptyGrainMetadataDict, self.meta)['grain']['rate'] = {'numerator': self.meta['grain']['rate'].numerator,
                                                                         'denominator': self.meta['grain']['rate'].denominator}
