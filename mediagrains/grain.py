@@ -79,8 +79,8 @@ def _stringify_timestamp_input(value: Union[SupportsMediaTimestamp, SupportsMedi
         value = mediatimestamp(value).to_sec_nsec()
     elif isinstance(value, SupportsMediaTimeOffset):
         value = mediatimeoffset(value).to_sec_nsec()
-    else:
-        assert(isinstance(value, str))
+    elif not isinstance(value, str):
+        raise ValueError(f"{repr(value)} is not a type that can be converted to a Timestamp or TimeOffset, nor is it a string.")
 
     return value
 
