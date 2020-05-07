@@ -39,7 +39,7 @@ from inspect import isawaitable
 from enum import Enum, auto
 from uuid import UUID
 from fractions import Fraction
-from mediatimestamp.immutable import Timestamp
+from mediatimestamp.immutable import SupportsMediaTimestamp
 
 
 __all__ = ['VideoGrain', 'VIDEOGRAIN']
@@ -383,9 +383,9 @@ def VideoGrain(src_id_or_meta: VideoGrainMetadataDict,
 @overload
 def VideoGrain(src_id_or_meta: Optional[UUID] = None,
                flow_id_or_data: Optional[UUID] = None,
-               origin_timestamp: Optional[Timestamp] = None,
-               creation_timestamp: Optional[Timestamp] = None,
-               sync_timestamp: Optional[Timestamp] = None,
+               origin_timestamp: Optional[SupportsMediaTimestamp] = None,
+               creation_timestamp: Optional[SupportsMediaTimestamp] = None,
+               sync_timestamp: Optional[SupportsMediaTimestamp] = None,
                rate: Fraction = Fraction(25, 1),
                duration: Fraction = Fraction(1, 25),
                cog_frame_format: CogFrameFormat = CogFrameFormat.UNKNOWN,

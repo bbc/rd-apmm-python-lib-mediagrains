@@ -21,7 +21,14 @@ directly by client code, but their documentation may be instructive.
 """
 
 from uuid import UUID
-from mediatimestamp.immutable import Timestamp, TimeOffset, TimeRange
+from mediatimestamp.immutable import (
+    Timestamp,
+    TimeOffset,
+    TimeRange,
+    SupportsMediaTimeOffset,
+    SupportsMediaTimestamp,
+    mediatimeoffset,
+    mediatimestamp)
 from collections.abc import Sequence, MutableSequence, Mapping
 from fractions import Fraction
 from copy import copy, deepcopy
@@ -65,6 +72,17 @@ from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 import json
 
 __all__ = ["GRAIN", "VIDEOGRAIN", "AUDIOGRAIN", "CODEDVIDEOGRAIN", "CODEDAUDIOGRAIN", "EVENTGRAIN", "attributes_for_grain_type"]
+
+
+def _stringify_timestamp_input(value: Union[SupportsMediaTimestamp, SupportsMediaTimeOffset, str]) -> str:
+    if isinstance(value, SupportsMediaTimestamp):
+        value = mediatimestamp(value).to_sec_nsec()
+    elif isinstance(value, SupportsMediaTimeOffset):
+        value = mediatimeoffset(value).to_sec_nsec()
+    elif not isinstance(value, str):
+        raise ValueError(f"{repr(value)} is not a type that can be converted to a Timestamp or TimeOffset, nor is it a string.")
+
+    return value
 
 
 def attributes_for_grain_type(grain_type: str) -> List[str]:
@@ -214,12 +232,12 @@ normalise_time(value)
             cast(EmptyGrainMetadataDict, self.meta)['grain']['source_id'] = str(self.meta['grain']['source_id'])
         if isinstance(self.meta["grain"]["flow_id"], UUID):
             cast(EmptyGrainMetadataDict, self.meta)['grain']['flow_id'] = str(self.meta['grain']['flow_id'])
-        if isinstance(self.meta["grain"]["origin_timestamp"], Timestamp):
-            cast(EmptyGrainMetadataDict, self.meta)['grain']['origin_timestamp'] = str(self.meta['grain']['origin_timestamp'])
-        if isinstance(self.meta["grain"]["sync_timestamp"], Timestamp):
-            cast(EmptyGrainMetadataDict, self.meta)['grain']['sync_timestamp'] = str(self.meta['grain']['sync_timestamp'])
-        if isinstance(self.meta["grain"]["creation_timestamp"], Timestamp):
-            cast(EmptyGrainMetadataDict, self.meta)['grain']['creation_timestamp'] = str(self.meta['grain']['creation_timestamp'])
+        if not isinstance(self.meta["grain"]["origin_timestamp"], str):
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['origin_timestamp'] = _stringify_timestamp_input(self.meta['grain']['origin_timestamp'])
+        if not isinstance(self.meta["grain"]["sync_timestamp"], str):
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['sync_timestamp'] = _stringify_timestamp_input(self.meta['grain']['sync_timestamp'])
+        if not isinstance(self.meta["grain"]["creation_timestamp"], str):
+            cast(EmptyGrainMetadataDict, self.meta)['grain']['creation_timestamp'] = _stringify_timestamp_input(self.meta['grain']['creation_timestamp'])
         if isinstance(self.meta['grain']['rate'], Fraction):
             cast(EmptyGrainMetadataDict, self.meta)['grain']['rate'] = {'numerator': self.meta['grain']['rate'].numerator,
                                                                         'denominator': self.meta['grain']['rate'].denominator}
@@ -330,11 +348,8 @@ normalise_time(value)
         return Timestamp.from_tai_sec_nsec(cast(str, self.meta['grain']['origin_timestamp']))
 
     @origin_timestamp.setter
-    def origin_timestamp(self, value: Union[TimeOffset, str]):
-        if isinstance(value, TimeOffset):
-            cast(EmptyGrainMetadataDict, self.meta)['grain']['origin_timestamp'] = value.to_sec_nsec()
-        else:
-            cast(EmptyGrainMetadataDict, self.meta)['grain']['origin_timestamp'] = value
+    def origin_timestamp(self, value: Union[SupportsMediaTimestamp, SupportsMediaTimeOffset, str]):
+        cast(EmptyGrainMetadataDict, self.meta)['grain']['origin_timestamp'] = _stringify_timestamp_input(value)
 
     def final_origin_timestamp(self) -> Timestamp:
         return self.origin_timestamp
@@ -347,33 +362,19 @@ normalise_time(value)
 
     @property
     def sync_timestamp(self) -> Timestamp:
-        ts = self.meta['grain']['sync_timestamp']
-        if isinstance(ts, str):
-            return Timestamp.from_tai_sec_nsec(ts)
-        else:
-            return ts
+        return Timestamp.from_tai_sec_nsec(cast(str, self.meta['grain']['sync_timestamp']))
 
     @sync_timestamp.setter
-    def sync_timestamp(self, value: Union[TimeOffset, str]) -> None:
-        if isinstance(value, TimeOffset):
-            cast(EmptyGrainMetadataDict, self.meta)['grain']['sync_timestamp'] = value.to_sec_nsec()
-        else:
-            cast(EmptyGrainMetadataDict, self.meta)['grain']['sync_timestamp'] = value
+    def sync_timestamp(self, value: Union[SupportsMediaTimestamp, SupportsMediaTimeOffset, str]) -> None:
+        cast(EmptyGrainMetadataDict, self.meta)['grain']['sync_timestamp'] = _stringify_timestamp_input(value)
 
     @property
     def creation_timestamp(self) -> Timestamp:
-        ts = self.meta['grain']['creation_timestamp']
-        if isinstance(ts, str):
-            return Timestamp.from_tai_sec_nsec(ts)
-        else:
-            return ts
+        return Timestamp.from_tai_sec_nsec(cast(str, self.meta['grain']['creation_timestamp']))
 
     @creation_timestamp.setter
-    def creation_timestamp(self, value: Union[TimeOffset, str]) -> None:
-        if isinstance(value, TimeOffset):
-            cast(EmptyGrainMetadataDict, self.meta)['grain']['creation_timestamp'] = value.to_sec_nsec()
-        else:
-            cast(EmptyGrainMetadataDict, self.meta)['grain']['creation_timestamp'] = value
+    def creation_timestamp(self, value: Union[SupportsMediaTimestamp, SupportsMediaTimeOffset, str]) -> None:
+        cast(EmptyGrainMetadataDict, self.meta)['grain']['creation_timestamp'] = _stringify_timestamp_input(value)
 
     @property
     def rate(self) -> Fraction:
