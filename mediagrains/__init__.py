@@ -40,5 +40,6 @@ The gsf and grain submodules have their own documentation.
 """
 
 from .grain_constructors import Grain, VideoGrain, CodedVideoGrain, AudioGrain, CodedAudioGrain, EventGrain
+from .typing import ParseGrainType
 
-__all__ = ["Grain", "VideoGrain", "CodedVideoGrain", "AudioGrain", "CodedAudioGrain", "EventGrain"]
+__all__ = ["Grain", "VideoGrain", "CodedVideoGrain", "AudioGrain", "CodedAudioGrain", "EventGrain", "ParseGrainType"]

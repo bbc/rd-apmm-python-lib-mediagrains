@@ -33,7 +33,6 @@ import warnings
 from inspect import isawaitable
 
 from typing import (
-    Callable,
     Optional,
     Iterable,
     Tuple,
@@ -49,7 +48,7 @@ from typing import (
     Awaitable,
     overload)
 from typing_extensions import TypedDict
-from .typing import GrainMetadataDict, GrainDataParameterType, RationalTypes
+from .typing import GrainMetadataDict, RationalTypes, ParseGrainType
 
 from .grain import GRAIN, VIDEOGRAIN, EVENTGRAIN, AUDIOGRAIN, CODEDAUDIOGRAIN, CODEDVIDEOGRAIN
 
@@ -83,7 +82,7 @@ GSFFileHeaderDict = dict
 
 def loads(s: bytes,
           cls: Optional[Type["GSFDecoder"]] = None,
-          parse_grain: Optional[Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN]] = None,
+          parse_grain: Optional[ParseGrainType] = None,
           **kwargs) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
     """Deserialise a GSF file from a string (or similar) into python,
     returns a pair of (head, segments) where head is a python dict
@@ -105,14 +104,14 @@ def loads(s: bytes,
 @overload
 def load(fp: IO[bytes],
          cls: Optional[Type["GSFDecoder"]] = None,
-         parse_grain: Optional[Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN]] = None,
+         parse_grain: Optional[ParseGrainType] = None,
          **kwargs) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]: ...
 
 
 @overload
 def load(fp: AsyncBinaryIO,
          cls: Optional[Type["GSFDecoder"]] = None,
-         parse_grain: Optional[Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN]] = None,
+         parse_grain: Optional[ParseGrainType] = None,
          **kwargs) -> Awaitable[Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]]: ...
 
 
@@ -706,7 +705,7 @@ class GrainDataLoadingMode (Enum):
 
 class GSFAsyncDecoderSession(object):
     def __init__(self,
-                 parse_grain: Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN],
+                 parse_grain: ParseGrainType,
                  file_data: OpenAsyncBinaryIO,
                  sync_compatibility_mode: bool):
         self.file_data = file_data
@@ -1044,7 +1043,7 @@ class GSFAsyncDecoderSession(object):
 # This is almost a direct copy of the async code above, this could definitely be refactored to fix this
 class GSFSyncDecoderSession(object):
     def __init__(self,
-                 parse_grain: Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN],
+                 parse_grain: ParseGrainType,
                  file_data: IO[bytes]):
         self.file_data = file_data
 
@@ -1334,7 +1333,7 @@ class GSFDecoder(object):
     Can also be used to make a one-off decode of a GSF file from a bytes-like object by calling `decode(bytes_like)`.
     """
     def __init__(self,
-                 parse_grain: Callable[[GrainMetadataDict, GrainDataParameterType], GRAIN] = Grain,
+                 parse_grain: ParseGrainType = Grain,
                  file_data: Optional[Union[IO[bytes], AsyncBinaryIO, OpenAsyncBinaryIO]] = None,
                  **kwargs):
         """Constructor
