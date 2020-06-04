@@ -20,7 +20,7 @@ Types used for type checking other parts of the library
 
 from .cogenums import CogFrameFormat, CogAudioFormat, CogFrameLayout
 
-from typing import Any, Union, SupportsBytes, Sequence, Mapping, List, Optional, Awaitable
+from typing import Any, Union, SupportsBytes, Sequence, Mapping, List, Optional, Awaitable, Callable, TYPE_CHECKING
 from typing_extensions import TypedDict, Literal
 
 from decimal import Decimal
@@ -28,6 +28,10 @@ from numbers import Rational
 from fractions import Fraction
 from uuid import UUID
 from mediatimestamp.immutable import TimeOffset, TimeRange, Timestamp
+
+
+if TYPE_CHECKING:
+    from .grain import GRAIN  # noqa: F401
 
 
 __all__ = ["RationalTypes",
@@ -41,7 +45,8 @@ __all__ = ["RationalTypes",
            "EventGrainMetadataDict",
            "FractionDict",
            "GrainDataType",
-           "GrainDataParameterType"]
+           "GrainDataParameterType",
+           "ParseGrainType"]
 
 # These are the types that can be freely converted into a Fraction
 RationalTypes = Union[str, float, Decimal, Rational]
@@ -249,3 +254,7 @@ GrainMetadataDict = Union[
 GrainDataType = Union[SupportsBytes, bytes]
 
 GrainDataParameterType = Optional[Union[GrainDataType, Awaitable[Optional[GrainDataType]]]]
+
+
+# This is the type of a function that can be called to construct a GRAIN object from a metadata dict and a data parameter
+ParseGrainType = Callable[[GrainMetadataDict, GrainDataParameterType], "GRAIN"]

@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.11.0
+- Added ParseGrainType as a type to describe a function that constructs grains
+
 ## 2.10.0
 - Loosen restrictions on what can be used as a timestamp in grain construction, allowing the use of any object which supports the mediatimestamp protocol.
 
