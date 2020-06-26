@@ -188,6 +188,10 @@ origin_timerange()
 normalise_time(value)
     Returns a normalised Timestamp, TimeOffset or TimeRange using the video frame rate or audio sample rate.
 
+media_rate()
+    The video frame rate or audio sample rate as a Fraction or None. Returns None if there is no media
+    rate or the media rate == 0.
+
     """
     def __init__(self, meta: GrainMetadataDict, data: GrainDataParameterType):
         self.meta = meta
@@ -359,6 +363,10 @@ normalise_time(value)
 
     def normalise_time(self, value: Timestamp) -> Timestamp:
         return value
+
+    @property
+    def media_rate(self) -> Optional[Fraction]:
+        return None
 
     @property
     def sync_timestamp(self) -> Timestamp:
@@ -1141,6 +1149,13 @@ length
                 length = component.offset + component.length
         return length
 
+    @property
+    def media_rate(self) -> Optional[Fraction]:
+        if self.rate:
+            return self.rate
+        else:
+            return None
+
 
 class CODEDVIDEOGRAIN(GRAIN):
     """\
@@ -1396,6 +1411,13 @@ unit_offsets
         elif 'unit_offsets' in self.meta['grain']['cog_coded_frame']:
             del self.meta['grain']['cog_coded_frame']['unit_offsets']
 
+    @property
+    def media_rate(self) -> Optional[Fraction]:
+        if self.rate:
+            return self.rate
+        else:
+            return None
+
 
 def size_for_audio_format(cog_audio_format: CogAudioFormat, channels: int, samples: int) -> int:
     if (cog_audio_format & 0x200) == 0x200:  # compressed format, no idea of correct size
@@ -1543,6 +1565,13 @@ sample_rate
     @property
     def expected_length(self) -> int:
         return size_for_audio_format(self.format, self.channels, self.samples)
+
+    @property
+    def media_rate(self) -> Optional[Fraction]:
+        if self.sample_rate:
+            return Fraction(self.sample_rate, 1)
+        else:
+            return None
 
 
 class CODEDAUDIOGRAIN(GRAIN):
@@ -1697,6 +1726,13 @@ remainder
     @sample_rate.setter
     def sample_rate(self, value: int) -> None:
         self.meta['grain']['cog_coded_audio']['sample_rate'] = value
+
+    @property
+    def media_rate(self) -> Optional[Fraction]:
+        if self.sample_rate:
+            return Fraction(self.sample_rate, 1)
+        else:
+            return None
 
 
 if __name__ == "__main__":  # pragma: no cover

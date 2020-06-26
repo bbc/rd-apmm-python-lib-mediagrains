@@ -104,6 +104,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.sync_timestamp, cts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(0, 1))
+        self.assertIsNone(grain.media_rate)
         self.assertEqual(grain.duration, Fraction(0, 1))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain, (grain.meta, grain.data))
@@ -381,6 +382,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.media_rate, Fraction(25, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
@@ -780,6 +782,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.media_rate, Fraction(48000, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
@@ -890,6 +893,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.channels, 0)
         self.assertEqual(grain.samples, 0)
         self.assertEqual(grain.sample_rate, 0)
+        self.assertIsNone(grain.media_rate)
 
     def test_audio_grain_setters(self):
         meta = {}
@@ -992,6 +996,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.media_rate, Fraction(25, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.format, CogFrameFormat.VC2)
@@ -1249,6 +1254,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.priming, 0)
         self.assertEqual(grain.remainder, 0)
         self.assertEqual(grain.sample_rate, 48000)
+        self.assertEqual(grain.media_rate, Fraction(48000, 1))
         self.assertEqual(grain.length, 15360)
 
         self.assertIsInstance(grain.data, bytearray)
@@ -1507,6 +1513,7 @@ class TestGrain (TestCase):
         self.assertEqual(grain.sync_timestamp, sts)
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertIsNone(grain.media_rate)
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
         self.assertEqual(grain.event_type, "urn:x-ipstudio:format:event.query")
