@@ -186,7 +186,7 @@ origin_timerange()
     The origin time range covered by the samples in the grain.
 
 normalise_time(value)
-    Returns a normalised Timestamp, TimeOffset or TimeRange using the video frame rate or audio sample rate.
+    Returns a normalised Timestamp, TimeOffset or TimeRange using the media rate.
 
 media_rate()
     The video frame rate or audio sample rate as a Fraction or None. Returns None if there is no media
@@ -362,7 +362,10 @@ media_rate()
         return TimeRange(self.origin_timestamp, self.final_origin_timestamp(), TimeRange.INCLUSIVE)
 
     def normalise_time(self, value: Timestamp) -> Timestamp:
-        return value
+        if self.media_rate is not None:
+            return value.normalise(self.media_rate.numerator, self.media_rate.denominator)
+        else:
+            return value
 
     @property
     def media_rate(self) -> Optional[Fraction]:
@@ -1068,11 +1071,6 @@ length
         self.meta['grain']['cog_frame']['layout'] = int(self.meta['grain']['cog_frame']['layout'])
         self.components = VIDEOGRAIN.COMPONENT_LIST(self)
 
-    def normalise_time(self, value: Timestamp) -> Timestamp:
-        if self.rate == 0:
-            return value
-        return value.normalise(self.rate.numerator, self.rate.denominator)
-
     @property
     def format(self) -> CogFrameFormat:
         return CogFrameFormat(self.meta['grain']['cog_frame']['format'])
@@ -1268,11 +1266,6 @@ unit_offsets
             self.meta['grain']['cog_coded_frame']['is_key_frame'] = False
         self.meta['grain']['cog_coded_frame']['format'] = int(self.meta['grain']['cog_coded_frame']['format'])
         self.meta['grain']['cog_coded_frame']['layout'] = int(self.meta['grain']['cog_coded_frame']['layout'])
-
-    def normalise_time(self, value: Timestamp) -> Timestamp:
-        if self.rate == 0:
-            return value
-        return value.normalise(self.rate.numerator, self.rate.denominator)
 
     @property
     def format(self) -> CogFrameFormat:
@@ -1527,9 +1520,6 @@ sample_rate
     def final_origin_timestamp(self) -> Timestamp:
         return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, self.sample_rate, 1))
 
-    def normalise_time(self, value: Timestamp) -> Timestamp:
-        return value.normalise(self.sample_rate, 1)
-
     @property
     def format(self) -> CogAudioFormat:
         return CogAudioFormat(self.meta['grain']['cog_audio']['format'])
@@ -1675,9 +1665,6 @@ remainder
 
     def final_origin_timestamp(self) -> Timestamp:
         return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, self.sample_rate, 1))
-
-    def normalise_time(self, value: Timestamp) -> Timestamp:
-        return value.normalise(self.sample_rate, 1)
 
     @property
     def format(self) -> CogAudioFormat:
