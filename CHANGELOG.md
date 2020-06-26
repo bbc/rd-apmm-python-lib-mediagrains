@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.12.0
+- Add `media_rate` property to GRAIN that returns video frame rate or audio sample rate.
+
 ## 2.11.0
 - Added ParseGrainType as a type to describe a function that constructs grains
 
