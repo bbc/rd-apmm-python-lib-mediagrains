@@ -186,7 +186,11 @@ origin_timerange()
     The origin time range covered by the samples in the grain.
 
 normalise_time(value)
-    Returns a normalised Timestamp, TimeOffset or TimeRange using the video frame rate or audio sample rate.
+    Returns a normalised Timestamp, TimeOffset or TimeRange using the media rate.
+
+media_rate
+    The video frame rate or audio sample rate as a Fraction or None. Returns None if there is no media
+    rate or the media rate == 0.
 
     """
     def __init__(self, meta: GrainMetadataDict, data: GrainDataParameterType):
@@ -358,7 +362,14 @@ normalise_time(value)
         return TimeRange(self.origin_timestamp, self.final_origin_timestamp(), TimeRange.INCLUSIVE)
 
     def normalise_time(self, value: Timestamp) -> Timestamp:
-        return value
+        if self.media_rate is not None:
+            return value.normalise(self.media_rate.numerator, self.media_rate.denominator)
+        else:
+            return value
+
+    @property
+    def media_rate(self) -> Optional[Fraction]:
+        return None
 
     @property
     def sync_timestamp(self) -> Timestamp:
@@ -1060,11 +1071,6 @@ length
         self.meta['grain']['cog_frame']['layout'] = int(self.meta['grain']['cog_frame']['layout'])
         self.components = VIDEOGRAIN.COMPONENT_LIST(self)
 
-    def normalise_time(self, value: Timestamp) -> Timestamp:
-        if self.rate == 0:
-            return value
-        return value.normalise(self.rate.numerator, self.rate.denominator)
-
     @property
     def format(self) -> CogFrameFormat:
         return CogFrameFormat(self.meta['grain']['cog_frame']['format'])
@@ -1140,6 +1146,13 @@ length
             if component.offset + component.length > length:
                 length = component.offset + component.length
         return length
+
+    @property
+    def media_rate(self) -> Optional[Fraction]:
+        if self.rate:
+            return self.rate
+        else:
+            return None
 
 
 class CODEDVIDEOGRAIN(GRAIN):
@@ -1253,11 +1266,6 @@ unit_offsets
             self.meta['grain']['cog_coded_frame']['is_key_frame'] = False
         self.meta['grain']['cog_coded_frame']['format'] = int(self.meta['grain']['cog_coded_frame']['format'])
         self.meta['grain']['cog_coded_frame']['layout'] = int(self.meta['grain']['cog_coded_frame']['layout'])
-
-    def normalise_time(self, value: Timestamp) -> Timestamp:
-        if self.rate == 0:
-            return value
-        return value.normalise(self.rate.numerator, self.rate.denominator)
 
     @property
     def format(self) -> CogFrameFormat:
@@ -1396,6 +1404,13 @@ unit_offsets
         elif 'unit_offsets' in self.meta['grain']['cog_coded_frame']:
             del self.meta['grain']['cog_coded_frame']['unit_offsets']
 
+    @property
+    def media_rate(self) -> Optional[Fraction]:
+        if self.rate:
+            return self.rate
+        else:
+            return None
+
 
 def size_for_audio_format(cog_audio_format: CogAudioFormat, channels: int, samples: int) -> int:
     if (cog_audio_format & 0x200) == 0x200:  # compressed format, no idea of correct size
@@ -1505,9 +1520,6 @@ sample_rate
     def final_origin_timestamp(self) -> Timestamp:
         return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, self.sample_rate, 1))
 
-    def normalise_time(self, value: Timestamp) -> Timestamp:
-        return value.normalise(self.sample_rate, 1)
-
     @property
     def format(self) -> CogAudioFormat:
         return CogAudioFormat(self.meta['grain']['cog_audio']['format'])
@@ -1543,6 +1555,13 @@ sample_rate
     @property
     def expected_length(self) -> int:
         return size_for_audio_format(self.format, self.channels, self.samples)
+
+    @property
+    def media_rate(self) -> Optional[Fraction]:
+        if self.sample_rate:
+            return Fraction(self.sample_rate, 1)
+        else:
+            return None
 
 
 class CODEDAUDIOGRAIN(GRAIN):
@@ -1647,9 +1666,6 @@ remainder
     def final_origin_timestamp(self) -> Timestamp:
         return (self.origin_timestamp + TimeOffset.from_count(self.samples - 1, self.sample_rate, 1))
 
-    def normalise_time(self, value: Timestamp) -> Timestamp:
-        return value.normalise(self.sample_rate, 1)
-
     @property
     def format(self) -> CogAudioFormat:
         return CogAudioFormat(self.meta['grain']['cog_coded_audio']['format'])
@@ -1697,6 +1713,13 @@ remainder
     @sample_rate.setter
     def sample_rate(self, value: int) -> None:
         self.meta['grain']['cog_coded_audio']['sample_rate'] = value
+
+    @property
+    def media_rate(self) -> Optional[Fraction]:
+        if self.sample_rate:
+            return Fraction(self.sample_rate, 1)
+        else:
+            return None
 
 
 if __name__ == "__main__":  # pragma: no cover
