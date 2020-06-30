@@ -188,7 +188,7 @@ origin_timerange()
 normalise_time(value)
     Returns a normalised Timestamp, TimeOffset or TimeRange using the media rate.
 
-media_rate()
+media_rate
     The video frame rate or audio sample rate as a Fraction or None. Returns None if there is no media
     rate or the media rate == 0.
 
