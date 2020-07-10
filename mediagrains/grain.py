@@ -361,7 +361,7 @@ media_rate
     def origin_timerange(self) -> TimeRange:
         return TimeRange(self.origin_timestamp, self.final_origin_timestamp(), TimeRange.INCLUSIVE)
 
-    def normalise_time(self, value: Timestamp) -> Timestamp:
+    def normalise_time(self, value: Union[TimeOffset, TimeRange]) -> Union[TimeOffset, TimeRange]:
         if self.media_rate is not None:
             return value.normalise(self.media_rate.numerator, self.media_rate.denominator)
         else:
