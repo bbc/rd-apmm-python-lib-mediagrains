@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.12.1
+- Fix typing for the time value passed to the `normalise_time` method.
+
 ## 2.12.0
 - Add `media_rate` property to GRAIN that returns video frame rate or audio sample rate.
 
