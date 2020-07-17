@@ -16,6 +16,8 @@
 """\
 The submodule of mediagrains which contains code for generating test video
 grains.
+
+This module is deprecated, please use mediagrains.patterngenerators instead.
 """
 
 from fractions import Fraction
@@ -24,6 +26,8 @@ from copy import deepcopy
 from math import sin, pi
 import struct
 import fractions
+
+from deprecated import deprecated
 
 from . import VideoGrain, AudioGrain
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
@@ -50,6 +54,7 @@ pixel_ranges = {
 }
 
 
+@deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def LumaSteps(src_id, flow_id, width, height,
               rate=Fraction(25, 1),
               origin_timestamp=None,
@@ -120,6 +125,7 @@ def LumaSteps(src_id, flow_id, width, height,
         vg.sync_timestamp = vg.origin_timestamp
 
 
+@deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def ColourBars(src_id, flow_id, width, height,
                intensity=0.75,
                rate=Fraction(25, 1),
@@ -187,6 +193,7 @@ def ColourBars(src_id, flow_id, width, height,
         vg.sync_timestamp = vg.origin_timestamp
 
 
+@deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def MovingBarOverlay(grain_gen, height=100, speed=1.0):
     """Call this method and pass an iterable of video grains as the first parameter. This method will overlay a moving black bar onto the grains.
 
@@ -243,6 +250,7 @@ def MovingBarOverlay(grain_gen, height=100, speed=1.0):
         yield grain
 
 
+@deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def Tone1K(src_id, flow_id,
            samples=1920,
            channels=1,
@@ -260,6 +268,7 @@ def Tone1K(src_id, flow_id,
                 sample_rate=sample_rate)
 
 
+@deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def Tone(src_id, flow_id,
          frequency,
          samples=1920,
@@ -284,6 +293,7 @@ def Tone(src_id, flow_id,
                                   sample_rate=sample_rate)
 
 
+@deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def Silence(src_id, flow_id,
             samples=1920,
             channels=1,
@@ -301,6 +311,7 @@ def Silence(src_id, flow_id,
                                   sample_rate=sample_rate)
 
 
+@deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def AudioGrainsLoopingData(src_id, flow_id,
                            sample_data,
                            samples=1920,
