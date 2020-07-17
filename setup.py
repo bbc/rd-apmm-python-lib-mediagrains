@@ -25,7 +25,8 @@ packages = {
     'mediagrains.asyncio': 'mediagrains/asyncio',
     'mediagrains.numpy': 'mediagrains/numpy',
     'mediagrains.tools': 'mediagrains/tools',
-    'mediagrains.patterngenerators': 'mediagrains/patterngenerators'
+    'mediagrains.patterngenerators': 'mediagrains/patterngenerators',
+    'mediagrains.patterngenerators.video': 'mediagrains/patterngenerators/video'
 }
 
 packages_required = [

@@ -13,16 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""\
-This submodule contains classes which can be used to generate various test
-grains in a wide variety of formats in a random access fashion.
 
-This is intended to replace mediagrains.testsignalgenerator, which is now deprecated.
-"""
+from .abc import VideoPatternGenerator
+from .lumasteps import LumaSteps
+from .colourbars import ColourBars
+from .still import StillPatternGenerator
+from .movingbaroverlay import MovingBarOverlay
 
-from .abc import PatternGenerator, FixedRatePatternGenerator
-
-__all__ = [
-    "PatternGenerator",
-    "FixedRatePatternGenerator"
-]
+__all__ = ["VideoPatternGenerator", "LumaSteps", "ColourBars", "StillPatternGenerator", "MovingBarOverlay"]
