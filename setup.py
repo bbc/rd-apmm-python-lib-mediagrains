@@ -24,7 +24,8 @@ packages = {
     'mediagrains.utils': 'mediagrains/utils',
     'mediagrains.asyncio': 'mediagrains/asyncio',
     'mediagrains.numpy': 'mediagrains/numpy',
-    'mediagrains.tools': 'mediagrains/tools'
+    'mediagrains.tools': 'mediagrains/tools',
+    'mediagrains.patterngenerators': 'mediagrains/patterngenerators'
 }
 
 packages_required = [
