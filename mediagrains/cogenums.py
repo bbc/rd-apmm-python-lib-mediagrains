@@ -180,3 +180,50 @@ def COG_FRAME_FORMAT_V_SHIFT(fmt: CogFrameFormat) -> int:
 
 def COG_FRAME_FORMAT_ACTIVE_BITS(fmt: CogFrameFormat) -> int:
     return (((int(fmt)) >> 10) & 0x3F)
+
+
+def COG_AUDIO_IS_PLANES(fmt: CogAudioFormat) -> bool:
+    return (fmt & 0x3) == 0
+
+
+def COG_AUDIO_IS_PAIRS(fmt: CogAudioFormat) -> bool:
+    return (fmt & 0x3) == 1
+
+
+def COG_AUDIO_IS_INTERLEAVED(fmt: CogAudioFormat) -> bool:
+    return (fmt & 0x3) == 2
+
+
+def COG_AUDIO_IS_COMPRESSED(fmt: CogAudioFormat) -> bool:
+    return (fmt & 0x200) == 0x200
+
+
+def COG_AUDIO_IS_INT(fmt: CogAudioFormat) -> bool:
+    return (fmt & 0x030) == 0x000
+
+
+def COG_AUDIO_IS_FLOAT(fmt: CogAudioFormat) -> bool:
+    return (fmt & 0x030) == 0x010
+
+
+def COG_AUDIO_IS_DOUBLE(fmt: CogAudioFormat) -> bool:
+    return (fmt & 0x030) == 0x020
+
+
+COG_AUDIO_FORMAT_DEPTH_S16 = 0x00
+COG_AUDIO_FORMAT_DEPTH_S24 = 0x04
+COG_AUDIO_FORMAT_DEPTH_S32 = 0x08
+COG_AUDIO_FORMAT_DEPTH_S64 = 0x0c
+
+
+def COG_AUDIO_FORMAT_DEPTH(fmt: CogAudioFormat) -> int:
+    return fmt & 0xc
+
+
+def COG_AUDIO_FORMAT_SAMPLEBYTES(fmt: CogAudioFormat) -> int:
+    if COG_AUDIO_FORMAT_DEPTH(fmt) == COG_AUDIO_FORMAT_DEPTH_S64:
+        return 8
+    elif COG_AUDIO_IS_PLANES(fmt) and COG_AUDIO_FORMAT_DEPTH(fmt) == COG_AUDIO_FORMAT_DEPTH_S24:
+        return (((fmt & 0xf) >> 2) & 0x07) + 3
+    else:
+        return (((fmt & 0xf) >> 2) & 0x07) + 2
