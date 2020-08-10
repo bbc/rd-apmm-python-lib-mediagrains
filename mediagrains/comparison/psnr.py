@@ -58,7 +58,7 @@ def _compute_element_psnr(data_a, data_b, max_val):
         return 10.0 * math.log10((max_val**2)/mse)
 
 
-def _compute_audio_psnr(grain_a, grain_b):
+def _compute_audio_psnr(grain_a, grain_b, max_val=None):
     """Compute PSNR for audio grains.
 
     :param grain_a: An AUDIOGRAIN
@@ -80,15 +80,16 @@ def _compute_audio_psnr(grain_a, grain_b):
     if not isinstance(grain_b, numpy_AUDIOGRAIN):
         grain_b = numpy_AudioGrain(grain_b)
 
-    if COG_AUDIO_IS_FLOAT(grain_a.format) or COG_AUDIO_IS_DOUBLE(grain_a.format):
-        max_val = 1.0
-    elif COG_AUDIO_FORMAT_DEPTH(grain_a.format) == COG_AUDIO_FORMAT_DEPTH_S16:
-        max_val = 1 << 15
-    elif COG_AUDIO_FORMAT_DEPTH(grain_a.format) == COG_AUDIO_FORMAT_DEPTH_S24:
-        # 24-bit range was widened to 32-bit range
-        max_val = 1 << 31
-    elif COG_AUDIO_FORMAT_DEPTH(grain_a.format) == COG_AUDIO_FORMAT_DEPTH_S32:
-        max_val = 1 << 31
+    if max_val is None:
+        if COG_AUDIO_IS_FLOAT(grain_a.format) or COG_AUDIO_IS_DOUBLE(grain_a.format):
+            max_val = 1.0
+        elif COG_AUDIO_FORMAT_DEPTH(grain_a.format) == COG_AUDIO_FORMAT_DEPTH_S16:
+            max_val = 1 << 15
+        elif COG_AUDIO_FORMAT_DEPTH(grain_a.format) == COG_AUDIO_FORMAT_DEPTH_S24:
+            # 24-bit range was widened to 32-bit range
+            max_val = 1 << 31
+        elif COG_AUDIO_FORMAT_DEPTH(grain_a.format) == COG_AUDIO_FORMAT_DEPTH_S32:
+            max_val = 1 << 31
 
     psnr = []
     for channel_data_a, channel_data_b in zip(grain_a.channel_data, grain_b.channel_data):
@@ -97,7 +98,7 @@ def _compute_audio_psnr(grain_a, grain_b):
     return psnr
 
 
-def _compute_video_psnr(grain_a, grain_b):
+def _compute_video_psnr(grain_a, grain_b, max_val=None):
     """Compute PSNR for video grains.
 
     :param grain_a: A VIDEOGRAIN
@@ -115,7 +116,8 @@ def _compute_video_psnr(grain_a, grain_b):
     if not isinstance(grain_b, numpy_VIDEOGRAIN):
         grain_b = numpy_VideoGrain(grain_b)
 
-    max_val = (1 << COG_FRAME_FORMAT_ACTIVE_BITS(grain_a.format)) - 1
+    if max_val is None:
+        max_val = (1 << COG_FRAME_FORMAT_ACTIVE_BITS(grain_a.format)) - 1
 
     psnr = []
     for comp_data_a, comp_data_b in zip(grain_a.component_data, grain_b.component_data):
@@ -124,7 +126,7 @@ def _compute_video_psnr(grain_a, grain_b):
     return psnr
 
 
-def compute_psnr(grain_a, grain_b):
+def compute_psnr(grain_a, grain_b, max_val=None):
     """Compute PSNR for video or audio grains.
 
     :param grain_a: A VIDEOGRAIN or AUDIOGRAIN
@@ -136,8 +138,8 @@ def compute_psnr(grain_a, grain_b):
         raise AttributeError("Grain types do not match")
 
     if grain_a.grain_type == "video":
-        return _compute_video_psnr(grain_a, grain_b)
+        return _compute_video_psnr(grain_a, grain_b, max_val=max_val)
     elif grain_a.grain_type == "audio":
-        return _compute_audio_psnr(grain_a, grain_b)
+        return _compute_audio_psnr(grain_a, grain_b, max_val=max_val)
     else:
         raise AttributeError("Unsupported grain type")
