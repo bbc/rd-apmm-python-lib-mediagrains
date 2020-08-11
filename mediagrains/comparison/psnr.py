@@ -40,7 +40,7 @@ def _compute_element_mse(data_a, data_b):
     :param data_b: Data for element b
     :returns: The MSE value
     """
-    return np.mean(np.square(np.subtract(data_a, data_b), dtype=np.double))
+    return np.mean(np.square(np.subtract(data_a, data_b, dtype=np.double)))
 
 
 def _compute_element_psnr(data_a, data_b, max_val):
