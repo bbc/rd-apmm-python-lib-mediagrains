@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.14.1
+- Fix unbounded timerange in legacy test signal generators.
+
 ## 2.14.0
 - Add a numpy AudioGrain.
   - All PCM audio formats other than the 24-bit ones can be modified.
