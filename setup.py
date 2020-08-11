@@ -26,7 +26,8 @@ packages = {
     'mediagrains.numpy': 'mediagrains/numpy',
     'mediagrains.tools': 'mediagrains/tools',
     'mediagrains.patterngenerators': 'mediagrains/patterngenerators',
-    'mediagrains.patterngenerators.video': 'mediagrains/patterngenerators/video'
+    'mediagrains.patterngenerators.video': 'mediagrains/patterngenerators/video',
+    'mediagrains.patterngenerators.audio': 'mediagrains/patterngenerators/audio'
 }
 
 packages_required = [
@@ -50,7 +51,7 @@ console_scripts = [
 ]
 
 setup(name="mediagrains",
-      version="2.14.0",
+      version="2.14.0.post1",
       python_requires='>=3.6.0',
       description="Simple utility for grain-based media",
       url='https://github.com/bbc/rd-apmm-python-lib-mediagrains',
