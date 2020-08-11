@@ -91,6 +91,9 @@ class PatternGenerator (Generic[G], metaclass=ABCMeta):
         else:
             raise ValueError(f"Invalid key: {key!r}")
 
+        if rng is not None and not rng.bounded_before():
+            raise ValueError(f"TimeValueRange {rng!r} start must be bounded for the pattern generator")
+
         if val is not None:
             grain = self.get(val)
             if grain is not None:
