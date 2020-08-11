@@ -72,6 +72,7 @@ def LumaSteps(src_id, flow_id, width, height,
     :param origin_timestamp: the origin timestamp of the first grain.
     :param step: The number of grains to increment by each time (values above 1 cause skipping)"""
 
+    origin_timestamp = origin_timestamp if origin_timestamp is not None else Timestamp.get_time()
     yield from LumaStepsPatternGenerator(
         src_id,
         flow_id,
@@ -98,6 +99,7 @@ def ColourBars(src_id, flow_id, width, height,
     :param origin_timestamp: the origin timestamp of the first grain.
     :param step: The number of grains to increment by each time (values above 1 cause skipping)"""
 
+    origin_timestamp = origin_timestamp if origin_timestamp is not None else Timestamp.get_time()
     yield from ColourBarsPatternGenerator(
         src_id,
         flow_id,
@@ -193,6 +195,7 @@ def Tone(src_id, flow_id,
          cog_audio_format=CogAudioFormat.S16_INTERLEAVED,
          step=1,
          sample_rate=48000):
+    origin_timestamp = origin_timestamp if origin_timestamp is not None else Timestamp.get_time()
     for grain in TonePatternGenerator(
         src_id,
         flow_id,
@@ -215,6 +218,7 @@ def Silence(src_id, flow_id,
             cog_audio_format=CogAudioFormat.S16_INTERLEAVED,
             step=1,
             sample_rate=48000):
+    origin_timestamp = origin_timestamp if origin_timestamp is not None else Timestamp.get_time()
     for grain in SilencePatternGenerator(
         src_id,
         flow_id,
