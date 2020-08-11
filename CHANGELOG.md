@@ -1,5 +1,9 @@
 # Mediagrains Library Changelog
 
+## 2.13.0
+- Deprecated testsignalgenerator
+- Added patterngenerators
+
 ## 2.12.1
 - Fix typing for the time value passed to the `normalise_time` method.
 

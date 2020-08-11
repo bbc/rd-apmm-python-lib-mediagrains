@@ -16,17 +16,24 @@
 """\
 The submodule of mediagrains which contains code for generating test video
 grains.
+
+This module is deprecated, please use mediagrains.patterngenerators instead.
 """
 
 from fractions import Fraction
-from mediatimestamp.immutable import TimeOffset
+from mediatimestamp.immutable import TimeOffset, Timestamp
 from copy import deepcopy
-from math import sin, pi
 import struct
 import fractions
 
-from . import VideoGrain, AudioGrain
-from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
+from deprecated import deprecated
+
+from . import AudioGrain
+from .cogenums import CogFrameFormat, CogAudioFormat
+from .patterngenerators.video import LumaSteps as LumaStepsPatternGenerator
+from .patterngenerators.video import ColourBars as ColourBarsPatternGenerator
+from .patterngenerators.audio import Tone as TonePatternGenerator
+from .patterngenerators.audio import Silence as SilencePatternGenerator
 
 __all__ = ["LumaSteps", "Tone1K", "Tone", "Silence", "ColourBars", "MovingBarOverlay"]
 
@@ -50,6 +57,7 @@ pixel_ranges = {
 }
 
 
+@deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def LumaSteps(src_id, flow_id, width, height,
               rate=Fraction(25, 1),
               origin_timestamp=None,
@@ -64,62 +72,16 @@ def LumaSteps(src_id, flow_id, width, height,
     :param origin_timestamp: the origin timestamp of the first grain.
     :param step: The number of grains to increment by each time (values above 1 cause skipping)"""
 
-    if cog_frame_format not in pixel_ranges:
-        raise ValueError("Not a supported format for this generator")
-
-    _bpp = pixel_ranges[cog_frame_format][0]
-    _offset = pixel_ranges[cog_frame_format][1][0]
-    _range = pixel_ranges[cog_frame_format][1][1]
-    _steps = 8
-
-    _chromaval = pixel_ranges[cog_frame_format][2][0]
-
-    vg = VideoGrain(src_id, flow_id, origin_timestamp=origin_timestamp,
-                    rate=rate,
-                    cog_frame_format=cog_frame_format,
-                    cog_frame_layout=CogFrameLayout.FULL_FRAME,
-                    width=width,
-                    height=height)
-
-    line = bytearray(width*_bpp)
-    for x in range(0, width):
-        pos = x//(width//_steps)
-        if _bpp == 1:
-            line[x] = (_offset + ((pos * _range)//_steps)) & 0xFF
-        elif _bpp == 2:
-            line[2*x + 0] = (_offset + ((pos * _range)//_steps)) & 0xFF
-            line[2*x + 1] = ((_offset + ((pos * _range)//_steps)) >> 8) & 0xFF
-
-    for y in range(0, height):
-        vg.data[vg.components[0].offset + y*vg.components[0].stride:vg.components[0].offset + y*vg.components[0].stride + vg.components[0].width*_bpp] = line
-
-    if _bpp == 1:
-        for y in range(0, vg.components[1].height):
-            u = vg.components[1].offset + y*vg.components[1].stride
-            v = vg.components[2].offset + y*vg.components[2].stride
-            for x in range(0, vg.components[1].width):
-                vg.data[u + x] = _chromaval
-                vg.data[v + x] = _chromaval
-    else:
-        for y in range(0, vg.components[1].height):
-            u = vg.components[1].offset + y*vg.components[1].stride
-            v = vg.components[2].offset + y*vg.components[2].stride
-            for x in range(0, vg.components[1].width):
-                vg.data[u + 2*x + 0] = _chromaval & 0xFF
-                vg.data[u + 2*x + 1] = (_chromaval >> 8) & 0xFF
-                vg.data[v + 2*x + 0] = _chromaval & 0xFF
-                vg.data[v + 2*x + 1] = (_chromaval >> 8) & 0xFF
-
-    origin_timestamp = vg.origin_timestamp
-    count = 0
-    while True:
-        yield deepcopy(vg)
-        count += step
-        vg.origin_timestamp = origin_timestamp + TimeOffset.from_count(count,
-                                                                       rate.numerator, rate.denominator)
-        vg.sync_timestamp = vg.origin_timestamp
+    yield from LumaStepsPatternGenerator(
+        src_id,
+        flow_id,
+        width,
+        height,
+        rate=rate,
+        cog_frame_format=cog_frame_format)[origin_timestamp::step]
 
 
+@deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def ColourBars(src_id, flow_id, width, height,
                intensity=0.75,
                rate=Fraction(25, 1),
@@ -136,57 +98,18 @@ def ColourBars(src_id, flow_id, width, height,
     :param origin_timestamp: the origin timestamp of the first grain.
     :param step: The number of grains to increment by each time (values above 1 cause skipping)"""
 
-    if cog_frame_format not in pixel_ranges:
-        raise ValueError("Not a supported format for this generator")
-
-    _bpp = pixel_ranges[cog_frame_format][0]
-    _steps = 8
-    bs = 16 - pixel_ranges[cog_frame_format][4]
-
-    values = [
-        (int((0xFFFF >> bs) * intensity), 0x8000 >> bs, 0x8000 >> bs),
-        (int((0xE1FF >> bs) * intensity), 0x0000 >> bs, 0x9400 >> bs),
-        (int((0xB200 >> bs) * intensity), 0xABFF >> bs, 0x0000 >> bs),
-        (int((0x95FF >> bs) * intensity), 0x2BFF >> bs, 0x15FF >> bs),
-        (int((0x69FF >> bs) * intensity), 0xD400 >> bs, 0xEA00 >> bs),
-        (int((0x4C00 >> bs) * intensity), 0x5400 >> bs, 0xFFFF >> bs),
-        (int((0x1DFF >> bs) * intensity), 0xFFFF >> bs, 0x6BFF >> bs),
-        (int((0x0000 >> bs) * intensity), 0x8000 >> bs, 0x8000 >> bs)]
-
-    vg = VideoGrain(src_id, flow_id, origin_timestamp=origin_timestamp,
-                    rate=rate,
-                    cog_frame_format=cog_frame_format,
-                    cog_frame_layout=CogFrameLayout.FULL_FRAME,
-                    width=width,
-                    height=height)
-
-    lines = [bytearray(vg.components[0].width*_bpp), bytearray(vg.components[1].width*_bpp), bytearray(vg.components[2].width*_bpp)]
-    for c in range(0, 3):
-        for x in range(0, vg.components[c].width):
-            pos = x//(vg.components[c].width//_steps)
-            if _bpp == 1:
-                lines[c][x] = values[pos][c]
-            elif _bpp == 2:
-                lines[c][2*x + 0] = values[pos][c] & 0xFF
-                lines[c][2*x + 1] = (values[pos][c] >> 8) & 0xFF
-
-    for c in range(0, 3):
-        for y in range(0, vg.components[c].height):
-            vg.data[vg.components[c].offset +
-                    y*vg.components[c].stride:vg.components[c].offset +
-                    y*vg.components[c].stride +
-                    vg.components[c].width*_bpp] = lines[c]
-
-    origin_timestamp = vg.origin_timestamp
-    count = 0
-    while True:
-        yield deepcopy(vg)
-        count += step
-        vg.origin_timestamp = origin_timestamp + TimeOffset.from_count(count,
-                                                                       rate.numerator, rate.denominator)
-        vg.sync_timestamp = vg.origin_timestamp
+    yield from ColourBarsPatternGenerator(
+        src_id,
+        flow_id,
+        width,
+        height,
+        intensity=intensity,
+        rate=rate,
+        cog_frame_format=cog_frame_format
+    )[origin_timestamp::step]
 
 
+@deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def MovingBarOverlay(grain_gen, height=100, speed=1.0):
     """Call this method and pass an iterable of video grains as the first parameter. This method will overlay a moving black bar onto the grains.
 
@@ -243,6 +166,7 @@ def MovingBarOverlay(grain_gen, height=100, speed=1.0):
         yield grain
 
 
+@deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def Tone1K(src_id, flow_id,
            samples=1920,
            channels=1,
@@ -260,6 +184,7 @@ def Tone1K(src_id, flow_id,
                 sample_rate=sample_rate)
 
 
+@deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def Tone(src_id, flow_id,
          frequency,
          samples=1920,
@@ -268,22 +193,21 @@ def Tone(src_id, flow_id,
          cog_audio_format=CogAudioFormat.S16_INTERLEAVED,
          step=1,
          sample_rate=48000):
-    frequency = int(frequency)
-    sample_rate = int(sample_rate)
-    looplen = sample_rate
-    if (looplen % frequency) == 0:
-        looplen //= frequency
-    TONE_SAMPLES = [sin(2.0*n*pi*float(frequency)/float(sample_rate)) for n in range(0, looplen)]
-    return AudioGrainsLoopingData(src_id, flow_id,
-                                  TONE_SAMPLES,
-                                  samples=samples,
-                                  channels=channels,
-                                  origin_timestamp=origin_timestamp,
-                                  cog_audio_format=cog_audio_format,
-                                  step=step,
-                                  sample_rate=sample_rate)
+    for grain in TonePatternGenerator(
+        src_id,
+        flow_id,
+        frequency=frequency,
+        samples=samples,
+        channels=channels,
+        cog_audio_format=cog_audio_format,
+        sample_rate=sample_rate
+    )[Timestamp()::step]:
+        grain.origin_timestamp = grain.origin_timestamp + origin_timestamp
+        grain.sync_timestamp = grain.sync_timestamp + origin_timestamp
+        yield grain
 
 
+@deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def Silence(src_id, flow_id,
             samples=1920,
             channels=1,
@@ -291,16 +215,20 @@ def Silence(src_id, flow_id,
             cog_audio_format=CogAudioFormat.S16_INTERLEAVED,
             step=1,
             sample_rate=48000):
-    return AudioGrainsLoopingData(src_id, flow_id,
-                                  [0.0],
-                                  samples=samples,
-                                  channels=channels,
-                                  origin_timestamp=origin_timestamp,
-                                  cog_audio_format=cog_audio_format,
-                                  step=step,
-                                  sample_rate=sample_rate)
+    for grain in SilencePatternGenerator(
+        src_id,
+        flow_id,
+        samples=samples,
+        channels=channels,
+        cog_audio_format=cog_audio_format,
+        sample_rate=sample_rate
+    )[Timestamp()::step]:
+        grain.origin_timestamp = grain.origin_timestamp + origin_timestamp
+        grain.sync_timestamp = grain.sync_timestamp + origin_timestamp
+        yield grain
 
 
+@deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def AudioGrainsLoopingData(src_id, flow_id,
                            sample_data,
                            samples=1920,
