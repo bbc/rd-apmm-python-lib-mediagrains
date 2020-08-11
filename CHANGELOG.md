@@ -1,5 +1,10 @@
 # Mediagrains Library Changelog
 
+## 2.14.0
+- Add a numpy AudioGrain.
+  - All PCM audio formats other than the 24-bit ones can be modified.
+- Add audio support to the `compute_psnr` and `compare_grain` functions.
+
 ## 2.13.0
 - Deprecated testsignalgenerator
 - Added patterngenerators

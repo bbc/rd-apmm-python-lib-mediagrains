@@ -573,44 +573,52 @@ class GrainComparisonResult(ComparisonResult):
                 children[key] = EqualityComparisonResult(path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
 
             if a.format == b.format:
-                wps = 1
-                s = False
-                if a.format in [CogAudioFormat.S16_PLANES,
-                                CogAudioFormat.S16_PAIRS,
-                                CogAudioFormat.S16_INTERLEAVED]:
-                    wc = 'h'
-                elif a.format in [CogAudioFormat.S24_PLANES,
-                                  CogAudioFormat.S24_PAIRS,
-                                  CogAudioFormat.S24_INTERLEAVED]:
-                    wc = 'B'
-                    wps = 3
-                    s = True
-                elif a.format in [CogAudioFormat.S32_PLANES,
-                                  CogAudioFormat.S32_PAIRS,
-                                  CogAudioFormat.S32_INTERLEAVED]:
-                    wc = 'i'
-                elif a.format in [CogAudioFormat.S64_INVALID]:
-                    wc = 'l'
-                elif a.format in [CogAudioFormat.FLOAT_PLANES,
-                                  CogAudioFormat.FLOAT_PAIRS,
-                                  CogAudioFormat.FLOAT_INTERLEAVED]:
-                    wc = 'f'
-                elif a.format in [CogAudioFormat.DOUBLE_PLANES,
-                                  CogAudioFormat.DOUBLE_PAIRS,
-                                  CogAudioFormat.DOUBLE_INTERLEAVED]:
-                    wc = 'd'
+                path = self._identifier + '.data'
+                compare_psnr = len([option for option in self._options if isinstance(option, ComparisonPSNR) and path == option.path]) != 0
+                if compare_psnr:
+                    children['data'] = PSNRComparisonResult(path,
+                                                            a,
+                                                            b,
+                                                            options=self._options)
                 else:
-                    wc = 'B'
+                    wps = 1
+                    s = False
+                    if a.format in [CogAudioFormat.S16_PLANES,
+                                    CogAudioFormat.S16_PAIRS,
+                                    CogAudioFormat.S16_INTERLEAVED]:
+                        wc = 'h'
+                    elif a.format in [CogAudioFormat.S24_PLANES,
+                                      CogAudioFormat.S24_PAIRS,
+                                      CogAudioFormat.S24_INTERLEAVED]:
+                        wc = 'B'
+                        wps = 3
+                        s = True
+                    elif a.format in [CogAudioFormat.S32_PLANES,
+                                      CogAudioFormat.S32_PAIRS,
+                                      CogAudioFormat.S32_INTERLEAVED]:
+                        wc = 'i'
+                    elif a.format in [CogAudioFormat.S64_INVALID]:
+                        wc = 'l'
+                    elif a.format in [CogAudioFormat.FLOAT_PLANES,
+                                      CogAudioFormat.FLOAT_PAIRS,
+                                      CogAudioFormat.FLOAT_INTERLEAVED]:
+                        wc = 'f'
+                    elif a.format in [CogAudioFormat.DOUBLE_PLANES,
+                                      CogAudioFormat.DOUBLE_PAIRS,
+                                      CogAudioFormat.DOUBLE_INTERLEAVED]:
+                        wc = 'd'
+                    else:
+                        wc = 'B'
 
-                children['data'] = DataEqualityComparisonResult(self._identifier + ".data",
-                                                                a.data,
-                                                                b.data,
-                                                                options=self._options,
-                                                                attr="data",
-                                                                alignment="@",
-                                                                word_code=wc,
-                                                                words_per_sample=wps,
-                                                                force_signed=s)
+                    children['data'] = DataEqualityComparisonResult(path,
+                                                                    a.data,
+                                                                    b.data,
+                                                                    options=self._options,
+                                                                    attr="data",
+                                                                    alignment="@",
+                                                                    word_code=wc,
+                                                                    words_per_sample=wps,
+                                                                    force_signed=s)
             else:
                 self._options.append(Exclude.data)
                 children['data'] = FailingComparisonResult(self._identifier + ".data",
