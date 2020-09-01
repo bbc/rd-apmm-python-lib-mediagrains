@@ -254,11 +254,14 @@ def AudioGrainsLoopingData(src_id, flow_id,
                             CogAudioFormat.S16_INTERLEAVED]:
         formatted_sample_data = [round(x*volume*(1 << 15)) for x in sample_data]
         depth = 16
-    elif cog_audio_format in [CogAudioFormat.S24_PLANES,
-                              CogAudioFormat.S24_PAIRS,
+    elif cog_audio_format in [CogAudioFormat.S24_PAIRS,
                               CogAudioFormat.S24_INTERLEAVED]:
         formatted_sample_data = [round(x*volume*(1 << 23)) for x in sample_data]
         depth = 24
+    elif cog_audio_format in [CogAudioFormat.S24_PLANES]:
+        # signed 24-bit occupies lower part of unsigned 32-bit
+        formatted_sample_data = [((round(x*volume*(1 << 31))+2**32) >> 8) & 0x00ffffff for x in sample_data]
+        depth = 32
     elif cog_audio_format in [CogAudioFormat.S32_PLANES,
                               CogAudioFormat.S32_PAIRS,
                               CogAudioFormat.S32_INTERLEAVED]:
