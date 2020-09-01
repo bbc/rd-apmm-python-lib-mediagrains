@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.14.2
+- Fix 24-bit planar audio test signal that should occupy 32-bits.
+
 ## 2.14.1
 - Fix unbounded timerange in legacy test signal generators.
 
