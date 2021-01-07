@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.15.0
+- Add support for H.264 (`--format H264`) to the `wrap_video_in_gsf` tool.
+
 ## 2.14.1
 - Fix unbounded timerange in legacy test signal generators.
 

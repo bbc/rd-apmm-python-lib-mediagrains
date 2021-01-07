@@ -15,5 +15,6 @@
 
 from .iobytes import IOBytes
 from .grain_wrapper import GrainWrapper
+from .h264_grain_wrapper import H264GrainWrapper
 
-__all__ = ["IOBytes", "GrainWrapper"]
+__all__ = ["IOBytes", "GrainWrapper", "H264GrainWrapper"]
