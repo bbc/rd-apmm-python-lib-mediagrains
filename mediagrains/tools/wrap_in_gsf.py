@@ -16,6 +16,7 @@
 #
 """Given a raw essence input, wrap it into a GSF file"""
 
+from typing import Union, Type
 import uuid
 import argparse
 import sys
@@ -24,17 +25,18 @@ import fractions
 from mediatimestamp.immutable import Timestamp
 
 from ..cogenums import CogFrameFormat, CogAudioFormat
-from ..grain_constructors import VideoGrain, AudioGrain
+from ..grain_constructors import VideoGrain, CodedVideoGrain, AudioGrain
 from ..grain import GRAIN
 from ..gsf import GSFEncoder
-from ..utils import GrainWrapper
+from ..utils import GrainWrapper, H264GrainWrapper
 from ._file_or_pipe import file_or_pipe
 
 
 def wrap_to_gsf(
         input_file: str,
         output_file: str,
-        template_grain: GRAIN):
+        template_grain: GRAIN,
+        Wrapper: Union[Type[GrainWrapper], Type[H264GrainWrapper]] = GrainWrapper):
     """Wrap the supplied input in GSF and write it out to a given file-like object
 
     :param input_file: A file path (or "-" for stdin) to read the input media from, one frame/Grain at a time
@@ -42,7 +44,7 @@ def wrap_to_gsf(
     :param template_grain: Base Grain to use as a template for the others
     """
     with file_or_pipe(input_file, "rb") as input_data, file_or_pipe(output_file, "wb") as output_data:
-        wrapper = GrainWrapper(template_grain, input_data)
+        wrapper = Wrapper(template_grain, input_data)
 
         # Write a GSF file with the grains read from the input
         encoder = GSFEncoder(output_data)
@@ -73,12 +75,15 @@ def wrap_video_in_gsf():
     parser.add_argument("--start-ts", help="Timestamp of start of media", type=Timestamp.from_str,
                         default=Timestamp(0, 0))
 
-    parser.add_argument("--size", help="Size of input video, in WidthxHeight form", default="1920x1080")
+    parser.add_argument("--size",
+                        help="Size of input uncompressed video, in WidthxHeight form, and the default for coded video",
+                        default="1920x1080")
 
     parser.add_argument("--format", help="Frame format; one of the CogFrameFormat options",
                         type=lambda x: CogFrameFormat[x], default=CogFrameFormat.S16_422_10BIT.name)
 
-    parser.add_argument("--rate", help="Frame rate of input video", type=int, default=25)
+    parser.add_argument("--rate", help="Frame rate of uncompressed input video and the default for coded video",
+                        type=int, default=25)
 
     args = parser.parse_args()
 
@@ -89,12 +94,23 @@ def wrap_video_in_gsf():
     flow_id = args.flow_id if args.flow_id else uuid.uuid4()
     source_id = args.source_id if args.source_id else uuid.uuid4()
 
-    template_grain = VideoGrain(
-        flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, rate=args.rate,
-        width=width, height=height, cog_frame_format=args.format
-    )
+    if args.format in [CogFrameFormat.H264, CogFrameFormat.AVCI]:
+        template_grain = CodedVideoGrain(
+            flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, rate=args.rate,
+            origin_width=width, origin_height=height, coded_width=0, coded_height=0,
+            cog_frame_format=args.format
+        )
+        Wrapper = H264GrainWrapper
+    else:
+        template_grain = VideoGrain(
+            flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, rate=args.rate,
+            width=width, height=height, cog_frame_format=args.format
+        )
+        Wrapper = GrainWrapper
 
-    wrap_to_gsf(input_file=args.input_file, output_file=args.output_file, template_grain=template_grain)
+    wrap_to_gsf(
+        input_file=args.input_file, output_file=args.output_file, template_grain=template_grain, Wrapper=Wrapper
+    )
 
 
 def wrap_audio_in_gsf():
