@@ -338,7 +338,7 @@ class OpenAsyncStreamWrapper(OpenAsyncBinaryIO):
                 await self.reader.read(self._next_pos - self._pos)
             if self.writer is not None:
                 self.writer.write(bytes(self._next_pos - self._pos))
-        self._pos = self._next_pos
+            self._pos = self._next_pos
 
     async def read(self, s: int = -1) -> bytes:
         if self.reader is None:
@@ -378,10 +378,19 @@ class OpenAsyncStreamWrapper(OpenAsyncBinaryIO):
         raise UnsupportedOperation("Cannot truncate a network stream")
 
     def tell(self) -> int:
-        return self._pos
+        if self._next_pos > self._pos:
+            # use self._next_pos as the base position as self._pos has not been aligned after a seek
+            return self._next_pos
+        else:
+            return self._pos
 
     def seek(self, offset: int, whence: int = SEEK_SET):
-        next_pos = self._next_pos
+        if self._next_pos > self._pos:
+            # use self._next_pos as the base position as self._pos has not been aligned after a seek
+            next_pos = self._next_pos
+        else:
+            next_pos = self._pos
+
         if whence == SEEK_SET:
             next_pos = offset
         elif whence == SEEK_CUR:
