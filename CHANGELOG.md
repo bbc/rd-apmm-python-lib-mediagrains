@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.15.1
+- BugFix: fix seek and tell in OpenAsyncStreamWrapper to be relative to the correct current position.
+
 ## 2.15.0
 - Add support for H.264 (`--format H264`) to the `wrap_video_in_gsf` tool.
 
