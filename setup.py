@@ -52,7 +52,7 @@ console_scripts = [
 ]
 
 setup(name="mediagrains",
-      version="2.15.1.post1",
+      version="2.16.0",
       python_requires='>=3.6.0',
       description="Simple utility for grain-based media",
       url='https://github.com/bbc/rd-apmm-python-lib-mediagrains',

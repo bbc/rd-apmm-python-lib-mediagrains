@@ -25,10 +25,10 @@ import fractions
 from mediatimestamp.immutable import Timestamp
 
 from ..cogenums import CogFrameFormat, CogAudioFormat
-from ..grain_constructors import VideoGrain, CodedVideoGrain, AudioGrain
+from ..grain_constructors import VideoGrain, CodedVideoGrain, AudioGrain, CodedAudioGrain
 from ..grain import GRAIN
 from ..gsf import GSFEncoder
-from ..utils import GrainWrapper, H264GrainWrapper
+from ..utils import GrainWrapper, H264GrainWrapper, ADTSAACGrainWrapper
 from ._file_or_pipe import file_or_pipe
 
 
@@ -130,13 +130,13 @@ def wrap_audio_in_gsf():
     parser.add_argument("--start-ts", help="Timestamp of start of media",
                         type=Timestamp.from_str, default=Timestamp(0, 0))
 
-    parser.add_argument("--channels", help="Number of channels present in input media", type=int, default=2)
-    parser.add_argument("--samples-per-grain", help="Number of samples to write to each Grain", type=int, default=1920)
+    parser.add_argument("--channels", help="Number of channels present in input media", type=int)
+    parser.add_argument("--samples-per-grain", help="Number of samples to write to each Grain", type=int)
 
     parser.add_argument("--format", help="Audio format; one of the CogAudioFormat options",
                         type=lambda x: CogAudioFormat[x], default=CogAudioFormat.S16_PLANES.name)
 
-    parser.add_argument("--sample-rate", help="Sample rate of input audio", type=int, default=48000)
+    parser.add_argument("--sample-rate", help="Sample rate of input audio", type=int)
 
     args = parser.parse_args()
 
@@ -144,11 +144,35 @@ def wrap_audio_in_gsf():
     flow_id = args.flow_id if args.flow_id else uuid.uuid4()
     source_id = args.source_id if args.source_id else uuid.uuid4()
 
-    grain_rate = fractions.Fraction(args.sample_rate, args.samples_per_grain)
+    if args.format == CogAudioFormat.AAC:
+        template_grain = CodedAudioGrain(
+            flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, sample_rate=args.sample_rate,
+            channels=args.channels, samples=args.samples_per_grain, cog_audio_format=args.format
+        )
+        Wrapper = ADTSAACGrainWrapper
 
-    template_grain = AudioGrain(
-        flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, sample_rate=args.sample_rate,
-        rate=grain_rate, channels=args.channels, samples=args.samples_per_grain, cog_audio_format=args.format
+    else:
+        channels = args.channels
+        if channels is None:
+            channels = 2
+
+        samples_per_grain = args.samples_per_grain
+        if samples_per_grain is None:
+            samples_per_grain = 1920
+
+        sample_rate = args.sample_rate
+        if sample_rate is None:
+            sample_rate = 48000
+
+        grain_rate = fractions.Fraction(sample_rate, samples_per_grain)
+
+        template_grain = AudioGrain(
+            flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, sample_rate=sample_rate,
+            rate=grain_rate, channels=channels, samples=samples_per_grain, cog_audio_format=args.format
+        )
+        Wrapper = GrainWrapper
+
+    wrap_to_gsf(
+        input_file=args.input_file, output_file=args.output_file, template_grain=template_grain,
+        Wrapper=Wrapper
     )
-
-    wrap_to_gsf(input_file=args.input_file, output_file=args.output_file, template_grain=template_grain)
