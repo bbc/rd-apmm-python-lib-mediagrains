@@ -1,5 +1,8 @@
 # Mediagrains Library Changelog
 
+## 2.16.0
+- Add support for ADTS AAC (`--format AAC`) to the `wrap_audio_in_gsf` tool.
+
 ## 2.15.1
 - BugFix: fix seek and tell in OpenAsyncStreamWrapper to be relative to the correct current position.
 
