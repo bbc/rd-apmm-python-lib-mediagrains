@@ -332,10 +332,16 @@ class OpenAsyncStreamWrapper(OpenAsyncBinaryIO):
         if self.writer is not None:
             self.writer.close()
 
+    async def _read(self, s: int = -1) -> bytes:
+        if self.reader is None or self.reader.at_eof():
+            return bytes()
+        else:
+            return await self.reader.read(s)
+
     async def _align_pos(self):
         if self._next_pos > self._pos:
             if self.reader is not None:
-                await self.reader.read(self._next_pos - self._pos)
+                await self._read(self._next_pos - self._pos)
             if self.writer is not None:
                 self.writer.write(bytes(self._next_pos - self._pos))
             self._pos = self._next_pos
@@ -344,7 +350,7 @@ class OpenAsyncStreamWrapper(OpenAsyncBinaryIO):
         if self.reader is None:
             raise UnsupportedOperation("Attempted to read from an output stream")
         await self._align_pos()
-        d = await self.reader.read(s)
+        d = await self._read(s)
         self._pos += len(d)
         return d
 
@@ -352,7 +358,7 @@ class OpenAsyncStreamWrapper(OpenAsyncBinaryIO):
         if self.reader is None:
             raise UnsupportedOperation("Attempted to read from an output stream")
         await self._align_pos()
-        d = await self.reader.read(len(b))
+        d = await self._read(len(b))
         if d is None:
             return 0
         else:
