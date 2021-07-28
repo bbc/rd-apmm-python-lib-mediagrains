@@ -336,7 +336,13 @@ class OpenAsyncStreamWrapper(OpenAsyncBinaryIO):
         if self.reader is None or self.reader.at_eof():
             return bytes()
         else:
-            return await self.reader.read(s)
+            if s < 0:
+                return await self.reader.read(s)
+            else:
+                try:
+                    return await self.reader.readexactly(s)
+                except asyncio.IncompleteReadError as e:
+                    return e.partial
 
     async def _align_pos(self):
         if self._next_pos > self._pos:
