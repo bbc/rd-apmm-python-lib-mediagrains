@@ -7,11 +7,11 @@
  - Run Python 3 unit tests in tox
  - Build Debian packages for supported Ubuntu versions
 
- If these steps succeed and the master branch is being built, wheels and debs are uploaded to Artifactory and the
+ If these steps succeed and the main branch is being built, wheels and debs are uploaded to Artifactory and the
  R&D Debian mirrors.
 
  Optionally you can set FORCE_PYUPLOAD to force upload to Artifactory, and FORCE_DEBUPLOAD to force Debian package
- upload on non-master branches.
+ upload on non-main branches.
 */
 
 pipeline {
@@ -23,7 +23,7 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10')) // Discard old builds
     }
     triggers {
-        cron((env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'dev')? 'H H(0-8) * * *' : '') // Build master some time every morning
+        cron((env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'dev')? 'H H(0-8) * * *' : '') // Build main some time every morning
     }
     parameters {
         booleanParam(name: "FORCE_PYPIUPLOAD", defaultValue: false, description: "Force Python artifact upload to PyPi")
@@ -170,7 +170,7 @@ pipeline {
                     expression { return params.FORCE_DEBUPLOAD }
                     expression { return params.FORCE_DOCSUPLOAD }
                     expression {
-                        bbcShouldUploadArtifacts(branches: ["master", "dev"])
+                        bbcShouldUploadArtifacts(branches: ["main", "dev"])
                     }
                 }
             }
@@ -180,7 +180,7 @@ pipeline {
                         anyOf {
                             expression { return params.FORCE_DOCSUPLOAD }
                             expression {
-                                bbcShouldUploadArtifacts(branches: ["master", "dev"])
+                                bbcShouldUploadArtifacts(branches: ["main", "dev"])
                             }
                         }
                     }
@@ -193,7 +193,7 @@ pipeline {
                         anyOf {
                             expression { return params.FORCE_PYPIUPLOAD }
                             expression {
-                                bbcShouldUploadArtifacts(branches: ["master"])
+                                bbcShouldUploadArtifacts(branches: ["main"])
                             }
                         }
                     }
@@ -251,7 +251,7 @@ pipeline {
                         anyOf {
                             expression { return params.FORCE_DEBUPLOAD }
                             expression {
-                                bbcShouldUploadArtifacts(branches: ["master"])
+                                bbcShouldUploadArtifacts(branches: ["main"])
                             }
                         }
                     }
@@ -283,7 +283,7 @@ pipeline {
     }
     post {
         always {
-            bbcSlackNotify(channel: "#apmm-cloudfit", branches: ["master", "dev"])
+            bbcSlackNotify(channel: "#apmm-cloudfit", branches: ["main", "dev"])
         }
     }
 }
