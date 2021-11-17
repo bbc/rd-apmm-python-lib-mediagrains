@@ -35,7 +35,8 @@ class TestTone1K(TestCase):
     def test_tone1k_s16_interleaved(self):
         """Testing that Tone1K generator produces correct audio grains when
         channels is 2 and sample_rate is 48000"""
-        UUT = Tone1K(src_id, flow_id, channels=2, origin_timestamp=origin_timestamp, sample_rate=48000)
+        with self.assertWarns(DeprecationWarning):
+            UUT = Tone1K(src_id, flow_id, channels=2, origin_timestamp=origin_timestamp, sample_rate=48000)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
@@ -65,7 +66,8 @@ class TestTone1K(TestCase):
     def test_tone1k_s16_interleaved_at_44_1k(self):
         """Testing that Tone1K generator produces correct audio grains when
         channels is 2 and sample_rate is 44100Hz"""
-        UUT = Tone1K(src_id, flow_id, channels=2, samples=1764, origin_timestamp=origin_timestamp, sample_rate=44100)
+        with self.assertWarns(DeprecationWarning):
+            UUT = Tone1K(src_id, flow_id, channels=2, samples=1764, origin_timestamp=origin_timestamp, sample_rate=44100)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
@@ -97,7 +99,8 @@ class TestTone1K(TestCase):
     def test_tone1k_s16_interleaved_1024samples(self):
         """Testing that Tone1K generator produces correct audio grains when
         channels is 2 and samples is 1024"""
-        UUT = Tone1K(src_id, flow_id, channels=2, samples=1024, origin_timestamp=origin_timestamp, sample_rate=48000)
+        with self.assertWarns(DeprecationWarning):
+            UUT = Tone1K(src_id, flow_id, channels=2, samples=1024, origin_timestamp=origin_timestamp, sample_rate=48000)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
@@ -134,7 +137,8 @@ class TestSilence(TestCase):
     def test_silence_s16_interleaved(self):
         """Testing that Silence generator produces correct audio grains when
         channels is 2 and sample_rate is 48000"""
-        UUT = Silence(src_id, flow_id, channels=2, origin_timestamp=origin_timestamp, sample_rate=48000)
+        with self.assertWarns(DeprecationWarning):
+            UUT = Silence(src_id, flow_id, channels=2, origin_timestamp=origin_timestamp, sample_rate=48000)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
@@ -164,7 +168,8 @@ class TestSilence(TestCase):
     def test_silence_s16_interleaved_at_44_1k(self):
         """Testing that Silence generator produces correct audio grains when
         channels is 2 and sample_rate is 44100Hz"""
-        UUT = Silence(src_id, flow_id, channels=2, samples=1764, origin_timestamp=origin_timestamp, sample_rate=44100)
+        with self.assertWarns(DeprecationWarning):
+            UUT = Silence(src_id, flow_id, channels=2, samples=1764, origin_timestamp=origin_timestamp, sample_rate=44100)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
@@ -196,7 +201,8 @@ class TestSilence(TestCase):
     def test_silence_s16_interleaved_1024samples(self):
         """Testing that Silence generator produces correct audio grains when
         channels is 2 and samples is 1024"""
-        UUT = Silence(src_id, flow_id, channels=2, samples=1024, origin_timestamp=origin_timestamp, sample_rate=48000)
+        with self.assertWarns(DeprecationWarning):
+            UUT = Silence(src_id, flow_id, channels=2, samples=1024, origin_timestamp=origin_timestamp, sample_rate=48000)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
@@ -236,8 +242,10 @@ class TestLumaSteps(TestCase):
         for testing under control"""
         width = 240
         height = 4
-        UUT = LumaSteps(src_id, flow_id, width, height,
-                        origin_timestamp=origin_timestamp)
+
+        with self.assertWarns(DeprecationWarning):
+            UUT = LumaSteps(src_id, flow_id, width, height,
+                            origin_timestamp=origin_timestamp)
 
         # Extracts the first 10 grains from the generator
         grains = [grain for _, grain in zip(range(10), UUT)]
@@ -271,9 +279,11 @@ class TestLumaSteps(TestCase):
         for testing under control"""
         width = 240
         height = 4
-        UUT = LumaSteps(src_id, flow_id, width, height,
-                        origin_timestamp=origin_timestamp,
-                        cog_frame_format=CogFrameFormat.S16_422_10BIT)
+
+        with self.assertWarns(DeprecationWarning):
+            UUT = LumaSteps(src_id, flow_id, width, height,
+                            origin_timestamp=origin_timestamp,
+                            cog_frame_format=CogFrameFormat.S16_422_10BIT)
 
         # Extracts the first 10 grains from the generator
         grains = [grain for _, grain in zip(range(10), UUT)]
@@ -309,9 +319,10 @@ class TestLumaSteps(TestCase):
         width = 240
         height = 4
 
-        UUT = LumaSteps(src_id, flow_id, width, height,
-                        origin_timestamp=origin_timestamp,
-                        cog_frame_format=CogFrameFormat.UNKNOWN)
+        with self.assertWarns(DeprecationWarning):
+            UUT = LumaSteps(src_id, flow_id, width, height,
+                            origin_timestamp=origin_timestamp,
+                            cog_frame_format=CogFrameFormat.UNKNOWN)
 
         with self.assertRaises(ValueError):
             next(UUT)
@@ -322,11 +333,13 @@ class TestLumaSteps(TestCase):
         height = 4
         rate = Fraction(50, 1)
         step = 2
-        UUT = LumaSteps(src_id, flow_id, width, height,
-                        origin_timestamp=origin_timestamp,
-                        cog_frame_format=CogFrameFormat.S16_422_10BIT,
-                        rate=rate,
-                        step=step)
+
+        with self.assertWarns(DeprecationWarning):
+            UUT = LumaSteps(src_id, flow_id, width, height,
+                            origin_timestamp=origin_timestamp,
+                            cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                            rate=rate,
+                            step=step)
 
         # Extracts the first 10 grains from the generator
         grains = [grain for _, grain in zip(range(10), UUT)]
@@ -366,13 +379,15 @@ class TestColourBars(TestCase):
         for testing under control"""
         width = 240
         height = 4
-        UUT = ColourBars(src_id, flow_id,
-                         width, height,
-                         intensity=1.0,
-                         origin_timestamp=origin_timestamp,
-                         cog_frame_format=CogFrameFormat.U8_444,
-                         rate=Fraction(25, 1),
-                         step=1)
+
+        with self.assertWarns(DeprecationWarning):
+            UUT = ColourBars(src_id, flow_id,
+                             width, height,
+                             intensity=1.0,
+                             origin_timestamp=origin_timestamp,
+                             cog_frame_format=CogFrameFormat.U8_444,
+                             rate=Fraction(25, 1),
+                             step=1)
 
         # Extracts the first 10 grains from the generator
         grains = [grain for _, grain in zip(range(10), UUT)]
@@ -406,13 +421,15 @@ class TestColourBars(TestCase):
         for testing under control"""
         width = 240
         height = 4
-        UUT = ColourBars(src_id, flow_id,
-                         width, height,
-                         intensity=0.75,
-                         origin_timestamp=origin_timestamp,
-                         cog_frame_format=CogFrameFormat.U8_444,
-                         rate=Fraction(25, 1),
-                         step=1)
+
+        with self.assertWarns(DeprecationWarning):
+            UUT = ColourBars(src_id, flow_id,
+                             width, height,
+                             intensity=0.75,
+                             origin_timestamp=origin_timestamp,
+                             cog_frame_format=CogFrameFormat.U8_444,
+                             rate=Fraction(25, 1),
+                             step=1)
 
         # Extracts the first 10 grains from the generator
         grains = [grain for _, grain in zip(range(10), UUT)]
@@ -446,13 +463,15 @@ class TestColourBars(TestCase):
         for testing under control"""
         width = 240
         height = 4
-        UUT = ColourBars(src_id, flow_id,
-                         width, height,
-                         intensity=0.75,
-                         origin_timestamp=origin_timestamp,
-                         cog_frame_format=CogFrameFormat.S16_422_10BIT,
-                         rate=Fraction(25, 1),
-                         step=1)
+
+        with self.assertWarns(DeprecationWarning):
+            UUT = ColourBars(src_id, flow_id,
+                             width, height,
+                             intensity=0.75,
+                             origin_timestamp=origin_timestamp,
+                             cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                             rate=Fraction(25, 1),
+                             step=1)
 
         # Extracts the first 10 grains from the generator
         grains = [grain for _, grain in zip(range(10), UUT)]
@@ -492,14 +511,16 @@ class TestMovingBarOverlay(TestCase):
         when the height is 4 lines and the width 240 pixels (to keep time taken for testing under control"""
         width = 240
         height = 4
-        UUT = MovingBarOverlay(ColourBars(src_id, flow_id,
-                                          width, height,
-                                          intensity=1.0,
-                                          origin_timestamp=origin_timestamp,
-                                          cog_frame_format=CogFrameFormat.U8_444,
-                                          rate=Fraction(25, 1),
-                                          step=1),
-                               height=1)
+
+        with self.assertWarns(DeprecationWarning):
+            UUT = MovingBarOverlay(ColourBars(src_id, flow_id,
+                                              width, height,
+                                              intensity=1.0,
+                                              origin_timestamp=origin_timestamp,
+                                              cog_frame_format=CogFrameFormat.U8_444,
+                                              rate=Fraction(25, 1),
+                                              step=1),
+                                   height=1)
 
         # Extracts the first 10 grains from the generator
         grains = [grain for _, grain in zip(range(10), UUT)]
@@ -539,14 +560,16 @@ class TestMovingBarOverlay(TestCase):
         when the height is 4 lines and the width 240 pixels (to keep time taken for testing under control"""
         width = 240
         height = 4
-        UUT = MovingBarOverlay(ColourBars(src_id, flow_id,
-                                          width, height,
-                                          intensity=0.75,
-                                          origin_timestamp=origin_timestamp,
-                                          cog_frame_format=CogFrameFormat.U8_444,
-                                          rate=Fraction(25, 1),
-                                          step=1),
-                               height=1)
+
+        with self.assertWarns(DeprecationWarning):
+            UUT = MovingBarOverlay(ColourBars(src_id, flow_id,
+                                              width, height,
+                                              intensity=0.75,
+                                              origin_timestamp=origin_timestamp,
+                                              cog_frame_format=CogFrameFormat.U8_444,
+                                              rate=Fraction(25, 1),
+                                              step=1),
+                                   height=1)
 
         # Extracts the first 10 grains from the generator
         grains = [grain for _, grain in zip(range(10), UUT)]
@@ -587,14 +610,16 @@ class TestMovingBarOverlay(TestCase):
         when the height is 4 lines and the width 240 pixels (to keep time taken for testing under control"""
         width = 240
         height = 4
-        UUT = MovingBarOverlay(ColourBars(src_id, flow_id,
-                                          width, height,
-                                          intensity=0.75,
-                                          origin_timestamp=origin_timestamp,
-                                          cog_frame_format=CogFrameFormat.S16_422_10BIT,
-                                          rate=Fraction(25, 1),
-                                          step=1),
-                               height=1)
+
+        with self.assertWarns(DeprecationWarning):
+            UUT = MovingBarOverlay(ColourBars(src_id, flow_id,
+                                              width, height,
+                                              intensity=0.75,
+                                              origin_timestamp=origin_timestamp,
+                                              cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                                              rate=Fraction(25, 1),
+                                              step=1),
+                                   height=1)
 
         # Extracts the first 10 grains from the generator
         grains = [grain for _, grain in zip(range(10), UUT)]
