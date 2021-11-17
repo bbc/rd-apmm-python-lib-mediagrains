@@ -52,8 +52,8 @@ console_scripts = [
 ]
 
 setup(name="mediagrains",
-      version="2.16.1",
-      python_requires='>=3.6.0',
+      version="3.0.0",
+      python_requires='>=3.10.0',
       description="Simple utility for grain-based media",
       url='https://github.com/bbc/rd-apmm-python-lib-mediagrains',
       author='James Weaver',

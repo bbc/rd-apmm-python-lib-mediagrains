@@ -1,5 +1,9 @@
 # Mediagrains Library Changelog
 
+## 3.0.0
+- Support dropped for python <3.10 (3.8 should work but is not explicitely supported)
+- `AUDIOGRAIN` and `VIDEOGRAIN` `data` field is now explicitely optional
+
 ## 2.16.0
 - Add support for ADTS AAC (`--format AAC`) to the `wrap_audio_in_gsf` tool.
 
