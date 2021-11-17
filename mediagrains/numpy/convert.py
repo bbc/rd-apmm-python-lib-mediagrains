@@ -180,6 +180,10 @@ def _convert_v210_to_yuv422_10bit(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -
     # second = [Y0] [U1] [Y3] [V2] ...
     # third  = [V0] [Y2] [U2] [Y5] ...
 
+    if grain_in.data is None:
+        del grain_out.component_data[:]
+        return
+
     first = (grain_in.data & 0x3FF).astype(np.dtype(np.uint16))
     second = ((grain_in.data >> 10) & 0x3FF).astype(np.dtype(np.uint16))
     third = ((grain_in.data >> 20) & 0x3FF).astype(np.dtype(np.uint16))
@@ -226,6 +230,10 @@ def _convert_v210_to_yuv422_10bit(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -
 def _convert_yuv422_10bit_to_v210(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -> None:
     # This won't be fast, but it should work.
 
+    if grain_in.data is None:
+        grain_out.data = None
+        return
+
     # Take every third entry in each component and arrange them
     first = np.zeros((grain_in.height, 32*((grain_in.width + 47)//48)), dtype=np.dtype(np.uint32)).transpose()
     second = np.zeros((grain_in.height, 32*((grain_in.width + 47)//48)), dtype=np.dtype(np.uint32)).transpose()
@@ -244,7 +252,10 @@ def _convert_yuv422_10bit_to_v210(grain_in: VIDEOGRAIN, grain_out: VIDEOGRAIN) -
     third[2::4, :][0:(grain_in.width//2 + 0)//3, :] = grain_in.component_data.U[2::3, :]
 
     # Now combine them to make the dwords expected
-    grain_out.data[:] = np.ravel(first.transpose()) + (np.ravel(second.transpose()) << 10) + (np.ravel(third.transpose()) << 20)
+    if grain_out.data is None:
+        grain_out.data = np.ravel(first.transpose()) + (np.ravel(second.transpose()) << 10) + (np.ravel(third.transpose()) << 20)
+    else:
+        grain_out.data[:] = np.ravel(first.transpose()) + (np.ravel(second.transpose()) << 10) + (np.ravel(third.transpose()) << 20)
 
 
 # These methods automate the process of registering simple copy conversions
