@@ -265,10 +265,10 @@ Please ensure you have run the test suite before submitting a Pull Request, and 
 
 ## Authors
 
-* James Weaver (james.barrett@bbc.co.uk)
+* James Weaver
 * Philip deNier (philip.denier@bbc.co.uk)
 * Sam Mesterton-Gibbons (sam.mesterton-gibbons@bbc.co.uk)
-* Alex Rawcliffe (alex.rawcliffe@bbc.co.uk)
+* Alex Rawcliffe
 * James Sandford (james.sandford@bbc.co.uk)
 
 ## License

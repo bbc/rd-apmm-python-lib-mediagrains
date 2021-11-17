@@ -4,7 +4,7 @@ _Based on Apache ICLA_
 
 Thank you for your interest in the British Broadcasting Corporation (the “Corporation”). In order to clarify the intellectual property license granted with Contributions from any person or entity, the Corporation must have a Contributor License Agreement (“CLA”) on file that has been signed by each Contributor, indicating agreement to the license terms below. This license is for your protection as a Contributor as well as the protection of the Corporation and its users; it does not change your rights to use your own Contributions for any other purpose.
 
-If you have not already done so, please complete and sign, then scan and email a PDF file of this Agreement to james.barrett (at) bbc.co.uk.
+If you have not already done so, please complete and sign, then scan and email a PDF file of this Agreement to james.sandford (at) bbc.co.uk.
 
 Please read this document carefully before signing and keep a copy for your own records.
 
