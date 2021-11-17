@@ -40,16 +40,17 @@ pipeline {
             steps {
                 sh 'git clean -dfx'
                 sh 'rm -rf /tmp/$(basename ${WORKSPACE})/'
+                bbcStagePyenvEnsureVersion("3.10.0")
             }
         }
         stage ("Tests") {
             stages {
-                stage ("Py36 Linting Check") {
+                stage ("Linting Check") {
                     steps {
                         script {
                             env.lint3_result = "FAILURE"
                         }
-                        bbcGithubNotify(context: "lint/flake8_3", status: "PENDING")
+                        bbcGithubNotify(context: "lint/flake8", status: "PENDING")
                         withBBCRDPythonArtifactory {
                             sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-lint make lint'
                         }
@@ -59,11 +60,11 @@ pipeline {
                     }
                     post {
                         always {
-                            bbcGithubNotify(context: "lint/flake8_3", status: env.lint3_result)
+                            bbcGithubNotify(context: "lint/flake8", status: env.lint3_result)
                         }
                     }
                 }
-                stage ("Py36 Type Check") {
+                stage ("Type Check") {
                     steps {
                         script {
                             env.mypy_result = "FAILURE"
@@ -90,23 +91,23 @@ pipeline {
                         }
                     }
                 }
-                stage ("Python 3 Unit Tests") {
+                stage ("Unit Tests") {
                     steps {
                         script {
-                            env.py36_result = "FAILURE"
+                            env.unit_result = "FAILURE"
                         }
-                        bbcGithubNotify(context: "tests/py36", status: "PENDING")
+                        bbcGithubNotify(context: "tests/unit", status: "PENDING")
                         // Use a workdirectory in /tmp to avoid shebang length limitation
                         withBBCRDPythonArtifactory {
-                            sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-py36 make test'
+                            sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-unit make test'
                         }
                         script {
-                            env.py36_result = "SUCCESS" // This will only run if the sh above succeeded
+                            env.unit_result = "SUCCESS" // This will only run if the sh above succeeded
                         }
                     }
                     post {
                         always {
-                            bbcGithubNotify(context: "tests/py36", status: env.py36_result)
+                            bbcGithubNotify(context: "tests/unit", status: env.unit_result)
                         }
                     }
                 }
@@ -204,8 +205,8 @@ pipeline {
                         bbcGithubNotify(context: "pypi/upload", status: "PENDING")
                         sh 'rm -rf dist/*'
                         withBBCRDPythonArtifactory {
-                            bbcMakeGlobalWheel("py36")
-                            bbcTwineUpload(toxenv: "py36", pypi: true)
+                            bbcMakeGlobalWheel("py310")
+                            bbcTwineUpload(toxenv: "py310", pypi: true)
                         }
                         script {
                             env.pypiUpload_result = "SUCCESS" // This will only run if the steps above succeeded
@@ -233,8 +234,8 @@ pipeline {
                         bbcGithubNotify(context: "artifactory/upload", status: "PENDING")
                         sh 'rm -rf dist/*'
                         withBBCRDPythonArtifactory {
-                            bbcMakeGlobalWheel("py36")
-                            bbcTwineUpload(toxenv: "py36", pypi: false)
+                            bbcMakeGlobalWheel("py310")
+                            bbcTwineUpload(toxenv: "py310", pypi: false)
                         }
                         script {
                             env.artifactoryUpload_result = "SUCCESS" // This will only run if the steps above succeeded
