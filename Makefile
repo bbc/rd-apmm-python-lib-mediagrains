@@ -65,10 +65,10 @@ clean:
 	find $(topdir) -name '*.py,cover' -delete
 	rm -rf $(topbuilddir)/docs
 
-testenv: $(TOXDIR)/py36/bin/activate
+testenv: $(TOXDIR)/py310/bin/activate
 
-$(TOXDIR)/py36/bin/activate: tox.ini setup.py
-	tox -e py36 --recreate --notest --workdir $(TOXDIR)
+$(TOXDIR)/py310/bin/activate: tox.ini setup.py
+	tox -e py310 --recreate --notest --workdir $(TOXDIR)
 
 test:
 	tox --workdir $(TOXDIR)
@@ -123,13 +123,13 @@ $(topbuilddir)/docs/$(MODNAME):
 	mkdir -p $(topbuilddir)/docs
 	ln -s $(topdir)/$(MODNAME) $(topbuilddir)/docs/
 
-$(topbuilddir)/docs/$(MODNAME).html: $(topbuilddir)/docs/$(MODNAME) $(TOXDIR)/py36/bin/activate
-	. $(TOXDIR)/py36/bin/activate && cd $(topbuilddir)/docs/ && pydoc -w ./
+$(topbuilddir)/docs/$(MODNAME).html: $(topbuilddir)/docs/$(MODNAME) $(TOXDIR)/py310/bin/activate
+	. $(TOXDIR)/py310/bin/activate && cd $(topbuilddir)/docs/ && pydoc -w ./
 
-lint: $(TOXDIR)/py36/bin/activate
-	. $(TOXDIR)/py36/bin/activate && python -m flake8
+lint: $(TOXDIR)/py310/bin/activate
+	. $(TOXDIR)/py310/bin/activate && python -m flake8
 
-mypy: $(TOXDIR)/py36/bin/activate
-	. $(TOXDIR)/py36/bin/activate && python -m mypy -p $(MODNAME)
+mypy: $(TOXDIR)/py310/bin/activate
+	. $(TOXDIR)/py310/bin/activate && python -m mypy -p $(MODNAME)
 
 .PHONY: test testenv clean install source deb dsc rpm wheel egg all rpm_dirs rpm_spec docs lint mypy

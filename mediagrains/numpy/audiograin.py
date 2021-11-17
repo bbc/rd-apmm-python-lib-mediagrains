@@ -67,7 +67,7 @@ def _dtype_from_cogaudioformat(format: CogAudioFormat) -> np.dtype:
     raise NotImplementedError("Cog Audio Format not amongst those supported for numpy array interpretation")
 
 
-def _channel_arrays_for_data_and_type(data: np.ndarray,
+def _channel_arrays_for_data_and_type(data: Optional[np.ndarray],
                                       format: CogAudioFormat,
                                       samples: int,
                                       channels: int) -> List[np.ndarray]:
@@ -77,6 +77,8 @@ def _channel_arrays_for_data_and_type(data: np.ndarray,
     24-bit samples are widened to 32-bit. Planar 24-bit samples held in the lower part of 32-bit are shifted to the
     upper part.
     """
+    if data is None:
+        return []
     if COG_AUDIO_IS_INT(format) and COG_AUDIO_FORMAT_DEPTH(format) == COG_AUDIO_FORMAT_DEPTH_S24:
         if COG_AUDIO_FORMAT_SAMPLEBYTES(format) == 3:
             # Widen samples to int32
@@ -130,12 +132,13 @@ def _channel_arrays_for_data_and_type(data: np.ndarray,
 class AUDIOGRAIN (bytesgrain.AUDIOGRAIN):
     def __init__(self, meta: AudioGrainMetadataDict, data: GrainDataParameterType):
         super().__init__(meta, data)
-        self._data: np.ndarray
+        self._data: Optional[np.ndarray]
         self._data_fetcher_coroutine: Optional[Awaitable[GrainDataType]]
         self.channel_data: List[np.ndarray]
 
         if self._data is not None:
             self._data = np.frombuffer(self._data, dtype=_dtype_from_cogaudioformat(self.format))
+        if self._data is not None:
             self.channel_data = _channel_arrays_for_data_and_type(
                 self._data, self.format, self.samples, self.channels
             )
@@ -144,7 +147,10 @@ class AUDIOGRAIN (bytesgrain.AUDIOGRAIN):
 
     @property
     def length(self) -> int:
-        return self._data.nbytes
+        if self._data is not None:
+            return self._data.nbytes
+        else:
+            return 0
 
     @length.setter
     def length(self, L: int) -> None:
@@ -152,7 +158,7 @@ class AUDIOGRAIN (bytesgrain.AUDIOGRAIN):
         super(AUDIOGRAIN, type(self)).length.fset(self, L)  # type: ignore
 
     @property
-    def data(self) -> np.ndarray:
+    def data(self) -> Optional[np.ndarray]:
         return self._data
 
     @data.setter
@@ -168,17 +174,20 @@ class AUDIOGRAIN (bytesgrain.AUDIOGRAIN):
                 self._data, self.format, self.samples, self.channels
             )
 
-    def __array__(self) -> np.ndarray:
+    def __array__(self) -> Optional[np.ndarray]:
         return np.array(self.data)
 
     def __bytes__(self) -> bytes:
+        if self._data is None:
+            return bytes()
         return bytes(self._data)
 
     def __copy__(self) -> "AUDIOGRAIN":
         return AudioGrain(copy(self.meta), self.data)
 
     def __deepcopy__(self, memo) -> "AUDIOGRAIN":
-        return AudioGrain(deepcopy(self.meta), self._data.copy())
+        return AudioGrain(deepcopy(self.meta),
+                          self._data.copy() if self._data is not None else None)
 
     def __repr__(self) -> str:
         if self.data is None:

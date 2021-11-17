@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-from asynctest import TestCase
+from unittest import TestCase
 
 from uuid import UUID
 from mediatimestamp.immutable import Timestamp

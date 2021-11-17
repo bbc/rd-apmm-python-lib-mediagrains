@@ -14,12 +14,11 @@
 # limitations under the License.
 #
 
-from asynctest import TestCase
+from unittest import IsolatedAsyncioTestCase, mock
 import uuid
 from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from mediatimestamp.immutable import Timestamp, TimeOffset, TimeRange
-from asynctest import mock
 from fractions import Fraction
 import json
 from copy import copy, deepcopy
@@ -90,7 +89,7 @@ class ConvertsToTimestamp (object):
         return self.ts
 
 
-class TestGrain (TestCase):
+class TestGrain (IsolatedAsyncioTestCase):
     def test_empty_grain_creation(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = Grain(src_id, flow_id)

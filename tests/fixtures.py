@@ -84,14 +84,12 @@ def async_test(suppress_warnings):
     def __outer(f):
         @wraps(f)
         def __inner(*args, **kwargs):
-            loop = asyncio.get_event_loop()
-            loop.set_debug(True)
             E = None
             warns = []
 
             try:
                 with warnings.catch_warnings(record=True) as warns:
-                    loop.run_until_complete(f(*args, **kwargs))
+                    asyncio.run(f(*args, **kwargs), debug=True)
 
             except AssertionError as e:
                 E = e

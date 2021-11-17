@@ -7,11 +7,11 @@
  - Run Python 3 unit tests in tox
  - Build Debian packages for supported Ubuntu versions
 
- If these steps succeed and the master branch is being built, wheels and debs are uploaded to Artifactory and the
+ If these steps succeed and the main branch is being built, wheels and debs are uploaded to Artifactory and the
  R&D Debian mirrors.
 
  Optionally you can set FORCE_PYUPLOAD to force upload to Artifactory, and FORCE_DEBUPLOAD to force Debian package
- upload on non-master branches.
+ upload on non-main branches.
 */
 
 pipeline {
@@ -23,7 +23,7 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10')) // Discard old builds
     }
     triggers {
-        cron((env.BRANCH_NAME == 'master' || env.BRANCH_NAME == 'dev')? 'H H(0-8) * * *' : '') // Build master some time every morning
+        cron((env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'dev')? 'H H(0-8) * * *' : '') // Build main some time every morning
     }
     parameters {
         booleanParam(name: "FORCE_PYPIUPLOAD", defaultValue: false, description: "Force Python artifact upload to PyPi")
@@ -40,16 +40,17 @@ pipeline {
             steps {
                 sh 'git clean -dfx'
                 sh 'rm -rf /tmp/$(basename ${WORKSPACE})/'
+                bbcStagePyenvEnsureVersion("3.10.0")
             }
         }
         stage ("Tests") {
             stages {
-                stage ("Py36 Linting Check") {
+                stage ("Linting Check") {
                     steps {
                         script {
                             env.lint3_result = "FAILURE"
                         }
-                        bbcGithubNotify(context: "lint/flake8_3", status: "PENDING")
+                        bbcGithubNotify(context: "lint/flake8", status: "PENDING")
                         withBBCRDPythonArtifactory {
                             sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-lint make lint'
                         }
@@ -59,11 +60,11 @@ pipeline {
                     }
                     post {
                         always {
-                            bbcGithubNotify(context: "lint/flake8_3", status: env.lint3_result)
+                            bbcGithubNotify(context: "lint/flake8", status: env.lint3_result)
                         }
                     }
                 }
-                stage ("Py36 Type Check") {
+                stage ("Type Check") {
                     steps {
                         script {
                             env.mypy_result = "FAILURE"
@@ -90,23 +91,23 @@ pipeline {
                         }
                     }
                 }
-                stage ("Python 3 Unit Tests") {
+                stage ("Unit Tests") {
                     steps {
                         script {
-                            env.py36_result = "FAILURE"
+                            env.unit_result = "FAILURE"
                         }
-                        bbcGithubNotify(context: "tests/py36", status: "PENDING")
+                        bbcGithubNotify(context: "tests/unit", status: "PENDING")
                         // Use a workdirectory in /tmp to avoid shebang length limitation
                         withBBCRDPythonArtifactory {
-                            sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-py36 make test'
+                            sh 'TOXDIR=/tmp/$(basename ${WORKSPACE})/tox-unit make test'
                         }
                         script {
-                            env.py36_result = "SUCCESS" // This will only run if the sh above succeeded
+                            env.unit_result = "SUCCESS" // This will only run if the sh above succeeded
                         }
                     }
                     post {
                         always {
-                            bbcGithubNotify(context: "tests/py36", status: env.py36_result)
+                            bbcGithubNotify(context: "tests/unit", status: env.unit_result)
                         }
                     }
                 }
@@ -170,7 +171,7 @@ pipeline {
                     expression { return params.FORCE_DEBUPLOAD }
                     expression { return params.FORCE_DOCSUPLOAD }
                     expression {
-                        bbcShouldUploadArtifacts(branches: ["master", "dev"])
+                        bbcShouldUploadArtifacts(branches: ["main", "dev"])
                     }
                 }
             }
@@ -180,7 +181,7 @@ pipeline {
                         anyOf {
                             expression { return params.FORCE_DOCSUPLOAD }
                             expression {
-                                bbcShouldUploadArtifacts(branches: ["master", "dev"])
+                                bbcShouldUploadArtifacts(branches: ["main", "dev"])
                             }
                         }
                     }
@@ -193,7 +194,7 @@ pipeline {
                         anyOf {
                             expression { return params.FORCE_PYPIUPLOAD }
                             expression {
-                                bbcShouldUploadArtifacts(branches: ["master"])
+                                bbcShouldUploadArtifacts(branches: ["main"])
                             }
                         }
                     }
@@ -204,8 +205,8 @@ pipeline {
                         bbcGithubNotify(context: "pypi/upload", status: "PENDING")
                         sh 'rm -rf dist/*'
                         withBBCRDPythonArtifactory {
-                            bbcMakeGlobalWheel("py36")
-                            bbcTwineUpload(toxenv: "py36", pypi: true)
+                            bbcMakeGlobalWheel("py310")
+                            bbcTwineUpload(toxenv: "py310", pypi: true)
                         }
                         script {
                             env.pypiUpload_result = "SUCCESS" // This will only run if the steps above succeeded
@@ -233,8 +234,8 @@ pipeline {
                         bbcGithubNotify(context: "artifactory/upload", status: "PENDING")
                         sh 'rm -rf dist/*'
                         withBBCRDPythonArtifactory {
-                            bbcMakeGlobalWheel("py36")
-                            bbcTwineUpload(toxenv: "py36", pypi: false)
+                            bbcMakeGlobalWheel("py310")
+                            bbcTwineUpload(toxenv: "py310", pypi: false)
                         }
                         script {
                             env.artifactoryUpload_result = "SUCCESS" // This will only run if the steps above succeeded
@@ -251,7 +252,7 @@ pipeline {
                         anyOf {
                             expression { return params.FORCE_DEBUPLOAD }
                             expression {
-                                bbcShouldUploadArtifacts(branches: ["master"])
+                                bbcShouldUploadArtifacts(branches: ["main"])
                             }
                         }
                     }
@@ -283,7 +284,7 @@ pipeline {
     }
     post {
         always {
-            bbcSlackNotify(channel: "#apmm-cloudfit", branches: ["master", "dev"])
+            bbcSlackNotify(channel: "#apmm-cloudfit", branches: ["main", "dev"])
         }
     }
 }

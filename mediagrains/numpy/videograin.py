@@ -159,7 +159,7 @@ def _component_arrays_for_interleaved_444_take_three(data0: np.ndarray,
                    strides=(stride, itemsize*num_components)).transpose()]
 
 
-def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, components: bytesgrain.VIDEOGRAIN.COMPONENT_LIST):
+def _component_arrays_for_data_and_type(data: Optional[np.ndarray], fmt: CogFrameFormat, components: bytesgrain.VIDEOGRAIN.COMPONENT_LIST):
     """This method returns a list of numpy array views which can be used to directly access the components of the video frame
     without any need for conversion or copying. This is not possible for all formats.
 
@@ -169,6 +169,9 @@ def _component_arrays_for_data_and_type(data: np.ndarray, fmt: CogFrameFormat, c
 
     For weird packed formats like v210 nothing can be done, an empty list is returned since no individual component access is possible.
     """
+    if data is None:
+        return []
+
     if COG_FRAME_IS_PLANAR(fmt):
         return [
             as_strided(data[component.offset//data.itemsize:(component.offset + component.length)//data.itemsize],
@@ -233,7 +236,7 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
 
     def __init__(self, meta: VideoGrainMetadataDict, data: GrainDataParameterType):
         super().__init__(meta, data)
-        self._data: np.ndarray
+        self._data: Optional[np.ndarray]
         self._data_fetcher_coroutine: Optional[Awaitable[GrainDataType]]
         self.component_data: ComponentDataList
 
@@ -247,6 +250,8 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
 
     @property
     def length(self) -> int:
+        if self._data is None:
+            return 0
         return self._data.nbytes
 
     @length.setter
@@ -255,7 +260,7 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
         super(VIDEOGRAIN, type(self)).length.fset(self, L)  # type: ignore
 
     @property
-    def data(self) -> np.ndarray:
+    def data(self) -> Optional[np.ndarray]:
         return self._data
 
     @data.setter
@@ -275,13 +280,16 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
         return np.array(self.data)
 
     def __bytes__(self) -> bytes:
+        if self._data is None:
+            return bytes()
         return bytes(self._data)
 
     def __copy__(self) -> "VIDEOGRAIN":
         return VideoGrain(copy(self.meta), self.data)
 
     def __deepcopy__(self, memo) -> "VIDEOGRAIN":
-        return VideoGrain(deepcopy(self.meta), self._data.copy())
+        return VideoGrain(deepcopy(self.meta),
+                          self._data.copy() if self._data is not None else None)
 
     def __repr__(self) -> str:
         if self.data is None:

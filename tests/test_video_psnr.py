@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-from asynctest import TestCase
+from unittest import TestCase
 from sys import version_info
 import uuid
 
