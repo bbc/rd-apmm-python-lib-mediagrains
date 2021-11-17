@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 
-from asynctest import TestCase
+from unittest import IsolatedAsyncioTestCase
 
 import uuid
 from fractions import Fraction
@@ -53,7 +53,7 @@ PCM_FORMATS = [
 ]
 
 
-class TestPSNR (TestCase):
+class TestPSNR (IsolatedAsyncioTestCase):
     def _min_max_val(self, fmt):
         if COG_AUDIO_IS_FLOAT(fmt) or COG_AUDIO_IS_DOUBLE(fmt):
             min_val = -1.0

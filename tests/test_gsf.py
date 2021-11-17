@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-from asynctest import TestCase, mock
+from unittest import IsolatedAsyncioTestCase, mock
 from uuid import UUID
 from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
@@ -57,7 +57,7 @@ with open('examples/interleaved.gsf', 'rb') as f:
     INTERLEAVED_DATA = f.read()
 
 
-class TestGSFDumps(TestCase):
+class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_no_grains(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'), UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
         created = datetime(1983, 3, 29, 15, 15)
@@ -1268,7 +1268,7 @@ class TestGSFDumps(TestCase):
         self.assertEqual(enc.segments[2]._grains[0], grain0)
 
 
-class TestGSFBlock(TestCase):
+class TestGSFBlock(IsolatedAsyncioTestCase):
     """Test the GSF decoder block handler correctly parses various types"""
 
     async def test_read_uint(self):
@@ -1516,7 +1516,7 @@ class TestGSFBlock(TestCase):
                 self.assertEqual(child_bytes_consumed + UUT.block_start + 8, test_stream.tell())
 
 
-class TestGSFDecoder(TestCase):
+class TestGSFDecoder(IsolatedAsyncioTestCase):
     """Tests for the GSFDecoder in its more object-oriented mode
 
     Note that very little testing of the decoded data happens here, that's handled by TestGSFLoads()
@@ -1890,7 +1890,7 @@ class TestGSFDecoder(TestCase):
                 self.assertEqual(grain.length, grain_data_size)
 
 
-class TestGSFLoads(TestCase):
+class TestGSFLoads(IsolatedAsyncioTestCase):
     def test_loads_video(self):
         (head, segments) = loads(VIDEO_DATA)
 

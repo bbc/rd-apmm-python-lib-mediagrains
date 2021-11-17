@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 
-from asynctest import TestCase
+from unittest import IsolatedAsyncioTestCase
 import os
 
 from mediagrains.utils.adts_aac_parser import ADTSAACParser, MIN_ADTS_HEADER_SIZE
@@ -21,7 +21,7 @@ from mediagrains.utils.adts_aac_parser import ADTSAACParser, MIN_ADTS_HEADER_SIZ
 TEST_FILE = os.path.dirname(__file__) + "/audio.aac"
 
 
-class TestADTSAACParser(TestCase):
+class TestADTSAACParser(IsolatedAsyncioTestCase):
     def setUp(self):
         self.uut = ADTSAACParser()
 

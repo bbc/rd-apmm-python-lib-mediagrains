@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-from asynctest import TestCase, mock
+from unittest import IsolatedAsyncioTestCase, mock
 
 import uuid
 from mediagrains.numpy import VideoGrain, VIDEOGRAIN
@@ -49,7 +49,7 @@ class ConvertibleToTimestamp (object):
         return self.ts
 
 
-class TestGrain (TestCase):
+class TestGrain (IsolatedAsyncioTestCase):
     def _get_bitdepth(self, fmt):
         if COG_FRAME_IS_PLANAR(fmt):
             return COG_FRAME_FORMAT_ACTIVE_BITS(fmt)
