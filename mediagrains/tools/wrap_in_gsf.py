@@ -94,17 +94,19 @@ def wrap_video_in_gsf():
     flow_id = args.flow_id if args.flow_id else uuid.uuid4()
     source_id = args.source_id if args.source_id else uuid.uuid4()
 
+    duration = 1/args.rate
+
     if args.format in [CogFrameFormat.H264, CogFrameFormat.AVCI]:
         template_grain = CodedVideoGrain(
             flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, rate=args.rate,
-            origin_width=width, origin_height=height, coded_width=0, coded_height=0,
+            duration=duration, origin_width=width, origin_height=height, coded_width=0, coded_height=0,
             cog_frame_format=args.format
         )
         Wrapper = H264GrainWrapper
     else:
         template_grain = VideoGrain(
             flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, rate=args.rate,
-            width=width, height=height, cog_frame_format=args.format
+            duration=duration, width=width, height=height, cog_frame_format=args.format
         )
         Wrapper = GrainWrapper
 
@@ -145,9 +147,12 @@ def wrap_audio_in_gsf():
     source_id = args.source_id if args.source_id else uuid.uuid4()
 
     if args.format == CogAudioFormat.AAC:
+        duration = fractions.Fraction(args.samples_per_grain, args.sample_rate)
+
         template_grain = CodedAudioGrain(
             flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, sample_rate=args.sample_rate,
-            channels=args.channels, samples=args.samples_per_grain, cog_audio_format=args.format
+            duration=duration, channels=args.channels, samples=args.samples_per_grain, cog_audio_format=args.format,
+            rate=fractions.Fraction(0, 1)
         )
         Wrapper = ADTSAACGrainWrapper
 
@@ -164,11 +169,12 @@ def wrap_audio_in_gsf():
         if sample_rate is None:
             sample_rate = 48000
 
-        grain_rate = fractions.Fraction(sample_rate, samples_per_grain)
+        duration = fractions.Fraction(samples_per_grain, sample_rate)
 
         template_grain = AudioGrain(
             flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, sample_rate=sample_rate,
-            rate=grain_rate, channels=channels, samples=samples_per_grain, cog_audio_format=args.format
+            duration=duration, channels=channels, samples=samples_per_grain, cog_audio_format=args.format,
+            rate=fractions.Fraction(0, 1)
         )
         Wrapper = GrainWrapper
 
