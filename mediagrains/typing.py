@@ -52,16 +52,23 @@ __all__ = ["RationalTypes",
 RationalTypes = Union[str, float, Decimal, Rational]
 
 # TODO: Move this into mediajson, and make it actually describe what is serialisable.
-# At current due to weaknesses in mypy this is rather limited and only provides type safety for a limited depth of json strucure
+# At current due to weaknesses in mypy this is rather limited and only provides type safety for a limited depth of json
+# strucure
 #
 #  Hopefully at some point in the future proper recursive type definitions will be supported
 #  Until that time we simply assume none of our json structures are all that deep
 _MediaJSONSerialisable_value = Union[str, int, UUID, TimeOffset, TimeRange, Fraction]
-_MediaJSONSerialisable0 = Union[_MediaJSONSerialisable_value, Sequence[Any], Mapping[str, Any]]  # This means that type checking stops at the fourth level
-_MediaJSONSerialisable1 = Union[_MediaJSONSerialisable_value, Sequence[_MediaJSONSerialisable0], Mapping[str, _MediaJSONSerialisable0]]
-_MediaJSONSerialisable2 = Union[_MediaJSONSerialisable_value, Sequence[_MediaJSONSerialisable1], Mapping[str, _MediaJSONSerialisable1]]
-_MediaJSONSerialisable3 = Union[_MediaJSONSerialisable_value, Sequence[_MediaJSONSerialisable2], Mapping[str, _MediaJSONSerialisable2]]
-_MediaJSONSerialisable4 = Union[_MediaJSONSerialisable_value, Sequence[_MediaJSONSerialisable3], Mapping[str, _MediaJSONSerialisable3]]
+
+# This means that type checking stops at the fourth level
+_MediaJSONSerialisable0 = Union[_MediaJSONSerialisable_value, Sequence[Any], Mapping[str, Any]]
+_MediaJSONSerialisable1 = Union[_MediaJSONSerialisable_value,
+                                Sequence[_MediaJSONSerialisable0], Mapping[str, _MediaJSONSerialisable0]]
+_MediaJSONSerialisable2 = Union[_MediaJSONSerialisable_value,
+                                Sequence[_MediaJSONSerialisable1], Mapping[str, _MediaJSONSerialisable1]]
+_MediaJSONSerialisable3 = Union[_MediaJSONSerialisable_value,
+                                Sequence[_MediaJSONSerialisable2], Mapping[str, _MediaJSONSerialisable2]]
+_MediaJSONSerialisable4 = Union[_MediaJSONSerialisable_value,
+                                Sequence[_MediaJSONSerialisable3], Mapping[str, _MediaJSONSerialisable3]]
 MediaJSONSerialisable = _MediaJSONSerialisable4
 
 
@@ -256,5 +263,6 @@ GrainDataType = Union[SupportsBytes, bytes]
 GrainDataParameterType = Optional[Union[GrainDataType, Awaitable[Optional[GrainDataType]]]]
 
 
-# This is the type of a function that can be called to construct a GRAIN object from a metadata dict and a data parameter
+# This is the type of a function that can be called to construct a GRAIN object from a metadata dict and a data
+# parameter
 ParseGrainType = Callable[[GrainMetadataDict, GrainDataParameterType], "GRAIN"]

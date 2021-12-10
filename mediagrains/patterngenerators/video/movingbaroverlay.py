@@ -80,19 +80,19 @@ class MovingBarOverlay (VideoPatternGenerator):
                 line_no = ((fnum + y) % grain.components[0].height)
                 cast(bytearray, grain.data)[
                     grain.components[0].offset + line_no*grain.components[0].stride:
-                    grain.components[0].offset + line_no*grain.components[0].stride + grain.components[0].width*_bpp] = (
+                    grain.components[0].offset+line_no*grain.components[0].stride+grain.components[0].width*_bpp] = (
                         self._bar[0][y*grain.components[0].width * _bpp: (y+1)*grain.components[0].width * _bpp])
             for y in range(0, self._bar_height >> v_shift):
                 line_no = (((fnum >> v_shift) + y) % grain.components[1].height)
                 cast(bytearray, grain.data)[
                     grain.components[1].offset + line_no*grain.components[1].stride:
-                    grain.components[1].offset + line_no*grain.components[1].stride + grain.components[1].width*_bpp] = (
+                    grain.components[1].offset+line_no*grain.components[1].stride+grain.components[1].width*_bpp] = (
                         self._bar[1][y*grain.components[1].width * _bpp: (y+1)*grain.components[1].width * _bpp])
 
                 line_no = (((fnum >> v_shift) + y) % grain.components[2].height)
                 cast(bytearray, grain.data)[
                     grain.components[2].offset + line_no*grain.components[2].stride:
-                    grain.components[2].offset + line_no*grain.components[2].stride + grain.components[2].width*_bpp] = (
+                    grain.components[2].offset+line_no*grain.components[2].stride+grain.components[2].width*_bpp] = (
                         self._bar[2][y*grain.components[2].width * _bpp: (y+1)*grain.components[2].width * _bpp])
 
         return grain

@@ -113,7 +113,8 @@ def ColourBars(src_id, flow_id, width, height,
 
 @deprecated(version="2.13.0", reason="Please use mediagrains.patterngenerators instead")
 def MovingBarOverlay(grain_gen, height=100, speed=1.0):
-    """Call this method and pass an iterable of video grains as the first parameter. This method will overlay a moving black bar onto the grains.
+    """Call this method and pass an iterable of video grains as the first parameter. This method will overlay a moving
+    black bar onto the grains.
 
     :param grain_gen: An iterable which yields video grains
     :param heigh: The height of the bar in pixels
@@ -152,17 +153,23 @@ def MovingBarOverlay(grain_gen, height=100, speed=1.0):
 
         for y in range(0, height):
             grain.data[
-                grain.components[0].offset + ((fnum + y) % grain.components[0].height)*grain.components[0].stride:
-                grain.components[0].offset + ((fnum + y) % grain.components[0].height)*grain.components[0].stride + grain.components[0].width*_bpp] = (
+                grain.components[0].offset + ((fnum + y) % grain.components[0].height)
+                * grain.components[0].stride:
+                grain.components[0].offset + ((fnum + y) % grain.components[0].height)
+                * grain.components[0].stride + grain.components[0].width*_bpp] = (
                     bar[0][y*grain.components[0].width * _bpp: (y+1)*grain.components[0].width * _bpp])
         for y in range(0, height // v_subs):
             grain.data[
-                grain.components[1].offset + ((fnum//v_subs + y) % grain.components[1].height)*grain.components[1].stride:
-                grain.components[1].offset + ((fnum//v_subs + y) % grain.components[1].height)*grain.components[1].stride + grain.components[1].width*_bpp] = (
+                grain.components[1].offset + ((fnum//v_subs + y) % grain.components[1].height)
+                * grain.components[1].stride:
+                grain.components[1].offset + ((fnum//v_subs + y) % grain.components[1].height)
+                * grain.components[1].stride + grain.components[1].width*_bpp] = (
                     bar[1][y*grain.components[1].width * _bpp: (y+1)*grain.components[1].width * _bpp])
             grain.data[
-                grain.components[2].offset + ((fnum//v_subs + y) % grain.components[2].height)*grain.components[2].stride:
-                grain.components[2].offset + ((fnum//v_subs + y) % grain.components[2].height)*grain.components[2].stride + grain.components[2].width*_bpp] = (
+                grain.components[2].offset + ((fnum//v_subs + y) % grain.components[2].height)
+                * grain.components[2].stride:
+                grain.components[2].offset + ((fnum//v_subs + y) % grain.components[2].height)
+                * grain.components[2].stride + grain.components[2].width*_bpp] = (
                     bar[2][y*grain.components[2].width * _bpp: (y+1)*grain.components[2].width * _bpp])
 
         yield grain

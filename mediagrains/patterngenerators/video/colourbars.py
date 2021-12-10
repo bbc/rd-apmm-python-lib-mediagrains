@@ -52,7 +52,10 @@ class ColourBars(StillPatternGenerator):
                         width=width,
                         height=height)
 
-        lines = [bytearray(vg.components[0].width*_bpp), bytearray(vg.components[1].width*_bpp), bytearray(vg.components[2].width*_bpp)]
+        lines = [
+            bytearray(vg.components[0].width*_bpp),
+            bytearray(vg.components[1].width*_bpp),
+            bytearray(vg.components[2].width*_bpp)]
         for c in range(0, 3):
             for x in range(0, vg.components[c].width):
                 pos = x//(vg.components[c].width//_steps)

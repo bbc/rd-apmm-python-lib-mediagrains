@@ -116,12 +116,14 @@ def run_asyncgenerator_synchronously(gen: AsyncIterator[T]) -> Iterator[T]:
     else:
         results = ResultsType[T]()
 
-        def _run_generator_in_new_thread(gen: AsyncIterator[T]) -> Tuple[threading.Thread, threading.Event, threading.Event]:
+        def _run_generator_in_new_thread(
+         gen: AsyncIterator[T]) -> Tuple[threading.Thread, threading.Event, threading.Event]:
             agen_should_yield = threading.Event()
             agen_has_yielded = threading.Event()
 
             def __inner() -> None:
-                async def _run_asyncgen_with_events(gen: AsyncIterator[T], agen_should_yield: threading.Event, agen_has_yielded: threading.Event) -> T:
+                async def _run_asyncgen_with_events(
+                 gen: AsyncIterator[T], agen_should_yield: threading.Event, agen_has_yielded: threading.Event) -> T:
                     try:
                         async for x in gen:
                             agen_should_yield.wait()
@@ -136,7 +138,8 @@ def run_asyncgenerator_synchronously(gen: AsyncIterator[T]) -> Iterator[T]:
                         agen_has_yielded.set()
 
                 loop = asyncio.new_event_loop()
-                loop.run_until_complete(results.capture(_run_asyncgen_with_events(gen, agen_should_yield, agen_has_yielded)))
+                loop.run_until_complete(
+                    results.capture(_run_asyncgen_with_events(gen, agen_should_yield, agen_has_yielded)))
                 loop.close()
 
             t = threading.Thread(target=__inner)

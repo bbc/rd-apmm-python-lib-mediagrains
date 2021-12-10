@@ -107,7 +107,9 @@ class PatternGenerator (Generic[G], metaclass=ABCMeta):
         if skip == 1:
             return (grain for grain in (self.get(tv) for tv in rng) if grain is not None)
         else:
-            return (grain for grain in (self.get(tv) for (i, tv) in zip(itertools.count(), rng) if i % skip == 0) if grain is not None)
+            return (
+                grain for grain in (
+                    self.get(tv) for (i, tv) in zip(itertools.count(), rng) if i % skip == 0) if grain is not None)
 
     @abstractmethod
     def get(self, key: TimeValue, default: Optional[G] = None) -> Optional[G]:

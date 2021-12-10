@@ -41,28 +41,41 @@ def lists_of_grains_varying_entries(grains, entry_strategies, min_size=2, max_si
             setattr(g, key, entries[key])
         return g
 
-    return grains.flatmap(lambda grain: lists(fixed_dictionaries(entry_strategies),
-                                              min_size=min_size,
-                                              max_size=max_size).map(lambda dicts: [_grain_adjusting_entries(grain, entries) for entries in dicts]))
+    return grains.flatmap(lambda grain: lists(
+            fixed_dictionaries(entry_strategies),
+            min_size=min_size,
+            max_size=max_size
+        ).map(
+            lambda dicts: [_grain_adjusting_entries(grain, entries) for entries in dicts]))
 
 
 def pairs_of_grains_of_type_differing_only_at_specified_attribute(grain_type, attr):
-    """Strategy giving pairs of grains of the specified type that differ from each other only in the specified attribute"""
-    return lists_of_grains_varying_entries(grains(grain_type), {attr: strategy_for_grain_attribute(attr, grain_type=grain_type)}, max_size=2).map(tuple)
+    """Strategy giving pairs of grains of the specified type that differ from each other only in the specified
+    attribute"""
+    return lists_of_grains_varying_entries(
+        grains(grain_type),
+        {attr: strategy_for_grain_attribute(attr, grain_type=grain_type)},
+        max_size=2).map(tuple)
 
 
 def attribute_and_pairs_of_grains_of_type_differing_only_in_one_attribute(grain_type):
-    """Strategy giving a tuple of an attribute name and a pair of grains of the specified type that differ only in the drawn attribute.
+    """Strategy giving a tuple of an attribute name and a pair of grains of the specified type that differ only in the
+    drawn attribute.
 
-    For some types of grain the attribute drawn can include "data" which is generated a little differently from other types of attribute as befits its unusual
-    nature"""
+    For some types of grain the attribute drawn can include "data" which is generated a little differently from other
+    types of attribute as befits its unusual nature"""
 
     attr_strat = attributes_for_grain_type(grain_type)
-    grain_strat = sampled_from(attr_strat).flatmap(lambda attr: tuples(just(attr),
-                                                                       pairs_of_grains_of_type_differing_only_at_specified_attribute(grain_type, attr)))
+    grain_strat = sampled_from(attr_strat).flatmap(
+        lambda attr: tuples(
+            just(attr),
+            pairs_of_grains_of_type_differing_only_at_specified_attribute(
+                grain_type, attr)))
 
     if grain_type in ("audio", "video", "coded_audio", "coded_video"):
-        return grain_strat | grains(grain_type).flatmap(lambda g: tuples(just("data"), pairs_of(grains_from_template_with_data(g))))
+        return grain_strat | grains(grain_type).flatmap(
+            lambda g: tuples(
+                just("data"), pairs_of(grains_from_template_with_data(g))))
     else:
         return grain_strat
 

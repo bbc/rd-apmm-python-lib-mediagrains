@@ -54,20 +54,19 @@ class TestTone1K(TestCase):
 
             for n in range(0, 1920):
                 self.assertEqual(data[2*n + 0], round(sin(2.0*n*pi/48.0)*(1 << 14)),
-                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n,
-                                                                                                               data[2*n + 0],
-                                                                                                               round(sin(2.0*n*pi/48.0)*(1 << 14))))
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(
+                                    2*n, data[2*n + 0], round(sin(2.0*n*pi/48.0)*(1 << 14))))
                 self.assertEqual(data[2*n + 1], round(sin(2.0*n*pi/48.0)*(1 << 14)),
-                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n + 1,
-                                                                                                               data[2*n + 1],
-                                                                                                               round(sin(2.0*n*pi/48.0)*(1 << 14))))
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(
+                                    2*n + 1, data[2*n + 1], round(sin(2.0*n*pi/48.0)*(1 << 14))))
             ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
 
     def test_tone1k_s16_interleaved_at_44_1k(self):
         """Testing that Tone1K generator produces correct audio grains when
         channels is 2 and sample_rate is 44100Hz"""
         with self.assertWarns(DeprecationWarning):
-            UUT = Tone1K(src_id, flow_id, channels=2, samples=1764, origin_timestamp=origin_timestamp, sample_rate=44100)
+            UUT = Tone1K(
+                src_id, flow_id, channels=2, samples=1764, origin_timestamp=origin_timestamp, sample_rate=44100)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
@@ -86,13 +85,11 @@ class TestTone1K(TestCase):
 
             for n in range(0, 1764):
                 self.assertEqual(data[2*n + 0], round(sin(2.0*offs*pi/44.1)*(1 << 14)),
-                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n,
-                                                                                                               data[2*n + 0],
-                                                                                                               round(sin(2.0*offs*pi/44.1)*(1 << 14))))
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(
+                                    2*n, data[2*n + 0], round(sin(2.0*offs*pi/44.1)*(1 << 14))))
                 self.assertEqual(data[2*n + 1], round(sin(2.0*offs*pi/44.1)*(1 << 14)),
-                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n + 1,
-                                                                                                               data[2*n + 1],
-                                                                                                               round(sin(2.0*offs*pi/44.1)*(1 << 14))))
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(
+                                    2*n + 1, data[2*n + 1], round(sin(2.0*offs*pi/44.1)*(1 << 14))))
                 offs += 1
             ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
 
@@ -100,7 +97,8 @@ class TestTone1K(TestCase):
         """Testing that Tone1K generator produces correct audio grains when
         channels is 2 and samples is 1024"""
         with self.assertWarns(DeprecationWarning):
-            UUT = Tone1K(src_id, flow_id, channels=2, samples=1024, origin_timestamp=origin_timestamp, sample_rate=48000)
+            UUT = Tone1K(
+                src_id, flow_id, channels=2, samples=1024, origin_timestamp=origin_timestamp, sample_rate=48000)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
@@ -120,13 +118,11 @@ class TestTone1K(TestCase):
 
             for n in range(0, 1024):
                 self.assertEqual(data[2*n + 0], round(sin(2.0*offs*pi/48.0)*(1 << 14)),
-                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n,
-                                                                                                               data[2*n + 0],
-                                                                                                               round(sin(2.0*offs*pi/48.0)*(1 << 14))))
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(
+                                    2*n, data[2*n + 0], round(sin(2.0*offs*pi/48.0)*(1 << 14))))
                 self.assertEqual(data[2*n + 1], round(sin(2.0*offs*pi/48.0)*(1 << 14)),
-                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n + 1,
-                                                                                                               data[2*n + 1],
-                                                                                                               round(sin(2.0*offs*pi/48.0)*(1 << 14))))
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(
+                                    2*n + 1, data[2*n + 1], round(sin(2.0*offs*pi/48.0)*(1 << 14))))
                 offs += 1
                 offs %= 48
             N += 1
@@ -156,20 +152,19 @@ class TestSilence(TestCase):
 
             for n in range(0, 1920):
                 self.assertEqual(data[2*n + 0], 0,
-                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n,
-                                                                                                               data[2*n + 0],
-                                                                                                               0))
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(
+                                    2*n, data[2*n + 0], 0))
                 self.assertEqual(data[2*n + 1], 0,
-                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n + 1,
-                                                                                                               data[2*n + 1],
-                                                                                                               0))
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(
+                                    2*n + 1, data[2*n + 1], 0))
             ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
 
     def test_silence_s16_interleaved_at_44_1k(self):
         """Testing that Silence generator produces correct audio grains when
         channels is 2 and sample_rate is 44100Hz"""
         with self.assertWarns(DeprecationWarning):
-            UUT = Silence(src_id, flow_id, channels=2, samples=1764, origin_timestamp=origin_timestamp, sample_rate=44100)
+            UUT = Silence(
+                src_id, flow_id, channels=2, samples=1764, origin_timestamp=origin_timestamp, sample_rate=44100)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
@@ -188,13 +183,11 @@ class TestSilence(TestCase):
 
             for n in range(0, 1764):
                 self.assertEqual(data[2*n + 0], 0,
-                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n,
-                                                                                                               data[2*n + 0],
-                                                                                                               0))
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(
+                                    2*n, data[2*n + 0], 0))
                 self.assertEqual(data[2*n + 1], 0,
-                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n + 1,
-                                                                                                               data[2*n + 1],
-                                                                                                               0))
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(
+                                    2*n + 1, data[2*n + 1], 0))
                 offs += 1
             ts = Timestamp.from_count(ts.to_count(25, 1) + 1, 25, 1)
 
@@ -202,7 +195,8 @@ class TestSilence(TestCase):
         """Testing that Silence generator produces correct audio grains when
         channels is 2 and samples is 1024"""
         with self.assertWarns(DeprecationWarning):
-            UUT = Silence(src_id, flow_id, channels=2, samples=1024, origin_timestamp=origin_timestamp, sample_rate=48000)
+            UUT = Silence(
+                src_id, flow_id, channels=2, samples=1024, origin_timestamp=origin_timestamp, sample_rate=48000)
 
         grains = [grain for _, grain in zip(range(10), UUT)]
 
@@ -222,13 +216,11 @@ class TestSilence(TestCase):
 
             for n in range(0, 1024):
                 self.assertEqual(data[2*n + 0], 0,
-                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n,
-                                                                                                               data[2*n + 0],
-                                                                                                               0))
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(
+                                    2*n, data[2*n + 0], 0))
                 self.assertEqual(data[2*n + 1], 0,
-                                 msg="Sample {} has value {} which does not match expected value of {}".format(2*n + 1,
-                                                                                                               data[2*n + 1],
-                                                                                                               0))
+                                 msg="Sample {} has value {} which does not match expected value of {}".format(
+                                    2*n + 1, data[2*n + 1], 0))
                 offs += 1
                 offs %= 48
             N += 1
@@ -493,10 +485,18 @@ class TestColourBars(TestCase):
 
             for y in range(0, height):
                 for x in range(0, width//2):
-                    self.assertEqual(Y[y*grain.components[0].stride + 4*x + 0], int(0.75*expected[(2*x + 0)//(width//8)][0]) & 0xFF)
-                    self.assertEqual(Y[y*grain.components[0].stride + 4*x + 1], int(0.75*expected[(2*x + 0)//(width//8)][0]) >> 8)
-                    self.assertEqual(Y[y*grain.components[0].stride + 4*x + 2], int(0.75*expected[(2*x + 1)//(width//8)][0]) & 0xFF)
-                    self.assertEqual(Y[y*grain.components[0].stride + 4*x + 3], int(0.75*expected[(2*x + 1)//(width//8)][0]) >> 8)
+                    self.assertEqual(
+                        Y[y*grain.components[0].stride + 4*x + 0],
+                        int(0.75*expected[(2*x + 0)//(width//8)][0]) & 0xFF)
+                    self.assertEqual(
+                        Y[y*grain.components[0].stride + 4*x + 1],
+                        int(0.75*expected[(2*x + 0)//(width//8)][0]) >> 8)
+                    self.assertEqual(
+                        Y[y*grain.components[0].stride + 4*x + 2],
+                        int(0.75*expected[(2*x + 1)//(width//8)][0]) & 0xFF)
+                    self.assertEqual(
+                        Y[y*grain.components[0].stride + 4*x + 3],
+                        int(0.75*expected[(2*x + 1)//(width//8)][0]) >> 8)
                     self.assertEqual(U[y*grain.components[1].stride + 2*x + 0], expected[x//(width//16)][1] & 0xFF)
                     self.assertEqual(U[y*grain.components[1].stride + 2*x + 1], expected[x//(width//16)][1] >> 8)
                     self.assertEqual(V[y*grain.components[2].stride + 2*x + 0], expected[x//(width//16)][2] & 0xFF)
@@ -654,10 +654,18 @@ class TestMovingBarOverlay(TestCase):
                         self.assertEqual(V[y*grain.components[2].stride + 2*x + 1], 2)
                 else:
                     for x in range(0, width//2):
-                        self.assertEqual(Y[y*grain.components[0].stride + 4*x + 0], int(0.75*expected[(2*x + 0)//(width//8)][0]) & 0xFF)
-                        self.assertEqual(Y[y*grain.components[0].stride + 4*x + 1], int(0.75*expected[(2*x + 0)//(width//8)][0]) >> 8)
-                        self.assertEqual(Y[y*grain.components[0].stride + 4*x + 2], int(0.75*expected[(2*x + 1)//(width//8)][0]) & 0xFF)
-                        self.assertEqual(Y[y*grain.components[0].stride + 4*x + 3], int(0.75*expected[(2*x + 1)//(width//8)][0]) >> 8)
+                        self.assertEqual(
+                            Y[y*grain.components[0].stride + 4*x + 0],
+                            int(0.75*expected[(2*x + 0)//(width//8)][0]) & 0xFF)
+                        self.assertEqual(
+                            Y[y*grain.components[0].stride + 4*x + 1],
+                            int(0.75*expected[(2*x + 0)//(width//8)][0]) >> 8)
+                        self.assertEqual(
+                            Y[y*grain.components[0].stride + 4*x + 2],
+                            int(0.75*expected[(2*x + 1)//(width//8)][0]) & 0xFF)
+                        self.assertEqual(
+                            Y[y*grain.components[0].stride + 4*x + 3],
+                            int(0.75*expected[(2*x + 1)//(width//8)][0]) >> 8)
                         self.assertEqual(U[y*grain.components[1].stride + 2*x + 0], expected[x//(width//16)][1] & 0xFF)
                         self.assertEqual(U[y*grain.components[1].stride + 2*x + 1], expected[x//(width//16)][1] >> 8)
                         self.assertEqual(V[y*grain.components[2].stride + 2*x + 0], expected[x//(width//16)][2] & 0xFF)

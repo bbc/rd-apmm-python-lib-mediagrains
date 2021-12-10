@@ -72,7 +72,10 @@ def _set_colour_bars(vg, noise_mask=0xffff):
         (int((0x1DFF >> bs) * intensity), 0xFFFF >> bs, 0x6BFF >> bs),
         (int((0x0000 >> bs) * intensity), 0x8000 >> bs, 0x8000 >> bs)]
 
-    lines = [bytearray(vg.components[0].width*_bpp), bytearray(vg.components[1].width*_bpp), bytearray(vg.components[2].width*_bpp)]
+    lines = [
+        bytearray(vg.components[0].width*_bpp),
+        bytearray(vg.components[1].width*_bpp),
+        bytearray(vg.components[2].width*_bpp)]
     for c in range(0, 3):
         for x in range(0, vg.components[c].width):
             pos = x//(vg.components[c].width//_steps)
@@ -93,21 +96,17 @@ def _convert_u8_uyvy(grain_u8):
     for y in range(0, grain_u8.height):
         for x in range(0, grain_u8.width//2):
             # U
-            grain_uyvy.data[y*grain_uyvy.components[0].stride + 4*x + 0] = grain_u8.data[grain_u8.components[1].offset +
-                                                                                         y*grain_u8.components[1].stride +
-                                                                                         x]
+            grain_uyvy.data[y*grain_uyvy.components[0].stride + 4*x + 0] = grain_u8.data[
+                grain_u8.components[1].offset + y*grain_u8.components[1].stride + x]
             # Y
-            grain_uyvy.data[y*grain_uyvy.components[0].stride + 4*x + 1] = grain_u8.data[grain_u8.components[0].offset +
-                                                                                         y*grain_u8.components[0].stride +
-                                                                                         2*x + 0]
+            grain_uyvy.data[y*grain_uyvy.components[0].stride + 4*x + 1] = grain_u8.data[
+                grain_u8.components[0].offset + y*grain_u8.components[0].stride + 2*x + 0]
             # V
-            grain_uyvy.data[y*grain_uyvy.components[0].stride + 4*x + 2] = grain_u8.data[grain_u8.components[2].offset +
-                                                                                         y*grain_u8.components[2].stride +
-                                                                                         x]
+            grain_uyvy.data[y*grain_uyvy.components[0].stride + 4*x + 2] = grain_u8.data[
+                grain_u8.components[2].offset + y*grain_u8.components[2].stride + x]
             # Y
-            grain_uyvy.data[y*grain_uyvy.components[0].stride + 4*x + 3] = grain_u8.data[grain_u8.components[0].offset +
-                                                                                         y*grain_u8.components[0].stride +
-                                                                                         2*x + 1]
+            grain_uyvy.data[y*grain_uyvy.components[0].stride + 4*x + 3] = grain_u8.data[
+                grain_u8.components[0].offset + y*grain_u8.components[0].stride + 2*x + 1]
 
     return grain_uyvy
 
@@ -138,10 +137,12 @@ class TestPSNR(TestCase):
         self._test_planar_format(CogFrameFormat.U8_422, [36.47984486113692, 39.45318336217709, 38.90095545159027])
 
     def test_planar_10bit(self):
-        self._test_planar_format(CogFrameFormat.S16_422_10BIT, [48.8541475647564, 50.477799910245636, 50.477799910245636])
+        self._test_planar_format(
+            CogFrameFormat.S16_422_10BIT, [48.8541475647564, 50.477799910245636, 50.477799910245636])
 
     def test_planar_12bit(self):
-        self._test_planar_format(CogFrameFormat.S16_422_12BIT, [60.30687786176762, 62.525365357931186, 62.525365357931186])
+        self._test_planar_format(
+            CogFrameFormat.S16_422_12BIT, [60.30687786176762, 62.525365357931186, 62.525365357931186])
 
     def test_planar_16bit(self):
         self._test_planar_format(CogFrameFormat.S16_422, [84.39126581514387, 86.60975331130743, 86.60975331130743])

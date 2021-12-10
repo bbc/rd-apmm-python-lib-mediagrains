@@ -206,11 +206,19 @@ class H264Parser(object):
                                     (slice_header.idr_pic_flag == 1 and
                                         slice_header.idr_pic_id != first_slice_header.idr_pic_id) or
                                     (sps.pic_order_cnt_type == 0 and
-                                        (slice_header.pic_order_cnt_lsb != first_slice_header.pic_order_cnt_lsb or
-                                            slice_header.delta_pic_order_cnt_bottom != first_slice_header.delta_pic_order_cnt_bottom)) or
+                                        (
+                                            slice_header.pic_order_cnt_lsb
+                                            != first_slice_header.pic_order_cnt_lsb
+                                            or
+                                            slice_header.delta_pic_order_cnt_bottom
+                                            != first_slice_header.delta_pic_order_cnt_bottom)) or
                                     (sps.pic_order_cnt_type == 1 and
-                                        (slice_header.delta_pic_order_cnt_0 != first_slice_header.delta_pic_order_cnt_0 or
-                                            slice_header.delta_pic_order_cnt_1 != first_slice_header.delta_pic_order_cnt_1)))):
+                                        (
+                                            slice_header.delta_pic_order_cnt_0
+                                            != first_slice_header.delta_pic_order_cnt_0
+                                            or
+                                            slice_header.delta_pic_order_cnt_1
+                                            != first_slice_header.delta_pic_order_cnt_1)))):
                             have_start_next_frame = True
                             break
 

@@ -348,8 +348,10 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_audiograins(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = AudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
-        grain1 = AudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
+        grain0 = AudioGrain(
+            src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
+        grain1 = AudioGrain(
+            src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
         for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
         for i in range(0, len(grain1.data)):
@@ -403,8 +405,10 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_audiograins(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = AudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
-        grain1 = AudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
+        grain0 = AudioGrain(
+            src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
+        grain1 = AudioGrain(
+            src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
         for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
         for i in range(0, len(grain1.data)):
@@ -461,10 +465,28 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_codedvideograins(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = CodedVideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.VC2, origin_width=1920, origin_height=1080, coded_width=1920,
-                                 coded_height=1088, is_key_frame=True, temporal_offset=-23, length=1024, unit_offsets=[5, 15, 105])
-        grain1 = CodedVideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.VC2, origin_width=1920, origin_height=1080, coded_width=1920,
-                                 coded_height=1088, temporal_offset=17, length=256)
+        grain0 = CodedVideoGrain(
+            src_id,
+            flow_id,
+            cog_frame_format=CogFrameFormat.VC2,
+            origin_width=1920,
+            origin_height=1080,
+            coded_width=1920,
+            coded_height=1088,
+            is_key_frame=True,
+            temporal_offset=-23,
+            length=1024,
+            unit_offsets=[5, 15, 105])
+        grain1 = CodedVideoGrain(
+            src_id,
+            flow_id,
+            cog_frame_format=CogFrameFormat.VC2,
+            origin_width=1920,
+            origin_height=1080,
+            coded_width=1920,
+            coded_height=1088,
+            temporal_offset=17,
+            length=256)
         for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
         for i in range(0, len(grain1.data)):
@@ -528,10 +550,28 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_codedvideograins(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = CodedVideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.VC2, origin_width=1920, origin_height=1080, coded_width=1920,
-                                 coded_height=1088, is_key_frame=True, temporal_offset=-23, length=1024, unit_offsets=[5, 15, 105])
-        grain1 = CodedVideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.VC2, origin_width=1920, origin_height=1080, coded_width=1920,
-                                 coded_height=1088, temporal_offset=17, length=256)
+        grain0 = CodedVideoGrain(
+            src_id,
+            flow_id,
+            cog_frame_format=CogFrameFormat.VC2,
+            origin_width=1920,
+            origin_height=1080,
+            coded_width=1920,
+            coded_height=1088,
+            is_key_frame=True,
+            temporal_offset=-23,
+            length=1024,
+            unit_offsets=[5, 15, 105])
+        grain1 = CodedVideoGrain(
+            src_id,
+            flow_id,
+            cog_frame_format=CogFrameFormat.VC2,
+            origin_width=1920,
+            origin_height=1080,
+            coded_width=1920,
+            coded_height=1088,
+            temporal_offset=17,
+            length=256)
         for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
         for i in range(0, len(grain1.data)):
@@ -598,8 +638,24 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_codedaudiograins(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = CodedAudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.AAC, samples=1920, sample_rate=48000, priming=23, remainder=17, length=1024)
-        grain1 = CodedAudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.AAC, samples=1920, sample_rate=48000, priming=5, remainder=104, length=1500)
+        grain0 = CodedAudioGrain(
+            src_id,
+            flow_id,
+            cog_audio_format=CogAudioFormat.AAC,
+            samples=1920,
+            sample_rate=48000,
+            priming=23,
+            remainder=17,
+            length=1024)
+        grain1 = CodedAudioGrain(
+            src_id,
+            flow_id,
+            cog_audio_format=CogAudioFormat.AAC,
+            samples=1920,
+            sample_rate=48000,
+            priming=5,
+            remainder=104,
+            length=1500)
         for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
         for i in range(0, len(grain1.data)):
@@ -657,8 +713,24 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_codedaudiograins(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = CodedAudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.AAC, samples=1920, sample_rate=48000, priming=23, remainder=17, length=1024)
-        grain1 = CodedAudioGrain(src_id, flow_id, cog_audio_format=CogAudioFormat.AAC, samples=1920, sample_rate=48000, priming=5, remainder=104, length=1500)
+        grain0 = CodedAudioGrain(
+            src_id,
+            flow_id,
+            cog_audio_format=CogAudioFormat.AAC,
+            samples=1920,
+            sample_rate=48000,
+            priming=23,
+            remainder=17,
+            length=1024)
+        grain1 = CodedAudioGrain(
+            src_id,
+            flow_id,
+            cog_audio_format=CogAudioFormat.AAC,
+            samples=1920,
+            sample_rate=48000,
+            priming=5,
+            remainder=104,
+            length=1500)
         for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
         for i in range(0, len(grain1.data)):
@@ -1470,7 +1542,8 @@ class TestGSFBlock(IsolatedAsyncioTestCase):
         async with self._make_sample_stream() as test_stream:
             async with AsyncGSFBlock(test_stream) as UUT:
                 await UUT.read_uint(4)  # Use a read to skip ahead a bit
-                self.assertEqual(28 - 8 - 4, UUT.get_remaining())  # Block was 28 bytes, 8 bytes header, 4 bytes read_uint
+                # Block was 28 bytes, 8 bytes header, 4 bytes read_uint
+                self.assertEqual(28 - 8 - 4, UUT.get_remaining())
 
     async def test_contextmanager_has_child(self):
         """Test the context manager detects whether another child is present correctly"""
@@ -1641,7 +1714,8 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
 
     async def test_async_comparison_of_lazy_loaded_grains(self):
         async with GSFDecoder(file_data=AsyncBytesIO(VIDEO_DATA)) as dec:
-            grains = [grain async for (grain, local_id) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY)]
+            grains = [
+                grain async for (grain, local_id) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY)]
 
         # Restart the decoder
         async with GSFDecoder(file_data=AsyncBytesIO(VIDEO_DATA)) as dec:
@@ -1660,7 +1734,8 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         # Restart the decoder
         video_data_stream.seek(0)
         with GSFDecoder(file_data=video_data_stream) as dec:
-            comp = compare_grain(grains[0], next(dec.grains(loading_mode=GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE))[0])
+            comp = compare_grain(
+                grains[0], next(dec.grains(loading_mode=GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE))[0])
             self.assertTrue(comp, msg="{!s}".format(comp))
 
     @suppress_deprecation_warnings
@@ -1935,7 +2010,9 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
             self.assertEqual(grain.components[2].length, 240*135)
             self.assertEqual(grain.components[2].offset, 480*270 + 240*135)
 
-            self.assertEqual(len(grain.data), grain.components[0].length + grain.components[1].length + grain.components[2].length)
+            self.assertEqual(
+                len(grain.data),
+                grain.components[0].length + grain.components[1].length + grain.components[2].length)
 
     def test_load_video(self):
         file = BytesIO(VIDEO_DATA)
@@ -1979,7 +2056,9 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
             self.assertEqual(grain.components[2].stride, 240)
             self.assertEqual(grain.components[2].length, 240*135)
 
-            self.assertEqual(len(grain.data), grain.components[0].length + grain.components[1].length + grain.components[2].length)
+            self.assertEqual(
+                len(grain.data),
+                grain.components[0].length + grain.components[1].length + grain.components[2].length)
 
     def test_load_uses_custom_grain_function(self):
         file = BytesIO(VIDEO_DATA)
@@ -2213,10 +2292,13 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
         self.assertEqual(head['segments'][0]['tags'], [])
         self.assertEqual(head['segments'][0]['count'], 1)
         self.assertEqual(head['tags'], [])
-        self.assertEqual(segments[1][0].timelabels, [{'tag': 'dummy timecode', 'timelabel': {'frames_since_midnight': 7,
-                                                                                             'frame_rate_numerator': 25,
-                                                                                             'frame_rate_denominator': 1,
-                                                                                             'drop_frame': False}}])
+        self.assertEqual(segments[1][0].timelabels, [{
+            'tag': 'dummy timecode',
+            'timelabel': {
+                'frames_since_midnight': 7,
+                'frame_rate_numerator': 25,
+                'frame_rate_denominator': 1,
+                'drop_frame': False}}])
 
     async def test_async_load_decodes_tils(self):
         src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
@@ -2256,10 +2338,13 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
         self.assertEqual(head['segments'][0]['tags'], [])
         self.assertEqual(head['segments'][0]['count'], 1)
         self.assertEqual(head['tags'], [])
-        self.assertEqual(segments[1][0].timelabels, [{'tag': 'dummy timecode', 'timelabel': {'frames_since_midnight': 7,
-                                                                                             'frame_rate_numerator': 25,
-                                                                                             'frame_rate_denominator': 1,
-                                                                                             'drop_frame': False}}])
+        self.assertEqual(segments[1][0].timelabels, [{
+            'tag': 'dummy timecode',
+            'timelabel': {
+                'frames_since_midnight': 7,
+                'frame_rate_numerator': 25,
+                'frame_rate_denominator': 1,
+                'drop_frame': False}}])
 
     def test_loads_raises_when_grain_type_unknown(self):
         with self.assertRaises(GSFDecodeError) as cm:
@@ -2397,8 +2482,32 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
             self.assertEqual(len(grain.event_data), 1)
             self.assertEqual(grain.event_data[0].path, 'Subs')
             self.assertEqual(grain.event_data[0].pre, line)
-            line = '<?xml version="1.0" encoding="UTF-8"?>\n<tt:tt ttp:timeBase="clock" ttp:clockMode="utc" xml:lang="en" xmlns:tt="http://www.w3.org/ns/ttml"  xmlns:ebuttExt="urn:ebu:tt:extension"  xmlns:ttp="http://www.w3.org/ns/ttml#parameter" xmlns:tts="http://www.w3.org/ns/ttml#styling" ttp:cellResolution="50 30" xmlns:ebuttm="urn:ebu:tt:metadata" tts:extent="1920px 1080px" ttp:dropMode="nonDrop" ttp:markerMode="discontinuous" ebuttm:sequenceIdentifier="5333bae9-0768-4e31-be1c-fbd5dc2e34ac" ebuttm:sequenceNumber="' + str(seqnum) + '"><tt:head><tt:metadata><ebuttm:documentMetadata><ebuttm:documentEbuttVersion>v1.0</ebuttm:documentEbuttVersion><ebuttm:documentTotalNumberOfSubtitles>1</ebuttm:documentTotalNumberOfSubtitles><ebuttm:documentMaximumNumberOfDisplayableCharacterInAnyRow>40</ebuttm:documentMaximumNumberOfDisplayableCharacterInAnyRow><ebuttm:documentCountryOfOrigin>gb</ebuttm:documentCountryOfOrigin></ebuttm:documentMetadata></tt:metadata><tt:styling><tt:style xml:id="defaultStyle" tts:fontFamily="monospaceSansSerif" tts:fontSize="1c 1c" tts:lineHeight="normal" tts:textAlign="center" tts:color="white" tts:backgroundColor="transparent" tts:fontStyle="normal" tts:fontWeight="normal" tts:textDecoration="none" /><tt:style xml:id="WhiteOnBlack" tts:color="white" tts:backgroundColor="black" tts:fontSize="1c 2c"/><tt:style xml:id="textCenter" tts:textAlign="center"/></tt:styling><tt:layout><tt:region xml:id="bottom" tts:origin="10% 10%" tts:extent="80% 80%" tts:padding="0c" tts:displayAlign="after" tts:writingMode="lrtb"/></tt:layout></tt:head><tt:body dur="00:00:10"><tt:div style="defaultStyle"><tt:p xml:id="sub2" style="textCenter" region="bottom"><tt:span style="WhiteOnBlack">' + ots.to_iso8601_utc() + '</tt:span></tt:p></tt:div></tt:body></tt:tt>'  # NOQA
-            self.assertEqual(grain.event_data[0].post, line, msg="\n\nExpected:\n\n{!r}\n\nGot:\n\n{!r}\n\n".format(line, grain.event_data[0].post))
+            line = ((
+                '<?xml version="1.0" encoding="UTF-8"?>\n<tt:tt ttp:timeBase="clock" ttp:clockMode="utc"'
+                ' xml:lang="en" xmlns:tt="http://www.w3.org/ns/ttml"  xmlns:ebuttExt="urn:ebu:tt:extension"'
+                '  xmlns:ttp="http://www.w3.org/ns/ttml#parameter" xmlns:tts="http://www.w3.org/ns/ttml#styling"'
+                ' ttp:cellResolution="50 30" xmlns:ebuttm="urn:ebu:tt:metadata" tts:extent="1920px 1080px"'
+                ' ttp:dropMode="nonDrop" ttp:markerMode="discontinuous"'
+                ' ebuttm:sequenceIdentifier="5333bae9-0768-4e31-be1c-fbd5dc2e34ac" ebuttm:sequenceNumber="')
+                + str(seqnum) + (
+                '"><tt:head><tt:metadata><ebuttm:documentMetadata><ebuttm:documentEbuttVersion>'
+                'v1.0</ebuttm:documentEbuttVersion><ebuttm:documentTotalNumberOfSubtitles>'
+                '1</ebuttm:documentTotalNumberOfSubtitles><ebuttm:documentMaximumNumberOfDisplayableCharacterInAnyRow>'
+                '40</ebuttm:documentMaximumNumberOfDisplayableCharacterInAnyRow><ebuttm:documentCountryOfOrigin>'
+                'gb</ebuttm:documentCountryOfOrigin></ebuttm:documentMetadata></tt:metadata><tt:styling>'
+                '<tt:style xml:id="defaultStyle" tts:fontFamily="monospaceSansSerif" tts:fontSize="1c 1c"'
+                ' tts:lineHeight="normal" tts:textAlign="center" tts:color="white" tts:backgroundColor="transparent"'
+                ' tts:fontStyle="normal" tts:fontWeight="normal" tts:textDecoration="none" /><tt:style'
+                ' xml:id="WhiteOnBlack" tts:color="white" tts:backgroundColor="black" tts:fontSize="1c 2c"/>'
+                '<tt:style xml:id="textCenter" tts:textAlign="center"/></tt:styling><tt:layout><tt:region'
+                ' xml:id="bottom" tts:origin="10% 10%" tts:extent="80% 80%" tts:padding="0c" tts:displayAlign="after"'
+                ' tts:writingMode="lrtb"/></tt:layout></tt:head><tt:body dur="00:00:10"><tt:div style="defaultStyle">'
+                '<tt:p xml:id="sub2" style="textCenter" region="bottom"><tt:span style="WhiteOnBlack">')
+                + ots.to_iso8601_utc() + '</tt:span></tt:p></tt:div></tt:body></tt:tt>')  # NOQA
+            self.assertEqual(
+                grain.event_data[0].post,
+                line,
+                msg="\n\nExpected:\n\n{!r}\n\nGot:\n\n{!r}\n\n".format(line, grain.event_data[0].post))
 
             ots = ots + TimeOffset.from_nanosec(20000000)
             seqnum += 20000000
