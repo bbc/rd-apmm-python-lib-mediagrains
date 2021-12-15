@@ -1,0 +1,31 @@
+{%- set modname = "mediagrains" -%}
+{%- import 'static-commontooling/docker/Dockerfile_multi_macros.j2' as macros -%}
+
+{{ macros.preamble() }}
+
+{{ macros.layer(modname, entrypoint=False) }}
+
+{{ macros.testdeps(modname) }}
+
+{{ macros.tests(modname) }}
+
+###############################################################################
+# Stage: unittest
+###############################################################################
+FROM tests AS unittest
+WORKDIR /{{ modname }}/
+
+COPY tests/audio.aac tests/
+
+# Set the default command
+ENTRYPOINT ["python", "-m", "unittest"]
+CMD ["discover", "tests", "-v"]
+
+{{ macros.flake8(modname) }}
+
+{{ macros.mypy(modname) }}
+
+{{ macros.wheel(modname) }}
+
+{{ macros.docs(modname) }}
+CMD ["--html", "--force", "--skip-errors", "--output-dir", ".", "{{ modname }}"]

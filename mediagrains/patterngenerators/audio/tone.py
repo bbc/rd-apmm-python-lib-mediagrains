@@ -59,7 +59,8 @@ class Tone(AudioPatternGenerator):
             self.looplen = self.sample_rate
             if (self.looplen % self.frequency) == 0:
                 self.looplen //= self.frequency
-        self._sample_values = [sin(2.0*n*pi*float(self.frequency)/float(self.sample_rate)) for n in range(0, self.looplen)]
+        self._sample_values = [
+            sin(2.0*n*pi*float(self.frequency)/float(self.sample_rate)) for n in range(0, self.looplen)]
 
         self.data_samples: Dict[int, bytes] = {}
 

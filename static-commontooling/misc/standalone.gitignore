@@ -163,6 +163,3 @@ _version.py
 
 # Temporary directories for files copied out of commontooling
 .tmp/
-
-# Extra gitignore lines from Makefile
-Dockerfile.multi

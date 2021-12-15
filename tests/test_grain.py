@@ -417,7 +417,9 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*1080*2*2)
 
-        self.assertEqual(repr(grain), "VideoGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
+        self.assertEqual(
+            repr(grain),
+            "VideoGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
         self.assertEqual(grain.components, [{'stride': 1920*2,
                                              'width': 1920,
@@ -595,7 +597,9 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*1080*2*2)
 
-        self.assertEqual(repr(grain), "VideoGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
+        self.assertEqual(
+            repr(grain),
+            "VideoGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
         self.assertEqual(dict(grain.components[0]), {'stride': 1920*2,
                                                      'width': 1920,
@@ -793,7 +797,9 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(len(grain.data), 1920*2*2)
         self.assertEqual(grain.expected_length, 1920*2*2)
 
-        self.assertEqual(repr(grain), "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
+        self.assertEqual(
+            repr(grain),
+            "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_audio_grain_create_fills_in_missing_sts(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -820,7 +826,9 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*2*2)
 
-        self.assertEqual(repr(grain), "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
+        self.assertEqual(
+            repr(grain),
+            "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_audio_grain_create_fills_in_missing_ots(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -847,7 +855,9 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), 1920*2*2)
 
-        self.assertEqual(repr(grain), "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
+        self.assertEqual(
+            repr(grain),
+            "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_audio_grain_create_fails_with_no_params(self):
         with self.assertRaises(AttributeError):
@@ -922,7 +932,8 @@ class TestGrain (IsolatedAsyncioTestCase):
         try:
             self.assertEqual(json.loads(json.dumps(grain.meta)), grain.meta)
         except ValueError:
-            self.fail(msg="Json serialisation produces: {} which is not json deserialisable".format(json.dumps(grain.meta)))
+            self.fail(
+                msg="Json serialisation produces: {} which is not json deserialisable".format(json.dumps(grain.meta)))
 
     def test_grain_makes_audiograin(self):
         meta = {
@@ -1011,7 +1022,9 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), grain.length)
 
-        self.assertEqual(repr(grain), "CodedVideoGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
+        self.assertEqual(
+            repr(grain),
+            "CodedVideoGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_video_grain_create_fills_empty_meta(self):
         meta = {}
@@ -1259,7 +1272,9 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), grain.length)
 
-        self.assertEqual(repr(grain), "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
+        self.assertEqual(
+            repr(grain),
+            "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_audio_grain_create_without_sts(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -1294,7 +1309,9 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), grain.length)
 
-        self.assertEqual(repr(grain), "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
+        self.assertEqual(
+            repr(grain),
+            "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_audio_grain_create_without_sts_or_ots(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -1329,7 +1346,9 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertIsInstance(grain.data, bytearray)
         self.assertEqual(len(grain.data), grain.length)
 
-        self.assertEqual(repr(grain), "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
+        self.assertEqual(
+            repr(grain),
+            "CodedAudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
     def test_coded_audio_grain_create_fills_empty_meta(self):
         meta = {}
@@ -1433,7 +1452,8 @@ class TestGrain (IsolatedAsyncioTestCase):
         try:
             self.assertEqual(json.loads(json.dumps(grain.meta)), grain.meta)
         except ValueError:
-            self.fail(msg="Json serialisation produces: {} which is not json deserialisable".format(json.dumps(grain.meta)))
+            self.fail(msg="Json serialisation produces: {} which is not json deserialisable".format(
+                json.dumps(grain.meta)))
 
     def test_grain_makes_codedaudiograin(self):
         meta = {

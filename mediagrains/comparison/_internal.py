@@ -23,7 +23,8 @@ from functools import reduce
 import struct
 import sys
 
-from ..cogenums import CogAudioFormat, CogFrameFormat, COG_FRAME_IS_PACKED, COG_FRAME_IS_COMPRESSED, COG_FRAME_FORMAT_BYTES_PER_VALUE
+from ..cogenums import (CogAudioFormat, CogFrameFormat, COG_FRAME_IS_PACKED, COG_FRAME_IS_COMPRESSED,
+                        COG_FRAME_FORMAT_BYTES_PER_VALUE)
 
 from .options import Exclude, Include, ComparisonExclude, ComparisonExpectDifferenceMatches, ComparisonPSNR
 from .psnr import compute_psnr
@@ -38,7 +39,8 @@ class ComparisonResult (object):
 
     public interface, attributes, all read only:
 
-    identifier -- an identifier identifing what was being compared, will contain a single {} for substituting the name of the top level object
+    identifier -- an identifier identifing what was being compared, will contain a single {} for substituting the
+                  name of the top level object
     attr -- an attribute name which identifies this within it's immedaite parent. Sometimes is None
     a -- the first object that was compared
     b -- the second object that was compared
@@ -99,7 +101,9 @@ class ComparisonResult (object):
             return self._msg + ': ' + '; '.join(msgs)
 
     def excluded(self):
-        return (len([option for option in self._options if isinstance(option, ComparisonExclude) and self._identifier == option.path]) != 0)
+        return (len([
+            option for option in self._options if isinstance(
+                option, ComparisonExclude) and self._identifier == option.path]) != 0)
 
     def ownoptions(self):
         return [option for option in self._options if self._identifier == option.path]
@@ -150,7 +154,8 @@ class ComparisonResult (object):
         return self._str()
 
     def __repr__(self):
-        return "{}(identifier={!r}, a={!r}, b={!r}, options={!r})".format(self.__class__.__name__, self._identifier, self._a, self._b, self._options)
+        return "{}(identifier={!r}, a={!r}, b={!r}, options={!r})".format(
+            self.__class__.__name__, self._identifier, self._a, self._b, self._options)
 
     def subcomparison_for_attribute(self, key):
         results = [c for c in self.children if c.attr == key]
@@ -181,22 +186,28 @@ class EqualityComparisonResult(ComparisonResult):
         if a == b:
             return (True, "{} == {!r}".format(self._identifier.format('<a/b>'), a), [])
         else:
-            return (False, "{} == {!r}, {} == {!r} no match".format(self._identifier.format('a'), a, self._identifier.format('b'), b), [])
+            return (False, "{} == {!r}, {} == {!r} no match".format(
+                self._identifier.format('a'), a, self._identifier.format('b'), b), [])
 
 
 class DataEqualityComparisonResult(ComparisonResult):
-    """This comparison result is used for comparing long data strings to each other, and provides useful information like the first byte at which they differ"""
-    def __init__(self, identifier, a, b, words_per_sample=1, alignment='@', word_code='B', force_signed=False, **kwargs):
+    """This comparison result is used for comparing long data strings to each other, and provides useful information
+    like the first byte at which they differ"""
+    def __init__(
+     self, identifier, a, b, words_per_sample=1, alignment='@', word_code='B', force_signed=False, **kwargs):
         """:param words_per_sample: The number of words read from the file in each sample, default is 1
         :param alignment: One of the strings used by struct to indicate word endianness, default is system endianness
-        :param word_code: The character code used by struct to indicate the word format and size, by default is unsigned bytes.
-        :param force_signed: If set to True the final assembled value will be forced to be signed even if it was read from unsigned values"""
+        :param word_code: The character code used by struct to indicate the word format and size, by default is
+                          unsigned bytes.
+        :param force_signed: If set to True the final assembled value will be forced to be signed even if it was read
+                             from unsigned values"""
         self.words_per_sample = words_per_sample
         self.alignment = alignment
         self.word_code = word_code
         self.d = None
 
-        # a and b might be various types of objects that can be converted into bytes objects, this ensures they are simple bytes objects
+        # a and b might be various types of objects that can be converted into bytes objects, this ensures they are
+        # simple bytes objects
         if a is not None:
             a = bytes(a)
         if b is not None:
@@ -254,8 +265,8 @@ class DataEqualityComparisonResult(ComparisonResult):
                                                                                         len(a)), [])
 
         if self.excluded():
-            return (False, "For speed reasons not comparing {} and {} when this would be excluded".format(self._identifier.format('a'),
-                                                                                                          self._identifier.format('b')), [])
+            return (False, "For speed reasons not comparing {} and {} when this would be excluded".format(
+                self._identifier.format('a'), self._identifier.format('b')), [])
 
         self.d = SequenceMatcher(None, a, b)
         if self.d.ratio() == 1.0:
@@ -309,9 +320,9 @@ class DataEqualityComparisonResult(ComparisonResult):
             pass
         elif self.d.ratio() < 1.0:
             prefix += "  "
-            opstrings = [prefix + "{:7}   a[{}:{}] --> b[{}:{}] {:>8} --> {}".format(tag, i1, i2, j1, j2,
-                                                                                     '(' + ', '.join(str(x) for x in self.a[i1:i2]) + ')',
-                                                                                     '(' + ', '.join(str(x) for x in self.b[i1:i2]) + ')')
+            opstrings = [prefix + "{:7}   a[{}:{}] --> b[{}:{}] {:>8} --> {}".format(
+                            tag, i1, i2, j1, j2, '(' + ', '.join(str(x) for x in self.a[i1:i2]) + ')',
+                            '(' + ', '.join(str(x) for x in self.b[i1:i2]) + ')')
                          for (tag, i1, i2, j1, j2) in self.d.get_opcodes()[:5]]
             r += '\n' + opstrings[0]
             if len(opstrings) > 1:
@@ -335,21 +346,24 @@ class DifferenceComparisonResult(ComparisonResult):
         diff = a - b
         if len(opts) == 0:
             if diff == self._expected_difference:
-                return (True, "{} - {} == {!r} as expected".format(self._identifier.format('a'), self._identifier.format('b'), diff), [])
+                return (True, "{} - {} == {!r} as expected".format(
+                    self._identifier.format('a'), self._identifier.format('b'), diff), [])
             else:
-                return (False, "{} - {} == {!r}, not the expected {!r}".format(self._identifier.format('a'), self._identifier.format('b'), diff,
-                                                                               self._expected_difference), [])
+                return (False, "{} - {} == {!r}, not the expected {!r}".format(
+                    self._identifier.format('a'), self._identifier.format('b'), diff, self._expected_difference), [])
         else:
             if all(opt.matcher(diff) for opt in opts):
-                return (True, "{} - {} == {!r}, meets requirements set in options".format(self._identifier.format('a'), self._identifier.format('b'), diff), [])
+                return (True, "{} - {} == {!r}, meets requirements set in options".format(
+                    self._identifier.format('a'), self._identifier.format('b'), diff), [])
             else:
-                return (False, "{} - {} == {!r}, does not meet requirements set in options".format(self._identifier.format('a'), self._identifier.format('b'),
-                                                                                                   diff), [])
+                return (False, "{} - {} == {!r}, does not meet requirements set in options".format(
+                    self._identifier.format('a'), self._identifier.format('b'), diff), [])
 
 
 class TimestampDifferanceComparisonResult(DifferenceComparisonResult):
     def __init__(self, identifier, a, b, expected_difference=TimeOffset(0), **kwargs):
-        super(TimestampDifferanceComparisonResult, self).__init__(identifier, a, b, expected_difference=expected_difference, **kwargs)
+        super(TimestampDifferanceComparisonResult, self).__init__(
+            identifier, a, b, expected_difference=expected_difference, **kwargs)
 
 
 class PSNRComparisonResult(ComparisonResult):
@@ -364,26 +378,26 @@ class PSNRComparisonResult(ComparisonResult):
         super(PSNRComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
     def compare(self, a, b):
-        opts = [option for option in self._options if isinstance(option, ComparisonPSNR) and self.identifier == option.path]
+        opts = [
+            option for option in self._options if isinstance(option, ComparisonPSNR) and self.identifier == option.path
+            ]
 
         if self.excluded():
-            return (False, "For speed reasons not comparing {} and {} when this would be excluded".format(self._identifier.format('a'),
-                                                                                                          self._identifier.format('b')), [])
+            return (False, "For speed reasons not comparing {} and {} when this would be excluded".format(
+                self._identifier.format('a'), self._identifier.format('b')), [])
 
         try:
             psnr = compute_psnr(a, b)
         except NotImplementedError:
-            return (False, "Grain is not supported for PSNR comparison of {} and {}".format(self._identifier.format('a'),
-                                                                                            self._identifier.format('b')), [])
+            return (False, "Grain is not supported for PSNR comparison of {} and {}".format(
+                self._identifier.format('a'), self._identifier.format('b')), [])
 
         if all(opt.matcher(psnr) for opt in opts):
-            return (True, "PSNR({}, {}) == {!r}, meets requirements set in options".format(self._identifier.format('a'),
-                                                                                           self._identifier.format('b'),
-                                                                                           psnr), [])
+            return (True, "PSNR({}, {}) == {!r}, meets requirements set in options".format(
+                self._identifier.format('a'), self._identifier.format('b'), psnr), [])
         else:
-            return (False, "PSNR({}, {}) == {!r}, does not meet requirements set in options".format(self._identifier.format('a'),
-                                                                                                    self._identifier.format('b'),
-                                                                                                    psnr), [])
+            return (False, "PSNR({}, {}) == {!r}, does not meet requirements set in options".format(
+                    self._identifier.format('a'), self._identifier.format('b'), psnr), [])
 
 
 class AOnlyComparisonResult(ComparisonResult):
@@ -391,7 +405,8 @@ class AOnlyComparisonResult(ComparisonResult):
         super(AOnlyComparisonResult, self).__init__(identifier, a, None, **kwargs)
 
     def compare(self, a, b):
-        return (False, "{} == {!r} but {} does not exist".format(self._identifier.format('a'), a, self._identifier.format('b')), [])
+        return (False, "{} == {!r} but {} does not exist".format(
+            self._identifier.format('a'), a, self._identifier.format('b')), [])
 
 
 class BOnlyComparisonResult(ComparisonResult):
@@ -399,7 +414,10 @@ class BOnlyComparisonResult(ComparisonResult):
         super(BOnlyComparisonResult, self).__init__(identifier, None, b, **kwargs)
 
     def compare(self, a, b):
-        return (False, "{} does not exist, but {} == {!r}".format(self._identifier.format('a'), self._identifier.format('b'), b), [])
+        return (
+            False,
+            "{} does not exist, but {} == {!r}".format(
+                self._identifier.format('a'), self._identifier.format('b'), b), [])
 
 
 class OrderedContainerComparisonResult(ComparisonResult):
@@ -410,15 +428,19 @@ class OrderedContainerComparisonResult(ComparisonResult):
     def compare(self, a, b):
         children = []
 
-        children.append(EqualityComparisonResult('len({})'.format(self._identifier), len(a), len(b), options=self._options))
+        children.append(EqualityComparisonResult(
+            'len({})'.format(self._identifier), len(a), len(b), options=self._options))
         for n in range(0, min(len(a), len(b))):
-            children.append(self._comparison_class(self.identifier + "[{}]".format(n), a[n], b[n], options=self._options, key=n))
+            children.append(self._comparison_class(
+                self.identifier + "[{}]".format(n), a[n], b[n], options=self._options, key=n))
         if len(a) > len(b):
             for n in range(len(b), len(a)):
-                children.append(AOnlyComparisonResult(self.identifier + "[{}]".format(n), a[n], options=self._options, key=n))
+                children.append(AOnlyComparisonResult(
+                    self.identifier + "[{}]".format(n), a[n], options=self._options, key=n))
         if len(b) > len(a):
             for n in range(len(a), len(b)):
-                children.append(BOnlyComparisonResult(self.identifier + "[{}]".format(n), b[n], options=self._options, key=n))
+                children.append(BOnlyComparisonResult(
+                    self.identifier + "[{}]".format(n), b[n], options=self._options, key=n))
 
         if all(c or c.excluded() for c in children):
             return (True, "Lists match", children)
@@ -460,7 +482,8 @@ class GrainIteratorComparisonResult(ComparisonResult):
                 all_success = False
                 break
             else:
-                comparison_result = GrainComparisonResult("{}", A, B, options=self._options, key=self.compared_item_count)
+                comparison_result = GrainComparisonResult(
+                    "{}", A, B, options=self._options, key=self.compared_item_count)
                 self.compared_item_count += 1
 
                 if self.return_last_only:
@@ -501,11 +524,14 @@ class MappingContainerComparisonResult(ComparisonResult):
         children = []
 
         for key in [k for k in a.keys() if k in b.keys()]:
-            children.append(self._comparison_class(self.identifier + "[{!r}]".format(key), a[key], b[key], options=self._options, key=key))
+            children.append(self._comparison_class(
+                self.identifier + "[{!r}]".format(key), a[key], b[key], options=self._options, key=key))
         for key in [k for k in a.keys() if k not in b.keys()]:
-            children.append(AOnlyComparisonResult(self.identifier + "[{!r}]".format(key), a[key], options=self._options, key=key))
+            children.append(AOnlyComparisonResult(
+                self.identifier + "[{!r}]".format(key), a[key], options=self._options, key=key))
         for key in [k for k in b.keys() if k not in a.keys()]:
-            children.append(BOnlyComparisonResult(self.identifier + "[{!r}]".format(key), b[key], options=self._options, key=key))
+            children.append(BOnlyComparisonResult(
+                self.identifier + "[{!r}]".format(key), b[key], options=self._options, key=key))
 
         if all(c or c.excluded() for c in children):
             return (True, "Mappings match", children)
@@ -514,7 +540,8 @@ class MappingContainerComparisonResult(ComparisonResult):
 
 
 class GrainComparisonResult(ComparisonResult):
-    """A ComparisonResult class for comparing grains, this is where almost all of the grain comparison logic is contained."""
+    """A ComparisonResult class for comparing grains, this is where almost all of the grain comparison logic is
+    contained."""
     def compare(self, a, b):
         children = {}
 
@@ -528,17 +555,22 @@ class GrainComparisonResult(ComparisonResult):
                     'duration',
                     'length']:
             path = self._identifier + '.' + key
-            children[key] = EqualityComparisonResult(path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
+            children[key] = EqualityComparisonResult(
+                path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
         for key in ['origin_timestamp',
                     'sync_timestamp',
                     'creation_timestamp']:
             path = self._identifier + '.' + key
-            children[key] = TimestampDifferanceComparisonResult(path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
+            children[key] = TimestampDifferanceComparisonResult(
+                path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
 
-        children['timelabels'] = OrderedContainerComparisonResult(self._identifier + '.' + 'timelabels', a.timelabels, b.timelabels,
-                                                                  options=self._options,
-                                                                  comparison_class=MappingContainerComparisonResult,
-                                                                  attr='timelabels')
+        children['timelabels'] = OrderedContainerComparisonResult(
+            self._identifier + '.' + 'timelabels',
+            a.timelabels,
+            b.timelabels,
+            options=self._options,
+            comparison_class=MappingContainerComparisonResult,
+            attr='timelabels')
 
         if a.grain_type != b.grain_type:
             # You can't compare the data of different types of grain sensibly
@@ -553,13 +585,17 @@ class GrainComparisonResult(ComparisonResult):
             for key in ['event_type',
                         'topic']:
                 path = self._identifier + '.' + key
-                children[key] = EqualityComparisonResult(path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
+                children[key] = EqualityComparisonResult(
+                    path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
             for key in ['event_data']:
                 path = self._identifier + '.' + key
-                children[key] = OrderedContainerComparisonResult(self._identifier + '.' + key, getattr(a, key), getattr(b, key),
-                                                                 options=self._options,
-                                                                 comparison_class=MappingContainerComparisonResult,
-                                                                 attr=key)
+                children[key] = OrderedContainerComparisonResult(
+                    self._identifier + '.' + key,
+                    getattr(a, key),
+                    getattr(b, key),
+                    options=self._options,
+                    comparison_class=MappingContainerComparisonResult,
+                    attr=key)
             if children['event_type'].excluded() or children['topic'].excluded() or children['event_data'].excluded():
                 children['length']._options.append(Exclude.length)
 
@@ -570,11 +606,14 @@ class GrainComparisonResult(ComparisonResult):
                         'channels',
                         'sample_rate']:
                 path = self._identifier + '.' + key
-                children[key] = EqualityComparisonResult(path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
+                children[key] = EqualityComparisonResult(
+                    path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
 
             if a.format == b.format:
                 path = self._identifier + '.data'
-                compare_psnr = len([option for option in self._options if isinstance(option, ComparisonPSNR) and path == option.path]) != 0
+                compare_psnr = len(
+                    [option for option in self._options if isinstance(option, ComparisonPSNR) and path == option.path]
+                    ) != 0
                 if compare_psnr:
                     children['data'] = PSNRComparisonResult(path,
                                                             a,
@@ -635,7 +674,8 @@ class GrainComparisonResult(ComparisonResult):
                         'priming',
                         'remainder']:
                 path = self._identifier + '.' + key
-                children[key] = EqualityComparisonResult(path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
+                children[key] = EqualityComparisonResult(
+                    path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
 
             if a.format == b.format:
                 children['data'] = DataEqualityComparisonResult(self._identifier + ".data",
@@ -657,11 +697,14 @@ class GrainComparisonResult(ComparisonResult):
                         'height',
                         'layout']:
                 path = self._identifier + '.' + key
-                children[key] = EqualityComparisonResult(path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
+                children[key] = EqualityComparisonResult(
+                    path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
 
             if a.format == b.format:
                 path = self._identifier + '.data'
-                compare_psnr = len([option for option in self._options if isinstance(option, ComparisonPSNR) and path == option.path]) != 0
+                compare_psnr = len(
+                    [option for option in self._options if isinstance(option, ComparisonPSNR) and path == option.path]
+                    ) != 0
                 if compare_psnr:
                     children['data'] = PSNRComparisonResult(path,
                                                             a,
@@ -709,7 +752,8 @@ class GrainComparisonResult(ComparisonResult):
                         'temporal_offset',
                         'layout']:
                 path = self._identifier + '.' + key
-                children[key] = EqualityComparisonResult(path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
+                children[key] = EqualityComparisonResult(
+                    path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
 
             for key in ['unit_offsets']:
                 path = self._identifier + '.' + key

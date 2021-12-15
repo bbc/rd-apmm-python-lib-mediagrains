@@ -236,8 +236,8 @@ class AsyncGSFBlock():
     """A single block in a GSF file
 
     Has methods to read various types from the block.
-    Can also be used as an async context manager, in which case it will automatically decode the block tag and size, exposed
-    by the `tag` and `size` attributes.
+    Can also be used as an async context manager, in which case it will automatically decode the block tag and size,
+    exposed by the `tag` and `size` attributes.
     """
     def __init__(self, file_data: OpenAsyncBinaryIO, want_tag: Optional[str] = None, raise_on_wrong_tag: bool = False):
         """Constructor. Records the start byte of the block in `block_start`
@@ -952,17 +952,19 @@ class GSFAsyncDecoderSession(object):
 
     async def grains(self,
                      local_ids: Optional[Sequence[int]] = None,
-                     loading_mode: GrainDataLoadingMode = GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE) -> AsyncIterable[Tuple[GRAIN, int]]:
+                     loading_mode: GrainDataLoadingMode = GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE
+                     ) -> AsyncIterable[Tuple[GRAIN, int]]:
         """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
 
         The file_data will be positioned after the `grai` block.
 
-        :param local_ids: A list of local-ids to include in the output. If None (the default) then all local-ids will be
-                          included
-        :param loading_mode: The mode to use when loading grain data elements. For modes ALWAYS_DEFER_LOAD_IF_POSSIBLE and
-                             ALWAYS_LOAD_DEFER_IF_POSSIBLE with a seekable input the grain data can be loaded later by awaiting the
-                             grain object itself. as long as you are still inside this context manager. When the context manager exits
-                             all grains are either implicitly loaded or rendered permanently empty.
+        :param local_ids: A list of local-ids to include in the output. If None (the default) then all local-ids will
+                          be included
+        :param loading_mode: The mode to use when loading grain data elements. For modes ALWAYS_DEFER_LOAD_IF_POSSIBLE
+                             and ALWAYS_LOAD_DEFER_IF_POSSIBLE with a seekable input the grain data can be loaded later
+                             by awaiting the grain object itself. as long as you are still inside this context manager.
+                             When the context manager exits all grains are either implicitly loaded or rendered
+                             permanently empty.
         :yields: (Grain, local_id) tuple for each grain
         :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
         """
@@ -1003,17 +1005,20 @@ class GSFAsyncDecoderSession(object):
                     if grai_block.has_child_block():
                         async with AsyncGSFBlock(self.file_data, want_tag="grdt") as grdt_block:
                             if grdt_block.get_remaining() > 0:
-                                if self.file_data.seekable_backwards() and loading_mode in [GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE,
-                                                                                            GrainDataLoadingMode.ALWAYS_LOAD_DEFER_IF_POSSIBLE]:
+                                if self.file_data.seekable_backwards() and loading_mode in [
+                                 GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE,
+                                 GrainDataLoadingMode.ALWAYS_LOAD_DEFER_IF_POSSIBLE]:
                                     if not self._sync_compatibility_mode:
                                         # It is correct that this is not awaited here
                                         # It will be awaited when the data is actually needed.
+                                        load_on_exit = (
+                                            loading_mode == GrainDataLoadingMode.ALWAYS_LOAD_DEFER_IF_POSSIBLE)
                                         data = _read_out_of_order(self,
                                                                   self._next_lazy_grain_number,
                                                                   self.file_data,
                                                                   self.file_data.tell(),
                                                                   grdt_block.get_remaining(),
-                                                                  load_on_exit=(loading_mode == GrainDataLoadingMode.ALWAYS_LOAD_DEFER_IF_POSSIBLE))
+                                                                  load_on_exit=load_on_exit)
                                         data_length = grdt_block.get_remaining()
                                     else:
                                         # This is compatibility mode with the old code
@@ -1267,17 +1272,19 @@ class GSFSyncDecoderSession(object):
 
     def grains(self,
                local_ids: Optional[Sequence[int]] = None,
-               loading_mode: GrainDataLoadingMode = GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE) -> Iterable[Tuple[GRAIN, int]]:
+               loading_mode: GrainDataLoadingMode = GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE
+               ) -> Iterable[Tuple[GRAIN, int]]:
         """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
 
         The file_data will be positioned after the `grai` block.
 
-        :param local_ids: A list of local-ids to include in the output. If None (the default) then all local-ids will be
-                          included
-        :param loading_mode: The mode to use when loading grain data elements. For modes ALWAYS_DEFER_LOAD_IF_POSSIBLE and
-                             ALWAYS_LOAD_DEFER_IF_POSSIBLE with a seekable input the grain data can be loaded later by awaiting the
-                             grain object itself. as long as you are still inside this context manager. When the context manager exits
-                             all grains are either implicitly loaded or rendered permanently empty.
+        :param local_ids: A list of local-ids to include in the output. If None (the default) then all local-ids will
+                          be included
+        :param loading_mode: The mode to use when loading grain data elements. For modes ALWAYS_DEFER_LOAD_IF_POSSIBLE
+                             and ALWAYS_LOAD_DEFER_IF_POSSIBLE with a seekable input the grain data can be loaded later
+                             by awaiting the grain object itself. as long as you are still inside this context manager.
+                             When the context manager exits all grains are either implicitly loaded or rendered
+                             permanently empty.
         :yields: (Grain, local_id) tuple for each grain
         :raises GSFDecodeError: If grain is invalid (e.g. no "gbhd" child)
         """
@@ -1300,8 +1307,9 @@ class GSFSyncDecoderSession(object):
                     if grai_block.has_child_block():
                         with SyncGSFBlock(self.file_data, want_tag="grdt") as grdt_block:
                             if grdt_block.get_remaining() > 0:
-                                if self.file_data.seekable() and loading_mode in [GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE,
-                                                                                  GrainDataLoadingMode.ALWAYS_LOAD_DEFER_IF_POSSIBLE]:
+                                if self.file_data.seekable() and loading_mode in [
+                                 GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE,
+                                 GrainDataLoadingMode.ALWAYS_LOAD_DEFER_IF_POSSIBLE]:
                                     data = IOBytes(self.file_data,
                                                    self.file_data.tell(),
                                                    grdt_block.get_remaining())
@@ -1391,7 +1399,8 @@ class GSFDecoder(object):
             if isinstance(self._afile_data, AsyncBinaryIO):
                 self._open_afile = await self._afile_data.__aenter__()
             else:
-                raise TypeError("file_data must be an asynchronous binary file to use this class as an async context manager")
+                raise TypeError(
+                    "file_data must be an asynchronous binary file to use this class as an async context manager")
 
         self._open_asession = GSFAsyncDecoderSession(file_data=self._open_afile,
                                                      parse_grain=self.Grain,
@@ -1561,7 +1570,8 @@ class OpenGSFEncoderBase(object):
 
         self._tags.append(GSFEncoderTag(key, value))
 
-    def add_segment(self, id: Optional[UUID] = None, local_id: Optional[int] = None, tags: Optional[Iterable[Tuple[str, str]]] = None) -> "GSFEncoderSegment":
+    def add_segment(self, id: Optional[UUID] = None, local_id: Optional[int] = None,
+                    tags: Optional[Iterable[Tuple[str, str]]] = None) -> "GSFEncoderSegment":
         """Add a segment to the file, if id is specified it should be a uuid,
         otherwise one will be generated. If local_id is specified it should be an
         integer, otherwise the next available integer will be used. Returns the newly
@@ -1578,7 +1588,8 @@ class OpenGSFEncoderBase(object):
             id = uuid1()
 
         if self._active_dump:
-            raise GSFEncodeAddToActiveDump("Cannot add a new segment {} ({!s}) to an encoder that is currently dumping".format(local_id, id))
+            raise GSFEncodeAddToActiveDump(
+                "Cannot add a new segment {} ({!s}) to an encoder that is currently dumping".format(local_id, id))
 
         seg = GSFEncoderSegment(id, local_id, tags=tags, parent=self)
         self._segments[local_id] = seg
@@ -1586,7 +1597,8 @@ class OpenGSFEncoderBase(object):
 
     def _get_segment(self, segment_id: Optional[UUID], segment_local_id: Optional[int]) -> "GSFEncoderSegment":
         if segment_local_id is None:
-            segments = sorted([local_id for local_id in self._segments if segment_id is None or self._segments[local_id].id == segment_id])
+            segments = sorted([local_id for local_id in self._segments if
+                               segment_id is None or self._segments[local_id].id == segment_id])
             if len(segments) > 0:
                 segment_local_id = segments[0]
         if segment_local_id is not None and segment_local_id in self._segments:
@@ -1964,14 +1976,16 @@ class GSFEncoder(object):
 
         self._tags.append(GSFEncoderTag(key, value))
 
-    def add_segment(self, id: Optional[UUID] = None, local_id: Optional[int] = None, tags: Optional[Iterable[Tuple[str, str]]] = None) -> "GSFEncoderSegment":
+    def add_segment(self, id: Optional[UUID] = None, local_id: Optional[int] = None,
+                    tags: Optional[Iterable[Tuple[str, str]]] = None) -> "GSFEncoderSegment":
         """Add a segment to the file, if id is specified it should be a uuid,
         otherwise one will be generated. If local_id is specified it should be an
         integer, otherwise the next available integer will be used. Returns the newly
         created segment."""
 
         if self._open_encoder is not None:
-            raise GSFEncodeAddToActiveDump("Cannot add a new segment {} ({!s}) to an encoder that is currently dumping".format(local_id, id))
+            raise GSFEncodeAddToActiveDump(
+                "Cannot add a new segment {} ({!s}) to an encoder that is currently dumping".format(local_id, id))
 
         if local_id is None:
             local_id = self._next_local
@@ -2013,7 +2027,9 @@ class GSFEncoder(object):
             self._open_encoder.add_grains(grains, segment_id, segment_local_id)
         else:
             if segment_local_id is None:
-                segments = sorted([local_id for local_id in self._segments if segment_id is None or self._segments[local_id].id == segment_id])
+                segments = sorted([
+                    local_id for local_id in self._segments if
+                    segment_id is None or self._segments[local_id].id == segment_id])
                 if len(segments) > 0:
                     segment_local_id = segments[0]
             if segment_local_id is not None and segment_local_id in self._segments:

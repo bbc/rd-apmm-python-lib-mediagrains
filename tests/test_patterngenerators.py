@@ -55,10 +55,13 @@ class PatternGeneratorTestCase(TestCase):
 
         If a name is provided it will be used for labelling subTests.
         """
-        # We use three different sets of 10 timestamps, one sequential, one ordered and skipping every other value, the last random
+        # We use three different sets of 10 timestamps, one sequential,
+        # one ordered and skipping every other value, the last random
         ordered_timestamps = [Timestamp.from_count(origin_timestamp.to_count(25, 1) + n, 25, 1) for n in range(0, 10)]
         even_timestamps = [Timestamp.from_count(origin_timestamp.to_count(25, 1) + 2*n, 25, 1) for n in range(0, 10)]
-        unordered_timestamps = [Timestamp.from_count(origin_timestamp.to_count(25, 1) + n, 25, 1) for n in (random.randrange(0, 100) for n in range(0, 10))]
+        unordered_timestamps = [Timestamp.from_count(
+                origin_timestamp.to_count(25, 1) + n, 25, 1
+            ) for n in (random.randrange(0, 100) for n in range(0, 10))]
 
         # The various different modes of indexing we can test
         indexing_modes = [
@@ -190,7 +193,12 @@ class TestLumaSteps(VideoPatternGeneratorTestCase):
             },
             {
                 'name': 'Lumasteps in S16_422_10BIT format',
-                'factory': (lambda: LumaSteps(src_id, flow_id, width, height, cog_frame_format=CogFrameFormat.S16_422_10BIT)),
+                'factory': (lambda: LumaSteps(
+                    src_id,
+                    flow_id,
+                    width,
+                    height,
+                    cog_frame_format=CogFrameFormat.S16_422_10BIT)),
                 'expected_format': CogFrameFormat.S16_422_10BIT
             }
         ]
@@ -295,7 +303,12 @@ class TestColourBars(VideoPatternGeneratorTestCase):
             },
             {
                 'name': '.75 Colourbars in S16_422_10BIT format',
-                'factory': (lambda: ColourBars(src_id, flow_id, width, height, cog_frame_format=CogFrameFormat.S16_422_10BIT)),
+                'factory': (lambda: ColourBars(
+                    src_id,
+                    flow_id,
+                    width,
+                    height,
+                    cog_frame_format=CogFrameFormat.S16_422_10BIT)),
                 'expected_format': CogFrameFormat.S16_422_10BIT,
                 'intensity': 0.75
             },
@@ -307,7 +320,13 @@ class TestColourBars(VideoPatternGeneratorTestCase):
             },
             {
                 'name': '100% Colourbars in S16_422_10BIT format',
-                'factory': (lambda: ColourBars(src_id, flow_id, width, height, cog_frame_format=CogFrameFormat.S16_422_10BIT, intensity=1.0)),
+                'factory': (lambda: ColourBars(
+                    src_id,
+                    flow_id,
+                    width,
+                    height,
+                    cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                    intensity=1.0)),
                 'expected_format': CogFrameFormat.S16_422_10BIT,
                 'intensity': 1.0
             }
@@ -316,7 +335,11 @@ class TestColourBars(VideoPatternGeneratorTestCase):
         for UUT in UUTs:
             self.assertTestSignalGeneratorGrainsPassAssertion(
                 UUT['factory'],
-                lambda grain, ts: self.assertIsColourBarsGrain(grain, ts, cog_frame_format=UUT['expected_format'], intensity=UUT['intensity']),
+                lambda grain, ts: self.assertIsColourBarsGrain(
+                    grain,
+                    ts,
+                    cog_frame_format=UUT['expected_format'],
+                    intensity=UUT['intensity']),
                 name=UUT['name']
             )
 
@@ -427,12 +450,22 @@ class TestMovingBarOverlay(VideoPatternGeneratorTestCase):
 
         def MovingBarTestFactory(cog_frame_format, intensity, bar_height):
             def __inner():
-                return MovingBarOverlay(ColourBars(src_id, flow_id, width, height, intensity=intensity, cog_frame_format=cog_frame_format), height=bar_height)
+                return MovingBarOverlay(
+                    ColourBars(
+                        src_id,
+                        flow_id,
+                        width,
+                        height,
+                        intensity=intensity,
+                        cog_frame_format=cog_frame_format),
+                    height=bar_height)
             return __inner
 
         for bar_height in [1, 2]:
             for intensity in [0.75, 1.0]:
-                for (fmt_name, fmt) in [('U8_444', CogFrameFormat.U8_444), ('S16_422_10BIT', CogFrameFormat.S16_422_10BIT)]:
+                for (fmt_name, fmt) in [
+                 ('U8_444', CogFrameFormat.U8_444),
+                 ('S16_422_10BIT', CogFrameFormat.S16_422_10BIT)]:
                     UUTs.append(
                         {
                             'name': f'{intensity} Colourbars in {fmt_name} format w/ {bar_height}px black bar',
@@ -447,7 +480,11 @@ class TestMovingBarOverlay(VideoPatternGeneratorTestCase):
             self.assertTestSignalGeneratorGrainsPassAssertion(
                 UUT['factory'],
                 lambda grain, ts: self.assertIsColourBarsWithMovingBarGrain(
-                    grain, ts, cog_frame_format=UUT['expected_format'], intensity=UUT['intensity'], bar_height=UUT['bar_height']),
+                    grain,
+                    ts,
+                    cog_frame_format=UUT['expected_format'],
+                    intensity=UUT['intensity'],
+                    bar_height=UUT['bar_height']),
                 name=UUT['name']
             )
 
@@ -523,10 +560,14 @@ class AudioPatternGeneratorTestCase(PatternGeneratorTestCase):
 
             for n in range(0, samples):
                 expected = expected_samples(n)
-                self.assertEqual(data[2*n + 0], expected,
-                                 msg=f"Sample {2*n} has value {data[2*n + 0]} which does not match expected value of {expected}")
-                self.assertEqual(data[2*n + 1], expected,
-                                 msg=f"Sample {2*n} has value {data[2*n + 0]} which does not match expected value of {expected}")
+                self.assertEqual(
+                    data[2*n + 0],
+                    expected,
+                    msg=f"Sample {2*n} has value {data[2*n + 0]} which does not match expected value of {expected}")
+                self.assertEqual(
+                    data[2*n + 1],
+                    expected,
+                    msg=f"Sample {2*n} has value {data[2*n + 0]} which does not match expected value of {expected}")
         else:
             self.fail(f"Unsupported audio grain format: {cog_audio_format!r}")
 

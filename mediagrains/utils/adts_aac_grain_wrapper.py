@@ -35,8 +35,8 @@ class ADTSAACGrainWrapper(object):
     ):
         """Set up the wrapper and the Grains that will be generated
 
-        :param template_grain: A coded audio Grain to use as the template for wrapping the Grains read from the input source.
-                               origin_timestamp should be set.
+        :param template_grain: A coded audio Grain to use as the template for wrapping the Grains read from the input
+                               source. origin_timestamp should be set.
         :param input_data: An object to read video data from
         """
         assert(isinstance(template_grain, CODEDAUDIOGRAIN))

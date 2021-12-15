@@ -1,0 +1,148 @@
+{% macro preamble() -%}
+# syntax=docker/dockerfile:1.2
+
+# Args needed for base images
+ARG BUILD_TAG
+ARG CLOUDFIT_BASE_NAME=ap-docker.virt.ch.bbc.co.uk:443/cloudfit/cloudfit_base
+ARG CLOUDFIT_BASE_LABEL=latest
+{%- endmacro %}
+
+{% macro apilayer() -%}
+###############################################################################
+# Stage: apilayer
+###############################################################################
+FROM ${CLOUDFIT_BASE_NAME}:${CLOUDFIT_BASE_LABEL} AS layer
+WORKDIR /api/
+
+# Install api example, schemas, etc.
+COPY . .
+{%- endmacro %}
+
+{% macro layer(modname, base_image="${CLOUDFIT_BASE_NAME}:${CLOUDFIT_BASE_LABEL}", entrypoint=True, extra_requirements_file="") -%}
+###############################################################################
+# Stage: layer
+###############################################################################
+FROM {{ base_image }} AS layer
+WORKDIR /{{ modname }}/
+
+# Copy in wheels if provided
+COPY wheels/ ./wheels
+
+# Install requirements
+COPY requirements.txt ./
+{%   if extra_requirements_file != "" -%}
+COPY {{ extra_requirements_file }} ./
+RUN cat {{ extra_requirements_file }} >> ./requirements.txt
+{%-  endif %}
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert pip install -f ./wheels -r requirements.txt
+
+# Copy in everything else and install the package
+ARG VERSION
+COPY dist/{{ modname }}-${VERSION}.tar.gz ./
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert tar -xvzp --strip-components=1 -f ./{{ modname }}-${VERSION}.tar.gz && pip install -f ./wheels -e .
+
+# Set the default command
+{%   if entrypoint -%}
+ENTRYPOINT ["{{ modname }}"]
+{%-  else -%}
+ENTRYPOINT []
+{%-  endif %}
+{%- endmacro %}
+
+{% macro testdeps(modname="") -%}
+###############################################################################
+# Stage: testdeps
+###############################################################################
+FROM ${CLOUDFIT_BASE_NAME}:${CLOUDFIT_BASE_LABEL} AS testdeps
+WORKDIR /testdeps/
+
+# Copy in wheels if provided
+COPY wheels/ ./wheels
+
+# Install test requirements
+COPY constraints.txt ./
+COPY test-requirements.txt ./
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert python -m pip install -f ./wheels --user -c constraints.txt -r ./test-requirements.txt flake8 "mypy>=0.910"
+{%- endmacro %}
+
+{% macro tests(modname) -%}
+###############################################################################
+# Stage: tests
+###############################################################################
+FROM layer AS tests
+WORKDIR /{{ modname }}/
+
+# Install test dependencies
+COPY --from=testdeps /root/.local/lib/ /root/.local/lib/
+
+ENTRYPOINT []
+{%- endmacro %}
+
+{% macro unittest(modname) -%}
+###############################################################################
+# Stage: unittest
+###############################################################################
+FROM tests AS unittest
+WORKDIR /{{ modname }}/
+
+# Set the default command
+ENTRYPOINT ["python", "-m", "unittest"]
+CMD ["discover", "tests", "-v"]
+{%- endmacro %}
+
+{% macro flake8(modname) -%}
+###############################################################################
+# Stage: flake8
+###############################################################################
+FROM tests AS flake8
+WORKDIR /{{ modname }}/
+
+# Copy in .flake8
+COPY .flake8 ./
+
+# Set the default command
+ENTRYPOINT ["python", "-m", "flake8"]
+CMD ["{{ modname }}", "tests"]
+{%- endmacro %}
+
+{% macro mypy(modname) -%}
+###############################################################################
+# Stage: mypy
+###############################################################################
+FROM tests AS mypy
+WORKDIR /{{ modname }}/
+
+# Copy in .flake8 and setup.cfg
+COPY setup.cfg ./
+
+# Set the default command
+ENTRYPOINT ["python", "-m", "mypy", "--install-types", "--non-interactive"]
+CMD ["-p", "{{ modname }}"]
+{%- endmacro %}
+
+{% macro wheel(modname) -%}
+###############################################################################
+# Stage: wheel
+###############################################################################
+FROM layer AS wheel
+WORKDIR /{{ modname }}/
+
+COPY .tmp/_full_version.py ./{{ modname }}/_version.py
+RUN pip install -f ./wheels -e .
+COPY .tmp/run_with_dir_modes.sh /
+RUN chmod u+x /run_with_dir_modes.sh
+ENTRYPOINT ["/run_with_dir_modes.sh", "./dist", "python", "./setup.py", "sdist", "bdist_wheel"]
+{%- endmacro %}
+
+{% macro docs(modname) -%}
+###############################################################################
+# Stage: docs
+###############################################################################
+FROM wheel AS docs
+WORKDIR /docs/
+
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert pip install pdoc3
+
+ENTRYPOINT ["/run_with_dir_modes.sh", ".", "pdoc3"]
+CMD ["--html", "--force", "--output-dir", ".", "{{ modname }}"]
+{%- endmacro %}

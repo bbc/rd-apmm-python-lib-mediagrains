@@ -172,7 +172,9 @@ class TestAsyncGSFLoads(TestCase):
             self.assertEqual(grain.components[2].length, 240*135)
             self.assertEqual(grain.components[2].offset, 480*270 + 240*135)
 
-            self.assertEqual(len(grain.data), grain.components[0].length + grain.components[1].length + grain.components[2].length)
+            self.assertEqual(
+                len(grain.data),
+                grain.components[0].length + grain.components[1].length + grain.components[2].length)
 
     @async_test(suppress_warnings=True)
     async def test_loads_audio(self):
@@ -388,10 +390,13 @@ class TestAsyncGSFLoads(TestCase):
         self.assertEqual(head['segments'][0]['tags'], [])
         self.assertEqual(head['segments'][0]['count'], 1)
         self.assertEqual(head['tags'], [])
-        self.assertEqual(segments[1][0].timelabels, [{'tag': 'dummy timecode', 'timelabel': {'frames_since_midnight': 7,
-                                                                                             'frame_rate_numerator': 25,
-                                                                                             'frame_rate_denominator': 1,
-                                                                                             'drop_frame': False}}])
+        self.assertEqual(segments[1][0].timelabels, [{
+            'tag': 'dummy timecode',
+            'timelabel': {
+                'frames_since_midnight': 7,
+                'frame_rate_numerator': 25,
+                'frame_rate_denominator': 1,
+                'drop_frame': False}}])
 
     @async_test(suppress_warnings=True)
     async def test_loads_raises_when_grain_type_unknown(self):
@@ -533,8 +538,32 @@ class TestAsyncGSFLoads(TestCase):
             self.assertEqual(len(grain.event_data), 1)
             self.assertEqual(grain.event_data[0].path, 'Subs')
             self.assertEqual(grain.event_data[0].pre, line)
-            line = '<?xml version="1.0" encoding="UTF-8"?>\n<tt:tt ttp:timeBase="clock" ttp:clockMode="utc" xml:lang="en" xmlns:tt="http://www.w3.org/ns/ttml"  xmlns:ebuttExt="urn:ebu:tt:extension"  xmlns:ttp="http://www.w3.org/ns/ttml#parameter" xmlns:tts="http://www.w3.org/ns/ttml#styling" ttp:cellResolution="50 30" xmlns:ebuttm="urn:ebu:tt:metadata" tts:extent="1920px 1080px" ttp:dropMode="nonDrop" ttp:markerMode="discontinuous" ebuttm:sequenceIdentifier="5333bae9-0768-4e31-be1c-fbd5dc2e34ac" ebuttm:sequenceNumber="' + str(seqnum) + '"><tt:head><tt:metadata><ebuttm:documentMetadata><ebuttm:documentEbuttVersion>v1.0</ebuttm:documentEbuttVersion><ebuttm:documentTotalNumberOfSubtitles>1</ebuttm:documentTotalNumberOfSubtitles><ebuttm:documentMaximumNumberOfDisplayableCharacterInAnyRow>40</ebuttm:documentMaximumNumberOfDisplayableCharacterInAnyRow><ebuttm:documentCountryOfOrigin>gb</ebuttm:documentCountryOfOrigin></ebuttm:documentMetadata></tt:metadata><tt:styling><tt:style xml:id="defaultStyle" tts:fontFamily="monospaceSansSerif" tts:fontSize="1c 1c" tts:lineHeight="normal" tts:textAlign="center" tts:color="white" tts:backgroundColor="transparent" tts:fontStyle="normal" tts:fontWeight="normal" tts:textDecoration="none" /><tt:style xml:id="WhiteOnBlack" tts:color="white" tts:backgroundColor="black" tts:fontSize="1c 2c"/><tt:style xml:id="textCenter" tts:textAlign="center"/></tt:styling><tt:layout><tt:region xml:id="bottom" tts:origin="10% 10%" tts:extent="80% 80%" tts:padding="0c" tts:displayAlign="after" tts:writingMode="lrtb"/></tt:layout></tt:head><tt:body dur="00:00:10"><tt:div style="defaultStyle"><tt:p xml:id="sub2" style="textCenter" region="bottom"><tt:span style="WhiteOnBlack">' + ots.to_iso8601_utc() + '</tt:span></tt:p></tt:div></tt:body></tt:tt>'  # NOQA
-            self.assertEqual(grain.event_data[0].post, line, msg="\n\nExpected:\n\n{!r}\n\nGot:\n\n{!r}\n\n".format(line, grain.event_data[0].post))
+            line = (
+                '<?xml version="1.0" encoding="UTF-8"?>\n<tt:tt ttp:timeBase="clock" ttp:clockMode="utc" xml:lang="en"'
+                ' xmlns:tt="http://www.w3.org/ns/ttml"  xmlns:ebuttExt="urn:ebu:tt:extension"'
+                '  xmlns:ttp="http://www.w3.org/ns/ttml#parameter" xmlns:tts="http://www.w3.org/ns/ttml#styling"'
+                ' ttp:cellResolution="50 30" xmlns:ebuttm="urn:ebu:tt:metadata" tts:extent="1920px 1080px"'
+                ' ttp:dropMode="nonDrop" ttp:markerMode="discontinuous"'
+                ' ebuttm:sequenceIdentifier="5333bae9-0768-4e31-be1c-fbd5dc2e34ac" ebuttm:sequenceNumber="'
+            ) + str(seqnum) + (
+                '"><tt:head><tt:metadata><ebuttm:documentMetadata><ebuttm:documentEbuttVersion>'
+                'v1.0</ebuttm:documentEbuttVersion><ebuttm:documentTotalNumberOfSubtitles>'
+                '1</ebuttm:documentTotalNumberOfSubtitles><ebuttm:documentMaximumNumberOfDisplayableCharacterInAnyRow>'
+                '40</ebuttm:documentMaximumNumberOfDisplayableCharacterInAnyRow><ebuttm:documentCountryOfOrigin>'
+                'gb</ebuttm:documentCountryOfOrigin></ebuttm:documentMetadata></tt:metadata><tt:styling><tt:style'
+                ' xml:id="defaultStyle" tts:fontFamily="monospaceSansSerif" tts:fontSize="1c 1c"'
+                ' tts:lineHeight="normal" tts:textAlign="center" tts:color="white" tts:backgroundColor="transparent"'
+                ' tts:fontStyle="normal" tts:fontWeight="normal" tts:textDecoration="none" /><tt:style'
+                ' xml:id="WhiteOnBlack" tts:color="white" tts:backgroundColor="black" tts:fontSize="1c 2c"/><tt:style'
+                ' xml:id="textCenter" tts:textAlign="center"/></tt:styling><tt:layout><tt:region xml:id="bottom"'
+                ' tts:origin="10% 10%" tts:extent="80% 80%" tts:padding="0c" tts:displayAlign="after"'
+                ' tts:writingMode="lrtb"/></tt:layout></tt:head><tt:body dur="00:00:10"><tt:div style="defaultStyle">'
+                '<tt:p xml:id="sub2" style="textCenter" region="bottom"><tt:span style="WhiteOnBlack">'
+            ) + ots.to_iso8601_utc() + '</tt:span></tt:p></tt:div></tt:body></tt:tt>'  # NOQA
+            self.assertEqual(
+                grain.event_data[0].post,
+                line,
+                msg="\n\nExpected:\n\n{!r}\n\nGot:\n\n{!r}\n\n".format(line, grain.event_data[0].post))
 
             ots = ots + TimeOffset.from_nanosec(20000000)
             seqnum += 20000000

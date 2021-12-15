@@ -48,9 +48,10 @@ __all__ = ['VideoGrain', 'VIDEOGRAIN']
 def _dtype_from_cogframeformat(fmt: CogFrameFormat) -> np.dtype:
     """This method returns the numpy "data type" for a particular video format.
 
-    For planar and padded formats this is the size of the native integer type that is used to handle the samples (eg. 8bit, 16bit, etc ...)
-    For weird packed formats like v210 (10-bit samples packed so that there are 3 10-bit samples in every 32-bit word) this is not possible.
-    Instead for v210 we return uint32, since that is the most useful native data type that always corresponds to an integral number of samples.
+    For planar and padded formats this is the size of the native integer type that is used to handle the samples (eg.
+    8bit, 16bit, etc ...) For weird packed formats like v210 (10-bit samples packed so that there are 3 10-bit samples
+    in every 32-bit word) this is not possible. Instead for v210 we return uint32, since that is the most useful
+    native data type that always corresponds to an integral number of samples.
     """
     if COG_FRAME_IS_PLANAR(fmt):
         if COG_FRAME_FORMAT_BYTES_PER_VALUE(fmt) == 1:
@@ -104,12 +105,14 @@ class ComponentDataList(list):
 
 
 def _component_arrangement_from_format(fmt: CogFrameFormat):
-    """This method returns the ordering of the components in the component data arrays that are used to represent a particular format.
+    """This method returns the ordering of the components in the component data arrays that are used to represent a
+    particular format.
 
-    Note that for the likes of UYVY this will return YUV since the planes are represented in that order by the interface even though they
-    are interleved in the data.
+    Note that for the likes of UYVY this will return YUV since the planes are represented in that order by the
+    interface even though they are interleved in the data.
 
-    For formats where no meaningful component access can be provided (v210, compressed formats, etc ...) the value X is returned.
+    For formats where no meaningful component access can be provided (v210, compressed formats, etc ...) the value X
+    is returned.
     """
     if COG_FRAME_IS_PLANAR(fmt):
         if COG_FRAME_IS_PLANAR_RGB(fmt):
@@ -118,7 +121,8 @@ def _component_arrangement_from_format(fmt: CogFrameFormat):
             return ComponentDataList.ComponentOrder.YUV
     elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.YUYV, CogFrameFormat.v216, CogFrameFormat.AYUV]:
         return ComponentDataList.ComponentOrder.YUV
-    elif fmt in [CogFrameFormat.RGB, CogFrameFormat.RGBA, CogFrameFormat.RGBx, CogFrameFormat.ARGB, CogFrameFormat.xRGB]:
+    elif fmt in [
+     CogFrameFormat.RGB, CogFrameFormat.RGBA, CogFrameFormat.RGBx, CogFrameFormat.ARGB, CogFrameFormat.xRGB]:
         return ComponentDataList.ComponentOrder.RGB
     elif fmt in [CogFrameFormat.BGRA, CogFrameFormat.BGRx, CogFrameFormat.xBGR, CogFrameFormat.ABGR]:
         return ComponentDataList.ComponentOrder.BGR
@@ -126,7 +130,8 @@ def _component_arrangement_from_format(fmt: CogFrameFormat):
         return ComponentDataList.ComponentOrder.X
 
 
-def _component_arrays_for_interleaved_422(data0: np.ndarray, data1: np.ndarray, data2: np.ndarray, width: int, height: int, stride: int, itemsize: int):
+def _component_arrays_for_interleaved_422(
+ data0: np.ndarray, data1: np.ndarray, data2: np.ndarray, width: int, height: int, stride: int, itemsize: int):
     return [
         as_strided(data0,
                    shape=(height, width),
@@ -159,15 +164,18 @@ def _component_arrays_for_interleaved_444_take_three(data0: np.ndarray,
                    strides=(stride, itemsize*num_components)).transpose()]
 
 
-def _component_arrays_for_data_and_type(data: Optional[np.ndarray], fmt: CogFrameFormat, components: bytesgrain.VIDEOGRAIN.COMPONENT_LIST):
-    """This method returns a list of numpy array views which can be used to directly access the components of the video frame
-    without any need for conversion or copying. This is not possible for all formats.
+def _component_arrays_for_data_and_type(
+ data: Optional[np.ndarray], fmt: CogFrameFormat, components: bytesgrain.VIDEOGRAIN.COMPONENT_LIST):
+    """This method returns a list of numpy array views which can be used to directly access the components of the video
+    frame without any need for conversion or copying. This is not possible for all formats.
 
     For planar formats this simply returns a list of array views of the planes.
 
-    For interleaved formats this returns a list of array views that use stride tricks to access alternate elements in the source data array.
+    For interleaved formats this returns a list of array views that use stride tricks to access alternate elements in
+    the source data array.
 
-    For weird packed formats like v210 nothing can be done, an empty list is returned since no individual component access is possible.
+    For weird packed formats like v210 nothing can be done, an empty list is returned since no individual component
+    access is possible.
     """
     if data is None:
         return []
@@ -180,10 +188,12 @@ def _component_arrays_for_data_and_type(data: Optional[np.ndarray], fmt: CogFram
             for component in components]
     elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.v216]:
         # Either 8 or 16 bits 4:2:2 interleavedd in UYVY order
-        return _component_arrays_for_interleaved_422(data[1:], data, data[2:], components[0].width, components[0].height, components[0].stride, data.itemsize)
+        return _component_arrays_for_interleaved_422(
+            data[1:], data, data[2:], components[0].width, components[0].height, components[0].stride, data.itemsize)
     elif fmt == CogFrameFormat.YUYV:
         # 8 bit 4:2:2 interleaved in YUYV order
-        return _component_arrays_for_interleaved_422(data, data[1:], data[3:], components[0].width, components[0].height, components[0].stride, data.itemsize)
+        return _component_arrays_for_interleaved_422(
+            data, data[1:], data[3:], components[0].width, components[0].height, components[0].stride, data.itemsize)
     elif fmt == CogFrameFormat.RGB:
         # 8 bit 4:4:4 three components interleaved in RGB order
         return _component_arrays_for_interleaved_444_take_three(data,
@@ -312,7 +322,8 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
         pass
 
     @classmethod
-    def grain_conversion(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat) -> Callable[["VIDEOGRAIN.ConversionFunc"], "VIDEOGRAIN.ConversionFunc"]:
+    def grain_conversion(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat) -> Callable[
+     ["VIDEOGRAIN.ConversionFunc"], "VIDEOGRAIN.ConversionFunc"]:
         """Decorator to apply to all grain conversion functions"""
         def _inner(f: "VIDEOGRAIN.ConversionFunc") -> "VIDEOGRAIN.ConversionFunc":
             cls._grain_conversions[(fmt_in, fmt_out)] = f
@@ -329,8 +340,10 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
         cls.grain_conversion(fmt_in, fmt_out)(_inner)
 
     @classmethod
-    def _get_grain_conversion_function(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat) -> "VIDEOGRAIN.ConversionFunc":
-        """Return the registered grain conversion function for a specified type conversion, or raise NotImplementedError"""
+    def _get_grain_conversion_function(cls, fmt_in: CogFrameFormat, fmt_out: CogFrameFormat
+                                       ) -> "VIDEOGRAIN.ConversionFunc":
+        """Return the registered grain conversion function for a specified type conversion, or raise
+        NotImplementedError"""
         if (fmt_in, fmt_out) in cls._grain_conversions:
             return cls._grain_conversions[(fmt_in, fmt_out)]
 
@@ -409,9 +422,11 @@ def VideoGrain(src_id_or_meta: Optional[UUID] = None,
 
 
 def VideoGrain(*args, **kwargs):
-    """If the first argument is a mediagrains.VIDEOGRAIN then return a mediagrains.numpy.VIDEOGRAIN representing the same data.
+    """If the first argument is a mediagrains.VIDEOGRAIN then return a mediagrains.numpy.VIDEOGRAIN representing the
+    same data.
 
-    Otherwise takes the same parameters as mediagrains.VideoGrain and returns the same grain converted into a mediagrains.numpy.VIDEOGRAIN
+    Otherwise takes the same parameters as mediagrains.VideoGrain and returns the same grain converted into a
+    mediagrains.numpy.VIDEOGRAIN
     """
     if len(args) == 1 and isinstance(args[0], bytesgrain.VIDEOGRAIN):
         rawgrain = args[0]

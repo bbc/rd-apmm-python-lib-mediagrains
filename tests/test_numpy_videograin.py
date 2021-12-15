@@ -140,7 +140,9 @@ class TestGrain (IsolatedAsyncioTestCase):
             for y in range(0, 16 >> vs):
                 for x in range(0, 16 >> hs):
                     self.assertEqual(grain.data[width*height + y*(width >> hs) + x], (y*16 + x) & 0x3F + 0x40)
-                    self.assertEqual(grain.data[width*height + (width >> hs)*(height >> vs) + y*(width >> hs) + x], (y*16 + x) & 0x3F + 0x50)
+                    self.assertEqual(
+                        grain.data[width*height + (width >> hs)*(height >> vs) + y*(width >> hs) + x],
+                        (y*16 + x) & 0x3F + 0x50)
 
         elif fmt in [CogFrameFormat.UYVY, CogFrameFormat.v216]:
             for y in range(0, 16):
@@ -318,7 +320,8 @@ class TestGrain (IsolatedAsyncioTestCase):
             self.assertEqual(grain.data.ndim, 1)
             self.assertEqual(grain.data.shape, (grain.expected_length//bps,))
 
-            self.assertEqual(repr(grain), "VideoGrain({!r},< numpy data of length {} >)".format(grain.meta, len(grain.data)))
+            self.assertEqual(
+                repr(grain), "VideoGrain({!r},< numpy data of length {} >)".format(grain.meta, len(grain.data)))
 
             if fmt == CogFrameFormat.v210:
                 # V210 is barely supported. Convert it to something else to actually use it!
@@ -355,9 +358,16 @@ class TestGrain (IsolatedAsyncioTestCase):
         bd = self._get_bitdepth(fmt)
 
         v = (1 << (bd - 2))*3
-        return (np.array([[v, v, v, v, 0, 0, 0, 0, v, v, v, v, 0, 0, 0, 0] for _ in range(0, 16)], dtype=_dtype_from_cogframeformat(fmt)).transpose(),
-                np.array([[v, v, v, v, v, v, v, v, 0, 0, 0, 0, 0, 0, 0, 0] for _ in range(0, 16)], dtype=_dtype_from_cogframeformat(fmt)).transpose(),
-                np.array([[v, v, 0, 0, v, v, 0, 0, v, v, 0, 0, v, v, 0, 0] for _ in range(0, 16)], dtype=_dtype_from_cogframeformat(fmt)).transpose())
+        return (
+            np.array(
+                [[v, v, v, v, 0, 0, 0, 0, v, v, v, v, 0, 0, 0, 0] for _ in range(0, 16)],
+                dtype=_dtype_from_cogframeformat(fmt)).transpose(),
+            np.array(
+                [[v, v, v, v, v, v, v, v, 0, 0, 0, 0, 0, 0, 0, 0] for _ in range(0, 16)],
+                dtype=_dtype_from_cogframeformat(fmt)).transpose(),
+            np.array(
+                [[v, v, 0, 0, v, v, 0, 0, v, v, 0, 0, v, v, 0, 0] for _ in range(0, 16)],
+                dtype=_dtype_from_cogframeformat(fmt)).transpose())
 
     def _test_pattern_yuv(self, fmt: CogFrameFormat) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         (R, G, B) = self._test_pattern_rgb(fmt)
@@ -557,15 +567,45 @@ class TestGrain (IsolatedAsyncioTestCase):
                 for fmt_out in fmts:
                     yield (fmt_in, fmt_out)
 
-        fmts = [CogFrameFormat.YUYV, CogFrameFormat.UYVY, CogFrameFormat.U8_444, CogFrameFormat.U8_422, CogFrameFormat.U8_420,  # All YUV 8bit formats
-                CogFrameFormat.RGB, CogFrameFormat.U8_444_RGB, CogFrameFormat.RGBx, CogFrameFormat.xRGB, CogFrameFormat.BGRx, CogFrameFormat.xBGR,
-                # All 8-bit 3 component RGB formats
-                CogFrameFormat.v216, CogFrameFormat.S16_444, CogFrameFormat.S16_422, CogFrameFormat.S16_420,  # All YUV 16bit formats
-                CogFrameFormat.S16_444_10BIT, CogFrameFormat.S16_422_10BIT, CogFrameFormat.S16_420_10BIT,  # All YUV 10bit formats except for v210
-                CogFrameFormat.v210,  # v210, may the gods be merciful to us for including it
-                CogFrameFormat.S16_444_12BIT, CogFrameFormat.S16_422_12BIT, CogFrameFormat.S16_420_12BIT,  # All YUV 12bit formats
-                CogFrameFormat.S32_444, CogFrameFormat.S32_422, CogFrameFormat.S32_420,  # All YUV 32bit formats
-                CogFrameFormat.S16_444_RGB, CogFrameFormat.S16_444_10BIT_RGB, CogFrameFormat.S16_444_12BIT_RGB, CogFrameFormat.S32_444_RGB]  # Other planar RGB
+        fmts = [
+            # All YUV 8bit formats
+            CogFrameFormat.YUYV,
+            CogFrameFormat.UYVY,
+            CogFrameFormat.U8_444,
+            CogFrameFormat.U8_422,
+            CogFrameFormat.U8_420,
+            # All 8-bit 3 component RGB formats
+            CogFrameFormat.RGB,
+            CogFrameFormat.U8_444_RGB,
+            CogFrameFormat.RGBx,
+            CogFrameFormat.xRGB,
+            CogFrameFormat.BGRx,
+            CogFrameFormat.xBGR,
+            # All YUV 16bit formats
+            CogFrameFormat.v216,
+            CogFrameFormat.S16_444,
+            CogFrameFormat.S16_422,
+            CogFrameFormat.S16_420,
+            # All YUV 10bit formats except for v210
+            CogFrameFormat.S16_444_10BIT,
+            CogFrameFormat.S16_422_10BIT,
+            CogFrameFormat.S16_420_10BIT,
+            # v210, may the gods be merciful to us for including it
+            CogFrameFormat.v210,
+            # All YUV 12bit formats
+            CogFrameFormat.S16_444_12BIT,
+            CogFrameFormat.S16_422_12BIT,
+            CogFrameFormat.S16_420_12BIT,
+            # All YUV 32bit formats
+            CogFrameFormat.S32_444,
+            CogFrameFormat.S32_422,
+            CogFrameFormat.S32_420,
+            # Other planar RGB
+            CogFrameFormat.S16_444_RGB,
+            CogFrameFormat.S16_444_10BIT_RGB,
+            CogFrameFormat.S16_444_12BIT_RGB,
+            CogFrameFormat.S32_444_RGB]
+
         for (fmt_in, fmt_out) in pairs_from(fmts):
             with self.subTest(fmt_in=fmt_in, fmt_out=fmt_out):
                 with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -596,15 +636,21 @@ class TestGrain (IsolatedAsyncioTestCase):
 
                     # If we've increased bit-depth there will be rounding errors
                     if self._get_bitdepth(fmt_out) > self._get_bitdepth(fmt_in):
-                        self.assertMatchesTestPattern(grain_out, max_diff=1 << (self._get_bitdepth(fmt_out) + 2 - self._get_bitdepth(fmt_in)))
+                        self.assertMatchesTestPattern(
+                            grain_out, max_diff=1 << (self._get_bitdepth(fmt_out) + 2 - self._get_bitdepth(fmt_in)))
 
-                    # If we're changing from yuv to rgb then there's some potential for floating point errors, depending on the sizes
-                    elif self._get_bitdepth(fmt_in) >= 16 and not self._is_rgb(fmt_in) and fmt_out == CogFrameFormat.S16_444_RGB:
+                    # If we're changing from yuv to rgb then there's some potential for floating point errors,
+                    # depending on the sizes
+                    elif (self._get_bitdepth(fmt_in) >= 16 and not self._is_rgb(fmt_in)
+                          and fmt_out == CogFrameFormat.S16_444_RGB):
                         self.assertMatchesTestPattern(grain_out, max_diff=2)
-                    elif self._get_bitdepth(fmt_in) == 32 and not self._is_rgb(fmt_in) and fmt_out == CogFrameFormat.S32_444_RGB:
-                        self.assertMatchesTestPattern(grain_out, max_diff=1 << 10)  # The potential errors in 32 bit conversions are very large
+                    elif (self._get_bitdepth(fmt_in) == 32 and not self._is_rgb(fmt_in)
+                          and fmt_out == CogFrameFormat.S32_444_RGB):
+                        # The potential errors in 32 bit conversions are very large
+                        self.assertMatchesTestPattern(grain_out, max_diff=1 << 10)
 
-                    # If we've decreased bit-depth *and* or changed from rgb to yuv then there is a smaller scope for error
+                    # If we've decreased bit-depth *and* or changed from rgb to yuv then there is a smaller scope for
+                    # error
                     elif ((self._get_bitdepth(fmt_out) < self._get_bitdepth(fmt_in)) or
                             (self._is_rgb(fmt_in) != self._is_rgb(fmt_out))):
                         self.assertMatchesTestPattern(grain_out, max_diff=1)
@@ -619,11 +665,13 @@ class TestGrain (IsolatedAsyncioTestCase):
                     if fmt_in in [CogFrameFormat.v210, CogFrameFormat.S16_422_10BIT]:
                         self.assertMatchesTestPattern(grain_rev)
 
-                    # If we are not colour space converting and our input bit-depth is equal or lower to 10bits we have minor scope for rounding error
+                    # If we are not colour space converting and our input bit-depth is equal or lower to 10bits we have
+                    # minor scope for rounding error
                     elif self._get_bitdepth(fmt_in) in [8, 10] and not self._is_rgb(fmt_in):
                         self.assertMatchesTestPattern(grain_rev, max_diff=1)
 
-                    # If we are significantly lowering the bit depth then there is potential for significant error when reversing the process
+                    # If we are significantly lowering the bit depth then there is potential for significant error when
+                    # reversing the process
                     elif self._get_bitdepth(fmt_in) in [12, 16, 32] and not self._is_rgb(fmt_in):
                         self.assertMatchesTestPattern(grain_rev, max_diff=1 << (self._get_bitdepth(fmt_in) - 9))
 
@@ -631,7 +679,8 @@ class TestGrain (IsolatedAsyncioTestCase):
                     elif self._get_bitdepth(fmt_in) in [12, 16, 32] and self._is_rgb(fmt_in):
                         self.assertMatchesTestPattern(grain_rev, max_diff=1 << (self._get_bitdepth(fmt_in) - 8))
 
-                    # Otherwise if we are only colour converting then the potential error is a small floating point rounding error
+                    # Otherwise if we are only colour converting then the potential error is a small floating point
+                    # rounding error
                     elif self._is_rgb(fmt_in):
                         self.assertMatchesTestPattern(grain_rev, max_diff=4)
 
@@ -708,8 +757,12 @@ class TestGrain (IsolatedAsyncioTestCase):
 
         for y in range(0, 16):
             for x in range(0, 8):
-                self.assertEqual(grain.data[grain.components[1].offset//2 + y*grain.components[1].stride//2 + x], (y*16 + x) & 0x3F + 0x40)
-                self.assertEqual(grain.data[grain.components[2].offset//2 + y*grain.components[2].stride//2 + x], (y*16 + x) & 0x3F + 0x50)
+                self.assertEqual(
+                    grain.data[grain.components[1].offset//2 + y*grain.components[1].stride//2 + x],
+                    (y*16 + x) & 0x3F + 0x40)
+                self.assertEqual(
+                    grain.data[grain.components[2].offset//2 + y*grain.components[2].stride//2 + x],
+                    (y*16 + x) & 0x3F + 0x50)
 
     def test_copy(self):
         src_id = uuid.UUID("f18ee944-0841-11e8-b0b0-17cef04bd429")

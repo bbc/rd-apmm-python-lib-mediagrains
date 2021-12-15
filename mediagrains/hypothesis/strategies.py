@@ -70,8 +70,8 @@ def shrinking_uuids():
 
 
 def fraction_dicts(*args, **kwargs):
-    """A strategy that produces dictionaries of the form {'numerator': n, 'denominator': d} for fractions generated using the fractions strategy.
-    All arguments are passed through to the underlying call to fractions."""
+    """A strategy that produces dictionaries of the form {'numerator': n, 'denominator': d} for fractions generated
+    using the fractions strategy. All arguments are passed through to the underlying call to fractions."""
     def _fraction_to_dict(f):
         return {'numerator': f.numerator,
                 'denominator': f.denominator}
@@ -107,9 +107,10 @@ def strategy_for_grain_attribute(attr, grain_type=None):
               'duration': fractions(min_value=0),
               'event_type': from_regex(r"^urn:[a-z0-9][a-z0-9-]{0,31}:[a-z0-9()+,\-.:=@;$_!*'%/?#]+$"),
               'topic': from_regex(r'^[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-/]*$'),
-              'event_data': lists(fixed_dictionaries({'path': from_regex(r'^[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-/]*$'),
-                                                      'pre': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str)),
-                                                      'post': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str))})),
+              'event_data': lists(fixed_dictionaries({
+                'path': from_regex(r'^[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-/]*$'),
+                'pre': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str)),
+                'post': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str))})),
               'format': _format_strategy(grain_type),
               'samples': integers(min_value=1, max_value=16),
               'channels': integers(min_value=1, max_value=16),
@@ -125,7 +126,8 @@ def strategy_for_grain_attribute(attr, grain_type=None):
               'origin_height': just(135),
               'is_key_frame': booleans(),
               'temporal_offset': integers(min_value=0, max_value=16),
-              'unit_offsets': just(None) | lists(integers(min_value=0, max_value=256), min_size=0, max_size=16).filter(sorted)}
+              'unit_offsets': just(None) | lists(
+                integers(min_value=0, max_value=256), min_size=0, max_size=16).filter(sorted)}
     if attr not in strats:
         raise ValueError("No strategy known for grain attribute: {!r}".format(attr))
     if isinstance(strats[attr], Exception):
@@ -157,25 +159,30 @@ def empty_grains(src_id=None,
                  duration=DONOTSET):
     """Draw from this strategy to get empty grains.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
-                      hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
-    :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on hypothesis.strategies.integers which
-                    shrinks towards smaller numerical values will be used.
-    :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                               mediagrains.hypothesis.strategies.timestamps will be used (the default), if DONOTSET is passed then the creation_timestamp will
-                               be the time when drawing occured (this is unlikely to be what you want).
-    :param origin_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                             mediagrains.hypothesis.strategies.timestamps will be used  (the default), if DONOTSET is passed then the origin_timestamp of each
-                             grain drawn will be set to be equal to the creation_timestamp.
-    :param sync_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                           mediagrains.hypothesis.strategies.timestamps will be used (the default), if DONOTSET is passed then the sync_timestamp will be set
-                           equal to the origin_timestamp on all drawn grains.
-    :param rate: something that can be passed to the constructor of fractions.Fraction or a strategy that generates them, or the value DONOTSET (the default)
-                 which causes the default rate to be used for all grains, or the value None in which case hypothesis.strategies.fractions will be used with
-                 min_value set to 0.
-    :param duration: something that can be passed to the constructor of fractions.Fraction or a strategy that generates them, or the value DONOTSET (the
-                     default) which causes the default rate to be used for all grains, or the value None in which case hypothesis.strategies.fractions will be
-                     used with min_value set to 0.
+    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
+                      strategy based on hypothesis.strategies.integers which shrinks towards smaller numerical
+                      values will be used.
+    :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on
+                    hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
+    :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn,
+                               if None is provided then mediagrains.hypothesis.strategies.timestamps will be used
+                               (the default), if DONOTSET is passed then the creation_timestamp will be the time when
+                               drawing occured (this is unlikely to be what you want).
+    :param origin_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn,
+                             if None is provided then mediagrains.hypothesis.strategies.timestamps will be used  (the
+                             default), if DONOTSET is passed then the origin_timestamp of each grain drawn will be set
+                             to be equal to the creation_timestamp.
+    :param sync_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if
+                           None is provided then mediagrains.hypothesis.strategies.timestamps will be used (the
+                           default), if DONOTSET is passed then the sync_timestamp will be set equal to the
+                           origin_timestamp on all drawn grains.
+    :param rate: something that can be passed to the constructor of fractions.Fraction or a strategy that generates
+                 them, or the value DONOTSET (the default) which causes the default rate to be used for all grains, or
+                 the value None in which case hypothesis.strategies.fractions will be used with min_value set to 0.
+    :param duration: something that can be passed to the constructor of fractions.Fraction or a strategy that generates
+                     them, or the value DONOTSET (the default) which causes the default rate to be used for all grains,
+                     or the value None in which case hypothesis.strategies.fractions will be used with min_value set to
+                     0.
     """
     return _grain_strategy(Grain, "empty",
                            source_id=src_id,
@@ -200,30 +207,38 @@ def audio_grains(src_id=None,
                  sample_rate=None):
     """Draw from this strategy to get audio grains. The data element of these grains will always be all 0s.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
-                      hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
-    :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on hypothesis.strategies.integers which
-                    shrinks towards smaller numerical values will be used.
-    :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                               mediagrains.hypothesis.strategies.timestamps will be used (the default), if DONOTSET is passed then the creation_timestamp will
-                               be the time when drawing occured (this is unlikely to be what you want).
-    :param origin_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                             mediagrains.hypothesis.strategies.timestamps will be used  (the default), if DONOTSET is passed then the origin_timestamp of each
-                             grain drawn will be set to be equal to the creation_timestamp.
-    :param sync_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                           mediagrains.hypothesis.strategies.timestamps will be used (the default), if DONOTSET is passed then the sync_timestamp will be set
-                           equal to the origin_timestamp on all drawn grains.
-    :param rate: something that can be passed to the constructor of fractions.Fraction or a strategy that generates them, or the value DONOTSET (the default)
-                 which causes the default rate to be used for all grains, or the value None in which case hypothesis.strategies.fractions will be used with
-                 min_value set to 0.
-    :param duration: something that can be passed to the constructor of fractions.Fraction or a strategy that generates them, or the value DONOTSET (the
-                     default) which causes the default rate to be used for all grains, or the value None in which case hypothesis.strategies.fractions will be
-                     used with min_value set to 0.
-    :param format: either a member of cogenums.CogAudioFormat or a strategy that generates them. The default strategy will not produce encoded or unknown
-                   formats.
-    :param samples: either a positive integer or a strategy that generates them, the default strategy is integers(min_value=1).
-    :param channels: either a positive integer or a strategy that generates them, the default strategy is integers(min_value=1).
-    :param sample_rate: either a positive integer or a strategy that generates them, the default strategy will always generate either 48000 or 44100.
+    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
+                      strategy based on hypothesis.strategies.integers which shrinks towards smaller numerical values
+                      will be used.
+    :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on
+                    hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
+    :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn,
+                               if None is provided then mediagrains.hypothesis.strategies.timestamps will be used (the
+                               default), if DONOTSET is passed then the creation_timestamp will be the time when
+                               drawing occured (this is unlikely to be what you want).
+    :param origin_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if
+                             None is provided then mediagrains.hypothesis.strategies.timestamps will be used  (the
+                             default), if DONOTSET is passed then the origin_timestamp of each grain drawn will be set
+                             to be equal to the creation_timestamp.
+    :param sync_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if
+                           None is provided then mediagrains.hypothesis.strategies.timestamps will be used (the
+                           default), if DONOTSET is passed then the sync_timestamp will be set equal to the
+                           origin_timestamp on all drawn grains.
+    :param rate: something that can be passed to the constructor of fractions.Fraction or a strategy that generates
+                 them, or the value DONOTSET (the default) which causes the default rate to be used for all grains, or
+                 the value None in which case hypothesis.strategies.fractions will be used with min_value set to 0.
+    :param duration: something that can be passed to the constructor of fractions.Fraction or a strategy that generates
+                     them, or the value DONOTSET (the default) which causes the default rate to be used for all grains,
+                     or the value None in which case hypothesis.strategies.fractions will be used with min_value set to
+                     0.
+    :param format: either a member of cogenums.CogAudioFormat or a strategy that generates them. The default strategy
+                   will not produce encoded or unknown formats.
+    :param samples: either a positive integer or a strategy that generates them, the default strategy is
+                    integers(min_value=1).
+    :param channels: either a positive integer or a strategy that generates them, the default strategy is
+                     integers(min_value=1).
+    :param sample_rate: either a positive integer or a strategy that generates them, the default strategy will always
+                        generate either 48000 or 44100.
     """
     return _grain_strategy(AudioGrain, "audio",
                            source_id=src_id,
@@ -254,34 +269,42 @@ def coded_audio_grains(src_id=None,
                        sample_rate=None):
     """Draw from this strategy to get coded audio grains. The data element of these grains will always be all 0s.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
-                      hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
-    :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on hypothesis.strategies.integers which
-                    shrinks towards smaller numerical values will be used.
-    :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                               mediagrains.hypothesis.strategies.timestamps will be used (the default), if DONOTSET is passed then the creation_timestamp will
-                               be the time when drawing occured (this is unlikely to be what you want).
-    :param origin_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                             mediagrains.hypothesis.strategies.timestamps will be used  (the default), if DONOTSET is passed then the origin_timestamp of each
-                             grain drawn will be set to be equal to the creation_timestamp.
-    :param sync_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                           mediagrains.hypothesis.strategies.timestamps will be used (the default), if DONOTSET is passed then the sync_timestamp will be set
-                           equal to the origin_timestamp on all drawn grains.
-    :param rate: something that can be passed to the constructor of fractions.Fraction or a strategy that generates them, or the value DONOTSET (the default)
-                 which causes the default rate to be used for all grains, or the value None in which case hypothesis.strategies.fractions will be used with
-                 min_value set to 0.
-    :param duration: something that can be passed to the constructor of fractions.Fraction or a strategy that generates them, or the value DONOTSET (the
-                     default) which causes the default rate to be used for all grains, or the value None in which case hypothesis.strategies.fractions will be
-                     used with min_value set to 0.
-    :param format: either a member of cogenums.CogAudioFormat or a strategy that generates them. The default strategy will not produce encoded or unknown
-                   formats.
-    :param samples: either a positive integer or a strategy that generates them, the default strategy is integers(min_value=1).
-    :param channels: either a positive integer or a strategy that generates them, the default strategy is integers(min_value=1).
-    :param priming: either a positive integer or a strategy that generates them, by default this value is left unset, and so defaults to 0 on all generated
-                    grains
-    :param remainder: either a positive integer or a strategy that generates them, by default this value is left unset, and so defaults to 0 on all generated
-                      grains
-    :param sample_rate: either a positive integer or a strategy that generates them, the default strategy will always generate either 48000 or 44100.
+    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
+                      strategy based on hypothesis.strategies.integers which shrinks towards smaller numerical values
+                      will be used.
+    :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on
+                    hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
+    :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn,
+                               if None is provided then mediagrains.hypothesis.strategies.timestamps will be used (the
+                               default), if DONOTSET is passed then the creation_timestamp will be the time when
+                               drawing occured (this is unlikely to be what you want).
+    :param origin_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if
+                             None is provided then mediagrains.hypothesis.strategies.timestamps will be used  (the
+                             default), if DONOTSET is passed then the origin_timestamp of each grain drawn will be set
+                             to be equal to the creation_timestamp.
+    :param sync_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if
+                           None is provided then mediagrains.hypothesis.strategies.timestamps will be used (the
+                           default), if DONOTSET is passed then the sync_timestamp will be set equal to the
+                           origin_timestamp on all drawn grains.
+    :param rate: something that can be passed to the constructor of fractions.Fraction or a strategy that generates
+                 them, or the value DONOTSET (the default) which causes the default rate to be used for all grains, or
+                 the value None in which case hypothesis.strategies.fractions will be used with min_value set to 0.
+    :param duration: something that can be passed to the constructor of fractions.Fraction or a strategy that generates
+                     them, or the value DONOTSET (the default) which causes the default rate to be used for all grains,
+                     or the value None in which case hypothesis.strategies.fractions will be used with min_value set to
+                     0.
+    :param format: either a member of cogenums.CogAudioFormat or a strategy that generates them. The default strategy
+                   will not produce encoded or unknown formats.
+    :param samples: either a positive integer or a strategy that generates them, the default strategy is
+                    integers(min_value=1).
+    :param channels: either a positive integer or a strategy that generates them, the default strategy is
+                     integers(min_value=1).
+    :param priming: either a positive integer or a strategy that generates them, by default this value is left unset,
+                    and so defaults to 0 on all generated grains
+    :param remainder: either a positive integer or a strategy that generates them, by default this value is left unset,
+                      and so defaults to 0 on all generated grains
+    :param sample_rate: either a positive integer or a strategy that generates them, the default strategy will always
+                        generate either 48000 or 44100.
     """
     return _grain_strategy(CodedAudioGrain, "coded_audio",
                            source_id=src_id,
@@ -311,30 +334,36 @@ def video_grains(src_id=None,
                  layout=None):
     """Draw from this strategy to get video grains. The data element of these grains will always be all 0s.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
-                      hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
-    :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on hypothesis.strategies.integers which
-                    shrinks towards smaller numerical values will be used.
-    :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                               mediagrains.hypothesis.strategies.timestamps will be used (the default), if DONOTSET is passed then the creation_timestamp will
-                               be the time when drawing occured (this is unlikely to be what you want).
-    :param origin_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                             mediagrains.hypothesis.strategies.timestamps will be used  (the default), if DONOTSET is passed then the origin_timestamp of each
-                             grain drawn will be set to be equal to the creation_timestamp.
-    :param sync_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                           mediagrains.hypothesis.strategies.timestamps will be used (the default), if DONOTSET is passed then the sync_timestamp will be set
-                           equal to the origin_timestamp on all drawn grains.
-    :param rate: something that can be passed to the constructor of fractions.Fraction or a strategy that generates them, or the value DONOTSET (the default)
-                 which causes the default rate to be used for all grains, or the value None in which case hypothesis.strategies.fractions will be used with
-                 min_value set to 0.
-    :param duration: something that can be passed to the constructor of fractions.Fraction or a strategy that generates them, or the value DONOTSET (the
-                     default) which causes the default rate to be used for all grains, or the value None in which case hypothesis.strategies.fractions will be
-                     used with min_value set to 0.
-    :param format: either a member of cogenums.CogFrameFormat or a strategy that generates them. The default strategy will not produce encoded or unknown
-                   formats.
+    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
+                      strategy based on hypothesis.strategies.integers which shrinks towards smaller numerical values
+                      will be used.
+    :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on
+                    hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
+    :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn,
+                               if None is provided then mediagrains.hypothesis.strategies.timestamps will be used (the
+                               default), if DONOTSET is passed then the creation_timestamp will be the time when
+                               drawing occured (this is unlikely to be what you want).
+    :param origin_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if
+                             None is provided then mediagrains.hypothesis.strategies.timestamps will be used  (the
+                             default), if DONOTSET is passed then the origin_timestamp of each grain drawn will be set
+                             to be equal to the creation_timestamp.
+    :param sync_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if
+                           None is provided then mediagrains.hypothesis.strategies.timestamps will be used (the
+                           default), if DONOTSET is passed then the sync_timestamp will be set equal to the
+                           origin_timestamp on all drawn grains.
+    :param rate: something that can be passed to the constructor of fractions.Fraction or a strategy that generates
+                 them, or the value DONOTSET (the default) which causes the default rate to be used for all grains, or
+                 the value None in which case hypothesis.strategies.fractions will be used with min_value set to 0.
+    :param duration: something that can be passed to the constructor of fractions.Fraction or a strategy that generates
+                     them, or the value DONOTSET (the default) which causes the default rate to be used for all grains,
+                     or the value None in which case hypothesis.strategies.fractions will be used with min_value set to
+                     0.
+    :param format: either a member of cogenums.CogFrameFormat or a strategy that generates them. The default strategy
+                   will not produce encoded or unknown formats.
     :param width: either a positive integer or a strategy that generates them, the default strategy is just(240).
     :param height: either a positive integer or a strategy that generates them, the default strategy is just(135).
-    :param layout: either a member of cogenums.CogFrameLayout or a strategy that generates them, the default strategy will not generate UNKNOWN layout.
+    :param layout: either a member of cogenums.CogFrameLayout or a strategy that generates them, the default strategy
+                   will not generate UNKNOWN layout.
     """
     return _grain_strategy(VideoGrain, "video",
                            source_id=src_id,
@@ -368,35 +397,45 @@ def coded_video_grains(src_id=None,
                        unit_offsets=None):
     """Draw from this strategy to get coded video grains. The data element of these grains will always be all 0s.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an strategy based on
-                      hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
-    :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on hypothesis.strategies.integers which
-                    shrinks towards smaller numerical values will be used.
-    :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                               mediagrains.hypothesis.strategies.timestamps will be used (the default), if DONOTSET is passed then the creation_timestamp will
-                               be the time when drawing occured (this is unlikely to be what you want).
-    :param origin_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                             mediagrains.hypothesis.strategies.timestamps will be used  (the default), if DONOTSET is passed then the origin_timestamp of each
-                             grain drawn will be set to be equal to the creation_timestamp.
-    :param sync_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if None is provided then
-                           mediagrains.hypothesis.strategies.timestamps will be used (the default), if DONOTSET is passed then the sync_timestamp will be set
-                           equal to the origin_timestamp on all drawn grains.
-    :param rate: something that can be passed to the constructor of fractions.Fraction or a strategy that generates them, or the value DONOTSET (the default)
-                 which causes the default rate to be used for all grains, or the value None in which case hypothesis.strategies.fractions will be used with
-                 min_value set to 0.
-    :param duration: something that can be passed to the constructor of fractions.Fraction or a strategy that generates them, or the value DONOTSET (the
-                     default) which causes the default rate to be used for all grains, or the value None in which case hypothesis.strategies.fractions will be
-                     used with min_value set to 0.
-    :param format: either a member of cogenums.CogFrameFormat or a strategy that generates them. The default strategy will not produce encoded or unknown
-                   formats.
-    :param coded_width: either a positive integer or a strategy that generates them, the default strategy is just(240).
-    :param coded_height: either a positive integer or a strategy that generates them, the default strategy is just(135).
-    :param origin_width: either a positive integer or a strategy that generates them, the default strategy is just(240).
-    :param origin_height: either a positive integer or a strategy that generates them, the default strategy is just(135).
+    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
+                      strategy based on hypothesis.strategies.integers which shrinks towards smaller numerical values
+                      will be used.
+    :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on
+                    hypothesis.strategies.integers which shrinks towards smaller numerical values will be used.
+    :param creation_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn,
+                               if None is provided then mediagrains.hypothesis.strategies.timestamps will be used (the
+                               default), if DONOTSET is passed then the creation_timestamp will be the time when
+                               drawing occured (this is unlikely to be what you want).
+    :param origin_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if
+                             None is provided then mediagrains.hypothesis.strategies.timestamps will be used  (the
+                             default), if DONOTSET is passed then the origin_timestamp of each grain drawn will be set
+                             to be equal to the creation_timestamp.
+    :param sync_timestamp: a mediagrains.Timestamp *or* a strategy from which mediagrain.Timestamps can be drawn, if
+                           None is provided then mediagrains.hypothesis.strategies.timestamps will be used (the
+                           default), if DONOTSET is passed then the sync_timestamp will be set equal to the
+                           origin_timestamp on all drawn grains.
+    :param rate: something that can be passed to the constructor of fractions.Fraction or a strategy that generates
+                 them, or the value DONOTSET (the default) which causes the default rate to be used for all grains, or
+                 the value None in which case hypothesis.strategies.fractions will be used with min_value set to 0.
+    :param duration: something that can be passed to the constructor of fractions.Fraction or a strategy that generates
+                     them, or the value DONOTSET (the default) which causes the default rate to be used for all grains,
+                     or the value None in which case hypothesis.strategies.fractions will be used with min_value set to
+                     0.
+    :param format: either a member of cogenums.CogFrameFormat or a strategy that generates them. The default strategy
+                   will not produce encoded or unknown formats.
+    :param coded_width: either a positive integer or a strategy that generates them, the default strategy is
+                        just(240).
+    :param coded_height: either a positive integer or a strategy that generates them, the default strategy is
+                         just(135).
+    :param origin_width: either a positive integer or a strategy that generates them, the default strategy is
+                         just(240).
+    :param origin_height: either a positive integer or a strategy that generates them, the default strategy is
+                          just(135).
     :param is_key_frame: either a boolean or a strategy that generates them.
     :param temporal_offset: either an integer or a strategy that generates them.
     :param unit_offsets: either a list of uniformly increasing non-negative integers or a strategy that generates them.
-    :param layout: either a member of cogenums.CogFrameLayout or a strategy that generates them, the default strategy will not generate UNKNOWN layout.
+    :param layout: either a member of cogenums.CogFrameLayout or a strategy that generates them, the default strategy
+                   will not generate UNKNOWN layout.
     """
     return _grain_strategy(CodedVideoGrain, "coded_video",
                            source_id=src_id,
@@ -447,11 +486,12 @@ def grains_with_data(grain_type):
 
 
 def grains_from_template_with_data(grain, data=None):
-    """A strategy that produces grains which are identical to the input grain but with randomised data based on the format:
+    """A strategy that produces grains which are identical to the input grain but with randomised data based on the
+    format:
 
     :param grain: A grain to use as a template
-    :param data: either a strategy that generates bytes of the correct size, or a bytestring of the right size, or None, in which case random data based on the
-                 format will be used.
+    :param data: either a strategy that generates bytes of the correct size, or a bytestring of the right size, or
+                 None, in which case random data based on the format will be used.
     """
     if data is None:
         if grain.grain_type == "audio":
@@ -534,10 +574,27 @@ def event_grains(src_id=None,
     if duration is DONOTSET:
         duration = Fraction(1, 25)
 
-    def event_grain(source_id, flow_id, origin_timestamp, sync_timestamp, rate, duration, creation_timestamp, event_type, topic, event_data):
-        grain = EventGrain(src_id=source_id, flow_id=flow_id, creation_timestamp=creation_timestamp, origin_timestamp=origin_timestamp,
-                           sync_timestamp=sync_timestamp, rate=rate, duration=duration,
-                           event_type=event_type, topic=topic)
+    def event_grain(
+     source_id,
+     flow_id,
+     origin_timestamp,
+     sync_timestamp,
+     rate,
+     duration,
+     creation_timestamp,
+     event_type,
+     topic,
+     event_data):
+        grain = EventGrain(
+            src_id=source_id,
+            flow_id=flow_id,
+            creation_timestamp=creation_timestamp,
+            origin_timestamp=origin_timestamp,
+            sync_timestamp=sync_timestamp,
+            rate=rate,
+            duration=duration,
+            event_type=event_type,
+            topic=topic)
         for datum in event_data:
             grain.append(datum['path'], datum['pre'], datum['post'])
         return grain

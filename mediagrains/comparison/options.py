@@ -14,19 +14,20 @@
 # limitations under the License.
 #
 
-"""Options can be passed to comparisons which are constructed using the objects Exclude, Include, and ExpectedDifference.
-These three objects provide a convenient (and similar) interface. By accessing attributes of these objects that have
-the same names as attributes of the objects to be compared you can identify which attributes to refer to.
+"""Options can be passed to comparisons which are constructed using the objects Exclude, Include, and
+ExpectedDifference. These three objects provide a convenient (and similar) interface. By accessing attributes
+of these objects that have the same names as attributes of the objects to be compared you can identify which
+attributes to refer to.
 
 eg.
 
 options.Include.creation_timestamp
 
-is an option that causes the comparison operation to not ignore any differences in the creation_timestamp member of the compared
-objects.
+is an option that causes the comparison operation to not ignore any differences in the creation_timestamp member of
+the compared objects.
 
-If an Include and an Exclude are used for the same attribute then the Exclude takes precedence. At present the only real use for Include is
-to override the default behaviour that ignores creation_timestamp differences.
+If an Include and an Exclude are used for the same attribute then the Exclude takes precedence. At present the only
+real use for Include is to override the default behaviour that ignores creation_timestamp differences.
 
 For options.ExpectedDifference there is an additional step, which is to apply comparison operations, so:
 
@@ -64,42 +65,56 @@ class _ExpectedDifference(object):
         return self.path.format("ExpectedDifference")
 
     def __eq__(self, other):
-        return ComparisonExpectDifferenceMatches(self.path, lambda x: x == other, "{} == {!r}".format(self.path.format('ExpectedDifference'), other))
+        return ComparisonExpectDifferenceMatches(
+            self.path, lambda x: x == other, "{} == {!r}".format(self.path.format('ExpectedDifference'), other))
 
     def __ne__(self, other):
-        return ComparisonExpectDifferenceMatches(self.path, lambda x: x != other, "{} != {!r}".format('ExpectedDifference', other))
+        return ComparisonExpectDifferenceMatches(
+            self.path, lambda x: x != other, "{} != {!r}".format('ExpectedDifference', other))
 
     def __lt__(self, other):
-        return ComparisonExpectDifferenceMatches(self.path, lambda x: x < other, "{} < {!r}".format('ExpectedDifference', other))
+        return ComparisonExpectDifferenceMatches(
+            self.path, lambda x: x < other, "{} < {!r}".format('ExpectedDifference', other))
 
     def __le__(self, other):
-        return ComparisonExpectDifferenceMatches(self.path, lambda x: x <= other, "{} <= {!r}".format('ExpectedDifference', other))
+        return ComparisonExpectDifferenceMatches(
+            self.path, lambda x: x <= other, "{} <= {!r}".format('ExpectedDifference', other))
 
     def __gt__(self, other):
-        return ComparisonExpectDifferenceMatches(self.path, lambda x: x > other, "{} > {!r}".format('ExpectedDifference', other))
+        return ComparisonExpectDifferenceMatches(
+            self.path, lambda x: x > other, "{} > {!r}".format('ExpectedDifference', other))
 
     def __ge__(self, other):
-        return ComparisonExpectDifferenceMatches(self.path, lambda x: x >= other, "{} >= {!r}".format('ExpectedDifference', other))
+        return ComparisonExpectDifferenceMatches(
+            self.path, lambda x: x >= other, "{} >= {!r}".format('ExpectedDifference', other))
 
     def __and__(self, other):
         if not isinstance(other, ComparisonExpectDifferenceMatches):
             raise ValueError("{!r} & {!r} is not a valid operation".format(self, other))
         elif other.path != self.path:
             raise ValueError(("{!r} & {!r} is not a valid operation: " +
-                              "When combining ExpectedDifference operations with & they must refer to the same attribute").format(self, other))
+                              "When combining ExpectedDifference operations with & they must refer to the same " +
+                              "attribute"
+                              ).format(self, other))
         else:
-            return ComparisonExpectDifferenceMatches(self.path, lambda x: self.matcher(x) and other.matcher(x), "{!r} & {!r}".format(self, other))
+            return ComparisonExpectDifferenceMatches(
+                self.path, lambda x: self.matcher(x) and other.matcher(x), "{!r} & {!r}".format(self, other))
 
     def __or__(self, other):
         if not isinstance(other, ComparisonExpectDifferenceMatches):
             raise ValueError("{!r} | {!r} is not a valid operation".format(self, other))
         elif other.path != self.path:
             raise ValueError(("{!r} | {!r} is not a valid operation: " +
-                              "When combining ExpectedDifference operations with | they must refer to the same attribute").format(self, other))
+                              "When combining ExpectedDifference operations with | they must refer to the same " +
+                              "attribute"
+                              ).format(self, other))
         else:
-            return ComparisonExpectDifferenceMatches(self.path, lambda x: self.matcher(x) or other.matcher(x), "{!r} | {!r}".format(self, other))
+            return ComparisonExpectDifferenceMatches(
+                self.path, lambda x: self.matcher(x) or other.matcher(x), "{!r} | {!r}".format(self, other))
 
     def __getattr__(self, attr):
+        if attr.startswith('__') and attr.endswith('__'):
+            raise AttributeError
         return _ExpectedDifference(self.path + "." + attr)
 
 
@@ -147,6 +162,8 @@ class _PSNR(object):
         return ComparisonPSNR(self.path, lambda x: _compare_psnr(x, other), "{} >= {!r}".format('PSNR', other))
 
     def __getattr__(self, attr):
+        if attr.startswith('__') and attr.endswith('__'):
+            raise AttributeError
         return _PSNR(self.path + "." + attr)
 
 

@@ -239,9 +239,11 @@ def AudioGrain(src_id_or_meta: Optional[UUID] = None,
 
 
 def AudioGrain(*args, **kwargs):
-    """If the first argument is a mediagrains.AUDIOGRAIN then return a mediagrains.numpy.AUDIOGRAIN representing the same data.
+    """If the first argument is a mediagrains.AUDIOGRAIN then return a mediagrains.numpy.AUDIOGRAIN representing the
+    same data.
 
-    Otherwise takes the same parameters as mediagrains.AudioGrain and returns the same grain converted into a mediagrains.numpy.AUDIOGRAIN
+    Otherwise takes the same parameters as mediagrains.AudioGrain and returns the same grain converted into a
+    mediagrains.numpy.AUDIOGRAIN
     """
     if len(args) == 1 and isinstance(args[0], bytesgrain.AUDIOGRAIN):
         rawgrain = args[0]
