@@ -100,6 +100,8 @@ class _ExpectedDifference(object):
             return ComparisonExpectDifferenceMatches(self.path, lambda x: self.matcher(x) or other.matcher(x), "{!r} | {!r}".format(self, other))
 
     def __getattr__(self, attr):
+        if attr.startswith('__') and attr.endswith('__'):
+            raise AttributeError
         return _ExpectedDifference(self.path + "." + attr)
 
 
@@ -147,6 +149,8 @@ class _PSNR(object):
         return ComparisonPSNR(self.path, lambda x: _compare_psnr(x, other), "{} >= {!r}".format('PSNR', other))
 
     def __getattr__(self, attr):
+        if attr.startswith('__') and attr.endswith('__'):
+            raise AttributeError
         return _PSNR(self.path + "." + attr)
 
 

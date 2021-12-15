@@ -17,17 +17,38 @@
 
 from setuptools import setup
 
+# Basic metadata
+name = 'mediagrains'
+description = "Simple utility for grain-based media"
+url = 'https://github.com/bbc/rd-apmm-python-lib-mediagrains'
+author = u'James Sandford'
+author_email = u'james.sandford@bbc.co.uk'
+license = 'Apache 2'
+long_description = description
+
+
+# Execute version file to set version variable
+try:
+    with open(("{}/_version.py".format(name)), "r") as fp:
+        exec(fp.read())
+except IOError:
+    # Version file doesn't exist, fake it for now
+    __version__ = "0.0.0"
+
+package_names = [
+    'mediagrains',
+    'mediagrains.hypothesis',
+    'mediagrains.comparison',
+    'mediagrains.utils',
+    'mediagrains.asyncio',
+    'mediagrains.numpy',
+    'mediagrains.tools',
+    'mediagrains.patterngenerators',
+    'mediagrains.patterngenerators.video',
+    'mediagrains.patterngenerators.audio'
+]
 packages = {
-    'mediagrains': 'mediagrains',
-    'mediagrains.hypothesis': 'mediagrains/hypothesis',
-    'mediagrains.comparison': 'mediagrains/comparison',
-    'mediagrains.utils': 'mediagrains/utils',
-    'mediagrains.asyncio': 'mediagrains/asyncio',
-    'mediagrains.numpy': 'mediagrains/numpy',
-    'mediagrains.tools': 'mediagrains/tools',
-    'mediagrains.patterngenerators': 'mediagrains/patterngenerators',
-    'mediagrains.patterngenerators.video': 'mediagrains/patterngenerators/video',
-    'mediagrains.patterngenerators.audio': 'mediagrains/patterngenerators/audio'
+    pkg: pkg.replace('.', '/') for pkg in package_names
 }
 
 packages_required = [
@@ -35,14 +56,9 @@ packages_required = [
     "mediatimestamp >=2.1.0",
     "frozendict >= 1.2",
     'numpy >= 1.17.2',
-    'mypy',
     'deprecated >= 1.2.6',
     "bitstring"
 ]
-
-deps_required = []
-
-package_names = list(packages.keys())
 
 console_scripts = [
     'wrap_video_in_gsf=mediagrains.tools:wrap_video_in_gsf',
@@ -51,22 +67,20 @@ console_scripts = [
     'gsf_probe=mediagrains.tools:gsf_probe'
 ]
 
-setup(name="mediagrains",
-      version="3.0.0",
+setup(name=name,
+      version=__version__,
       python_requires='>=3.10.0',
-      description="Simple utility for grain-based media",
-      url='https://github.com/bbc/rd-apmm-python-lib-mediagrains',
-      author='James Sandford',
-      author_email='james.sandford@bbc.co.uk',
-      license='Apache 2',
+      description=description,
+      url=url,
+      author=author,
+      author_email=author_email,
+      license=license,
       packages=package_names,
       package_dir=packages,
-      package_data={name: ['py.typed'] for name in package_names},
+      package_data={package_name: ['py.typed'] for package_name in package_names},
       install_requires=packages_required,
       entry_points={
           'console_scripts': console_scripts
       },
       data_files=[],
-      long_description="""
-Simple python library for dealing with grain data in a python-native format.
-""")
+      long_description=long_description)

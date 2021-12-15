@@ -18,8 +18,7 @@ are also included - see [Tools](#tools).
 ### Requirements
 
 * A working Python 3.10+ installation
-* BBC R&D's internal deb repository set up as a source for apt (if installing via apt-get)
-* The tool [tox](https://tox.readthedocs.io/en/latest/) is needed to run the unittests, but not required to use the library.
+* The tool [Docker](https://docs.docker.com/engine/install/) is needed to run the tests, but not required to use the library.
 
 ### Steps
 
@@ -27,13 +26,10 @@ are also included - see [Tools](#tools).
 # Install from pip
 $ pip install mediagrains
 
-# Install via apt-get
-$ apt-get install python3-mediagrains
-
 # Install directly from source repo
 $ git clone git@github.com:bbc/rd-apmm-python-lib-mediagrains.git
 $ cd rd-apmm-python-lib-mediagrains
-$ pip install -e .
+$ make install
 ```
 
 ## Usage
@@ -193,8 +189,9 @@ An additional feature is provided in the form of numpy array access to the data 
 The API is well documented in the docstrings of the module mediagrains, to view:
 
 ```bash
-pydoc mediagrains
+make docs
 ```
+This command will render documentation as HTML in the `/docs` directory.
 
 ## Tools
 Some tools are installed with the library to make working with the Grain Sequence Format (GSF) file format easier.
@@ -221,25 +218,22 @@ extract_gsf_essence output_audio.gsf - | ffplay -f s16le -ac 2 -ar 44100 pipe:0
 ```
 
 ## Development
+### Commontooling
+
+This repository uses a library of makefiles, templates, and other tools for development tooling and CI workflows. To discover operations that may be run against this repo, run the following in the top level of the repo:
+
+```bash
+$ make
+```
+
 ### Testing
 
-To run the unittests for this package in a virtual environment follow these steps:
+To run the unittests for this package in a docker container follow these steps:
 
 ```bash
 $ git clone git@github.com:bbc/rd-apmm-python-lib-mediagrains.git
 $ cd rd-apmm-python-lib-mediagrains
 $ make test
-```
-### Packaging
-
-Debian and RPM packages can be built using:
-
-```bash
-# Debian packaging
-$ make deb
-
-# RPM packageing
-$ make rpm
 ```
 
 ### Continuous Integration
@@ -252,10 +246,6 @@ for this package.
 ## Versioning
 
 We use [Semantic Versioning](https://semver.org/) for this repository
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md)
 
 ## Contributing
 

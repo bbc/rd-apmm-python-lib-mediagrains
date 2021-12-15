@@ -1,0 +1,14 @@
+{
+    "docker": true,
+    "stages": [
+        "@setup",
+        "@make check-static-files",
+        "@make lint",
+        "@make mypy",
+        "@make docs",
+        "@make test",
+        "@make wheel",
+        "@upload pypi",
+        "@upload docs-recursive ./docs"
+    ]
+}
