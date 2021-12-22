@@ -87,7 +87,22 @@ WORKDIR /{{ modname }}/
 
 # Set the default command
 ENTRYPOINT ["python", "-m", "unittest"]
-CMD ["discover", "tests", "-v"]
+CMD ["-v"]
+{%- endmacro %}
+
+{% macro unittestwithapi(modname) -%}
+###############################################################################
+# Stage: unittest with COPY api
+###############################################################################
+FROM tests AS unittest
+WORKDIR /{{ modname }}/
+
+# Copy api in from the image built for that purpose
+COPY --from=api /api /api
+
+# Set the default command
+ENTRYPOINT ["python", "-m", "unittest"]
+CMD ["-v"]
 {%- endmacro %}
 
 {% macro flake8(modname) -%}
