@@ -169,7 +169,7 @@ class AUDIOGRAIN (bytesgrain.AUDIOGRAIN):
             self.channel_data = []
         else:
             self._data_fetcher_coroutine = None
-            self._data = np.frombuffer(cast(GrainDataType, value), dtype=_dtype_from_cogaudioformat(self.format))
+            self._data = np.frombuffer(cast(bytes, value), dtype=_dtype_from_cogaudioformat(self.format))
             self.channel_data = _channel_arrays_for_data_and_type(
                 self._data, self.format, self.samples, self.channels
             )

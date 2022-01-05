@@ -281,7 +281,7 @@ class VIDEOGRAIN (bytesgrain.VIDEOGRAIN):
             self.component_data = ComponentDataList([])
         else:
             self._data_fetcher_coroutine = None
-            self._data = np.frombuffer(cast(GrainDataType, value), dtype=_dtype_from_cogframeformat(self.format))
+            self._data = np.frombuffer(cast(bytes, value), dtype=_dtype_from_cogframeformat(self.format))
             self.component_data = ComponentDataList(
                 _component_arrays_for_data_and_type(self._data, self.format, self.components),
                 arrangement=_component_arrangement_from_format(self.format))
