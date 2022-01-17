@@ -25,7 +25,7 @@ from datetime import datetime
 from io import BytesIO, RawIOBase, BufferedIOBase
 from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
-from frozendict import frozendict
+from frozendict import frozendict  # type: ignore
 from .utils import IOBytes
 from os import SEEK_SET, SEEK_CUR
 import warnings
