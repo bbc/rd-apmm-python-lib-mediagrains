@@ -48,6 +48,7 @@ class CogFrameFormat(IntEnum):
     D10 = 0x206
     VC2 = 0x207
     VP8 = 0x208
+    H265 = 0x209
     ALPHA_U8_1BIT = 0x1080
     U8_444 = 0x2000
     U8_422 = 0x2001
