@@ -21,8 +21,8 @@ from setuptools import setup
 name = 'mediagrains'
 description = "Simple utility for grain-based media"
 url = 'https://github.com/bbc/rd-apmm-python-lib-mediagrains'
-author = u'James Sandford'
-author_email = u'james.sandford@bbc.co.uk'
+author = u'BBC R&D'
+author_email = u'cloudfit-opensource@rd.bbc.co.uk'
 license = 'Apache 2'
 long_description = description
 
