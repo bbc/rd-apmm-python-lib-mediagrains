@@ -36,7 +36,7 @@ from .typing import (
     VideoGrainComponentDict)
 
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
-from .grain import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN, size_for_audio_format
+from .grains import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN, size_for_audio_format
 
 
 __all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain", "CodedAudioGrain", "EventGrain"]
