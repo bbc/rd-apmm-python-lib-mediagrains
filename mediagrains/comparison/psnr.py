@@ -15,7 +15,9 @@
 
 import math
 import numpy as np
+from typing import cast, Union
 
+from mediagrains.grain import AUDIOGRAIN, GRAIN, VIDEOGRAIN
 from mediagrains.cogenums import (
     COG_FRAME_IS_COMPRESSED,
     COG_FRAME_FORMAT_ACTIVE_BITS,
@@ -43,7 +45,7 @@ def _compute_element_mse(data_a, data_b):
     return np.mean(np.square(np.subtract(data_a, data_b, dtype=np.double)))
 
 
-def _compute_element_psnr(data_a, data_b, max_val):
+def _compute_element_psnr(data_a, data_b, max_val) -> float:
     """Compute PSNR.
 
     :param data_a: Data for a
@@ -58,7 +60,10 @@ def _compute_element_psnr(data_a, data_b, max_val):
         return 10.0 * math.log10((max_val**2)/mse)
 
 
-def _compute_audio_psnr(grain_a, grain_b, max_val=None):
+def _compute_audio_psnr(grain_a: Union[AUDIOGRAIN, numpy_AUDIOGRAIN],
+                        grain_b: Union[AUDIOGRAIN, numpy_AUDIOGRAIN],
+                        max_val=None
+                        ) -> list[float]:
     """Compute PSNR for audio grains.
 
     :param grain_a: An AUDIOGRAIN
@@ -98,7 +103,10 @@ def _compute_audio_psnr(grain_a, grain_b, max_val=None):
     return psnr
 
 
-def _compute_video_psnr(grain_a, grain_b, max_val=None):
+def _compute_video_psnr(grain_a: Union[VIDEOGRAIN, numpy_VIDEOGRAIN],
+                        grain_b: Union[VIDEOGRAIN, numpy_VIDEOGRAIN],
+                        max_val=None
+                        ) -> list[float]:
     """Compute PSNR for video grains.
 
     :param grain_a: A VIDEOGRAIN
@@ -126,7 +134,10 @@ def _compute_video_psnr(grain_a, grain_b, max_val=None):
     return psnr
 
 
-def compute_psnr(grain_a, grain_b, max_val=None):
+def compute_psnr(grain_a: GRAIN,
+                 grain_b: GRAIN,
+                 max_val=None
+                 ) -> list[float]:
     """Compute PSNR for video or audio grains.
 
     :param grain_a: A VIDEOGRAIN or AUDIOGRAIN
@@ -138,8 +149,8 @@ def compute_psnr(grain_a, grain_b, max_val=None):
         raise AttributeError("Grain types do not match")
 
     if grain_a.grain_type == "video":
-        return _compute_video_psnr(grain_a, grain_b, max_val=max_val)
+        return _compute_video_psnr(cast(VIDEOGRAIN, grain_a), cast(VIDEOGRAIN, grain_b), max_val=max_val)
     elif grain_a.grain_type == "audio":
-        return _compute_audio_psnr(grain_a, grain_b, max_val=max_val)
+        return _compute_audio_psnr(cast(AUDIOGRAIN, grain_a), cast(AUDIOGRAIN, grain_b), max_val=max_val)
     else:
         raise AttributeError("Unsupported grain type")
