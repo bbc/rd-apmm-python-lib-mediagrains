@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from fractions import Fraction
 from inspect import isawaitable
 
 from typing import (
@@ -10,6 +11,9 @@ from typing import (
     Iterator,
     Awaitable)
 from typing_extensions import Literal
+from uuid import UUID
+
+from mediatimestamp.immutable import Timestamp, SupportsMediaTimestamp, mediatimestamp
 from ..typing import (
     MediaJSONSerialisable,
     EventGrainDatumDict,
@@ -17,12 +21,12 @@ from ..typing import (
     EventGrainMetadataDict,
     GrainDataParameterType)
 
-from .Grain import Grain
+from .BaseGrain import BaseGrain
 
 import json
 
 
-class EventGrain(Grain):
+class EventGrain(BaseGrain):
     """\
 A class representing an event grain.
 
@@ -96,7 +100,62 @@ append(path, pre=None, post=None)
     provided string, and pre and post set optionally. All calls should use
     only json serialisable objects for the values of pre and post.
     """
-    def __init__(self, meta: EventGrainMetadataDict, data: GrainDataParameterType):
+    def __init__(self,
+                 meta: EventGrainMetadataDict,
+                 data: GrainDataParameterType,
+                 src_id: Optional[UUID] = None,
+                 flow_id: Optional[UUID] = None,
+                 origin_timestamp: Optional[SupportsMediaTimestamp] = None,
+                 creation_timestamp: Optional[SupportsMediaTimestamp] = None,
+                 sync_timestamp: Optional[SupportsMediaTimestamp] = None,
+                 rate: Fraction = Fraction(25, 1),
+                 duration: Fraction = Fraction(1, 25),
+                 event_type: str = '',
+                 topic: str = ''):
+
+        if meta is None:
+            if src_id is None:
+                raise AttributeError("src_id is None. Meta is None so src_id must not be None.")
+            if flow_id is None:
+                raise AttributeError("flow_id is None. Meta is None so flow_id must not be None.")
+
+            if not isinstance(src_id, UUID):
+                raise AttributeError(f"src_id: Seen type {type(src_id)}, expected UUID.")
+            if not isinstance(flow_id, UUID):
+                raise AttributeError(f"flow_id: Seen type {type(flow_id)}, expected UUID.")
+
+            cts = creation_timestamp
+            if cts is None:
+                cts = Timestamp.get_time()
+            if origin_timestamp is None:
+                origin_timestamp = cts
+            if sync_timestamp is None:
+                sync_timestamp = origin_timestamp
+            meta = EventGrainMetadataDict({
+                "@_ns": "urn:x-ipstudio:ns:0.1",
+                "grain": {
+                    "grain_type": "event",
+                    "source_id": str(src_id),
+                    "flow_id": str(flow_id),
+                    "origin_timestamp": str(mediatimestamp(origin_timestamp)),
+                    "sync_timestamp": str(mediatimestamp(sync_timestamp)),
+                    "creation_timestamp": str(mediatimestamp(cts)),
+                    "rate": {
+                        "numerator": Fraction(rate).numerator,
+                        "denominator": Fraction(rate).denominator,
+                        },
+                    "duration": {
+                        "numerator": Fraction(duration).numerator,
+                        "denominator": Fraction(duration).denominator,
+                        },
+                    "event_payload": {
+                        "type": event_type,
+                        "topic": topic,
+                        "data": []
+                    }
+                },
+            })
+
         super().__init__(meta, None)
         self.meta: EventGrainMetadataDict
 

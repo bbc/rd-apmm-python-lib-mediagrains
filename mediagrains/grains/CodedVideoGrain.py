@@ -9,15 +9,17 @@ from typing import (
     cast,
     Sized,
     Iterable)
+from uuid import UUID
+from mediatimestamp.immutable import Timestamp, SupportsMediaTimestamp, mediatimestamp
 from ..typing import (
     CodedVideoGrainMetadataDict,
     GrainDataParameterType)
 
 from ..cogenums import CogFrameFormat, CogFrameLayout
-from .Grain import Grain
+from .BaseGrain import BaseGrain
 
 
-class CodedVideoGrain(Grain):
+class CodedVideoGrain(BaseGrain):
     """\
 A class representing a coded video grain.
 
@@ -100,7 +102,91 @@ unit_offsets
     A list-like object containing integer offsets of coded units within the
     data array.
 """
-    def __init__(self, meta: CodedVideoGrainMetadataDict, data: GrainDataParameterType):
+    def __init__(self,
+                 meta: CodedVideoGrainMetadataDict,
+                 data: GrainDataParameterType,
+                 src_id: Optional[UUID] = None,
+                 flow_id: Optional[UUID] = None,
+                 origin_timestamp: Optional[SupportsMediaTimestamp] = None,
+                 creation_timestamp: Optional[SupportsMediaTimestamp] = None,
+                 sync_timestamp: Optional[SupportsMediaTimestamp] = None,
+                 rate: Fraction = Fraction(25, 1),
+                 duration: Fraction = Fraction(1, 25),
+                 cog_frame_format: CogFrameFormat = CogFrameFormat.UNKNOWN,
+                 origin_width: int = 1920,
+                 origin_height: int = 1080,
+                 coded_width: Optional[int] = None,
+                 coded_height: Optional[int] = None,
+                 is_key_frame: bool = False,
+                 temporal_offset: int = 0,
+                 length: Optional[int] = None,
+                 cog_frame_layout: CogFrameLayout = CogFrameLayout.UNKNOWN,
+                 unit_offsets: Optional[List[int]] = None):
+
+        if coded_width is None:
+            coded_width = origin_width
+        if coded_height is None:
+            coded_height = origin_height
+
+        if length is None:
+            if data is not None and hasattr(data, "__len__"):
+                length = len(cast(Sized, data))
+            else:
+                length = 0
+
+        if meta is None:
+            if src_id is None:
+                raise AttributeError("src_id is None. Meta is None so src_id must not be None.")
+            if flow_id is None:
+                raise AttributeError("flow_id is None. Meta is None so flow_id must not be None.")
+
+            if not isinstance(src_id, UUID):
+                raise AttributeError(f"src_id: Seen type {type(src_id)}, expected UUID.")
+            if not isinstance(flow_id, UUID):
+                raise AttributeError(f"flow_id: Seen type {type(flow_id)}, expected UUID.")
+
+            if creation_timestamp is None:
+                creation_timestamp = Timestamp.get_time()
+            if origin_timestamp is None:
+                origin_timestamp = creation_timestamp
+            if sync_timestamp is None:
+                sync_timestamp = origin_timestamp
+            meta = {
+                "@_ns": "urn:x-ipstudio:ns:0.1",
+                "grain": {
+                    "grain_type": "coded_video",
+                    "source_id": str(src_id),
+                    "flow_id": str(flow_id),
+                    "origin_timestamp": str(mediatimestamp(origin_timestamp)),
+                    "sync_timestamp": str(mediatimestamp(sync_timestamp)),
+                    "creation_timestamp": str(mediatimestamp(creation_timestamp)),
+                    "rate": {
+                        "numerator": Fraction(rate).numerator,
+                        "denominator": Fraction(rate).denominator,
+                        },
+                    "duration": {
+                        "numerator": Fraction(duration).numerator,
+                        "denominator": Fraction(duration).denominator,
+                        },
+                    "cog_coded_frame": {
+                        "format": cog_frame_format,
+                        "origin_width": origin_width,
+                        "origin_height": origin_height,
+                        "coded_width": coded_width,
+                        "coded_height": coded_height,
+                        "layout": cog_frame_layout,
+                        "is_key_frame": is_key_frame,
+                        "temporal_offset": temporal_offset
+                    }
+                },
+            }
+
+        if data is None:
+            data = bytearray(length)
+
+        if "grain" in meta and "cog_coded_frame" in meta['grain'] and unit_offsets is not None:
+            meta['grain']['cog_coded_frame']['unit_offsets'] = unit_offsets
+
         super().__init__(meta, data)
         self.meta: CodedVideoGrainMetadataDict
 

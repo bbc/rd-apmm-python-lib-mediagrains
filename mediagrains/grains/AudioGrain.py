@@ -1,6 +1,5 @@
-from mediatimestamp.immutable import (
-    Timestamp,
-    TimeOffset,)
+from uuid import UUID
+from mediatimestamp.immutable import Timestamp, SupportsMediaTimestamp, mediatimestamp, TimeOffset
 from fractions import Fraction
 
 from typing import (
@@ -10,7 +9,7 @@ from ..typing import (
     GrainDataParameterType)
 
 from ..cogenums import CogAudioFormat
-from .Grain import Grain
+from .BaseGrain import BaseGrain
 
 
 def size_for_audio_format(cog_audio_format: CogAudioFormat, channels: int, samples: int) -> int:
@@ -30,7 +29,7 @@ def size_for_audio_format(cog_audio_format: CogAudioFormat, channels: int, sampl
     return channels * samples * depth
 
 
-class AudioGrain(Grain):
+class AudioGrain(BaseGrain):
     """\
 A class representing a raw audio grain.
 
@@ -100,7 +99,68 @@ sample_rate
     An integer indicating the number of samples per channel per second in this
     audio flow.
 """
-    def __init__(self, meta: AudioGrainMetadataDict, data: GrainDataParameterType):
+    def __init__(self,
+                 meta: AudioGrainMetadataDict,
+                 data: GrainDataParameterType = None,
+                 src_id: Optional[UUID] = None,
+                 flow_id: Optional[UUID] = None,
+                 origin_timestamp: Optional[SupportsMediaTimestamp] = None,
+                 sync_timestamp: Optional[SupportsMediaTimestamp] = None,
+                 creation_timestamp: Optional[SupportsMediaTimestamp] = None,
+                 rate: Fraction = Fraction(25, 1),
+                 duration: Fraction = Fraction(1, 25),
+                 cog_audio_format: CogAudioFormat = CogAudioFormat.INVALID,
+                 samples: int = 0,
+                 channels: int = 0,
+                 sample_rate: int = 48000):
+
+        if meta is None:
+            if src_id is None:
+                raise AttributeError("src_id is None. Meta is None so src_id must not be None.")
+            if flow_id is None:
+                raise AttributeError("flow_id is None. Meta is None so flow_id must not be None.")
+
+            if not isinstance(src_id, UUID):
+                raise AttributeError(f"src_id: Seen type {type(src_id)}, expected UUID.")
+            if not isinstance(flow_id, UUID):
+                raise AttributeError(f"flow_id: Seen type {type(flow_id)}, expected UUID.")
+
+            if creation_timestamp is None:
+                creation_timestamp = Timestamp.get_time()
+            if origin_timestamp is None:
+                origin_timestamp = creation_timestamp
+            if sync_timestamp is None:
+                sync_timestamp = origin_timestamp
+            meta = {
+                "@_ns": "urn:x-ipstudio:ns:0.1",
+                "grain": {
+                    'grain_type': "audio",
+                    'source_id': str(src_id),
+                    'flow_id': str(flow_id),
+                    'origin_timestamp': str(mediatimestamp(origin_timestamp)),
+                    'sync_timestamp': str(mediatimestamp(sync_timestamp)),
+                    'creation_timestamp': str(mediatimestamp(creation_timestamp)),
+                    'rate': {
+                        'numerator': Fraction(rate).numerator,
+                        'denominator': Fraction(rate).denominator
+                    },
+                    'duration': {
+                        'numerator': Fraction(duration).numerator,
+                        'denominator': Fraction(duration).denominator
+                    },
+                    'cog_audio': {
+                        "format": cog_audio_format,
+                        "samples": samples,
+                        "channels": channels,
+                        "sample_rate": sample_rate
+                    }
+                }
+            }
+
+        if data is None:
+            size = size_for_audio_format(cog_audio_format, channels, samples)
+            data = bytearray(size)
+
         super().__init__(meta, data)
         self.meta: AudioGrainMetadataDict
 
