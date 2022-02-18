@@ -10,6 +10,9 @@ from typing import (
     Iterator,
     Iterable)
 from typing_extensions import Literal
+from uuid import UUID
+
+from mediatimestamp.immutable import Timestamp, SupportsMediaTimestamp, mediatimestamp
 from ..typing import (
     RationalTypes,
     VideoGrainComponentDict,
@@ -18,10 +21,10 @@ from ..typing import (
     GrainDataParameterType)
 
 from ..cogenums import CogFrameFormat, CogFrameLayout
-from .Grain import Grain
+from .BaseGrain import BaseGrain
 
 
-class VideoGrain(Grain):
+class VideoGrain(BaseGrain):
     """\
 A class representing a raw video grain.
 
@@ -241,7 +244,194 @@ length
         def __ne__(self, other: object) -> bool:
             return not (self == other)
 
-    def __init__(self, meta: VideoGrainMetadataDict, data: GrainDataParameterType):
+    def __init__(self,
+                 meta: VideoGrainMetadataDict,
+                 data: GrainDataParameterType,
+                 src_id: Optional[UUID] = None,
+                 flow_id: Optional[UUID] = None,
+                 origin_timestamp: Optional[SupportsMediaTimestamp] = None,
+                 creation_timestamp: Optional[SupportsMediaTimestamp] = None,
+                 sync_timestamp: Optional[SupportsMediaTimestamp] = None,
+                 rate: Fraction = Fraction(25, 1),
+                 duration: Fraction = Fraction(1, 25),
+                 cog_frame_format: CogFrameFormat = CogFrameFormat.UNKNOWN,
+                 width: int = 1920,
+                 height: int = 1080,
+                 cog_frame_layout: CogFrameLayout = CogFrameLayout.UNKNOWN):
+
+        if meta is None:
+            if src_id is None:
+                raise AttributeError("src_id is None. Meta is None so src_id must not be None.")
+            if flow_id is None:
+                raise AttributeError("flow_id is None. Meta is None so flow_id must not be None.")
+
+            if not isinstance(src_id, UUID):
+                raise AttributeError(f"src_id: Seen type {type(src_id)}, expected UUID.")
+            if not isinstance(flow_id, UUID):
+                raise AttributeError(f"flow_id: Seen type {type(flow_id)}, expected UUID.")
+
+            if creation_timestamp is None:
+                creation_timestamp = Timestamp.get_time()
+            if origin_timestamp is None:
+                origin_timestamp = creation_timestamp
+            if sync_timestamp is None:
+                sync_timestamp = origin_timestamp
+            meta = {
+                "@_ns": "urn:x-ipstudio:ns:0.1",
+                "grain": {
+                    'grain_type': "video",
+                    'source_id': str(src_id),
+                    'flow_id': str(flow_id),
+                    'origin_timestamp': str(mediatimestamp(origin_timestamp)),
+                    'sync_timestamp': str(mediatimestamp(sync_timestamp)),
+                    'creation_timestamp': str(mediatimestamp(creation_timestamp)),
+                    'rate': {
+                        'numerator': Fraction(rate).numerator,
+                        'denominator': Fraction(rate).denominator,
+                    },
+                    'duration': {
+                        'numerator': Fraction(duration).numerator,
+                        'denominator': Fraction(duration).denominator,
+                    },
+                    'cog_frame': {
+                        "format": cog_frame_format,
+                        "width": width,
+                        "height": height,
+                        "layout": cog_frame_layout,
+                        "extension": 0,
+                        "components": []
+                    }
+                },
+            }
+
+        def size_for_format(fmt: CogFrameFormat, w: int, h: int) -> int:
+            if ((fmt >> 8) & 0x1) == 0x00:  # Cog frame is not packed
+                h_shift = (fmt & 0x01)
+                v_shift = ((fmt >> 1) & 0x01)
+                depth = (fmt & 0xc)
+                if depth == 0:
+                    bpv = 1
+                elif depth == 4:
+                    bpv = 2
+                else:
+                    bpv = 4
+                return (w*h + 2*((w*h) >> (h_shift + v_shift)))*bpv
+            else:
+                if fmt in (CogFrameFormat.YUYV, CogFrameFormat.UYVY, CogFrameFormat.AYUV):
+                    return w*h*2
+                elif fmt in (CogFrameFormat.RGBx,
+                             CogFrameFormat.RGBA,
+                             CogFrameFormat.xRGB,
+                             CogFrameFormat.ARGB,
+                             CogFrameFormat.BGRx,
+                             CogFrameFormat.BGRA,
+                             CogFrameFormat.xBGR,
+                             CogFrameFormat.ABGR):
+                    return w*h*4
+                elif fmt == CogFrameFormat.RGB:
+                    return w*h*3
+                elif fmt == CogFrameFormat.v210:
+                    return h*(((w + 47) // 48) * 128)
+                elif fmt == CogFrameFormat.v216:
+                    return w*h*4
+                else:
+                    return 0
+        if data is None:
+            size = size_for_format(cog_frame_format, width, height)
+            data = bytearray(size)
+
+        def components_for_format(fmt: CogFrameFormat, w: int, h: int) -> List[VideoGrainComponentDict]:
+            components: List[VideoGrainComponentDict] = []
+            if ((fmt >> 8) & 0x1) == 0x00:  # Cog frame is not packed
+                h_shift = (fmt & 0x01)
+                v_shift = ((fmt >> 1) & 0x01)
+                depth = (fmt & 0xc)
+                if depth == 0:
+                    bpv = 1
+                elif depth == 4:
+                    bpv = 2
+                else:
+                    bpv = 4
+                offset = 0
+                components.append({
+                    'stride': w*bpv,
+                    'offset': offset,
+                    'width': w,
+                    'height': h,
+                    'length': w*h*bpv
+                })
+                offset += w*h*bpv
+                components.append({
+                    'stride': (w >> h_shift)*bpv,
+                    'offset': offset,
+                    'width': w >> h_shift,
+                    'height': h >> v_shift,
+                    'length': ((w*h) >> (h_shift + v_shift))*bpv
+                })
+                offset += ((w*h) >> (h_shift + v_shift))*bpv
+                components.append({
+                    'stride': (w >> h_shift)*bpv,
+                    'offset': offset,
+                    'width': w >> h_shift,
+                    'height': h >> v_shift,
+                    'length': ((w*h) >> (h_shift + v_shift))*bpv
+                })
+                offset += ((w*h) >> (h_shift + v_shift))*bpv
+            else:
+                if fmt in (CogFrameFormat.YUYV, CogFrameFormat.UYVY, CogFrameFormat.AYUV):
+                    components.append({
+                        'stride': w*2,
+                        'offset': 0,
+                        'width': w,
+                        'height': h,
+                        'length': h*w*2
+                    })
+                elif fmt in (CogFrameFormat.RGBx,
+                             CogFrameFormat.RGBA,
+                             CogFrameFormat.xRGB,
+                             CogFrameFormat.ARGB,
+                             CogFrameFormat.BGRx,
+                             CogFrameFormat.BGRA,
+                             CogFrameFormat.xBGR,
+                             CogFrameFormat.ABGR):
+                    components.append({
+                        'stride': w*4,
+                        'offset': 0,
+                        'width': w,
+                        'height': h,
+                        'length': h*w*4
+                    })
+                elif fmt == CogFrameFormat.RGB:
+                    components.append({
+                        'stride': w*3,
+                        'offset': 0,
+                        'width': w,
+                        'height': h,
+                        'length': h*w*3
+                    })
+                elif fmt == CogFrameFormat.v210:
+                    components.append({
+                        'stride': (((w + 47) // 48) * 128),
+                        'offset': 0,
+                        'width': w,
+                        'height': h,
+                        'length': h*(((w + 47) // 48) * 128)
+                    })
+                elif fmt == CogFrameFormat.v216:
+                    components.append({
+                        'stride': w*4,
+                        'offset': 0,
+                        'width': w,
+                        'height': h,
+                        'length': h*w*4
+                    })
+            return components
+
+        if ("cog_frame" in meta['grain'] and
+                ("components" not in meta['grain']['cog_frame'] or
+                    len(meta['grain']['cog_frame']['components']) == 0)):
+            meta['grain']['cog_frame']['components'] = components_for_format(cog_frame_format, width, height)
+
         super(VideoGrain, self).__init__(meta, data)
         self.meta: VideoGrainMetadataDict
 
