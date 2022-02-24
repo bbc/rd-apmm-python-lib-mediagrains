@@ -25,8 +25,8 @@ import fractions
 from mediatimestamp.immutable import Timestamp
 
 from ..cogenums import CogFrameFormat, CogAudioFormat
-from ..grain_constructors import VideoGrain, CodedVideoGrain, AudioGrain, CodedAudioGrain
-from ..grain import GRAIN
+from ..grains import VideoGrain, CodedVideoGrain, AudioGrain, CodedAudioGrain
+from ..grains import BaseGrain
 from ..gsf import GSFEncoder
 from ..utils import GrainWrapper, H264GrainWrapper, ADTSAACGrainWrapper
 from ._file_or_pipe import file_or_pipe
@@ -35,7 +35,7 @@ from ._file_or_pipe import file_or_pipe
 def wrap_to_gsf(
         input_file: str,
         output_file: str,
-        template_grain: GRAIN,
+        template_grain: BaseGrain,
         Wrapper: Union[Type[GrainWrapper], Type[H264GrainWrapper]] = GrainWrapper):
     """Wrap the supplied input in GSF and write it out to a given file-like object
 

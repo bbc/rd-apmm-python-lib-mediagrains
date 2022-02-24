@@ -24,6 +24,8 @@ from mediatimestamp.immutable import SupportsMediaTimestamp
 from fractions import Fraction
 
 from typing import Optional, cast, Sized, List
+
+from deprecated import deprecated
 from .typing import (
     GrainDataParameterType,
     GrainMetadataDict,
@@ -40,6 +42,8 @@ from .grains import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGR
 __all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain", "CodedAudioGrain", "EventGrain"]
 
 
+@deprecated(version="3.2.0", reason='A new, more Pythonic way of instantiating grains has been introduced. '
+            'Please import`mediagrains.grains`.')
 def Grain(src_id_or_meta: Optional[UUID | dict] = None,
           flow_id_or_data: Optional[UUID | dict] = None,
           origin_timestamp: Optional[SupportsMediaTimestamp] = None,
@@ -116,10 +120,10 @@ but src_id is kept avaialble for backwards compatibility)
 
     if meta is None:
         if isinstance(src_id_or_meta, dict):
-            meta = src_id_or_meta
+            meta = cast(GrainMetadataDict, src_id_or_meta)
             src_id = None
             if data is None and not isinstance(flow_id_or_data, UUID):
-                data = flow_id_or_data
+                data = cast(GrainDataParameterType, flow_id_or_data)
                 flow_id = None
         else:
             if src_id is None and isinstance(src_id_or_meta, UUID):
@@ -131,6 +135,8 @@ but src_id is kept avaialble for backwards compatibility)
                  sync_timestamp=sync_timestamp, creation_timestamp=creation_timestamp, rate=rate, duration=duration)
 
 
+@deprecated(version="3.2.0", reason='A new, more Pythonic way of instantiating grains has been introduced. '
+            'Please import`mediagrains.grains`.')
 def AudioGrain(src_id_or_meta: Optional[UUID] = None,
                flow_id_or_data: Optional[UUID] = None,
                origin_timestamp: Optional[SupportsMediaTimestamp] = None,
@@ -237,6 +243,8 @@ but src_id is kept avaialble for backwards compatibility)
                       sample_rate=sample_rate)
 
 
+@deprecated(version="3.2.0", reason='A new, more Pythonic way of instantiating grains has been introduced. '
+            'Please import`mediagrains.grains`.')
 def CodedAudioGrain(src_id_or_meta: Optional[UUID] = None,
                     flow_id_or_data: Optional[UUID] = None,
                     origin_timestamp: Optional[SupportsMediaTimestamp] = None,
@@ -352,6 +360,8 @@ but src_id is kept avaialble for backwards compatibility)
                            priming=priming, remainder=remainder, length=length, sample_rate=sample_rate)
 
 
+@deprecated(version="3.2.0", reason='A new, more Pythonic way of instantiating grains has been introduced. '
+            'Please import`mediagrains.grains`.')
 def VideoGrain(src_id_or_meta: Optional[UUID] = None,
                flow_id_or_data: Optional[UUID] = None,
                origin_timestamp: Optional[SupportsMediaTimestamp] = None,
@@ -483,6 +493,8 @@ but src_id is kept avaialble for backwards compatibility)
                       cog_frame_layout=cog_frame_layout)
 
 
+@deprecated(version="3.2.0", reason='A new, more Pythonic way of instantiating grains has been introduced. '
+            'Please import`mediagrains.grains`.')
 def CodedVideoGrain(src_id_or_meta: Optional[UUID] = None,
                     flow_id_or_data: Optional[UUID] = None,
                     origin_timestamp: Optional[SupportsMediaTimestamp] = None,
@@ -621,6 +633,8 @@ but src_id is kept avaialble for backwards compatibility)
                            origin_width=origin_width, length=length)
 
 
+@deprecated(version="3.2.0", reason='A new, more Pythonic way of instantiating grains has been introduced. '
+            'Please import`mediagrains.grains`.')
 def EventGrain(src_id_or_meta: Optional[UUID] = None,
                flow_id_or_data: Optional[UUID] = None,
                origin_timestamp: Optional[SupportsMediaTimestamp] = None,

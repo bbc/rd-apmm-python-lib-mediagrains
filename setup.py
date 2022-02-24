@@ -46,7 +46,8 @@ package_names = [
     'mediagrains.patterngenerators',
     'mediagrains.patterngenerators.video',
     'mediagrains.patterngenerators.audio',
-    'mediagrains.grains'
+    'mediagrains.grains',
+    'mediagrains.numpy.numpy_grains'
 ]
 packages = {
     pkg: pkg.replace('.', '/') for pkg in package_names

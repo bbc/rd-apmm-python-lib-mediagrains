@@ -31,18 +31,13 @@ from typing import (
     Generator)
 
 from ..typing import (
-    AudioGrainMetadataDict,
-    CodedAudioGrainMetadataDict,
-    CodedVideoGrainMetadataDict,
-    EventGrainMetadataDict,
     RationalTypes,
     GrainMetadataDict,
     GrainDataType,
     EmptyGrainMetadataDict,
     FractionDict,
     TimeLabel,
-    GrainDataParameterType,
-    VideoGrainMetadataDict)
+    GrainDataParameterType)
 
 
 class GrainType(IntEnum):
@@ -66,26 +61,35 @@ def _stringify_timestamp_input(value: Union[SupportsMediaTimestamp, SupportsMedi
     return value
 
 
-def attributes_for_grain_type(grain_type: str | GrainType) -> List[str]:
-    """Returns a list of attributes for a partiggcular grain type. Useful for testing."""
+# For use in 'new style' grain init. Can be removed once old style is excised.
+def new_attributes_for_grain_type(grain_type: str | GrainType):
+    return(attributes_for_grain_type(grain_type=grain_type, new=True))
+
+
+# As above, the 'new' parameter will give 'new style' grain init info. 'x if not new else' statements can be removed
+# once 'old style' is excised.
+def attributes_for_grain_type(grain_type: str | GrainType, new: bool = False) -> List[str]:
+    """Returns a list of attributes for a particular grain type. Useful for testing."""
     # cast to the correct string
     if type(grain_type) is GrainType:
         grain_type = ["grain", "video", "audio", "coded_video", "coded_audio", "event"][grain_type]
 
-    COMMON_ATTRS = ['source_id', 'flow_id', 'origin_timestamp', 'sync_timestamp', 'creation_timestamp', 'rate',
-                    'duration']
-
+    COMMON_ATTRS = ['source_id' if not new else "src_id", 'flow_id', 'origin_timestamp', 'sync_timestamp',
+                    'creation_timestamp', 'rate', 'duration']
     if grain_type == "event":
         return COMMON_ATTRS + ["event_type", "topic", "event_data"]
     elif grain_type == "audio":
-        return COMMON_ATTRS + ["format", "samples", "channels", "sample_rate"]
+        return COMMON_ATTRS + ["format" if not new else "cog_audio_format", "samples", "channels", "sample_rate"]
     elif grain_type == "coded_audio":
-        return COMMON_ATTRS + ["format", "samples", "channels", "sample_rate", "priming", "remainder"]
-    elif grain_type == "video":
-        return COMMON_ATTRS + ["format", "width", "height", "layout"]
+        return COMMON_ATTRS + ["format" if not new else "cog_audio_format", "samples", "channels", "sample_rate",
+                               "priming", "remainder"]
     elif grain_type == "coded_video":
-        return COMMON_ATTRS + ["format", "coded_width", "coded_height", "layout", "origin_width", "origin_height",
+        return COMMON_ATTRS + ["format" if not new else "cog_frame_format", "coded_width", "coded_height",
+                               "layout" if not new else "cog_frame_layout", "origin_width", "origin_height",
                                "is_key_frame", "temporal_offset", "unit_offsets"]
+    elif grain_type == "video":
+        return COMMON_ATTRS + ["format" if not new else "cog_frame_format", "width", "height",
+                               "layout" if not new else "cog_frame_layout"]
     else:
         return COMMON_ATTRS
 
@@ -338,6 +342,15 @@ media_rate
 
     @source_id.setter
     def source_id(self, value: Union[UUID, str]) -> None:
+        cast(EmptyGrainMetadataDict, self.meta)['grain']['source_id'] = str(value)
+
+    @property
+    def src_id(self) -> UUID:
+        # Our code ensures that this will always be a string at runtime
+        return UUID(cast(str, self.meta['grain']['source_id']))
+
+    @src_id.setter
+    def src_id(self, value: Union[UUID, str]) -> None:
         cast(EmptyGrainMetadataDict, self.meta)['grain']['source_id'] = str(value)
 
     @property
@@ -595,5 +608,6 @@ media_rate
             return cast(dict, self.meta['grain'])['length']
         else:
             return self.length
+
 
 GRAIN: TypeAlias = BaseGrain

@@ -29,7 +29,7 @@ Any grain can be freely cast to a tuple:
 
 where meta is a dictionary containing the grain metadata, and data is the data element described below.
 
-The Grain class provides a number of properties which can be used to access
+The BaseGrain class provides a number of properties which can be used to access
 parts of the standard grain metadata, and this class inherits these:
 
 meta
@@ -103,8 +103,8 @@ unit_offsets
     data array.
 """
     def __init__(self,
-                 meta: CodedVideoGrainMetadataDict,
-                 data: GrainDataParameterType,
+                 meta: CodedVideoGrainMetadataDict = None,
+                 data: GrainDataParameterType = None,
                  src_id: Optional[UUID] = None,
                  flow_id: Optional[UUID] = None,
                  origin_timestamp: Optional[SupportsMediaTimestamp] = None,
@@ -122,7 +122,6 @@ unit_offsets
                  length: Optional[int] = None,
                  cog_frame_layout: CogFrameLayout = CogFrameLayout.UNKNOWN,
                  unit_offsets: Optional[List[int]] = None):
-
         if coded_width is None:
             coded_width = origin_width
         if coded_height is None:
@@ -224,11 +223,27 @@ unit_offsets
         self.meta['grain']['cog_coded_frame']['format'] = int(value)
 
     @property
+    def cog_frame_format(self) -> CogFrameFormat:
+        return CogFrameFormat(self.meta['grain']['cog_coded_frame']['format'])
+
+    @cog_frame_format.setter
+    def cog_frame_format(self, value: CogFrameFormat) -> None:
+        self.meta['grain']['cog_coded_frame']['format'] = int(value)
+
+    @property
     def layout(self) -> CogFrameLayout:
         return CogFrameLayout(self.meta['grain']['cog_coded_frame']['layout'])
 
     @layout.setter
     def layout(self, value: CogFrameLayout) -> None:
+        self.meta['grain']['cog_coded_frame']['layout'] = int(value)
+
+    @property
+    def cog_frame_layout(self) -> CogFrameLayout:
+        return CogFrameLayout(self.meta['grain']['cog_coded_frame']['layout'])
+
+    @cog_frame_layout.setter
+    def cog_frame_layout(self, value: CogFrameLayout) -> None:
         self.meta['grain']['cog_coded_frame']['layout'] = int(value)
 
     @property

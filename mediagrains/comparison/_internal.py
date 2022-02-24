@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 from typing import Iterable, List, Tuple
-from ..grain import GRAIN
+from ..grains import Grain
 
 from mediatimestamp.immutable import TimeOffset
 from difflib import SequenceMatcher
@@ -371,8 +371,8 @@ class PSNRComparisonResult(ComparisonResult):
         """Compute the PSNR for two grains and compare the result with the expected values and comparison operator.
 
         :param identifier: The path in the grain structure
-        :param a: A GRAIN
-        :param b: Another GRAIN
+        :param a: A Grain
+        :param b: Another Grain
         :param kwargs: Other named arguments
         """
         super(PSNRComparisonResult, self).__init__(identifier, a, b, **kwargs)
@@ -451,14 +451,14 @@ class OrderedContainerComparisonResult(ComparisonResult):
 class GrainIteratorComparisonResult(ComparisonResult):
     def __init__(self,
                  identifier: str,
-                 a: Iterable[GRAIN],
-                 b: Iterable[GRAIN],
+                 a: Iterable[Grain],
+                 b: Iterable[Grain],
                  return_last_only: bool = False,
                  **kwargs):
         self.return_last_only = return_last_only
         super(GrainIteratorComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
-    def compare(self, a: Iterable[GRAIN], b: Iterable[GRAIN]) -> Tuple[bool, str, List[ComparisonResult]]:
+    def compare(self, a: Iterable[Grain], b: Iterable[Grain]) -> Tuple[bool, str, List[ComparisonResult]]:
         a = iter(a)
         b = iter(b)
 

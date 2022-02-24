@@ -25,7 +25,7 @@ Any grain can be freely cast to a tuple:
 where meta is a dictionary containing the grain metadata, and data is a
 bytes-like object containing the coded audio data.
 
-The Grain class provides a number of properties which can be used to access
+The BaseGrain class provides a number of properties which can be used to access
 parts of the standard grain metadata, and this class inherits these:
 
 meta
@@ -40,7 +40,7 @@ data
 grain_type
     A string containing the type of the grain, always "coded_audio"
 
-source_id
+src_id
     A uuid.UUID object representing the source_id in the grain
 
 flow_id
@@ -92,8 +92,8 @@ remainder
     An integer
 """
     def __init__(self,
-                 meta: CodedAudioGrainMetadataDict,
-                 data: GrainDataParameterType,
+                 meta: CodedAudioGrainMetadataDict = None,
+                 data: GrainDataParameterType = None,
                  src_id: Optional[UUID] = None,
                  flow_id: Optional[UUID] = None,
                  origin_timestamp: Optional[SupportsMediaTimestamp] = None,
@@ -192,6 +192,14 @@ remainder
 
     @format.setter
     def format(self, value: int) -> None:
+        self.meta['grain']['cog_coded_audio']['format'] = int(value)
+
+    @property
+    def cog_audio_format(self) -> CogAudioFormat:
+        return CogAudioFormat(self.meta['grain']['cog_coded_audio']['format'])
+
+    @cog_audio_format.setter
+    def cog_audio_format(self, value: int) -> None:
         self.meta['grain']['cog_coded_audio']['format'] = int(value)
 
     @property

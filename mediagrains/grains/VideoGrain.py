@@ -245,8 +245,8 @@ length
             return not (self == other)
 
     def __init__(self,
-                 meta: VideoGrainMetadataDict,
-                 data: GrainDataParameterType,
+                 meta: VideoGrainMetadataDict = None,
+                 data: GrainDataParameterType = None,
                  src_id: Optional[UUID] = None,
                  flow_id: Optional[UUID] = None,
                  origin_timestamp: Optional[SupportsMediaTimestamp] = None,
@@ -459,6 +459,14 @@ length
         self.meta['grain']['cog_frame']['format'] = int(value)
 
     @property
+    def cog_frame_format(self) -> CogFrameFormat:
+        return CogFrameFormat(self.meta['grain']['cog_frame']['format'])
+
+    @cog_frame_format.setter
+    def cog_frame_format(self, value: CogFrameFormat) -> None:
+        self.meta['grain']['cog_frame']['format'] = int(value)
+
+    @property
     def width(self) -> int:
         return self.meta['grain']['cog_frame']['width']
 
@@ -480,6 +488,14 @@ length
 
     @layout.setter
     def layout(self, value: CogFrameLayout) -> None:
+        self.meta['grain']['cog_frame']['layout'] = int(value)
+
+    @property
+    def cog_frame_layout(self) -> CogFrameLayout:
+        return CogFrameLayout(self.meta['grain']['cog_frame']['layout'])
+
+    @cog_frame_layout.setter
+    def cog_frame_layout(self, value: CogFrameLayout) -> None:
         self.meta['grain']['cog_frame']['layout'] = int(value)
 
     @property

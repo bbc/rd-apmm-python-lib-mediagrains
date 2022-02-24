@@ -36,7 +36,7 @@ Any grain can be freely cast to a tuple:
 
 where meta is a dictionary containing the grain metadata.
 
-The Grain class provides a number of properties which can be used to access
+The BaseGrain class provides a number of properties which can be used to access
 parts of the standard grain metadata, and this class inherits these:
 
 meta
@@ -101,8 +101,8 @@ append(path, pre=None, post=None)
     only json serialisable objects for the values of pre and post.
     """
     def __init__(self,
-                 meta: EventGrainMetadataDict,
-                 data: GrainDataParameterType,
+                 meta: EventGrainMetadataDict = None,
+                 data: GrainDataParameterType = None,
                  src_id: Optional[UUID] = None,
                  flow_id: Optional[UUID] = None,
                  origin_timestamp: Optional[SupportsMediaTimestamp] = None,

@@ -36,12 +36,12 @@ __all__ = ["GRAIN", "VIDEOGRAIN", "AUDIOGRAIN", "CODEDVIDEOGRAIN", "CODEDAUDIOGR
 
 if __name__ == "__main__":  # pragma: no cover
     from uuid import uuid1, uuid5
-    from .grain_constructors import Grain
+    from .grains import Grain
 
     src_id = uuid1()
     flow_id = uuid5(src_id, "flow_id:test_flow")
 
-    grain1 = Grain(src_id, flow_id)
+    grain1 = Grain(src_id=src_id, flow_id=flow_id)
     grain2 = Grain(grain1.meta)
     print(grain1)
     print(grain2)
