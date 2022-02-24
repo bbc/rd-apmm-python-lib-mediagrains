@@ -414,8 +414,8 @@ class PSNRComparisonResult(ComparisonResult):
         """Compute the PSNR for two grains and compare the result with the expected values and comparison operator.
 
         :param identifier: The path in the grain structure
-        :param a: A GRAIN
-        :param b: Another GRAIN
+        :param a: A Grain
+        :param b: Another Grain
         :param kwargs: Other named arguments
         """
         super(PSNRComparisonResult, self).__init__(identifier, a, b, **kwargs)
