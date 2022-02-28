@@ -132,6 +132,7 @@ PUSH_TAGS=$(patsubst %,ms_docker-ver-push-%,$(DOCKER_TAGS))
 all: docker-help
 include $(commontooling_dir)/make/include/ms_docker.mk
 include $(commontooling_dir)/make/include/ms_docker-compose.mk
+-include $(commontooling_dir)/make/artifactory_caretaker.mk
 
 
 # Some standard patterns with some variables to turn them on and off

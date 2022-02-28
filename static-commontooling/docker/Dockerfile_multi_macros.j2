@@ -130,6 +130,9 @@ WORKDIR /{{ modname }}/
 # Copy in .flake8 and setup.cfg
 COPY setup.cfg ./
 
+# Create mypy cache dir. If this is missing, it can mask some errors
+RUN mkdir .mypy_cache
+
 # Set the default command
 ENTRYPOINT ["python", "-m", "mypy", "--install-types", "--non-interactive"]
 CMD ["-p", "{{ modname }}"]
