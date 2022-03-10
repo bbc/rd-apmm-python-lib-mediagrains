@@ -13,7 +13,7 @@ endif
 
 ifndef topdir
 topdir := $(topbuilddir)
-$(warning top_dir is not set, using $(topdir))
+$(warning topdir is not set, using $(topbuilddir))
 endif
 
 project_root_dir?=$(topdir)

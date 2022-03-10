@@ -14,21 +14,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+"""An example of using the comparison module in practice."""
 from fractions import Fraction
+from uuid import uuid1
+
+from mediatimestamp import CountRange
 
 from . import compare_grain
 from .options import Exclude
+from ..patterngenerators.video import LumaSteps, ColourBars
 
-
-from ..testsignalgenerator import LumaSteps
-from uuid import uuid1
 
 src_id = uuid1()
 flow_id = uuid1()
 
-a = next(LumaSteps(src_id, flow_id, 1920, 1080))
-b = next(LumaSteps(src_id, flow_id, 1920, 1080))
+cr = CountRange(1, 10)
+
+ls = LumaSteps(src_id, flow_id, 1920, 1080)
+ls_itr = ls.__getitem__(cr)
+a = next(ls_itr)
+
+cb = ColourBars(src_id, flow_id, 1920, 1080)
+cb_itr = cb.__getitem__(cr)
+b = next(cb_itr)
 
 a.add_timelabel('tmp', 3, Fraction(25, 1))
 b.add_timelabel('tmp', 3, Fraction(25, 1))
@@ -36,6 +44,7 @@ b.add_timelabel('tmp', 3, Fraction(25, 1))
 m = compare_grain(a, b,
                   Exclude.origin_timestamp,
                   Exclude.sync_timestamp,
-                  Exclude.creation_timestamp)
+                  Exclude.creation_timestamp,
+                  Exclude.data)
 print(m)
 print(m.msg)

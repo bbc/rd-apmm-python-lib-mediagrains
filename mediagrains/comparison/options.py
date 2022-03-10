@@ -14,39 +14,35 @@
 # limitations under the License.
 #
 
-"""Options can be passed to comparisons which are constructed using the objects Exclude, Include, and
-ExpectedDifference. These three objects provide a convenient (and similar) interface. By accessing attributes
-of these objects that have the same names as attributes of the objects to be compared you can identify which
-attributes to refer to.
+"""Please refer to the README for in-depth information on how to use options in practice.
+The Options make it easy to exclude, include and expect differences between different identifiers.
+Primarily as syntactic sugar the Exclude and ExpectedDifference objects are exported to make it easier to construct
+ComparisonOptions in a simple fashion.
 
-eg.
+This code is difficult to explain in-line, hence, lets demonstrate how an exclude works.
+An example invocation:
 
-options.Include.creation_timestamp
+>>> from mediagrains.comparison.options import Exclude
+>>> compare_grain(a, b, Exclude.creation_timestamp)
 
-is an option that causes the comparison operation to not ignore any differences in the creation_timestamp member of
-the compared objects.
+Exclude is an exported variable that is assigned to create an object of the _Exclude() class.
+_Exclude defines a __getattr__ method, the attribute used in the invocation (creation_timestamp) triggers this method.
+The __getattr__ creates a ComparisonExclude object which in turn triggers the __init__ of its super ComparisonOption.
+The __init__ of ComparisonOption is passed a path, which is ("{}." + attr), so in this case it's
+"{}.creation_timestamp", and stores it in a variable called path.
+The ComparisonExclude object is returned, this defines a __repr__ and __eq__ for an exclude option with the given path.
 
-If an Include and an Exclude are used for the same attribute then the Exclude takes precedence. At present the only
-real use for Include is to override the default behaviour that ignores creation_timestamp differences.
+It is then possible to see how the options are used for result filtering in the excluded and ownoptions
+methods in ComparisonResult by seeing if the path matches the identifier and the type of ComparisonOption.
 
-For options.ExpectedDifference there is an additional step, which is to apply comparison operations, so:
+Include, ExpectedDifference and PSNR behave similarly.
 
-(options.ExpectedDifference.creation_timestamp > TimeOffset(0, 64))
-
-is an option that requires (a.creation_timestamp - b.creation_timestamp) to be greater than 64 nanoseconds.
-
-This mechanism may be expanded for further option types in the future.
-
-
-CompareOnlyMetadata is a convenience name for Exclude.data"""
+CompareOnlyMetadata is a convenience name for Exclude.data
+"""
 
 __all__ = ["Exclude", "Include", "ExpectedDifference", "CompareOnlyMetadata", "PSNR"]
 
 
-#
-# Primarily as syntactic sugar the Exclude and ExpectedDifference objects
-# are exported to make it easier to construct ComparisonOptions in a simple fashion
-#
 class _Exclude(object):
     def __getattr__(self, attr):
         return ComparisonExclude("{}." + attr)

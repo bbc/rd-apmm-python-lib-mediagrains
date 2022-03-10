@@ -7,7 +7,7 @@
     DO NOT MANUALLY EDIT THIS FILE
 
     Instead make necessary changes to Jenkinsfile.json and then
-    regenerate this file with `make Jenkinsfile` before checking
+    regenerate this file with `make static-files` before checking
     the resulting file into git.
 
  */

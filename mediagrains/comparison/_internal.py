@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from typing import Iterable, List, Tuple
-from ..grains import Grain
+from typing import Any, cast, Generic, Optional, Type, TypeVar, Union
+from collections.abc import Iterable, MutableSequence
 
-from mediatimestamp.immutable import TimeOffset
+from ..grains import AudioGrain, CodedAudioGrain, CodedVideoGrain, EventGrain, BaseGrain, VideoGrain
+
+from mediatimestamp.immutable import TimeOffset, Timestamp
 from difflib import SequenceMatcher
 
 from functools import reduce
@@ -26,72 +28,96 @@ import sys
 from ..cogenums import (CogAudioFormat, CogFrameFormat, COG_FRAME_IS_PACKED, COG_FRAME_IS_COMPRESSED,
                         COG_FRAME_FORMAT_BYTES_PER_VALUE)
 
-from .options import Exclude, Include, ComparisonExclude, ComparisonExpectDifferenceMatches, ComparisonPSNR
+from .options import Exclude, Include, ComparisonExclude, ComparisonExpectDifferenceMatches, \
+    ComparisonOption, ComparisonPSNR
 from .psnr import compute_psnr
+
+CR = TypeVar('CR', bound='ComparisonResult')
 
 
 #
 # The ComparisonResult class and its descendents implement most of the actual comparison logic
 #
-class ComparisonResult (object):
+class ComparisonResult(Generic[CR]):
     """
     Abstract base class for comparison results.
 
     public interface, attributes, all read only:
 
-    identifier -- an identifier identifing what was being compared, will contain a single {} for substituting the
-                  name of the top level object
-    attr -- an attribute name which identifies this within it's immedaite parent. Sometimes is None
-    a -- the first object that was compared
-    b -- the second object that was compared
-    children -- a list of ComparisonResult objects for sub-comparisons
-    msg -- a human readable message to explain this result
+    identifier
+        A string identifying what was being compared, will contain a single {} for substituting the
+        name of the top level object
+    attr
+        An attribute name which identifies a sub-comparison within it's immediate parent. Is None when not a child.
+    a
+        The first object that was compared
+    b
+        The second object that was compared
+    options
+        A list of ComparisonOptions that include, exclude and expect differences on certain identifiers.
+    children
+        A list of ComparisonResult objects for sub-comparisons
+    msg
+        A human readable message to explain this result
+    key
+        Will be set when ComparisonResult is a sub-comparison of an OrderedContainerComparisonResult in which case
+        the key will be a dictionary key, or a MappingContainerComparisonResult in which case the key will be an index.
 
-    subclasses should set _identifier and also implement compare.
+    Subclasses should set _identifier and also implement compare.
 
-    in addition the object itself is truthy if the comparison of a and b match,
+    A ComparisonResult object itself is truthy if the comparison of a and b match,
     and falsy if they do not.
     """
-    def __init__(self, identifier, a, b, options=[], attr=None, key=None):
+    def __init__(self,
+                 identifier: str,
+                 a: object,
+                 b: object,
+                 options: Iterable[ComparisonOption] = [],
+                 attr: Optional[str] = None, key: Optional[Union[int, str]] = None):
         self._a = a
         self._b = b
         self._identifier = identifier
         self._options = list(options)
         self._attr = attr
         self._key = key
+        self._children: list[CR]
         (self._equal, self._msg, self._children) = self.compare(a, b)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
+        """Allows for bool(ComparisonResult).
+
+        :returns: returns a boolean value based on the result of the comparison of a and b."""
         return self._equal
 
     __nonzero__ = __bool__
 
     @property
-    def attr(self):
+    def attr(self) -> Optional[str]:
         return self._attr
 
     @property
-    def key(self):
+    def key(self) -> Optional[Union[int, str]]:
         return self._key
 
     @property
-    def identifier(self):
+    def identifier(self) -> str:
         return self._identifier
 
     @property
-    def a(self):
+    def a(self) -> object:
         return self._a
 
     @property
-    def b(self):
+    def b(self) -> object:
         return self._b
 
     @property
-    def children(self):
+    def children(self) -> list[CR]:
         return self._children
 
     @property
-    def msg(self):
+    def msg(self) -> str:
+        """Human readable messages of any failing comparison and any failing sub-comparisons."""
         msgs = []
         msgs += ['(' + c.msg + ')' for c in self._children if not c and not c.excluded()]
         msgs += ['<IGNORING: ' + c.msg + '>' for c in self._children if not c and c.excluded()]
@@ -100,16 +126,18 @@ class ComparisonResult (object):
         else:
             return self._msg + ': ' + '; '.join(msgs)
 
-    def excluded(self):
-        return (len([
+    def excluded(self) -> bool:
+        """Return a boolean value to show whether the identifier is Included or Excluded from the result."""
+        return bool(len([
             option for option in self._options if isinstance(
                 option, ComparisonExclude) and self._identifier == option.path]) != 0)
 
-    def ownoptions(self):
+    def ownoptions(self) -> list[ComparisonOption]:
+        """Return any ComparisonOptions to do with what is being compared in the ComparisonResult (identifier)."""
         return [option for option in self._options if self._identifier == option.path]
 
-    def compare(self, a, b):
-        """Override in subclasses to return a tripple:
+    def compare(self, a, b) -> tuple[bool, str, list[CR]]:
+        """Override in subclasses to return a triple:
         (equal, msg, children)
 
         where:
@@ -120,21 +148,22 @@ class ComparisonResult (object):
         """
         return (False, "A generic comparison always fails", [])
 
-    def failing_attributes(self):
+    def failing_attributes(self) -> list[str]:
         """Call to determine which attributes of the compared objects failed to match
 
         :returns: a list of strings, which are attribute names in the compared objects
         """
         return [c.attr for c in self.children if not c and c.attr is not None]
 
-    def failing_keys(self):
+    def failing_keys(self) -> list[Union[int, str]]:
         """Call to determine which keys of the compared containers failed to match
 
         :returns: a list of strings, which are keys names in the compared containers
         """
         return [c.key for c in self.children if not c and c.key is not None]
 
-    def _str(self, prefix=""):
+    def _str(self, prefix="") -> str:
+        """Pretty printed str of comparison and any sub-comparisons."""
         r = prefix
         if self.excluded():
             r += '\u25EF   '
@@ -150,39 +179,41 @@ class ComparisonResult (object):
         r += '\n'.join(c._str(prefix=prefix) for c in self._children)
         return r
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self._str()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{}(identifier={!r}, a={!r}, b={!r}, options={!r})".format(
             self.__class__.__name__, self._identifier, self._a, self._b, self._options)
 
-    def subcomparison_for_attribute(self, key):
+    def subcomparison_for_attribute(self, key: str) -> CR:
+        """Search through sub-comparisons to find relevant child."""
         results = [c for c in self.children if c.attr == key]
         if len(results) == 0:
             raise KeyError("Key {!r} is not known in {!r}".format(key, self))
         else:
             return results[0]
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> CR:
         try:
             return self.subcomparison_for_attribute(key)
         except KeyError:
             raise AttributeError
 
-    def subcomparison_for_key(self, key):
+    def subcomparison_for_key(self, key: Union[int, str]) -> CR:
+        """Search through sub-comparisons to find relevant child."""
         results = [c for c in self.children if c.key == key]
         if len(results) == 0:
             raise KeyError
         else:
             return results[0]
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Union[int, str]) -> CR:
         return self.subcomparison_for_key(key)
 
 
 class EqualityComparisonResult(ComparisonResult):
-    def compare(self, a, b):
+    def compare(self, a, b) -> tuple[bool, str, list[ComparisonResult]]:
         if a == b:
             return (True, "{} == {!r}".format(self._identifier.format('<a/b>'), a), [])
         else:
@@ -193,8 +224,13 @@ class EqualityComparisonResult(ComparisonResult):
 class DataEqualityComparisonResult(ComparisonResult):
     """This comparison result is used for comparing long data strings to each other, and provides useful information
     like the first byte at which they differ"""
-    def __init__(
-     self, identifier, a, b, words_per_sample=1, alignment='@', word_code='B', force_signed=False, **kwargs):
+    def __init__(self,
+                 identifier: str, a, b,
+                 words_per_sample: int = 1,
+                 alignment: str = '@',
+                 word_code: str = 'B',
+                 force_signed: bool = False,
+                 **kwargs):
         """:param words_per_sample: The number of words read from the file in each sample, default is 1
         :param alignment: One of the strings used by struct to indicate word endianness, default is system endianness
         :param word_code: The character code used by struct to indicate the word format and size, by default is
@@ -204,7 +240,7 @@ class DataEqualityComparisonResult(ComparisonResult):
         self.words_per_sample = words_per_sample
         self.alignment = alignment
         self.word_code = word_code
-        self.d = None
+        self.d: Optional[SequenceMatcher] = None
 
         # a and b might be various types of objects that can be converted into bytes objects, this ensures they are
         # simple bytes objects
@@ -252,7 +288,7 @@ class DataEqualityComparisonResult(ComparisonResult):
 
         super(DataEqualityComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
-    def compare(self, a, b):
+    def compare(self, a, b) -> tuple[bool, str, list[ComparisonResult]]:
         if a is None and b is None:
             return (True, "Neither grain has a data payload", [])
         elif a is None:
@@ -307,7 +343,8 @@ class DataEqualityComparisonResult(ComparisonResult):
                                                                                    b[i])
             return (False, msg, [])
 
-    def _str(self, prefix=""):
+    # Ignoring typing on lines below as: error: Value of type "object" is not indexable
+    def _str(self, prefix="") -> str:
         r = prefix
         if self.excluded():
             r += '\u25EF   '
@@ -321,8 +358,8 @@ class DataEqualityComparisonResult(ComparisonResult):
         elif self.d.ratio() < 1.0:
             prefix += "  "
             opstrings = [prefix + "{:7}   a[{}:{}] --> b[{}:{}] {:>8} --> {}".format(
-                            tag, i1, i2, j1, j2, '(' + ', '.join(str(x) for x in self.a[i1:i2]) + ')',
-                            '(' + ', '.join(str(x) for x in self.b[i1:i2]) + ')')
+                            tag, i1, i2, j1, j2, '(' + ', '.join(str(x) for x in self.a[i1:i2]) + ')',  # type: ignore
+                            '(' + ', '.join(str(x) for x in self.b[i1:i2]) + ')')  # type: ignore
                          for (tag, i1, i2, j1, j2) in self.d.get_opcodes()[:5]]
             r += '\n' + opstrings[0]
             if len(opstrings) > 1:
@@ -337,11 +374,12 @@ class DataEqualityComparisonResult(ComparisonResult):
 
 
 class DifferenceComparisonResult(ComparisonResult):
-    def __init__(self, identifier, a, b, expected_difference=0, **kwargs):
+    """Compare any two objects that can be subtracted from eachother"""
+    def __init__(self, identifier: str, a, b, expected_difference=0, **kwargs):
         self._expected_difference = expected_difference
         super(DifferenceComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
-    def compare(self, a, b):
+    def compare(self, a, b) -> tuple[bool, str, list[ComparisonResult]]:
         opts = [option for option in self.ownoptions() if isinstance(option, ComparisonExpectDifferenceMatches)]
         diff = a - b
         if len(opts) == 0:
@@ -360,14 +398,19 @@ class DifferenceComparisonResult(ComparisonResult):
                     self._identifier.format('a'), self._identifier.format('b'), diff), [])
 
 
-class TimestampDifferanceComparisonResult(DifferenceComparisonResult):
-    def __init__(self, identifier, a, b, expected_difference=TimeOffset(0), **kwargs):
-        super(TimestampDifferanceComparisonResult, self).__init__(
+class TimestampDifferenceComparisonResult(DifferenceComparisonResult):
+    def __init__(self,
+                 identifier: str,
+                 a: Timestamp,
+                 b: Timestamp,
+                 expected_difference: TimeOffset = TimeOffset(0),
+                 **kwargs):
+        super(TimestampDifferenceComparisonResult, self).__init__(
             identifier, a, b, expected_difference=expected_difference, **kwargs)
 
 
 class PSNRComparisonResult(ComparisonResult):
-    def __init__(self, identifier, a, b, **kwargs):
+    def __init__(self, identifier: str, a: BaseGrain, b: BaseGrain, **kwargs):
         """Compute the PSNR for two grains and compare the result with the expected values and comparison operator.
 
         :param identifier: The path in the grain structure
@@ -377,7 +420,7 @@ class PSNRComparisonResult(ComparisonResult):
         """
         super(PSNRComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
-    def compare(self, a, b):
+    def compare(self, a: BaseGrain, b: BaseGrain) -> tuple[bool, str, list[ComparisonResult]]:
         opts = [
             option for option in self._options if isinstance(option, ComparisonPSNR) and self.identifier == option.path
             ]
@@ -394,26 +437,32 @@ class PSNRComparisonResult(ComparisonResult):
 
         if all(opt.matcher(psnr) for opt in opts):
             return (True, "PSNR({}, {}) == {!r}, meets requirements set in options".format(
-                self._identifier.format('a'), self._identifier.format('b'), psnr), [])
+                    self._identifier.format('a'), self._identifier.format('b'), psnr), [])
         else:
             return (False, "PSNR({}, {}) == {!r}, does not meet requirements set in options".format(
                     self._identifier.format('a'), self._identifier.format('b'), psnr), [])
 
 
 class AOnlyComparisonResult(ComparisonResult):
-    def __init__(self, identifier, a, **kwargs):
+    """Used when comparing containers such as lists, dicts and Grain Iterators where an identifier exists in
+    object A but not in object B. In this case we report back the existence of a difference in identifiers
+    between the objects. For example lists of different lengths, or dicts with differing keys."""
+    def __init__(self, identifier: str, a, **kwargs):
         super(AOnlyComparisonResult, self).__init__(identifier, a, None, **kwargs)
 
-    def compare(self, a, b):
+    def compare(self, a, b) -> tuple[bool, str, list[ComparisonResult]]:
         return (False, "{} == {!r} but {} does not exist".format(
             self._identifier.format('a'), a, self._identifier.format('b')), [])
 
 
 class BOnlyComparisonResult(ComparisonResult):
-    def __init__(self, identifier, b, **kwargs):
+    """Used when comparing containers such as lists, dicts and Grain Iterators where an identifier exists in
+    object B but not in object A. In this case we report back the existence of a difference in identifiers
+    between the objects. For example lists of different lengths, or dicts with differing keys."""
+    def __init__(self, identifier: str, b, **kwargs):
         super(BOnlyComparisonResult, self).__init__(identifier, None, b, **kwargs)
 
-    def compare(self, a, b):
+    def compare(self, a, b) -> tuple[bool, str, list[ComparisonResult]]:
         return (
             False,
             "{} does not exist, but {} == {!r}".format(
@@ -421,12 +470,18 @@ class BOnlyComparisonResult(ComparisonResult):
 
 
 class OrderedContainerComparisonResult(ComparisonResult):
-    def __init__(self, identifier, a, b, comparison_class=EqualityComparisonResult, **kwargs):
+    """Compare two mutable sequences (lists) using the comparison_class to define the comparison method."""
+    def __init__(self,
+                 identifier: str,
+                 a: MutableSequence[Any],
+                 b: MutableSequence[Any],
+                 comparison_class: Type[ComparisonResult] = EqualityComparisonResult,
+                 **kwargs):
         self._comparison_class = comparison_class
         super(OrderedContainerComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
-    def compare(self, a, b):
-        children = []
+    def compare(self, a: MutableSequence[Any], b: MutableSequence[Any]) -> tuple[bool, str, list[ComparisonResult]]:
+        children: list[ComparisonResult] = []
 
         children.append(EqualityComparisonResult(
             'len({})'.format(self._identifier), len(a), len(b), options=self._options))
@@ -451,21 +506,21 @@ class OrderedContainerComparisonResult(ComparisonResult):
 class GrainIteratorComparisonResult(ComparisonResult):
     def __init__(self,
                  identifier: str,
-                 a: Iterable[Grain],
-                 b: Iterable[Grain],
+                 a: Iterable[BaseGrain],
+                 b: Iterable[BaseGrain],
                  return_last_only: bool = False,
                  **kwargs):
         self.return_last_only = return_last_only
         super(GrainIteratorComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
-    def compare(self, a: Iterable[Grain], b: Iterable[Grain]) -> Tuple[bool, str, List[ComparisonResult]]:
+    def compare(self, a: Iterable[BaseGrain], b: Iterable[BaseGrain]) -> tuple[bool, str, list[ComparisonResult]]:
         a = iter(a)
         b = iter(b)
 
         self.compared_item_count: int = 0
         all_success = True
 
-        children: List[ComparisonResult] = []
+        children: list[ComparisonResult] = []
 
         while True:
             A = next(a, None)
@@ -516,12 +571,18 @@ class GrainIteratorComparisonResult(ComparisonResult):
 
 
 class MappingContainerComparisonResult(ComparisonResult):
-    def __init__(self, identifier, a, b, comparison_class=EqualityComparisonResult, **kwargs):
+    """Compare two dicts using the comparison_class to define the comparison method."""
+    def __init__(self,
+                 identifier: str,
+                 a: dict[Any, Any],
+                 b: dict[Any, Any],
+                 comparison_class: Type[ComparisonResult] = EqualityComparisonResult,
+                 **kwargs):
         self._comparison_class = comparison_class
         super(MappingContainerComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
-    def compare(self, a, b):
-        children = []
+    def compare(self, a: dict[Any, Any], b: dict[Any, Any]) -> tuple[bool, str, list[ComparisonResult]]:
+        children: list[ComparisonResult] = []
 
         for key in [k for k in a.keys() if k in b.keys()]:
             children.append(self._comparison_class(
@@ -542,8 +603,204 @@ class MappingContainerComparisonResult(ComparisonResult):
 class GrainComparisonResult(ComparisonResult):
     """A ComparisonResult class for comparing grains, this is where almost all of the grain comparison logic is
     contained."""
-    def compare(self, a, b):
-        children = {}
+    def compare_event_grains(self, a: EventGrain, b: EventGrain, children) -> None:
+        # We are comparing event grains, so compare their event grain specific features
+        for key in ['event_type',
+                    'topic']:
+            path = self._identifier + '.' + key
+            children[key] = EqualityComparisonResult(
+                path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
+        for key in ['event_data']:
+            path = self._identifier + '.' + key
+            children[key] = OrderedContainerComparisonResult(
+                self._identifier + '.' + key,
+                getattr(a, key),
+                getattr(b, key),
+                options=self._options,
+                comparison_class=MappingContainerComparisonResult,
+                attr=key)
+        if children['event_type'].excluded() or children['topic'].excluded() or children['event_data'].excluded():
+            children['length']._options.append(Exclude.length)
+
+    def compare_audio_grains(self, a: AudioGrain, b: AudioGrain, children) -> None:
+        # We are comparing audio grains, so compare their audio grain specific features
+        for key in ['format',
+                    'samples',
+                    'channels',
+                    'sample_rate']:
+            path = self._identifier + '.' + key
+            children[key] = EqualityComparisonResult(
+                path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
+
+        if a.format == b.format:
+            path = self._identifier + '.data'
+            compare_psnr = len(
+                [option for option in self._options if isinstance(option, ComparisonPSNR) and path == option.path]
+                ) != 0
+            if compare_psnr:
+                children['data'] = PSNRComparisonResult(path,
+                                                        a,
+                                                        b,
+                                                        options=self._options)
+            else:
+                words_per_sample = 1
+                force_signed = False
+                if a.format in [CogAudioFormat.S16_PLANES,
+                                CogAudioFormat.S16_PAIRS,
+                                CogAudioFormat.S16_INTERLEAVED]:
+                    word_code = 'h'
+                elif a.format in [CogAudioFormat.S24_PLANES,
+                                  CogAudioFormat.S24_PAIRS,
+                                  CogAudioFormat.S24_INTERLEAVED]:
+                    word_code = 'B'
+                    words_per_sample = 3
+                    force_signed = True
+                elif a.format in [CogAudioFormat.S32_PLANES,
+                                  CogAudioFormat.S32_PAIRS,
+                                  CogAudioFormat.S32_INTERLEAVED]:
+                    word_code = 'i'
+                elif a.format in [CogAudioFormat.S64_INVALID]:
+                    word_code = 'l'
+                elif a.format in [CogAudioFormat.FLOAT_PLANES,
+                                  CogAudioFormat.FLOAT_PAIRS,
+                                  CogAudioFormat.FLOAT_INTERLEAVED]:
+                    word_code = 'f'
+                elif a.format in [CogAudioFormat.DOUBLE_PLANES,
+                                  CogAudioFormat.DOUBLE_PAIRS,
+                                  CogAudioFormat.DOUBLE_INTERLEAVED]:
+                    word_code = 'd'
+                else:
+                    word_code = 'B'
+
+                children['data'] = DataEqualityComparisonResult(path,
+                                                                a.data,
+                                                                b.data,
+                                                                options=self._options,
+                                                                attr="data",
+                                                                alignment="@",
+                                                                word_code=word_code,
+                                                                words_per_sample=words_per_sample,
+                                                                force_signed=force_signed)
+        else:
+            self._options.append(Exclude.data)
+            children['data'] = FailingComparisonResult(self._identifier + ".data",
+                                                       "payload formats do not match",
+                                                       attr="data",
+                                                       options=self._options)
+
+    def compare_coded_audio_grains(self, a: CodedAudioGrain, b: CodedAudioGrain, children) -> None:
+        # We are comparing coded_audio grains, so compare their coded_audio grain specific features
+        for key in ['format',
+                    'samples',
+                    'channels',
+                    'sample_rate',
+                    'priming',
+                    'remainder']:
+            path = self._identifier + '.' + key
+            children[key] = EqualityComparisonResult(
+                path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
+
+        if a.format == b.format:
+            children['data'] = DataEqualityComparisonResult(self._identifier + ".data",
+                                                            a.data,
+                                                            b.data,
+                                                            options=self._options,
+                                                            attr="data")
+        else:
+            self._options.append(Exclude.data)
+            children['data'] = FailingComparisonResult(self._identifier + ".data",
+                                                       "payload formats do not match",
+                                                       attr="data",
+                                                       options=self._options)
+
+    def compare_video_grains(self, a: VideoGrain, b: VideoGrain, children) -> None:
+        # We are comparing video grains, so compare their video grain specific features
+        for key in ['format',
+                    'width',
+                    'height',
+                    'layout']:
+            path = self._identifier + '.' + key
+            children[key] = EqualityComparisonResult(
+                path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
+
+        if a.format == b.format:
+            path = self._identifier + '.data'
+            compare_psnr = len(
+                [option for option in self._options if isinstance(option, ComparisonPSNR) and path == option.path]
+                ) != 0
+            if compare_psnr:
+                children['data'] = PSNRComparisonResult(path,
+                                                        a,
+                                                        b,
+                                                        options=self._options)
+            else:
+                if COG_FRAME_IS_COMPRESSED(a.format):
+                    word_code = 'B'
+                elif a.format == CogFrameFormat.v210:
+                    word_code = 'I'
+                elif a.format == CogFrameFormat.v216:
+                    word_code = 'H'
+                elif COG_FRAME_IS_PACKED(a.format):
+                    word_code = 'B'
+                else:
+                    if COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 1:
+                        word_code = 'B'
+                    elif COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 2:
+                        word_code = 'H'
+                    elif COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 4:
+                        word_code = 'I'
+
+                children['data'] = DataEqualityComparisonResult(self._identifier + ".data",
+                                                                a.data,
+                                                                b.data,
+                                                                options=self._options,
+                                                                attr="data",
+                                                                alignment="@",
+                                                                word_code=word_code)
+        else:
+            self._options.append(Exclude.data)
+            children['data'] = FailingComparisonResult(self._identifier + ".data",
+                                                       "payload formats do not match",
+                                                       attr="data",
+                                                       options=self._options)
+
+    def compare_coded_video_grains(self, a: CodedVideoGrain, b: CodedVideoGrain, children) -> None:
+        # We are comparing coded_video grains, so compare their coded_video grain specific features
+        for key in ['format',
+                    'coded_width',
+                    'coded_height',
+                    'origin_width',
+                    'origin_height',
+                    'is_key_frame',
+                    'temporal_offset',
+                    'layout']:
+            path = self._identifier + '.' + key
+            children[key] = EqualityComparisonResult(
+                path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
+
+        for key in ['unit_offsets']:
+            path = self._identifier + '.' + key
+            children[key] = OrderedContainerComparisonResult(path,
+                                                             getattr(a, key),
+                                                             getattr(b, key),
+                                                             comparison_class=DifferenceComparisonResult,
+                                                             options=self._options, attr=key)
+
+        if a.format == b.format:
+            children['data'] = DataEqualityComparisonResult(self._identifier + ".data",
+                                                            a.data,
+                                                            b.data,
+                                                            options=self._options,
+                                                            attr="data")
+        else:
+            self._options.append(Exclude.data)
+            children['data'] = FailingComparisonResult(self._identifier + ".data",
+                                                       "payload formats do not match",
+                                                       attr="data",
+                                                       options=self._options)
+
+    def compare(self, a: BaseGrain, b: BaseGrain) -> tuple[bool, str, list[ComparisonResult]]:
+        children: dict[str, ComparisonResult] = {}
 
         if Include.creation_timestamp not in self._options:
             self._options.append(Exclude.creation_timestamp)
@@ -561,7 +818,7 @@ class GrainComparisonResult(ComparisonResult):
                     'sync_timestamp',
                     'creation_timestamp']:
             path = self._identifier + '.' + key
-            children[key] = TimestampDifferanceComparisonResult(
+            children[key] = TimestampDifferenceComparisonResult(
                 path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
 
         children['timelabels'] = OrderedContainerComparisonResult(
@@ -581,200 +838,19 @@ class GrainComparisonResult(ComparisonResult):
                                                        options=self._options)
 
         elif a.grain_type == "event":
-            # We are comparing event grains, so compare their event grain specific features
-            for key in ['event_type',
-                        'topic']:
-                path = self._identifier + '.' + key
-                children[key] = EqualityComparisonResult(
-                    path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
-            for key in ['event_data']:
-                path = self._identifier + '.' + key
-                children[key] = OrderedContainerComparisonResult(
-                    self._identifier + '.' + key,
-                    getattr(a, key),
-                    getattr(b, key),
-                    options=self._options,
-                    comparison_class=MappingContainerComparisonResult,
-                    attr=key)
-            if children['event_type'].excluded() or children['topic'].excluded() or children['event_data'].excluded():
-                children['length']._options.append(Exclude.length)
+            self.compare_event_grains(cast(EventGrain, a), cast(EventGrain, b), children)
 
         elif a.grain_type == "audio":
-            # We are comparing audio grains, so compare their audio grain specific features
-            for key in ['format',
-                        'samples',
-                        'channels',
-                        'sample_rate']:
-                path = self._identifier + '.' + key
-                children[key] = EqualityComparisonResult(
-                    path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
-
-            if a.format == b.format:
-                path = self._identifier + '.data'
-                compare_psnr = len(
-                    [option for option in self._options if isinstance(option, ComparisonPSNR) and path == option.path]
-                    ) != 0
-                if compare_psnr:
-                    children['data'] = PSNRComparisonResult(path,
-                                                            a,
-                                                            b,
-                                                            options=self._options)
-                else:
-                    wps = 1
-                    s = False
-                    if a.format in [CogAudioFormat.S16_PLANES,
-                                    CogAudioFormat.S16_PAIRS,
-                                    CogAudioFormat.S16_INTERLEAVED]:
-                        wc = 'h'
-                    elif a.format in [CogAudioFormat.S24_PLANES,
-                                      CogAudioFormat.S24_PAIRS,
-                                      CogAudioFormat.S24_INTERLEAVED]:
-                        wc = 'B'
-                        wps = 3
-                        s = True
-                    elif a.format in [CogAudioFormat.S32_PLANES,
-                                      CogAudioFormat.S32_PAIRS,
-                                      CogAudioFormat.S32_INTERLEAVED]:
-                        wc = 'i'
-                    elif a.format in [CogAudioFormat.S64_INVALID]:
-                        wc = 'l'
-                    elif a.format in [CogAudioFormat.FLOAT_PLANES,
-                                      CogAudioFormat.FLOAT_PAIRS,
-                                      CogAudioFormat.FLOAT_INTERLEAVED]:
-                        wc = 'f'
-                    elif a.format in [CogAudioFormat.DOUBLE_PLANES,
-                                      CogAudioFormat.DOUBLE_PAIRS,
-                                      CogAudioFormat.DOUBLE_INTERLEAVED]:
-                        wc = 'd'
-                    else:
-                        wc = 'B'
-
-                    children['data'] = DataEqualityComparisonResult(path,
-                                                                    a.data,
-                                                                    b.data,
-                                                                    options=self._options,
-                                                                    attr="data",
-                                                                    alignment="@",
-                                                                    word_code=wc,
-                                                                    words_per_sample=wps,
-                                                                    force_signed=s)
-            else:
-                self._options.append(Exclude.data)
-                children['data'] = FailingComparisonResult(self._identifier + ".data",
-                                                           "payload formats do not match",
-                                                           attr="data",
-                                                           options=self._options)
+            self.compare_audio_grains(cast(AudioGrain, a), cast(AudioGrain, b), children)
 
         elif a.grain_type == "coded_audio":
-            # We are comparing coded_audio grains, so compare their coded_audio grain specific features
-            for key in ['format',
-                        'samples',
-                        'channels',
-                        'sample_rate',
-                        'priming',
-                        'remainder']:
-                path = self._identifier + '.' + key
-                children[key] = EqualityComparisonResult(
-                    path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
-
-            if a.format == b.format:
-                children['data'] = DataEqualityComparisonResult(self._identifier + ".data",
-                                                                a.data,
-                                                                b.data,
-                                                                options=self._options,
-                                                                attr="data")
-            else:
-                self._options.append(Exclude.data)
-                children['data'] = FailingComparisonResult(self._identifier + ".data",
-                                                           "payload formats do not match",
-                                                           attr="data",
-                                                           options=self._options)
+            self.compare_coded_audio_grains(cast(CodedAudioGrain, a), cast(CodedAudioGrain, b), children)
 
         elif a.grain_type == "video":
-            # We are comparing video grains, so compare their video grain specific features
-            for key in ['format',
-                        'width',
-                        'height',
-                        'layout']:
-                path = self._identifier + '.' + key
-                children[key] = EqualityComparisonResult(
-                    path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
-
-            if a.format == b.format:
-                path = self._identifier + '.data'
-                compare_psnr = len(
-                    [option for option in self._options if isinstance(option, ComparisonPSNR) and path == option.path]
-                    ) != 0
-                if compare_psnr:
-                    children['data'] = PSNRComparisonResult(path,
-                                                            a,
-                                                            b,
-                                                            options=self._options)
-                else:
-                    if COG_FRAME_IS_COMPRESSED(a.format):
-                        wc = 'B'
-                    elif a.format == CogFrameFormat.v210:
-                        wc = 'I'
-                    elif a.format == CogFrameFormat.v216:
-                        wc = 'H'
-                    elif COG_FRAME_IS_PACKED(a.format):
-                        wc = 'B'
-                    else:
-                        if COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 1:
-                            wc = 'B'
-                        elif COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 2:
-                            wc = 'H'
-                        elif COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 4:
-                            wc = 'I'
-
-                    children['data'] = DataEqualityComparisonResult(self._identifier + ".data",
-                                                                    a.data,
-                                                                    b.data,
-                                                                    options=self._options,
-                                                                    attr="data",
-                                                                    alignment="@",
-                                                                    word_code=wc)
-            else:
-                self._options.append(Exclude.data)
-                children['data'] = FailingComparisonResult(self._identifier + ".data",
-                                                           "payload formats do not match",
-                                                           attr="data",
-                                                           options=self._options)
+            self.compare_video_grains(cast(VideoGrain, a), cast(VideoGrain, b), children)
 
         elif a.grain_type == "coded_video":
-            # We are comparing coded_video grains, so compare their coded_video grain specific features
-            for key in ['format',
-                        'coded_width',
-                        'coded_height',
-                        'origin_width',
-                        'origin_height',
-                        'is_key_frame',
-                        'temporal_offset',
-                        'layout']:
-                path = self._identifier + '.' + key
-                children[key] = EqualityComparisonResult(
-                    path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
-
-            for key in ['unit_offsets']:
-                path = self._identifier + '.' + key
-                children[key] = OrderedContainerComparisonResult(path,
-                                                                 getattr(a, key),
-                                                                 getattr(b, key),
-                                                                 comparison_class=DifferenceComparisonResult,
-                                                                 options=self._options, attr=key)
-
-            if a.format == b.format:
-                children['data'] = DataEqualityComparisonResult(self._identifier + ".data",
-                                                                a.data,
-                                                                b.data,
-                                                                options=self._options,
-                                                                attr="data")
-            else:
-                self._options.append(Exclude.data)
-                children['data'] = FailingComparisonResult(self._identifier + ".data",
-                                                           "payload formats do not match",
-                                                           attr="data",
-                                                           options=self._options)
+            self.compare_coded_video_grains(cast(CodedVideoGrain, a), cast(CodedVideoGrain, b), children)
 
         else:
             # We are dealing with some weird unknown grain type, so just do a byte comparison of the data
@@ -792,11 +868,11 @@ class GrainComparisonResult(ComparisonResult):
 
 class FailingComparisonResult(ComparisonResult):
     """A ComparisonResult that is always false, to represent trying to compare incomparable data"""
-    def __init__(self, identifier, reason, **kwargs):
+    def __init__(self, identifier: str, reason: str, **kwargs):
         self.reason = reason
         super(FailingComparisonResult, self).__init__(identifier, None, None, **kwargs)
 
-    def compare(self, a, b):
+    def compare(self, a, b) -> tuple[bool, str, list[ComparisonResult]]:
         return (False, "Cannot compare {} and {} because: {}".format(self._identifier.format('a'),
                                                                      self._identifier.format('b'),
                                                                      self.reason), [])

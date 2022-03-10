@@ -120,39 +120,37 @@ If the underlying file is seekable then the end_dump call will upade all segment
 metadata to list the correct grain count, otherwise the counts will be
 left at -1.
 
+### Comparing Grains
+
 In addition the library contains a relatively rich grain comparison
-mechanism in the submodule `comparison`. An example of useage is as
-follows:
+mechanism in the submodule `comparison`. This submodule exposes methods
+for comparing two grains, and comparing the outputs of two grain iterators.
+Information on advanced comparison features such as how to include attributes,
+exclude attributes, expect differences on attributes and compare PSNR values
+can be found in the [comparison submodules documentation](mediagrains/comparison/README.md).
+
+An example of usage is as follows:
 
 ```python
 >>> from mediagrains.comparison import compare_grain
->>> from mediagrains.testsignalgenerator import LumaSteps
->>> from uuid import uuid1
->>> from mediatimestamp import Timestamp
->>> src_id = uuid1()
->>> flow_id = uuid1()
->>> ots = Timestamp()
->>> gen = LumaSteps(src_id, flow_id, 1920, 1080, origin_timestamp=ots)
->>> a = next(gen)
->>> b = next(gen)
 >>> print(compare_grain(a, b))
 ❌   Grains do not match
-  ✅   <a/b>.height == 1080
-  ✅   Binary data <a/b>.data are equal
-  ✅   <a/b>.format == <CogFrameFormat.U8_444: 8192>
-  ✅   <a/b>.length == 6220800
-  ❌   a.origin_timestamp - b.origin_timestamp == -0:40000000, not the expected 0:0
-  ❌   a.sync_timestamp - b.sync_timestamp == -0:40000000, not the expected 0:0
-  ✅   <a/b>.flow_id == UUID('7ff37130-d904-11e8-9fa5-5065f34ed007')
   ✅   <a/b>.grain_type == 'video'
+  ✅   <a/b>.source_id == UUID('9d0a2518-8f39-11ec-bcdd-737806a40a30')
+  ✅   <a/b>.flow_id == UUID('a1269208-8f39-11ec-bcdd-737806a40a30')
+  ✅   <a/b>.rate == Fraction(25, 1)
+  ✅   <a/b>.duration == Fraction(1, 25)
+  ✅   <a/b>.length == 6220800
+  ❌   a.origin_timestamp - b.origin_timestamp == mediatimestamp.immutable.TimeOffset.from_sec_nsec('-0:160000000'), not the expected mediatimestamp.immutable.TimeOffset.from_sec_nsec('0:0')
+  ❌   a.sync_timestamp - b.sync_timestamp == mediatimestamp.immutable.TimeOffset.from_sec_nsec('-0:160000000'), not the expected mediatimestamp.immutable.TimeOffset.from_sec_nsec('0:0')
+  ◯   a.creation_timestamp - b.creation_timestamp == mediatimestamp.immutable.TimeOffset.from_sec_nsec('0:0') as expected
   ✅   Lists match
     ✅   len(<a/b>.timelabels) == 0
-  ✅   <a/b>.layout == <CogFrameLayout.FULL_FRAME: 0>
+  ✅   <a/b>.format == CogFrameFormat.U8_444
   ✅   <a/b>.width == 1920
-  ✅   <a/b>.source_id == UUID('7bf845f6-d904-11e8-9fa5-5065f34ed007')
-  ✅   <a/b>.rate == Fraction(25, 1)
-  ✅   a.creation_timestamp - b.creation_timestamp == 0:0 as expected
-  ✅   <a/b>.duration == Fraction(1, 25)
+  ✅   <a/b>.height == 1080
+  ✅   <a/b>.layout == CogFrameLayout.FULL_FRAME
+  ✅   Binary data <a/b>.data are equal
 ```
 
 This output gives a relatively detailed breakdown of the differences
