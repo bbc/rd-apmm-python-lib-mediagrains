@@ -191,6 +191,8 @@ make docs
 ```
 This command will render documentation as HTML in the `/docs` directory.
 
+Instructions for using the 'new style' grains can be find in [new_style_grains.md](new_style_grains.md)
+
 ## Tools
 Some tools are installed with the library to make working with the Grain Sequence Format (GSF) file format easier.
 

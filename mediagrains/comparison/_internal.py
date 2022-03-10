@@ -16,7 +16,7 @@
 from typing import Any, cast, Generic, Optional, Type, TypeVar, Union
 from collections.abc import Iterable, MutableSequence
 
-from ..grain import AUDIOGRAIN, CODEDAUDIOGRAIN, CODEDVIDEOGRAIN, EVENTGRAIN, GRAIN, VIDEOGRAIN
+from ..grains import AudioGrain, CodedAudioGrain, CodedVideoGrain, EventGrain, BaseGrain, VideoGrain
 
 from mediatimestamp.immutable import TimeOffset, Timestamp
 from difflib import SequenceMatcher
@@ -410,17 +410,17 @@ class TimestampDifferenceComparisonResult(DifferenceComparisonResult):
 
 
 class PSNRComparisonResult(ComparisonResult):
-    def __init__(self, identifier: str, a: GRAIN, b: GRAIN, **kwargs):
+    def __init__(self, identifier: str, a: BaseGrain, b: BaseGrain, **kwargs):
         """Compute the PSNR for two grains and compare the result with the expected values and comparison operator.
 
         :param identifier: The path in the grain structure
-        :param a: A GRAIN
-        :param b: Another GRAIN
+        :param a: A Grain
+        :param b: Another Grain
         :param kwargs: Other named arguments
         """
         super(PSNRComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
-    def compare(self, a: GRAIN, b: GRAIN) -> tuple[bool, str, list[ComparisonResult]]:
+    def compare(self, a: BaseGrain, b: BaseGrain) -> tuple[bool, str, list[ComparisonResult]]:
         opts = [
             option for option in self._options if isinstance(option, ComparisonPSNR) and self.identifier == option.path
             ]
@@ -506,14 +506,14 @@ class OrderedContainerComparisonResult(ComparisonResult):
 class GrainIteratorComparisonResult(ComparisonResult):
     def __init__(self,
                  identifier: str,
-                 a: Iterable[GRAIN],
-                 b: Iterable[GRAIN],
+                 a: Iterable[BaseGrain],
+                 b: Iterable[BaseGrain],
                  return_last_only: bool = False,
                  **kwargs):
         self.return_last_only = return_last_only
         super(GrainIteratorComparisonResult, self).__init__(identifier, a, b, **kwargs)
 
-    def compare(self, a: Iterable[GRAIN], b: Iterable[GRAIN]) -> tuple[bool, str, list[ComparisonResult]]:
+    def compare(self, a: Iterable[BaseGrain], b: Iterable[BaseGrain]) -> tuple[bool, str, list[ComparisonResult]]:
         a = iter(a)
         b = iter(b)
 
@@ -603,7 +603,7 @@ class MappingContainerComparisonResult(ComparisonResult):
 class GrainComparisonResult(ComparisonResult):
     """A ComparisonResult class for comparing grains, this is where almost all of the grain comparison logic is
     contained."""
-    def compare_event_grains(self, a: EVENTGRAIN, b: EVENTGRAIN, children) -> None:
+    def compare_event_grains(self, a: EventGrain, b: EventGrain, children) -> None:
         # We are comparing event grains, so compare their event grain specific features
         for key in ['event_type',
                     'topic']:
@@ -622,7 +622,7 @@ class GrainComparisonResult(ComparisonResult):
         if children['event_type'].excluded() or children['topic'].excluded() or children['event_data'].excluded():
             children['length']._options.append(Exclude.length)
 
-    def compare_audio_grains(self, a: AUDIOGRAIN, b: AUDIOGRAIN, children) -> None:
+    def compare_audio_grains(self, a: AudioGrain, b: AudioGrain, children) -> None:
         # We are comparing audio grains, so compare their audio grain specific features
         for key in ['format',
                     'samples',
@@ -688,7 +688,7 @@ class GrainComparisonResult(ComparisonResult):
                                                        attr="data",
                                                        options=self._options)
 
-    def compare_coded_audio_grains(self, a: CODEDAUDIOGRAIN, b: CODEDAUDIOGRAIN, children) -> None:
+    def compare_coded_audio_grains(self, a: CodedAudioGrain, b: CodedAudioGrain, children) -> None:
         # We are comparing coded_audio grains, so compare their coded_audio grain specific features
         for key in ['format',
                     'samples',
@@ -713,7 +713,7 @@ class GrainComparisonResult(ComparisonResult):
                                                        attr="data",
                                                        options=self._options)
 
-    def compare_video_grains(self, a: VIDEOGRAIN, b: VIDEOGRAIN, children) -> None:
+    def compare_video_grains(self, a: VideoGrain, b: VideoGrain, children) -> None:
         # We are comparing video grains, so compare their video grain specific features
         for key in ['format',
                     'width',
@@ -764,7 +764,7 @@ class GrainComparisonResult(ComparisonResult):
                                                        attr="data",
                                                        options=self._options)
 
-    def compare_coded_video_grains(self, a: CODEDVIDEOGRAIN, b: CODEDVIDEOGRAIN, children) -> None:
+    def compare_coded_video_grains(self, a: CodedVideoGrain, b: CodedVideoGrain, children) -> None:
         # We are comparing coded_video grains, so compare their coded_video grain specific features
         for key in ['format',
                     'coded_width',
@@ -799,7 +799,7 @@ class GrainComparisonResult(ComparisonResult):
                                                        attr="data",
                                                        options=self._options)
 
-    def compare(self, a: GRAIN, b: GRAIN) -> tuple[bool, str, list[ComparisonResult]]:
+    def compare(self, a: BaseGrain, b: BaseGrain) -> tuple[bool, str, list[ComparisonResult]]:
         children: dict[str, ComparisonResult] = {}
 
         if Include.creation_timestamp not in self._options:
@@ -838,19 +838,19 @@ class GrainComparisonResult(ComparisonResult):
                                                        options=self._options)
 
         elif a.grain_type == "event":
-            self.compare_event_grains(cast(EVENTGRAIN, a), cast(EVENTGRAIN, b), children)
+            self.compare_event_grains(cast(EventGrain, a), cast(EventGrain, b), children)
 
         elif a.grain_type == "audio":
-            self.compare_audio_grains(cast(AUDIOGRAIN, a), cast(AUDIOGRAIN, b), children)
+            self.compare_audio_grains(cast(AudioGrain, a), cast(AudioGrain, b), children)
 
         elif a.grain_type == "coded_audio":
-            self.compare_coded_audio_grains(cast(CODEDAUDIOGRAIN, a), cast(CODEDAUDIOGRAIN, b), children)
+            self.compare_coded_audio_grains(cast(CodedAudioGrain, a), cast(CodedAudioGrain, b), children)
 
         elif a.grain_type == "video":
-            self.compare_video_grains(cast(VIDEOGRAIN, a), cast(VIDEOGRAIN, b), children)
+            self.compare_video_grains(cast(VideoGrain, a), cast(VideoGrain, b), children)
 
         elif a.grain_type == "coded_video":
-            self.compare_coded_video_grains(cast(CODEDVIDEOGRAIN, a), cast(CODEDVIDEOGRAIN, b), children)
+            self.compare_coded_video_grains(cast(CodedVideoGrain, a), cast(CodedVideoGrain, b), children)
 
         else:
             # We are dealing with some weird unknown grain type, so just do a byte comparison of the data

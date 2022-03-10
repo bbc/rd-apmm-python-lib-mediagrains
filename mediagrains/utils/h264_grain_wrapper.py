@@ -22,7 +22,7 @@ from math import ceil
 
 from mediatimestamp.immutable import TimeRange
 
-from ..grain import GRAIN, CODEDVIDEOGRAIN
+from ..grains import BaseGrain, CodedVideoGrain
 from .h264_parser import H264Parser, FrameInfo
 
 # Read in blocks of 8K
@@ -33,7 +33,7 @@ class H264GrainWrapper(object):
     """Raw input and wrap it in Grains"""
     def __init__(
         self,
-        template_grain: GRAIN,
+        template_grain: BaseGrain,
         input_data: typing.IO[bytes]
     ):
         """Set up the wrapper and the Grains that will be generated
@@ -42,7 +42,7 @@ class H264GrainWrapper(object):
                                source. origin_timestamp should be set.
         :param input_data: An object to read video data from
         """
-        assert(isinstance(template_grain, CODEDVIDEOGRAIN))
+        assert(isinstance(template_grain, CodedVideoGrain))
         self.template_grain = copy.deepcopy(template_grain)  # make a copy as the template defaults will be updated
         self.input_data = input_data
         self.input_data_buffer = bytearray()
@@ -105,7 +105,7 @@ class H264GrainWrapper(object):
                 frame_info = h264_parser.parse_frame_info(frame_data, nalu_byte_offsets=unit_offsets)
                 yield (frame_data, unit_offsets, frame_info)
 
-    def grains(self) -> typing.Iterator[CODEDVIDEOGRAIN]:
+    def grains(self) -> typing.Iterator[CodedVideoGrain]:
         """Generator that yields Grains read from the input given
 
         :yields: Grain objects read from the raw input supplied
