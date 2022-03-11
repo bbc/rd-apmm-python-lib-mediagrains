@@ -94,18 +94,19 @@ def wrap_video_in_gsf():
     flow_id = args.flow_id if args.flow_id else uuid.uuid4()
     source_id = args.source_id if args.source_id else uuid.uuid4()
 
-    duration = 1/args.rate
+    rate_fraction = fractions.Fraction(args.rate)
+    duration = 1/rate_fraction
 
     if args.format in [CogFrameFormat.H264, CogFrameFormat.AVCI]:
         template_grain = CodedVideoGrain(
-            flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, rate=args.rate,
+            flow_id=flow_id, src_id=source_id, origin_timestamp=args.start_ts, rate=rate_fraction,
             duration=duration, origin_width=width, origin_height=height, coded_width=0, coded_height=0,
             cog_frame_format=args.format
         )
         Wrapper = H264GrainWrapper
     else:
         template_grain = VideoGrain(
-            flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, rate=args.rate,
+            flow_id=flow_id, src_id=source_id, origin_timestamp=args.start_ts, rate=rate_fraction,
             duration=duration, width=width, height=height, cog_frame_format=args.format
         )
         Wrapper = GrainWrapper
@@ -150,7 +151,7 @@ def wrap_audio_in_gsf():
         duration = fractions.Fraction(args.samples_per_grain, args.sample_rate)
 
         template_grain = CodedAudioGrain(
-            flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, sample_rate=args.sample_rate,
+            flow_id=flow_id, src_id=source_id, origin_timestamp=args.start_ts, sample_rate=args.sample_rate,
             duration=duration, channels=args.channels, samples=args.samples_per_grain, cog_audio_format=args.format,
             rate=fractions.Fraction(0, 1)
         )
@@ -172,7 +173,7 @@ def wrap_audio_in_gsf():
         duration = fractions.Fraction(samples_per_grain, sample_rate)
 
         template_grain = AudioGrain(
-            flow_id=flow_id, source_id=source_id, origin_timestamp=args.start_ts, sample_rate=sample_rate,
+            flow_id=flow_id, src_id=source_id, origin_timestamp=args.start_ts, sample_rate=sample_rate,
             duration=duration, channels=channels, samples=samples_per_grain, cog_audio_format=args.format,
             rate=fractions.Fraction(0, 1)
         )
