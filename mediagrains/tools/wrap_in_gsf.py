@@ -94,18 +94,19 @@ def wrap_video_in_gsf():
     flow_id = args.flow_id if args.flow_id else uuid.uuid4()
     source_id = args.source_id if args.source_id else uuid.uuid4()
 
-    duration = 1/args.rate
+    rate_fraction = fractions.Fraction(args.rate)
+    duration = 1/rate_fraction
 
     if args.format in [CogFrameFormat.H264, CogFrameFormat.AVCI]:
         template_grain = CodedVideoGrain(
-            flow_id=flow_id, src_id=source_id, origin_timestamp=args.start_ts, rate=args.rate,
+            flow_id=flow_id, src_id=source_id, origin_timestamp=args.start_ts, rate=rate_fraction,
             duration=duration, origin_width=width, origin_height=height, coded_width=0, coded_height=0,
             cog_frame_format=args.format
         )
         Wrapper = H264GrainWrapper
     else:
         template_grain = VideoGrain(
-            flow_id=flow_id, src_id=source_id, origin_timestamp=args.start_ts, rate=args.rate,
+            flow_id=flow_id, src_id=source_id, origin_timestamp=args.start_ts, rate=rate_fraction,
             duration=duration, width=width, height=height, cog_frame_format=args.format
         )
         Wrapper = GrainWrapper
