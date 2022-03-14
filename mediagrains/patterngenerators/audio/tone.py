@@ -22,8 +22,8 @@ from fractions import Fraction
 from mediatimestamp import TimeValue
 
 from .abc import AudioPatternGenerator
-from ...grains import AUDIOGRAIN
-from ...grains import AudioGrain
+from ...grain import AUDIOGRAIN
+from ...grain_constructors import AudioGrain
 from ...cogenums import CogAudioFormat
 
 
@@ -168,8 +168,8 @@ class Tone(AudioPatternGenerator):
         offs = sample_count % self.looplen
 
         ag = AudioGrain(
-            src_id=self.src_id,
-            flow_id=self.flow_id,
+            self.src_id,
+            self.flow_id,
             origin_timestamp=tv.as_timestamp(),
             cog_audio_format=self.cog_audio_format,
             samples=self.samples,
