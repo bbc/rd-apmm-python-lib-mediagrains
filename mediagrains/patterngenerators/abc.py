@@ -32,13 +32,13 @@ from mediatimestamp import (
     CountRange,
     SupportsMediaTimeRange)
 
-from mediagrains.grains.BaseGrain import BaseGrain
+from ..grain import GRAIN
 
 
 __all__ = ["PatternGenerator", "FixedRatePatternGenerator"]
 
 
-G = TypeVar('G', bound=BaseGrain)
+G = TypeVar('G', bound=GRAIN)
 
 
 class PatternGenerator (Generic[G], metaclass=ABCMeta):

@@ -22,14 +22,14 @@ import copy
 
 from mediatimestamp.immutable import TimeRange
 
-from mediagrains.grains import BaseGrain
+from ..grain import GRAIN
 
 
-class GrainWrapper():
+class GrainWrapper(object):
     """Raw input and wrap it in Grains"""
     def __init__(
         self,
-        template_grain: BaseGrain,
+        template_grain: GRAIN,
         input_data: typing.IO[bytes]
     ):
         """Set up the wrapper and the Grains that will be generated
@@ -44,7 +44,7 @@ class GrainWrapper():
 
         self.frame_size = template_grain.expected_length
 
-    def grains(self) -> typing.Iterator[BaseGrain]:
+    def grains(self) -> typing.Iterator[GRAIN]:
         """Generator that yields Grains read from the input given
 
         :yields: Grain objects read from the raw input supplied

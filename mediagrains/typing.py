@@ -31,7 +31,7 @@ from mediatimestamp.immutable import TimeOffset, TimeRange, Timestamp
 
 
 if TYPE_CHECKING:
-    from .grains import GRAIN  # noqa: F401
+    from .grain import GRAIN  # noqa: F401
 
 
 __all__ = ["RationalTypes",

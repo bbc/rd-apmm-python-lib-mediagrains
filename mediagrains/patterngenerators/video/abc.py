@@ -18,14 +18,14 @@ from fractions import Fraction
 from uuid import UUID
 
 from ...cogenums import CogFrameFormat
-from ...grains import VideoGrain
+from ...grain import VIDEOGRAIN
 from ..abc import FixedRatePatternGenerator
 
 
 __all__ = ["VideoPatternGenerator"]
 
 
-class VideoPatternGenerator (FixedRatePatternGenerator[VideoGrain]):
+class VideoPatternGenerator (FixedRatePatternGenerator[VIDEOGRAIN]):
     def __init__(self, src_id, flow_id, width, height,
                  rate=Fraction(25, 1),
                  cog_frame_format=CogFrameFormat.U8_444):
