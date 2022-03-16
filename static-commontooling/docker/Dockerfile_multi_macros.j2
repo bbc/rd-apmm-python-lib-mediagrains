@@ -164,3 +164,21 @@ RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert 
 ENTRYPOINT ["/run_with_dir_modes.sh", ".", "pdoc3"]
 CMD ["--html", "--force", "--output-dir", ".", "{{ modname }}"]
 {%- endmacro %}
+
+{% macro alembic(modname) -%}
+###############################################################################
+# Stage: alembic
+###############################################################################
+FROM ap-docker.virt.ch.bbc.co.uk:443/cloudfit/alembic:latest as alembic_base
+
+FROM layer AS alembic
+
+WORKDIR /data
+RUN chmod a+w /data
+
+COPY --from=alembic_base /data/requirements.txt /data/alembic.ini.j2 /data/default_entrypoint.sh .
+
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert pip install -r requirements.txt
+
+ENTRYPOINT ["./default_entrypoint.sh"]
+{%- endmacro %}

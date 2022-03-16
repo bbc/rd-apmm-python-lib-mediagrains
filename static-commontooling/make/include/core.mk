@@ -17,7 +17,7 @@ $(warning topdir is not set, using $(topbuilddir))
 endif
 
 project_root_dir?=$(topdir)
-reldir:=$(shell realpath --relative-to $(project_root_dir) $(topdir))
+reldir=$(eval reldir := $(shell realpath --relative-to $(project_root_dir) $(topdir)))$(value reldir)
 
 # Include defaults file if it exists
 -include $(commontooling_dir)/make/include/defaults.mk
@@ -33,6 +33,8 @@ J2CLI_DOCKER_LABEL?=latest
 CLOUDFIT_BASE_LABEL?=latest
 endif
 
+J2CLI_DOCKER_CONTAINER?=bbcrd/j2cli
+
 ifeq "${FORGE_CERT}" ""
 FORGE_CERT:=$(realpath $(HOME)/.certs/devcert.pem)
 endif
@@ -41,7 +43,7 @@ endif
 DOCKER?=docker
 DOCKER_RUN?=${DOCKER} run --pull always --rm
 RAML2HTML?=$(DOCKER_RUN) -v $(project_root_dir):/data:ro -w /data/$(reldir) mattjtodd/raml2html
-J2?=$(DOCKER_RUN) -v $(project_root_dir):/data:ro -w /data/$(reldir) bbcrd/j2cli:${J2CLI_DOCKER_LABEL}
+J2?=$(DOCKER_RUN) -v $(project_root_dir):/data:ro -w /data/$(reldir) ${J2CLI_DOCKER_CONTAINER}:${J2CLI_DOCKER_LABEL}
 
 all: ;
 

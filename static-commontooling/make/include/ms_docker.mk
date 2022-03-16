@@ -2,9 +2,6 @@
 # Makefile include file to include standard docker targets
 # Do not include directly, is used by docker.mk and run_locally.mk
 
-GITREV:=$(shell git rev-parse --short HEAD)
-GITREF:=$(shell git rev-parse --abbrev-ref HEAD)
-
 ifeq "${VERSION_IN_PYTHON}" ""
 VERSION_IN_PYTHON:=${VERSION}
 endif
