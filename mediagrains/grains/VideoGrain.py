@@ -21,10 +21,10 @@ from ..typing import (
     GrainDataParameterType)
 
 from ..cogenums import CogFrameFormat, CogFrameLayout
-from .BaseGrain import BaseGrain
+from .Grain import Grain
 
 
-class VideoGrain(BaseGrain):
+class VideoGrain(Grain):
     """\
 A class representing a raw video grain.
 
@@ -432,7 +432,7 @@ length
                     len(meta['grain']['cog_frame']['components']) == 0)):
             meta['grain']['cog_frame']['components'] = components_for_format(cog_frame_format, width, height)
 
-        super(VideoGrain, self).__init__(meta, data)
+        super().__init__(meta=meta, data=data)
         self.meta: VideoGrainMetadataDict
 
         self._factory = "VideoGrain"

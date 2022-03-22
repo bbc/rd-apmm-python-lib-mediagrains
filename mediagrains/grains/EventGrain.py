@@ -21,12 +21,12 @@ from ..typing import (
     EventGrainMetadataDict,
     GrainDataParameterType)
 
-from .BaseGrain import BaseGrain
+from .Grain import Grain
 
 import json
 
 
-class EventGrain(BaseGrain):
+class EventGrain(Grain):
     """\
 A class representing an event grain.
 
@@ -36,7 +36,7 @@ Any grain can be freely cast to a tuple:
 
 where meta is a dictionary containing the grain metadata.
 
-The BaseGrain class provides a number of properties which can be used to access
+The Grain class provides a number of properties which can be used to access
 parts of the standard grain metadata, and this class inherits these:
 
 meta

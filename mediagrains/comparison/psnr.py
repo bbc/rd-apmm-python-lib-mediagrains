@@ -29,7 +29,7 @@ from mediagrains.cogenums import (
     COG_AUDIO_FORMAT_DEPTH_S24,
     COG_AUDIO_FORMAT_DEPTH_S32
 )
-from mediagrains.grains.BaseGrain import BaseGrain
+from mediagrains.grains.Grain import Grain
 from mediagrains.numpy.numpy_grains import VideoGrain as numpy_VideoGrain
 from mediagrains.numpy.numpy_grains import AudioGrain as numpy_AudioGrain
 
@@ -135,8 +135,8 @@ def _compute_video_psnr(grain_a: Union[VideoGrain, numpy_VideoGrain],
     return psnr
 
 
-def compute_psnr(grain_a: BaseGrain,
-                 grain_b: BaseGrain,
+def compute_psnr(grain_a: Grain,
+                 grain_b: Grain,
                  max_val=None
                  ) -> list[float]:
     """Compute PSNR for video or audio grains.

@@ -22,7 +22,7 @@ from math import ceil
 
 from mediatimestamp.immutable import TimeRange
 
-from ..grains import BaseGrain, CodedVideoGrain
+from ..grains import Grain, CodedVideoGrain
 from .h264_parser import H264Parser, FrameInfo
 
 # Read in blocks of 8K
@@ -33,7 +33,7 @@ class H264GrainWrapper(object):
     """Raw input and wrap it in Grains"""
     def __init__(
         self,
-        template_grain: BaseGrain,
+        template_grain: Grain,
         input_data: typing.IO[bytes]
     ):
         """Set up the wrapper and the Grains that will be generated

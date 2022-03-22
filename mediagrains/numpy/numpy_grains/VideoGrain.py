@@ -222,6 +222,7 @@ class VideoGrain (bytesgrain.VideoGrain):
     _grain_conversions: Dict[Tuple[CogFrameFormat, CogFrameFormat], ConversionFunc] = {}
 
     def __init__(self,
+                 *args,
                  grain: bytesgrain.VideoGrain = None,
                  meta: VideoGrainMetadataDict = None,
                  data: GrainDataParameterType = None,
@@ -241,6 +242,9 @@ class VideoGrain (bytesgrain.VideoGrain):
             data = grain.data
             super().__init__(meta, data)
         else:
+            if args and len(args) == 2:
+                meta = cast(VideoGrainMetadataDict, args[0])
+                data = cast(GrainDataParameterType, args[1])
             super().__init__(meta=meta, data=data, origin_timestamp=origin_timestamp,
                              creation_timestamp=creation_timestamp, sync_timestamp=sync_timestamp, rate=rate,
                              duration=duration, cog_frame_format=cog_frame_format, cog_frame_layout=cog_frame_layout,

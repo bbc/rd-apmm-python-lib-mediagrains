@@ -17,7 +17,7 @@
 # behaviour can be overidden by setting USE_VERSION_FILE=TRUE
 #
 
-PYTHON3:=$(shell which python3)
+PYTHON3=$(eval PYTHON3 := $(shell which python3))$(value PYTHON3)
 
 # Detect the test directory if present
 ifeq "$(TESTS_DIR)" ""
@@ -42,10 +42,10 @@ endif
 DESTDIR?=/
 
 ifeq "$(PROJECT)" ""
-PROJECT:=$(shell python3 $(topdir)/setup.py --name)
+PROJECT=$(eval PROJECT := $(shell python3 $(topdir)/setup.py --name))$(value PROJECT)
 endif
 ifeq "$(GITCOMMIT)" ""
-GITCOMMIT:=$(shell git rev-parse --short HEAD)
+GITCOMMIT=$(eval GITCOMMIT := $(shell git rev-parse --short HEAD))$(value GITCOMMIT)
 endif
 
 MODNAME?=$(PROJECT)
@@ -60,8 +60,8 @@ CLEAN_FILES += $(topbuilddir)/dist
 CLEAN_FILES += $(topbuilddir)/*.egg-info
 
 # Identify the source files for pythonic code
-PYTHONIC_SOURCES:=$(shell find $(topdir)/$(MODNAME) -type f -name '*.py') $(topdir)/setup.py $(topdir)/MANIFEST.in $(topdir)/setup.cfg
-PYTHONIC_TEST_SOURCES:=$(shell find $(topdir)/tests -type f -name '*.py') $(topdir)/test-requirements.txt
+PYTHONIC_SOURCES:=$(eval PYTHONIC_SOURCES := $(shell find $(topdir)/$(MODNAME) -type f -name '*.py') $(topdir)/setup.py $(topdir)/MANIFEST.in $(topdir)/setup.cfg)$(value PYTHONIC_SOURCES)
+PYTHONIC_TEST_SOURCES:=$(eval PYTHONIC_TEST_SOURCES := $(shell find $(topdir)/tests -type f -name '*.py') $(topdir)/test-requirements.txt)$(value PYTHONIC_TEST_SOURCES)
 
 # Add extra dependencies to the core targets
 all: help-pythonic

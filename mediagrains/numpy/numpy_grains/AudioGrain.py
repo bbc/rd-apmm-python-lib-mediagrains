@@ -109,6 +109,7 @@ def _channel_arrays_for_data_and_type(data: Optional[np.ndarray],
 
 class AudioGrain (bytesgrain.AudioGrain):
     def __init__(self,
+                 *args,
                  grain: bytesgrain.AudioGrain = None,
                  meta: AudioGrainMetadataDict = None,
                  data: GrainDataParameterType = None,
@@ -128,6 +129,9 @@ class AudioGrain (bytesgrain.AudioGrain):
             data = grain.data
             super().__init__(meta=meta, data=data)
         else:
+            if args and len(args) == 2:
+                meta = cast(AudioGrainMetadataDict, args[0])
+                data = cast(GrainDataParameterType, args[1])
             super().__init__(meta=meta, data=data, origin_timestamp=origin_timestamp,
                              creation_timestamp=creation_timestamp, sync_timestamp=sync_timestamp, rate=rate,
                              duration=duration, cog_audio_format=cog_audio_format, src_id=src_id, flow_id=flow_id,

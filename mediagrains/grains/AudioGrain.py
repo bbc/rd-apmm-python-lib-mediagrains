@@ -9,7 +9,7 @@ from ..typing import (
     GrainDataParameterType)
 
 from ..cogenums import CogAudioFormat
-from .BaseGrain import BaseGrain
+from .Grain import Grain
 
 
 def size_for_audio_format(cog_audio_format: CogAudioFormat, channels: int, samples: int) -> int:
@@ -29,7 +29,7 @@ def size_for_audio_format(cog_audio_format: CogAudioFormat, channels: int, sampl
     return channels * samples * depth
 
 
-class AudioGrain(BaseGrain):
+class AudioGrain(Grain):
     """\
 A class representing a raw audio grain.
 
@@ -39,7 +39,7 @@ Any grain can be freely cast to a tuple:
 
 where meta is a dictionary containing the grain metadata, and data is the data element described below..
 
-The BaseGrain class provides a number of properties which can be used to access
+The Grain class provides a number of properties which can be used to access
 parts of the standard grain metadata, and this class inherits these:
 
 meta

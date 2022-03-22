@@ -19,7 +19,7 @@ A library for deserialising GSF files, either from string buffers or file
 objects.
 """
 
-from mediagrains.grains.BaseGrain import BaseGrain
+from .grains import Grain, GrainFactory
 from uuid import UUID, uuid1
 from datetime import datetime
 from io import BytesIO, RawIOBase, BufferedIOBase
@@ -50,7 +50,7 @@ from typing import (
 from typing_extensions import TypedDict
 from .typing import GrainMetadataDict, RationalTypes, ParseGrainType
 
-from .grains import Grain, VideoGrain, EventGrain, AudioGrain, CodedAudioGrain, CodedVideoGrain
+from .grains import VideoGrain, EventGrain, AudioGrain, CodedAudioGrain, CodedVideoGrain
 
 from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper, OpenAsyncFileWrapper
 
@@ -96,7 +96,7 @@ def loads(s: bytes,
     if cls is None:
         cls = GSFDecoder
     if parse_grain is None:
-        parse_grain = Grain
+        parse_grain = GrainFactory
 
     return load(BytesIO(s), cls=cls, parse_grain=parse_grain)
 
@@ -134,7 +134,7 @@ def load(fp,
     if cls is None:
         cls = GSFDecoder
     if parse_grain is None:
-        parse_grain = Grain
+        parse_grain = GrainFactory
 
     if isinstance(fp, AsyncBinaryIO):
         return cls(file_data=fp, parse_grain=parse_grain, **kwargs)._asynchronously_decode()
@@ -1341,7 +1341,7 @@ class GSFDecoder(object):
     Can also be used to make a one-off decode of a GSF file from a bytes-like object by calling `decode(bytes_like)`.
     """
     def __init__(self,
-                 parse_grain: ParseGrainType = Grain,
+                 parse_grain: ParseGrainType = GrainFactory,
                  file_data: Optional[Union[IO[bytes], AsyncBinaryIO, OpenAsyncBinaryIO]] = None,
                  **kwargs):
         """Constructor
@@ -1669,7 +1669,7 @@ class OpenGSFEncoder(OpenGSFEncoderBase):
         self.file = file
 
     def add_grain(self,
-                  grain: BaseGrain,
+                  grain: Grain,
                   segment_id: Optional[UUID] = None,
                   segment_local_id: Optional[int] = None):
         """Add a grain to one of the segments of the file. If no local_segment_id
@@ -1681,7 +1681,7 @@ class OpenGSFEncoder(OpenGSFEncoderBase):
         self.add_grains((grain,), segment_id=segment_id, segment_local_id=segment_local_id)
 
     def add_grains(self,
-                   grains: Iterable[BaseGrain],
+                   grains: Iterable[Grain],
                    segment_id: Optional[UUID] = None,
                    segment_local_id: Optional[int] = None):
         """Add several grains to one of the segments of the file. If no local_segment_id
@@ -2124,7 +2124,7 @@ class GSFEncoderSegment(object):
         self._count_pos = -1
         self._active_dump: bool = False
         self._tags: List[GSFEncoderTag] = []
-        self._grains: List[BaseGrain] = []
+        self._grains: List[Grain] = []
         self._parent = parent
 
         if tags is not None:
@@ -2187,7 +2187,7 @@ class GSFEncoderSegment(object):
         self._grains = []
         return data
 
-    def encode_grain(self, grain: BaseGrain) -> bytes:
+    def encode_grain(self, grain: Grain) -> bytes:
         gbhd_size = self._gbhd_size_for_grain(grain)
 
         data = (
@@ -2246,7 +2246,7 @@ class GSFEncoderSegment(object):
 
         return data
 
-    def _gbhd_size_for_grain(self, grain: BaseGrain) -> int:
+    def _gbhd_size_for_grain(self, grain: Grain) -> int:
         size = 92
         if len(grain.timelabels) > 0:
             size += 10 + 29*len(grain.timelabels)
@@ -2372,7 +2372,7 @@ class GSFEncoderSegment(object):
             raise GSFEncodeAddToActiveDump("Cannot add a tag to a segment which is part of an active export")
         self._tags.append(GSFEncoderTag(key, value))
 
-    def add_grain(self, grain: BaseGrain):
+    def add_grain(self, grain: Grain):
         """Add a grain to the segment, which should be a Grain object"""
         parent = self._get_parent_open_encoder()
         if parent is not None and parent._active_dump:
@@ -2380,7 +2380,7 @@ class GSFEncoderSegment(object):
         else:
             self._grains.append(grain)
 
-    def add_grains(self, grains: Iterable[BaseGrain]):
+    def add_grains(self, grains: Iterable[Grain]):
         """Add several grains to the segment, the parameter should be an
         iterable of grain objects"""
         parent = self._get_parent_open_encoder()

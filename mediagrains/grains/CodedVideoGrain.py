@@ -16,10 +16,10 @@ from ..typing import (
     GrainDataParameterType)
 
 from ..cogenums import CogFrameFormat, CogFrameLayout
-from .BaseGrain import BaseGrain
+from .Grain import Grain
 
 
-class CodedVideoGrain(BaseGrain):
+class CodedVideoGrain(Grain):
     """\
 A class representing a coded video grain.
 
@@ -29,7 +29,7 @@ Any grain can be freely cast to a tuple:
 
 where meta is a dictionary containing the grain metadata, and data is the data element described below.
 
-The BaseGrain class provides a number of properties which can be used to access
+The Grain class provides a number of properties which can be used to access
 parts of the standard grain metadata, and this class inherits these:
 
 meta

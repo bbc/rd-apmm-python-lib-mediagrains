@@ -16,7 +16,8 @@
 
 from unittest import IsolatedAsyncioTestCase, mock
 import uuid
-from mediagrains.grains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
+from mediagrains.grains import VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
+from mediagrains.grains.Grain import GrainFactory as Grain
 from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from mediatimestamp.immutable import Timestamp, TimeOffset, TimeRange
 from fractions import Fraction

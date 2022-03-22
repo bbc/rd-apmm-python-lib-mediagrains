@@ -36,7 +36,7 @@ from .typing import (
     CodedVideoGrainMetadataDict)
 
 from .cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
-from .grains import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
+from .grains import GRAIN, VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN, GrainFactory
 
 
 __all__ = ["Grain", "VideoGrain", "AudioGrain", "CodedVideoGrain", "CodedAudioGrain", "EventGrain"]
@@ -131,8 +131,9 @@ but src_id is kept avaialble for backwards compatibility)
             if flow_id is None and isinstance(flow_id_or_data, UUID):
                 flow_id = flow_id_or_data
 
-    return GRAIN(meta=meta, data=data, src_id=src_id, flow_id=flow_id, origin_timestamp=origin_timestamp,
-                 sync_timestamp=sync_timestamp, creation_timestamp=creation_timestamp, rate=rate, duration=duration)
+    return GrainFactory(meta=meta, data=data, src_id=src_id, flow_id=flow_id, origin_timestamp=origin_timestamp,
+                        sync_timestamp=sync_timestamp, creation_timestamp=creation_timestamp, rate=rate,
+                        duration=duration)
 
 
 @deprecated(version="3.2.0", reason='A new, more Pythonic way of instantiating grains has been introduced. '

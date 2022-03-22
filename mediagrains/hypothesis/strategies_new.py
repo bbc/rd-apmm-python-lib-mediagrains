@@ -44,7 +44,8 @@ from copy import copy
 
 from ..grains import new_attributes_for_grain_type as attributes_for_grain_type
 from ..cogenums import CogAudioFormat, CogFrameFormat, CogFrameLayout
-from ..grains import Grain, EventGrain, AudioGrain, CodedAudioGrain, CodedVideoGrain, VideoGrain
+from ..grains import EventGrain, AudioGrain, CodedAudioGrain, CodedVideoGrain, VideoGrain
+from ..grains import GrainFactory as Grain
 from .strategies import shrinking_uuids, fraction_dicts
 
 

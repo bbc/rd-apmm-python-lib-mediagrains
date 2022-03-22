@@ -52,7 +52,7 @@ def VideoGrain(*args,
                flow_id: Optional[UUID] = None,
                data: GrainDataParameterType = None,
                meta: VideoGrainMetadataDict = None):
-    if isinstance(args[0], bytesgrain.VideoGrain):
+    if len(args) == 1 and isinstance(args[0], bytesgrain.VideoGrain):
         return npVideoGrain(grain=args[0])
 
     if format:

@@ -142,8 +142,8 @@ requirements.txt
 # tox.ini
 tox.ini
 
-# .gitignore
-.gitignore
+# .gitignore intermediary file
+.gitignore.gen
 
 # setup.cfg
 setup.cfg

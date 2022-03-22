@@ -17,7 +17,8 @@
 
 from unittest import IsolatedAsyncioTestCase, mock
 from uuid import UUID
-from mediagrains.grains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
+from mediagrains.grains import VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
+from mediagrains.grains import GrainFactory as Grain
 from mediagrains.grains import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
 from mediagrains.gsf import loads, load, dumps, GSFEncoder, GSFDecoder, AsyncGSFBlock, GrainDataLoadingMode
 from mediagrains.gsf import GSFDecodeError
