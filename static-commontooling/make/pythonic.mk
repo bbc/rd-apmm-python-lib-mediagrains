@@ -2,27 +2,27 @@
 # Makefile include file to include standard cloudfit tooling for python packages
 # Should usually be the second file included in Makefile
 #
-# To allow backward compatability file defaults to useing the legacy Tox build
-# targets defined in pythonic_tox.mk
+# Most of the actual recipes for building/running Python code are handled by docker.mk, which should usually be included
+# after this file (a previous version also allowed using tox, but that has since been deprecated and removed)
+
 #
-# See pythonic_tox.mk for variables to set when using this mode
+# Before including you may want to set the following variables:
 #
+#    USE_VERSION_FILE=
+#		By default "layer" builds get an _version.py, and others don't. Set this to TRUE to generate that file regardless
 #
-# The new Docker based targets can be used by setting PYTHONIC_DOCKER=TRUE
+#    TWINE_REPO?=
+#    	Change the default wheel upload location (if blank, open source repositories get PyPI, internal repositories get Artifactory)
 #
-# See pythonic_docker.mk for variables for the Docker mode
+#    TWINE_REPO_USERNAME?= & TWINE_REPO_PASSWORD?=
+#    	Set these in the environment when uploading wheels (or CI sets them automatically)
 #
-# By default standalone/library builds will use the version in setup.py, whereas
-# layer builds get versions from a VERSION file/`git describe`. However this
-# behaviour can be overidden by setting USE_VERSION_FILE=TRUE
+#    EXTRA_INSTALL_REQUIREMENTS?=-r test-requirements.txt
+#       Add extra packages to install when running make install/make editable-install
 #
+
 
 PYTHON3=$(eval PYTHON3 := $(shell which python3))$(value PYTHON3)
-
-# Detect the test directory if present
-ifeq "$(TESTS_DIR)" ""
-TESTS_DIR:=$(wildcard tests)
-endif
 
 # By default only "layer" mode uses the VERSION file/git describe version, but it can be overidden by setting this
 ifeq "$(CLOUDFIT_MAKE_MODE)" "layer"
@@ -31,16 +31,7 @@ else
 USE_VERSION_FILE?=FALSE
 endif
 
-# Simple version and module name parameters extracted from python setup.py
-#
-# VERSION is extracted from a top level VERSION file if present, but otherwise we use git describe
-# and then apply a little Python script to turn this into a format compatible with PEP440 versioning
-#
-# Default values are computed by simple assigment (the :=) since they're expensive; we don't want to run this every
-# time it gets accessed. Those values are used only if not overidden elsewhere
-# (i.e by the service/layer/component Makefile)
-DESTDIR?=/
-
+# Extract version and module name from working tree
 ifeq "$(PROJECT)" ""
 PROJECT=$(eval PROJECT := $(shell python3 $(topdir)/setup.py --name))$(value PROJECT)
 endif
@@ -49,11 +40,6 @@ GITCOMMIT=$(eval GITCOMMIT := $(shell git rev-parse --short HEAD))$(value GITCOM
 endif
 
 MODNAME?=$(PROJECT)
-LINTARGS?=$(MODNAME) $(TESTS_DIR)
-MYPYARGS?=-p $(MODNAME)
-
-# Need to work out where this file is for relative imports
-SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 
 CLEAN_FILES += $(topbuilddir)/build/ MANIFEST
 CLEAN_FILES += $(topbuilddir)/dist
@@ -67,8 +53,6 @@ PYTHONIC_TEST_SOURCES:=$(eval PYTHONIC_TEST_SOURCES := $(shell find $(topdir)/te
 all: help-pythonic
 
 source: source-pythonic
-
-install: install-pythonic
 
 ifeq "${BUILD_TAG}" "local"
 VERSION_IN_PYTHON=${NEXT_VERSION}
@@ -91,9 +75,6 @@ source-pythonic: $(topbuilddir)/dist/$(MODNAME)-$(VERSION_IN_PYTHON).tar.gz
 $(topbuilddir)/dist/$(MODNAME)-$(VERSION_IN_PYTHON).tar.gz: $(topbuilddir)/dist $(PYTHONIC_SOURCES) $(PYTHONIC_TEST_SOURCES) $(EXTRA_TEST_SOURCES) $(EXTRA_SOURCES)
 	$(PYTHON3) $(topdir)/setup.py sdist $(COMPILE)
 
-install-pythonic:
-	$(PYTHON3) $(topdir)/setup.py install --root $(DESTDIR) $(COMPILE)
-
 prepcode: $(EXTRA_MODS_REQUIRED_VERSIONFILE)
 
 egg: $(topdir)/setup.py
@@ -115,6 +96,7 @@ MISC_FILES+=$(topdir)/setup.cfg
 endif
 
 include $(commontooling_dir)/make/include/miscfiles.mk
+include $(commontooling_dir)/make/include/pythonic_install.mk
 
 #VERSION file tooling for layers, not used by standalone libraries
 ifeq "$(USE_VERSION_FILE)" "TRUE"
@@ -174,7 +156,6 @@ endif
 
 help-pythonic:
 	@echo "make source                      - Create source package"
-	@echo "make install                     - Install on local system (only during development)"
 	@echo "make egg                         - Create egg package"
 	@echo "make upload-wheel                - Upload wheels to ${TWINE_REPO}"
 
