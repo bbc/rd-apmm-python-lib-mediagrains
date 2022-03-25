@@ -147,7 +147,7 @@ It begins with a standard block header:
 | tag           | "grai"     | Tag      | 4 octets  |
 | size          |            | Unsigned | 4 octets  |
 
-followed by a single field containing the *local_id* of the segment to which the grain belongs:
+followed by a single field containing the *local_id* of the segment to which the grain belongs (and a segment contains grains of a single flow, all using the same *local_id*):
 
 | Name          | Data       | Type     | Size      |
 |---------------|------------|----------|-----------|
@@ -176,7 +176,7 @@ followed by the fields of the common grain header:
 | rate          |            | Rational     | 8 octets  |
 | duration      |            | Rational     | 8 octets  |
 
-The *src_id* is the source identifier for the grains, *flow_id* is the flow identifier, *origin_ts* is the origin timestamp, *sync_ts* is the synchronisation timestamp, *rate* is the grain rate and *duration* is the grain duration. A deprecated property is currently present in the data and should be set to all zeros. The deprecated property is likely to be removed when moving to the next *major_version*.
+The *src_id* is the source identifier for the grains, *flow_id* is the flow identifier, *origin_ts* is the origin timestamp, *sync_ts* is the synchronisation timestamp, *rate* is the grain rate and *duration* is the grain duration. A deprecated property is currently present in the data and should be set to all zeros. The deprecated property is likely to be removed when moving to the next *major_version*. In addition, the *sync_ts* field is not used in practice.
 
 The "gbhd" block is followed by an optional "tils" block, and then an additional mandatory block for the non-empty grain types:
 
