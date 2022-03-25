@@ -7,8 +7,11 @@ style.
 
 Provides constructor functions for various types of grains and classes
 that nicely wrap those grains, as well as a full serialisation and
-deserialisation library for GSF format. Please read the pydoc
-documentation for more details.
+deserialisation library for Grain Sequence Format (GSF) format, a lightweight
+binary wrapper format for various media types including uncompressed video.
+
+Please read the pydoc documentation for more details. The GSF format is
+documented in [gsf_docs/gsf.md](gsf_docs/gsf.md).
 
 Some useful tools for handling the Grain Sequence Format (GSF) file format
 are also included - see [Tools](#tools).
