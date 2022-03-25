@@ -38,8 +38,10 @@ with numpy and similar libraries.
 
 The gsf and grain submodules have their own documentation.
 """
-
+# TO_CHANGE: Export the grain classes directly on version change. (e.g. from .grains import ...)
 from .grain_constructors import Grain, VideoGrain, CodedVideoGrain, AudioGrain, CodedAudioGrain, EventGrain
 from .typing import ParseGrainType
+from . import grain
 
-__all__ = ["Grain", "VideoGrain", "CodedVideoGrain", "AudioGrain", "CodedAudioGrain", "EventGrain", "ParseGrainType"]
+__all__ = ["Grain", "VideoGrain", "CodedVideoGrain", "AudioGrain", "CodedAudioGrain", "EventGrain", "ParseGrainType",
+           "grain"]

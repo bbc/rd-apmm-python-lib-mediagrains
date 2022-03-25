@@ -19,7 +19,7 @@ A library for deserialising GSF files, either from string buffers or file
 objects.
 """
 
-from . import Grain
+from .grains import Grain, GrainFactory
 from uuid import UUID, uuid1
 from datetime import datetime
 from io import BytesIO, RawIOBase, BufferedIOBase
@@ -50,7 +50,7 @@ from typing import (
 from typing_extensions import TypedDict
 from .typing import GrainMetadataDict, RationalTypes, ParseGrainType
 
-from .grain import GRAIN, VIDEOGRAIN, EVENTGRAIN, AUDIOGRAIN, CODEDAUDIOGRAIN, CODEDVIDEOGRAIN
+from .grains import VideoGrain, EventGrain, AudioGrain, CodedAudioGrain, CodedVideoGrain
 
 from .utils.asyncbinaryio import AsyncBinaryIO, OpenAsyncBinaryIO, AsyncFileWrapper, OpenAsyncFileWrapper
 
@@ -83,7 +83,7 @@ GSFFileHeaderDict = dict
 def loads(s: bytes,
           cls: Optional[Type["GSFDecoder"]] = None,
           parse_grain: Optional[ParseGrainType] = None,
-          **kwargs) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
+          **kwargs) -> Tuple[GSFFileHeaderDict, Dict[int, List[Grain]]]:
     """Deserialise a GSF file from a string (or similar) into python,
     returns a pair of (head, segments) where head is a python dict
     containing general metadata from the file, and segments is a dictionary
@@ -96,7 +96,7 @@ def loads(s: bytes,
     if cls is None:
         cls = GSFDecoder
     if parse_grain is None:
-        parse_grain = Grain
+        parse_grain = GrainFactory
 
     return load(BytesIO(s), cls=cls, parse_grain=parse_grain)
 
@@ -105,14 +105,14 @@ def loads(s: bytes,
 def load(fp: IO[bytes],
          cls: Optional[Type["GSFDecoder"]] = None,
          parse_grain: Optional[ParseGrainType] = None,
-         **kwargs) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]: ...
+         **kwargs) -> Tuple[GSFFileHeaderDict, Dict[int, List[Grain]]]: ...
 
 
 @overload
 def load(fp: AsyncBinaryIO,
          cls: Optional[Type["GSFDecoder"]] = None,
          parse_grain: Optional[ParseGrainType] = None,
-         **kwargs) -> Awaitable[Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]]: ...
+         **kwargs) -> Awaitable[Tuple[GSFFileHeaderDict, Dict[int, List[Grain]]]]: ...
 
 
 def load(fp,
@@ -134,7 +134,7 @@ def load(fp,
     if cls is None:
         cls = GSFDecoder
     if parse_grain is None:
-        parse_grain = Grain
+        parse_grain = GrainFactory
 
     if isinstance(fp, AsyncBinaryIO):
         return cls(file_data=fp, parse_grain=parse_grain, **kwargs)._asynchronously_decode()
@@ -142,7 +142,7 @@ def load(fp,
         return cls(file_data=fp, parse_grain=parse_grain, **kwargs)._synchronously_decode()
 
 
-def dump(grains: Iterable[GRAIN],
+def dump(grains: Iterable[Grain],
          fp: IO[bytes],
          cls: Optional[Type["GSFEncoder"]] = None,
          segment_tags: Optional[Iterable[Tuple[str, str]]] = None,
@@ -165,7 +165,7 @@ def dump(grains: Iterable[GRAIN],
         seg.add_grains(grains)
 
 
-def dumps(grains: Iterable[GRAIN],
+def dumps(grains: Iterable[Grain],
           cls: Optional[Type["GSFEncoder"]] = None,
           segment_tags: Optional[Iterable[Tuple[str, str]]] = None,
           **kwargs) -> bytes:
@@ -717,7 +717,7 @@ class GSFAsyncDecoderSession(object):
         self.file_headers: Optional[GSFFileHeaderDict] = None
 
         self._exiting = False
-        self._unloaded_lazy_grains: Dict[int, GRAIN] = {}
+        self._unloaded_lazy_grains: Dict[int, Grain] = {}
         self._next_lazy_grain_number = 0
 
         self._sync_compatibility_mode = sync_compatibility_mode
@@ -935,7 +935,7 @@ class GSFAsyncDecoderSession(object):
         except EOFError:
             raise GSFDecodeError("No head block found in file", self.file_data.tell())
 
-    def _add_lazy_grain(self, key: int, grain: GRAIN):
+    def _add_lazy_grain(self, key: int, grain: Grain):
         self._unloaded_lazy_grains[key] = grain
 
     def _remove_lazy_grain(self, key: int):
@@ -953,7 +953,7 @@ class GSFAsyncDecoderSession(object):
     async def grains(self,
                      local_ids: Optional[Sequence[int]] = None,
                      loading_mode: GrainDataLoadingMode = GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE
-                     ) -> AsyncIterable[Tuple[GRAIN, int]]:
+                     ) -> AsyncIterable[Tuple[Grain, int]]:
         """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
 
         The file_data will be positioned after the `grai` block.
@@ -1273,7 +1273,7 @@ class GSFSyncDecoderSession(object):
     def grains(self,
                local_ids: Optional[Sequence[int]] = None,
                loading_mode: GrainDataLoadingMode = GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE
-               ) -> Iterable[Tuple[GRAIN, int]]:
+               ) -> Iterable[Tuple[Grain, int]]:
         """Generator to get grains from the GSF file. Skips blocks which aren't "grai".
 
         The file_data will be positioned after the `grai` block.
@@ -1341,7 +1341,7 @@ class GSFDecoder(object):
     Can also be used to make a one-off decode of a GSF file from a bytes-like object by calling `decode(bytes_like)`.
     """
     def __init__(self,
-                 parse_grain: ParseGrainType = Grain,
+                 parse_grain: ParseGrainType = GrainFactory,
                  file_data: Optional[Union[IO[bytes], AsyncBinaryIO, OpenAsyncBinaryIO]] = None,
                  **kwargs):
         """Constructor
@@ -1460,9 +1460,9 @@ class GSFDecoder(object):
 
         return self._open_session.grains(local_ids=local_ids, loading_mode=mode)
 
-    async def _asynchronously_decode(self) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
+    async def _asynchronously_decode(self) -> Tuple[GSFFileHeaderDict, Dict[int, List[Grain]]]:
         async with self as dec:
-            grains: Dict[int, List[GRAIN]] = {}
+            grains: Dict[int, List[Grain]] = {}
             async for (grain, key) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY):
                 if key not in grains:
                     grains[key] = []
@@ -1471,9 +1471,9 @@ class GSFDecoder(object):
                 raise RuntimeError("There ought to be file headers here")
             return (dec.file_headers, grains)
 
-    def _synchronously_decode(self) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
+    def _synchronously_decode(self) -> Tuple[GSFFileHeaderDict, Dict[int, List[Grain]]]:
         with self as dec:
-            grains: Dict[int, List[GRAIN]] = {}
+            grains: Dict[int, List[Grain]] = {}
             for (grain, key) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY):
                 if key not in grains:
                     grains[key] = []
@@ -1482,11 +1482,11 @@ class GSFDecoder(object):
                 raise RuntimeError("There ought to be file headers here")
             return (dec.file_headers, grains)
 
-    def decode(self, s: Optional[bytes] = None) -> Tuple[GSFFileHeaderDict, Dict[int, List[GRAIN]]]:
+    def decode(self, s: Optional[bytes] = None) -> Tuple[GSFFileHeaderDict, Dict[int, List[Grain]]]:
         """Decode a GSF formatted bytes object
 
         :param s: GSF-formatted bytes object, optional if `file_data` supplied to constructor
-        :returns: A dictionary mapping sequence ids to lists of GRAIN objects (or subclasses of such).
+        :returns: A dictionary mapping sequence ids to lists of Grain objects (or subclasses of such).
         """
         if (s is not None):
             # Unclear why this cast is needed, since a BytesIO is already a BufferedIOBase ...
@@ -1669,7 +1669,7 @@ class OpenGSFEncoder(OpenGSFEncoderBase):
         self.file = file
 
     def add_grain(self,
-                  grain: GRAIN,
+                  grain: Grain,
                   segment_id: Optional[UUID] = None,
                   segment_local_id: Optional[int] = None):
         """Add a grain to one of the segments of the file. If no local_segment_id
@@ -1681,7 +1681,7 @@ class OpenGSFEncoder(OpenGSFEncoderBase):
         self.add_grains((grain,), segment_id=segment_id, segment_local_id=segment_local_id)
 
     def add_grains(self,
-                   grains: Iterable[GRAIN],
+                   grains: Iterable[Grain],
                    segment_id: Optional[UUID] = None,
                    segment_local_id: Optional[int] = None):
         """Add several grains to one of the segments of the file. If no local_segment_id
@@ -1755,7 +1755,7 @@ class OpenAsyncGSFEncoder(OpenGSFEncoderBase):
             self._open_file = file
 
     async def add_grain(self,
-                        grain: GRAIN,
+                        grain: Grain,
                         segment_id: Optional[UUID] = None,
                         segment_local_id: Optional[int] = None):
         """Add a grain to one of the segments of the file. If no local_segment_id
@@ -1767,7 +1767,7 @@ class OpenAsyncGSFEncoder(OpenGSFEncoderBase):
         await self.add_grains((grain,), segment_id=segment_id, segment_local_id=segment_local_id)
 
     async def add_grains(self,
-                         grains: Iterable[GRAIN],
+                         grains: Iterable[Grain],
                          segment_id: Optional[UUID] = None,
                          segment_local_id: Optional[int] = None):
         """Add several grains to one of the segments of the file. If no local_segment_id
@@ -2002,7 +2002,7 @@ class GSFEncoder(object):
         return seg
 
     def add_grain(self,
-                  grain: GRAIN,
+                  grain: Grain,
                   segment_id: Optional[UUID] = None,
                   segment_local_id: Optional[int] = None):
         """Add a grain to one of the segments of the file. If no local_segment_id
@@ -2014,7 +2014,7 @@ class GSFEncoder(object):
         self.add_grains((grain,), segment_id=segment_id, segment_local_id=segment_local_id)
 
     def add_grains(self,
-                   grains: Iterable[GRAIN],
+                   grains: Iterable[Grain],
                    segment_id: Optional[UUID] = None,
                    segment_local_id: Optional[int] = None):
         """Add several grains to one of the segments of the file. If no local_segment_id
@@ -2124,7 +2124,7 @@ class GSFEncoderSegment(object):
         self._count_pos = -1
         self._active_dump: bool = False
         self._tags: List[GSFEncoderTag] = []
-        self._grains: List[GRAIN] = []
+        self._grains: List[Grain] = []
         self._parent = parent
 
         if tags is not None:
@@ -2187,7 +2187,7 @@ class GSFEncoderSegment(object):
         self._grains = []
         return data
 
-    def encode_grain(self, grain: GRAIN) -> bytes:
+    def encode_grain(self, grain: Grain) -> bytes:
         gbhd_size = self._gbhd_size_for_grain(grain)
 
         data = (
@@ -2223,15 +2223,15 @@ class GSFEncoderSegment(object):
                     _encode_uint(1 if label['timelabel']['drop_frame'] else 0, 1))
 
         if grain.grain_type == "video":
-            data += self._encode_vghd_for_grain(cast(VIDEOGRAIN, grain))
+            data += self._encode_vghd_for_grain(cast(VideoGrain, grain))
         elif grain.grain_type == "coded_video":
-            data += self._encode_cghd_for_grain(cast(CODEDVIDEOGRAIN, grain))
+            data += self._encode_cghd_for_grain(cast(CodedVideoGrain, grain))
         elif grain.grain_type == "audio":
-            data += self._encode_aghd_for_grain(cast(AUDIOGRAIN, grain))
+            data += self._encode_aghd_for_grain(cast(AudioGrain, grain))
         elif grain.grain_type == "coded_audio":
-            data += self._encode_cahd_for_grain(cast(CODEDAUDIOGRAIN, grain))
+            data += self._encode_cahd_for_grain(cast(CodedAudioGrain, grain))
         elif grain.grain_type == "event":
-            data += self._encode_eghd_for_grain(cast(EVENTGRAIN, grain))
+            data += self._encode_eghd_for_grain(cast(EventGrain, grain))
         elif grain.grain_type != "empty":  # pragma: no cover (should be unreachable)
             raise GSFEncodeError("Unknown grain type: {}".format(grain.grain_type))
 
@@ -2246,31 +2246,31 @@ class GSFEncoderSegment(object):
 
         return data
 
-    def _gbhd_size_for_grain(self, grain: GRAIN) -> int:
+    def _gbhd_size_for_grain(self, grain: Grain) -> int:
         size = 92
         if len(grain.timelabels) > 0:
             size += 10 + 29*len(grain.timelabels)
         if grain.grain_type == "video":
-            size += self._vghd_size_for_grain(cast(VIDEOGRAIN, grain))
+            size += self._vghd_size_for_grain(cast(VideoGrain, grain))
         elif grain.grain_type == "coded_video":
-            size += self._cghd_size_for_grain(cast(CODEDVIDEOGRAIN, grain))
+            size += self._cghd_size_for_grain(cast(CodedVideoGrain, grain))
         elif grain.grain_type == "audio":
-            size += self._aghd_size_for_grain(cast(AUDIOGRAIN, grain))
+            size += self._aghd_size_for_grain(cast(AudioGrain, grain))
         elif grain.grain_type == "coded_audio":
-            size += self._cahd_size_for_grain(cast(CODEDAUDIOGRAIN, grain))
+            size += self._cahd_size_for_grain(cast(CodedAudioGrain, grain))
         elif grain.grain_type == "event":
-            size += self._eghd_size_for_grain(cast(EVENTGRAIN, grain))
+            size += self._eghd_size_for_grain(cast(EventGrain, grain))
         elif grain.grain_type != "empty":
             raise GSFEncodeError("Unknown grain type: {}".format(grain.grain_type))
         return size
 
-    def _vghd_size_for_grain(self, grain: VIDEOGRAIN) -> int:
+    def _vghd_size_for_grain(self, grain: VideoGrain) -> int:
         size = 44
         if len(grain.components) > 0:
             size += 10 + 16*len(grain.components)
         return size
 
-    def _encode_vghd_for_grain(self, grain: VIDEOGRAIN) -> bytes:
+    def _encode_vghd_for_grain(self, grain: VideoGrain) -> bytes:
         data = (b"vghd" +
                 _encode_uint(self._vghd_size_for_grain(grain), 4) +
 
@@ -2303,18 +2303,18 @@ class GSFEncoderSegment(object):
 
         return data
 
-    def _eghd_size_for_grain(self, grain: EVENTGRAIN) -> int:
+    def _eghd_size_for_grain(self, grain: EventGrain) -> int:
         return 9
 
-    def _encode_eghd_for_grain(self, grain: EVENTGRAIN) -> bytes:
+    def _encode_eghd_for_grain(self, grain: EventGrain) -> bytes:
         return (b"eghd" +
                 _encode_uint(self._eghd_size_for_grain(grain), 4) +
                 _encode_uint(0x00, 1))
 
-    def _aghd_size_for_grain(self, grain: AUDIOGRAIN) -> int:
+    def _aghd_size_for_grain(self, grain: AudioGrain) -> int:
         return 22
 
-    def _encode_aghd_for_grain(self, grain: AUDIOGRAIN) -> bytes:
+    def _encode_aghd_for_grain(self, grain: AudioGrain) -> bytes:
         return (b"aghd" +
                 _encode_uint(self._aghd_size_for_grain(grain), 4) +
 
@@ -2323,13 +2323,13 @@ class GSFEncoderSegment(object):
                 _encode_uint(int(grain.samples), 4) +
                 _encode_uint(int(grain.sample_rate), 4))
 
-    def _cghd_size_for_grain(self, grain: CODEDVIDEOGRAIN) -> int:
+    def _cghd_size_for_grain(self, grain: CodedVideoGrain) -> int:
         size = 37
         if len(grain.unit_offsets) > 0:
             size += 10 + 4*len(grain.unit_offsets)
         return size
 
-    def _encode_cghd_for_grain(self, grain: CODEDVIDEOGRAIN) -> bytes:
+    def _encode_cghd_for_grain(self, grain: CodedVideoGrain) -> bytes:
         data = (b"cghd" +
                 _encode_uint(self._cghd_size_for_grain(grain), 4) +
 
@@ -2352,10 +2352,10 @@ class GSFEncoderSegment(object):
 
         return data
 
-    def _cahd_size_for_grain(self, grain: CODEDAUDIOGRAIN) -> int:
+    def _cahd_size_for_grain(self, grain: CodedAudioGrain) -> int:
         return 30
 
-    def _encode_cahd_for_grain(self, grain: CODEDAUDIOGRAIN) -> bytes:
+    def _encode_cahd_for_grain(self, grain: CodedAudioGrain) -> bytes:
         return (b"cahd" +
                 _encode_uint(self._cahd_size_for_grain(grain), 4) +
 
@@ -2372,7 +2372,7 @@ class GSFEncoderSegment(object):
             raise GSFEncodeAddToActiveDump("Cannot add a tag to a segment which is part of an active export")
         self._tags.append(GSFEncoderTag(key, value))
 
-    def add_grain(self, grain: GRAIN):
+    def add_grain(self, grain: Grain):
         """Add a grain to the segment, which should be a Grain object"""
         parent = self._get_parent_open_encoder()
         if parent is not None and parent._active_dump:
@@ -2380,7 +2380,7 @@ class GSFEncoderSegment(object):
         else:
             self._grains.append(grain)
 
-    def add_grains(self, grains: Iterable[GRAIN]):
+    def add_grains(self, grains: Iterable[Grain]):
         """Add several grains to the segment, the parameter should be an
         iterable of grain objects"""
         parent = self._get_parent_open_encoder()
