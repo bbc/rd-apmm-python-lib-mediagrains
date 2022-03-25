@@ -17,6 +17,8 @@
 """\
 A library for deserialising GSF files, either from string buffers or file
 objects.
+See https://github.com/bbc/rd-apmm-python-lib-mediagrains/blob/main/gsf_docs/gsf.md
+for documentation of the GSF format.
 """
 
 from . import Grain
