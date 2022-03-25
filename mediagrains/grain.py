@@ -42,6 +42,4 @@ if __name__ == "__main__":  # pragma: no cover
     flow_id = uuid5(src_id, "flow_id:test_flow")
 
     grain1 = GrainFactory(src_id=src_id, flow_id=flow_id)
-    # grain2 = Grain(grain1.meta)
     print(grain1)
-    # print(grain2)
