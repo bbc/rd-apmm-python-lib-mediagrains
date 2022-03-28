@@ -43,7 +43,6 @@ MODNAME?=$(PROJECT)
 
 CLEAN_FILES += $(topbuilddir)/build/ MANIFEST
 CLEAN_FILES += $(topbuilddir)/dist
-CLEAN_FILES += $(topbuilddir)/*.egg-info
 
 # Identify the source files for pythonic code
 PYTHONIC_SOURCES:=$(eval PYTHONIC_SOURCES := $(shell find $(topdir)/$(MODNAME) -type f -name '*.py') $(topdir)/setup.py $(topdir)/MANIFEST.in $(topdir)/setup.cfg)$(value PYTHONIC_SOURCES)
@@ -76,9 +75,6 @@ $(topbuilddir)/dist/$(MODNAME)-$(VERSION_IN_PYTHON).tar.gz: $(topbuilddir)/dist 
 	$(PYTHON3) $(topdir)/setup.py sdist $(COMPILE)
 
 prepcode: $(EXTRA_MODS_REQUIRED_VERSIONFILE)
-
-egg: $(topdir)/setup.py
-	$(PYTHON3) $(topdir)/setup.py bdist_egg --dist-dir=$(topbuilddir)/dist
 
 $(topbuilddir)/requirements.txt: $(topdir)/setup.py
 	$(PYTHON3) $(commontooling_dir)/misc/extract_requirements.py $< -o $@
@@ -156,7 +152,6 @@ endif
 
 help-pythonic:
 	@echo "make source                      - Create source package"
-	@echo "make egg                         - Create egg package"
 	@echo "make upload-wheel                - Upload wheels to ${TWINE_REPO}"
 
-.PHONY: source-pythonic install-pythonic help-pythonic clean-pythonic egg prepcode install source wheel upload-wheel
+.PHONY: source-pythonic install-pythonic help-pythonic clean-pythonic prepcode install source wheel upload-wheel
