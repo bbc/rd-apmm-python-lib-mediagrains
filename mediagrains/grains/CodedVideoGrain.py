@@ -13,7 +13,9 @@ from uuid import UUID
 from mediatimestamp.immutable import Timestamp, SupportsMediaTimestamp, mediatimestamp
 from ..typing import (
     CodedVideoGrainMetadataDict,
-    GrainDataParameterType)
+    FractionDict,
+    GrainDataParameterType,
+    RationalTypes)
 
 from ..cogenums import CogFrameFormat, CogFrameLayout
 from .Grain import Grain
@@ -293,6 +295,38 @@ unit_offsets
     @temporal_offset.setter
     def temporal_offset(self, value: int) -> None:
         self.meta['grain']['cog_coded_frame']['temporal_offset'] = value
+
+    @property
+    def source_aspect_ratio(self) -> Optional[Fraction]:
+        if 'source_aspect_ratio' in self.meta['grain']['cog_coded_frame']:
+            return Fraction(cast(FractionDict,
+                                 self.meta['grain']['cog_coded_frame']['source_aspect_ratio'])['numerator'],
+                            cast(FractionDict,
+                                 self.meta['grain']['cog_coded_frame']['source_aspect_ratio'])['denominator'])
+        else:
+            return None
+
+    @source_aspect_ratio.setter
+    def source_aspect_ratio(self, value: RationalTypes) -> None:
+        value = Fraction(value)
+        self.meta['grain']['cog_coded_frame']['source_aspect_ratio'] = {'numerator': value.numerator,
+                                                                        'denominator': value.denominator}
+
+    @property
+    def pixel_aspect_ratio(self) -> Optional[Fraction]:
+        if 'pixel_aspect_ratio' in self.meta['grain']['cog_coded_frame']:
+            return Fraction(cast(FractionDict,
+                                 self.meta['grain']['cog_coded_frame']['pixel_aspect_ratio'])['numerator'],
+                            cast(FractionDict,
+                                 self.meta['grain']['cog_coded_frame']['pixel_aspect_ratio'])['denominator'])
+        else:
+            return None
+
+    @pixel_aspect_ratio.setter
+    def pixel_aspect_ratio(self, value: RationalTypes) -> None:
+        value = Fraction(value)
+        self.meta['grain']['cog_coded_frame']['pixel_aspect_ratio'] = {'numerator': value.numerator,
+                                                                       'denominator': value.denominator}
 
     class UNITOFFSETS(MutableSequence):
         def __init__(self, parent: "CodedVideoGrain"):

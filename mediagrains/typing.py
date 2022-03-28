@@ -179,6 +179,8 @@ class _GrainGrainMetadataDict_cogcodedframe_MANDATORY (TypedDict):
 class _GrainGrainMetadataDict_cogcodedframe (_GrainGrainMetadataDict_cogcodedframe_MANDATORY, total=False):
     unit_offsets: Sequence[int]
     length: int
+    source_aspect_ratio: Union[FractionDict, Fraction, RationalTypes]
+    pixel_aspect_ratio: Union[FractionDict, Fraction, RationalTypes]
 
 
 class CodedVideoGrainGrainMetadataDict (_GrainGrainMetadataDict_common):
