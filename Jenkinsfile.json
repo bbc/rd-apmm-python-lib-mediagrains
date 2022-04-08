@@ -2,6 +2,7 @@
     "docker": true,
     "stages": [
         "@setup",
+        "@caretaker",
         "@make check-static-files",
         "@make lint",
         "@make mypy",

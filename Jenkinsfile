@@ -26,6 +26,7 @@ pipeline {
     parameters {
         booleanParam(name: "FORCE_DOCSUPLOAD", defaultValue: false, description: "Force API docs upload")
         booleanParam(name: "FORCE_PYPIUPLOAD", defaultValue: false, description: "Force upload of python wheels to pypi")
+        booleanParam(name: "FORCE_CARETAKER", defaultValue: false, description: "Force run of Artifactory caretaker")
         string(name: "PYTHON_VERSION", defaultValue: "3.10", description: "Python version to make available in tox")
         string(name: "COMMONTOOLING_BRANCH", defaultValue: "main")
     }
@@ -47,6 +48,24 @@ pipeline {
             post {
                 always {
                     bbcGithubNotify(context: "prepcode", status: env.result)
+                }
+            }
+        }
+        stage ("Caretaker: Remove old packages") {
+            when {
+                anyOf {
+                    expression { return params.FORCE_CARETAKER }
+                    expression {
+                        bbcIsOnBranch(branches: ["main"])
+                    }
+                }
+            }
+            steps {
+                bbcMake "caretaker"
+            }
+            post {
+                always {
+                    bbcGithubNotify(context: "caretaker", status: env.result)
                 }
             }
         }
