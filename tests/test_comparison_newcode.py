@@ -17,7 +17,7 @@
 import unittest
 from unittest import TestCase
 
-from hypothesis import given, assume, settings, HealthCheck
+from hypothesis import given, assume, settings
 from hypothesis.strategies import sampled_from, just, tuples, integers
 from mediagrains.hypothesis.strategies_new import grains_with_data, grains
 
@@ -33,12 +33,8 @@ from fixtures import pairs_of, attribute_and_pairs_of_grains_of_type_differing_o
 
 GRAIN_TYPES_TO_TEST = ["empty", "event", "audio", "video", "coded_audio", "coded_video"]
 
-settings.register_profile("ci", max_examples=1000)
-settings.load_profile("ci")
-
 
 class TestCompareGrain(TestCase):
-    @settings(suppress_health_check=[HealthCheck.too_slow])
     @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains_with_data))
     def test_equal_grains_compare_as_equal(self, a):
         b = deepcopy(a)
