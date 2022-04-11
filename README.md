@@ -220,6 +220,26 @@ gsf_probe output_audio.gsf
 extract_gsf_essence output_audio.gsf - | ffplay -f s16le -ac 2 -ar 44100 pipe:0
 ```
 
+The tools have been packaged into docker images for convenience. Images for all the tools can be built using:
+```bash
+make tools
+```
+
+Or individual tool images can be built using one of the following:
+```bash
+make tool-gsf_probe
+make tool-extract_gsf_essence
+make tool-tool-wrap_audio_in_gsf
+make tool-tool-wrap_video_in_gsf
+```
+
+You can make use of the tools images with the following command, replacing the source data directory, image name and build tag as required:
+```bash
+$(make -s run-cmd-extract_gsf_essence) <ARGS>
+```
+
+Running the command without ARGS will provide help
+
 ## Development
 ### Commontooling
 

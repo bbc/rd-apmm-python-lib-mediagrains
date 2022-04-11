@@ -29,3 +29,18 @@ CMD ["discover", "tests", "-v"]
 
 {{ macros.docs(modname) }}
 CMD ["--html", "--force", "--skip-errors", "--output-dir", ".", "{{ modname }}"]
+
+FROM {{ modname + ":" + "${BUILD_TAG}" }} AS tools_base
+WORKDIR /data
+
+FROM tools_base as extract_gsf_essence
+ENTRYPOINT ["extract_gsf_essence"]
+
+FROM tools_base AS gsf_probe
+ENTRYPOINT ["gsf_probe"]
+
+FROM tools_base AS wrap_audio_in_gsf
+ENTRYPOINT ["wrap_audio_in_gsf"]
+
+FROM tools_base AS wrap_video_in_gsf
+ENTRYPOINT ["wrap_video_in_gsf"]
