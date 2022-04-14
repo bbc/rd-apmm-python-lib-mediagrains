@@ -26,9 +26,9 @@ pipeline {
     parameters {
         booleanParam(name: "FORCE_DOCSUPLOAD", defaultValue: false, description: "Force API docs upload")
         booleanParam(name: "FORCE_PYPIUPLOAD", defaultValue: false, description: "Force upload of python wheels to pypi")
-        booleanParam(name: "FORCE_DOCKERUPLOAD", defaultValue: false, description: "Force upload of docker images to artifactory")
         string(name: "PYTHON_VERSION", defaultValue: "3.10", description: "Python version to make available in tox")
         string(name: "COMMONTOOLING_BRANCH", defaultValue: "main")
+        booleanParam(name: "FORCE_DOCKERUPLOAD", defaultValue: false, description: "Force upload of docker images to Docker Hub")
     }
     environment {
         FORGE_CERT = "/etc/pki/tls/private/client_crt_key.pem"
@@ -136,25 +136,23 @@ pipeline {
                 }
             }
         }
-        stage ("Upload docker images to Artifactory") {
+        stage("Upload Images to Docker Hub"){
             when {
-                anyOf {
+                anyOf{
                     expression { return params.FORCE_DOCKERUPLOAD }
-                    expression { env.TAG_NAME != null }
                     expression {
                         bbcShouldUploadArtifacts(branches: ["main"])
                     }
                 }
             }
-            steps {
-                withBBCDockerRegistry {
-                    bbcMake "upload-docker"
+            steps{
+                withBBCDockerhubRegistry {
+                    bbcMake("push")
                 }
             }
             post {
                 always {
-                    bbcGithubNotify(context: "upload-docker", status: env.result)
-                    bbcSh "docker logout ap-docker.virt.ch.bbc.co.uk:443"
+                    bbcGithubNotify(context: "push", status: env.result)
                 }
             }
         }

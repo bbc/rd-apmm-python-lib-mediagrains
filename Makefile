@@ -1,5 +1,6 @@
 USE_VERSION_FILE:=TRUE
 MS_DOCKER_PUSH:=TRUE
+DOCKER_REGISTRY:=docker.io/bbcrd/
 
 include ./static-commontooling/make/lib_static_commontooling.mk
 include ./static-commontooling/make/standalone.mk
@@ -31,8 +32,6 @@ run-cmd-%: ms_docker-build-%
 
 ifeq "${enable_push}" "TRUE"
 push: ms_docker-push-gsf_probe ms_docker-push-extract_gsf_essence ms_docker-push-wrap_audio_in_gsf ms_docker-push-wrap_video_in_gsf 
-
-upload-docker: ms_docker-push-gsf_probe ms_docker-push-extract_gsf_essence ms_docker-push-wrap_audio_in_gsf ms_docker-push-wrap_video_in_gsf
 
 push-%: ms_docker-push-%
 	@echo Push successful
