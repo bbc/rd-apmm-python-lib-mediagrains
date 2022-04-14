@@ -9,6 +9,7 @@
         "@make test",
         "@make wheel",
         "@upload pypi",
+        "@upload docker",
         "@upload docs-recursive ./docs"
     ]
 }

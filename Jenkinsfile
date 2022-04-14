@@ -26,6 +26,7 @@ pipeline {
     parameters {
         booleanParam(name: "FORCE_DOCSUPLOAD", defaultValue: false, description: "Force API docs upload")
         booleanParam(name: "FORCE_PYPIUPLOAD", defaultValue: false, description: "Force upload of python wheels to pypi")
+        booleanParam(name: "FORCE_DOCKERUPLOAD", defaultValue: false, description: "Force upload of docker images to artifactory")
         string(name: "PYTHON_VERSION", defaultValue: "3.10", description: "Python version to make available in tox")
         string(name: "COMMONTOOLING_BRANCH", defaultValue: "main")
     }
@@ -132,6 +133,28 @@ pipeline {
             post {
                 always {
                     bbcGithubNotify(context: "upload-wheels", status: env.result)
+                }
+            }
+        }
+        stage ("Upload docker images to Artifactory") {
+            when {
+                anyOf {
+                    expression { return params.FORCE_DOCKERUPLOAD }
+                    expression { env.TAG_NAME != null }
+                    expression {
+                        bbcShouldUploadArtifacts(branches: ["main"])
+                    }
+                }
+            }
+            steps {
+                withBBCDockerRegistry {
+                    bbcMake "upload-docker"
+                }
+            }
+            post {
+                always {
+                    bbcGithubNotify(context: "upload-docker", status: env.result)
+                    bbcSh "docker logout ap-docker.virt.ch.bbc.co.uk:443"
                 }
             }
         }
