@@ -12,7 +12,7 @@
         "@make test",
         "@make wheel",
         "@upload pypi",
-        "stage(\"Upload Images to Docker Hub\"){\n            when {\n                anyOf{\n                    expression { return params.FORCE_DOCKERUPLOAD }\n                    expression {\n                        bbcShouldUploadArtifacts(branches: [\"main\"])\n                    }\n                }\n            }\n            steps{\n                withBBCDockerhubRegistry {\n                    bbcMake(\"push\")\n                }\n            }\n            post {\n                always {\n                    bbcGithubNotify(context: \"push\", status: env.result)\n                }\n            }\n        }",
+        "stage(\"Upload Images to Docker Hub\"){\n            when {\n                anyOf{\n                    expression { return params.FORCE_DOCKERUPLOAD }\n                    expression { env.TAG_NAME != null }\n                    expression {\n                        bbcShouldUploadArtifacts(branches: [\"main\"])\n                    }\n                }\n            }\n            steps{\n                withBBCDockerhubRegistry {\n                    bbcMake(\"push\")\n                }\n            }\n            post {\n                always {\n                    bbcGithubNotify(context: \"push\", status: env.result)\n                }\n            }\n        }",
         "@upload docs-recursive ./docs"
     ]
 }

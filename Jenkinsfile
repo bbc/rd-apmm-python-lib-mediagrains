@@ -140,6 +140,7 @@ pipeline {
             when {
                 anyOf{
                     expression { return params.FORCE_DOCKERUPLOAD }
+                    expression { env.TAG_NAME != null }
                     expression {
                         bbcShouldUploadArtifacts(branches: ["main"])
                     }
