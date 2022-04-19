@@ -2,6 +2,11 @@ USE_VERSION_FILE:=TRUE
 MS_DOCKER_PUSH:=TRUE
 DOCKER_REGISTRY:=docker.io/bbcrd/
 
+TOOL_LIST:=gsf_probe extract_gsf_essence wrap_audio_in_gsf wrap_video_in_gsf
+TOOL_TARGETS:=$(addprefix tool-,$(TOOL_LIST))
+TOOL_PUSH_TARGETS:=$(addprefix ms_docker-push-,$(TOOL_LIST))
+TOOL_PUSH_LATEST_TARGETS:=$(addprefix ms_docker-push-latest-,$(TOOL_LIST))
+
 include ./static-commontooling/make/lib_static_commontooling.mk
 include ./static-commontooling/make/standalone.mk
 include ./static-commontooling/make/pythonic.mk
@@ -17,26 +22,17 @@ tools-help:
 	@echo "make tool-wrap_video_in_gsf      - Build the docker container for the wrap_video_in_gsf tool"
 	@echo "make run-cmd-<tool name>         - Output the docker command required to make use of a tool container"
 
-tools: tool-gsf_probe tool-extract_gsf_essence tool-wrap_audio_in_gsf tool-wrap_video_in_gsf
+tools: $(TOOL_TARGETS)
 
-tool-gsf_probe: ms_docker-build-gsf_probe
-
-tool-extract_gsf_essence: ms_docker-build-extract_gsf_essence
-
-tool-wrap_audio_in_gsf: ms_docker-build-wrap_audio_in_gsf
-
-tool-wrap_video_in_gsf: ms_docker-build-wrap_video_in_gsf
+tool-%: ms_docker-build-% ;
 
 run-cmd-%: ms_docker-build-%
 	@echo docker run --rm -it -v $(shell pwd):/data ${MODNAME}_$*:${BUILD_TAG}
 
 ifeq "${enable_push}" "TRUE"
-push: ms_docker-push-gsf_probe ms_docker-push-extract_gsf_essence ms_docker-push-wrap_audio_in_gsf ms_docker-push-wrap_video_in_gsf 
+push: $(TOOL_PUSH_TARGETS) $(TOOL_PUSH_LATEST_TARGETS)
 
-push: ms_docker-push-latest-gsf_probe ms_docker-push-latest-extract_gsf_essence ms_docker-push-latest-wrap_audio_in_gsf ms_docker-push-latest-wrap_video_in_gsf
-
-push-%: ms_docker-push-%
-	@echo Push successful
+push-%: ms_docker-push-% ms_docker-push-latest-% ;
 endif
 
-.PHONY: tools tool-gsf_probe tool-extract_gsf_essence tool-wrap_audio_in_gsf tool-wrap_video_in_gsf run-cmd-% push-%
+.PHONY: tools tool-% run-cmd-% push-%
