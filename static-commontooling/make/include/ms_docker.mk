@@ -86,6 +86,10 @@ ms_docker-push-%: push-check-changes ms_docker-build-%
 	docker tag $(MODNAME)_$*:$(BUILD_TAG) $(DOCKER_REPO)/$(MODNAME)_$*:$(DOCKERISED_VERSION)
 	docker push $(DOCKER_REPO)/$(MODNAME)_$*:$(DOCKERISED_VERSION)
 
+ms_docker-push-latest-%: push-check-changes ms_docker-build-%
+	docker tag $(MODNAME)_$*:$(BUILD_TAG) $(DOCKER_REPO)/$(MODNAME)_$*:latest
+	docker push $(DOCKER_REPO)/$(MODNAME)_$*:latest
+
 ms_docker-clean:
 	-for IMG in $$(docker images | grep '${MODNAME}' | grep '${BUILD_TAG}' | awk '{print $$1":"$$2}'); do docker rmi $$IMG; done
 
