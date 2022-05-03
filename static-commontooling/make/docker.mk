@@ -203,15 +203,18 @@ else ifneq "${BUILD_TAG}" "local"
 enable_push=TRUE
 endif
 
+HELP_PUSH_TAGS:=
 ifeq "${enable_push}" "TRUE"
 MS_DOCKER_PUSH?=FALSE
 ifeq "${MS_DOCKER_PUSH}" "TRUE"
+HELP_PUSH_TAGS+=${DOCKER_TAGS}
 push: $(PUSH_TAGS)
 upload-docker: $(PUSH_TAGS)
 endif
 
 MS_DOCKER_PUSH_LATEST?=FALSE
 ifeq "${MS_DOCKER_PUSH_LATEST}" "TRUE"
+HELP_PUSH_TAGS+=latest
 push: ms_docker-ver-push-latest
 upload-docker: ms_docker-ver-push-latest
 endif
@@ -241,11 +244,8 @@ endif
 ifeq "${MS_DOCKER_WHEEL}" "TRUE"
 	@echo "make wheel             - Make wheel for layer"
 endif
-ifeq "${MS_DOCKER_PUSH}" "TRUE"
-	@echo "make push              - Push docker image to $(DOCKER_REPO) with tags: $(DOCKER_TAGS)"
-endif
-ifeq "${MS_DOCKER_PUSH_LATEST}" "TRUE"
-	@echo "make push              - Push docker image to $(DOCKER_REPO)"
+ifneq "${HELP_PUSH_TAGS}" ""
+	@echo "make push              - Push docker image to $(DOCKER_REPO) with tags: $(HELP_PUSH_TAGS)"
 endif
 ifeq "${MS_DOCKER_DOCS}" "TRUE"
 	@echo "make docs              - Make documentation for layer"
