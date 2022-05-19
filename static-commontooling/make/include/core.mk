@@ -42,7 +42,6 @@ endif
 # Create simple aliases for running some useful tools
 DOCKER?=docker
 DOCKER_RUN?=${DOCKER} run --pull always --rm
-RAML2HTML?=$(DOCKER_RUN) -v $(project_root_dir):/data:ro -w /data/$(reldir) mattjtodd/raml2html
 J2?=$(DOCKER_RUN) -v $(project_root_dir):/data:ro -w /data/$(reldir) ${J2CLI_DOCKER_CONTAINER}:${J2CLI_DOCKER_LABEL}
 
 all: ;
