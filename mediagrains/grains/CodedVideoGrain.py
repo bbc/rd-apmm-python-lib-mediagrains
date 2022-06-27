@@ -136,14 +136,9 @@ unit_offsets
                 length = 0
 
         if meta is None:
-            if src_id is None:
-                raise AttributeError("src_id is None. Meta is None so src_id must not be None.")
-            if flow_id is None:
-                raise AttributeError("flow_id is None. Meta is None so flow_id must not be None.")
-
-            if not isinstance(src_id, UUID):
+            if not isinstance(src_id, UUID) and src_id is not None:
                 raise AttributeError(f"src_id: Seen type {type(src_id)}, expected UUID.")
-            if not isinstance(flow_id, UUID):
+            if not isinstance(flow_id, UUID) and flow_id is not None:
                 raise AttributeError(f"flow_id: Seen type {type(flow_id)}, expected UUID.")
 
             if creation_timestamp is None:
