@@ -152,11 +152,11 @@ def _convert_rgb_to_yuv444(grain_in: VideoGrain, grain_out: VideoGrain) -> None:
                  grain_in.component_data.G,
                  grain_in.component_data.B)
 
-    np.clip((R*0.2126 + G*0.7152 + B*0.0722), 0, 1 << bd, out=grain_out.component_data.Y, casting="unsafe")
+    np.clip((R*0.2126 + G*0.7152 + B*0.0722), 0, 1 << bd, out=grain_out.component_data.Y)
     np.clip((R*-0.114572 - G*0.385428 + B*0.5 + (1 << (bd - 1))),
-            0, 1 << bd, out=grain_out.component_data.U, casting="unsafe")
+            0, 1 << bd, out=grain_out.component_data.U)
     np.clip((R*0.5 - G*0.454153 - B*0.045847 + (1 << (bd - 1))),
-            0, 1 << bd, out=grain_out.component_data.V, casting="unsafe")
+            0, 1 << bd, out=grain_out.component_data.V)
 
 
 def _convert_yuv444_to_rgb(grain_in: VideoGrain, grain_out: VideoGrain) -> None:
@@ -165,9 +165,9 @@ def _convert_yuv444_to_rgb(grain_in: VideoGrain, grain_out: VideoGrain) -> None:
                  grain_in.component_data.U.astype(np.dtype(np.double)) - (1 << (bd - 1)),
                  grain_in.component_data.V.astype(np.dtype(np.double)) - (1 << (bd - 1)))
 
-    np.clip((Y + V*1.5748), 0, 1 << bd, out=grain_out.component_data.R, casting="unsafe")
-    np.clip((Y - U*0.187324 - V*0.468124), 0, 1 << bd, out=grain_out.component_data.G, casting="unsafe")
-    np.clip((Y + U*1.8556), 0, 1 << bd, out=grain_out.component_data.B, casting="unsafe")
+    np.clip((Y + V*1.5748), 0, 1 << bd, out=grain_out.component_data.R)
+    np.clip((Y - U*0.187324 - V*0.468124), 0, 1 << bd, out=grain_out.component_data.G)
+    np.clip((Y + U*1.8556), 0, 1 << bd, out=grain_out.component_data.B)
 
 
 def _convert_v210_to_yuv422_10bit(grain_in: VideoGrain, grain_out: VideoGrain) -> None:

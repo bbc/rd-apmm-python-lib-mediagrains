@@ -646,7 +646,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         with self.assertRaises(AttributeError):
             Grain([], 0x44)
 
-    def test_video_grain_fails_with_no_metadata(self):
+    def test_video_grain_with_no_metadata(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain()
 
