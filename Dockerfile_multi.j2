@@ -1,13 +1,14 @@
-{%- set modname = "mediagrains" -%}
-{%- import 'static-commontooling/docker/Dockerfile_multi_macros.j2' as macros -%}
+{%- import 'static-commontooling/docker/Dockerfile_multi_macros.j2' as macros with context -%}
 
 {{ macros.preamble() }}
 
-{{ macros.layer(modname, entrypoint=False) }}
+{{ macros.source() }}
 
-{{ macros.testdeps(modname) }}
+{{ macros.layer(entrypoint=False) }}
 
-{{ macros.tests(modname) }}
+{{ macros.testdeps() }}
+
+{{ macros.tests() }}
 
 ###############################################################################
 # Stage: unittest
@@ -21,13 +22,13 @@ COPY tests/audio.aac tests/
 ENTRYPOINT ["python", "-m", "unittest"]
 CMD ["discover", "tests", "-v"]
 
-{{ macros.flake8(modname) }}
+{{ macros.flake8() }}
 
-{{ macros.mypy(modname) }}
+{{ macros.mypy() }}
 
-{{ macros.wheel(modname) }}
+{{ macros.wheel() }}
 
-{{ macros.docs(modname) }}
+{{ macros.docs() }}
 CMD ["--html", "--force", "--skip-errors", "--output-dir", ".", "{{ modname }}"]
 
 FROM {{ modname + ":" + "${BUILD_TAG}" }} AS tools_base
