@@ -646,9 +646,24 @@ class TestGrain (IsolatedAsyncioTestCase):
         with self.assertRaises(AttributeError):
             Grain([], 0x44)
 
-    def test_video_grain_fails_with_no_metadata(self):
-        with self.assertRaises(AttributeError):
-            VideoGrain(None)
+    def test_video_grain_with_no_metadata(self):
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = VideoGrain()
+
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.sync_timestamp, cts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.grain_type, "video")
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.format, CogFrameFormat.UNKNOWN)
+        self.assertEqual(grain.width, 1920)
+        self.assertEqual(grain.height, 1080)
+        self.assertEqual(grain.layout, CogFrameLayout.UNKNOWN)
+        self.assertEqual(grain.extension, 0)
+        self.assertIsNone(grain.source_aspect_ratio)
+        self.assertIsNone(grain.pixel_aspect_ratio)
 
     def test_video_grain_create_with_ots_and_no_sts(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -859,9 +874,18 @@ class TestGrain (IsolatedAsyncioTestCase):
             repr(grain),
             "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
-    def test_audio_grain_create_fails_with_no_params(self):
-        with self.assertRaises(AttributeError):
-            AudioGrain(None)
+    def test_audio_grain_create_no_params(self):
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = AudioGrain()
+
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.sync_timestamp, cts)
+        self.assertEqual(grain.format, CogAudioFormat.INVALID)
+        self.assertEqual(grain.channels, 0)
+        self.assertEqual(grain.samples, 0)
+        self.assertEqual(grain.sample_rate, 48000)
+        self.assertEqual(grain.media_rate, Fraction(48000, 1))
 
     def test_audio_grain_create_all_formats(self):
         for (fmt, length) in [(CogAudioFormat.S16_PLANES,         1920*2*2),
@@ -1166,9 +1190,25 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.sync_timestamp, cts)
 
-    def test_coded_video_grain_create_fails_with_empty(self):
-        with self.assertRaises(AttributeError):
-            CodedVideoGrain(None)
+    def test_coded_video_grain_create_with_empty(self):
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedVideoGrain()
+
+        self.assertEqual(grain.grain_type, "coded_video")
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.sync_timestamp, cts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.format, CogFrameFormat.UNKNOWN)
+        self.assertEqual(grain.origin_width, 1920)
+        self.assertEqual(grain.origin_height, 1080)
+        self.assertEqual(grain.coded_width, 1920)
+        self.assertEqual(grain.coded_height, 1080)
+        self.assertEqual(grain.length, 0)
+        self.assertEqual(grain.layout, CogFrameLayout.UNKNOWN)
+        self.assertEqual(grain.unit_offsets, [])
 
     def test_coded_video_grain_meta_is_json_serialisable(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -1434,9 +1474,23 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.length, len(data))
         self.assertEqual(grain.data, data)
 
-    def test_coded_audio_grain_raises_on_empty(self):
-        with self.assertRaises(AttributeError):
-            CodedAudioGrain(None)
+    def test_coded_audio_grain_creates_with_none(self):
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = CodedAudioGrain()
+        self.assertEqual(grain.grain_type, "coded_audio")
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.sync_timestamp, cts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.format, CogAudioFormat.INVALID)
+        self.assertEqual(grain.samples, 0)
+        self.assertEqual(grain.channels, 0)
+        self.assertEqual(grain.priming, 0)
+        self.assertEqual(grain.remainder, 0)
+        self.assertEqual(grain.sample_rate, 48000)
+        self.assertEqual(grain.length, 0)
 
     def test_codedaudiograin_meta_is_json_serialisable(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
@@ -1607,9 +1661,22 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.topic, "")
         self.assertEqual(grain.event_data, [])
 
-    def test_event_grain_create_fails_on_None(self):
-        with self.assertRaises(AttributeError):
-            EventGrain(None)
+    def test_event_grain_create_no_arguments(self):
+        with mock.patch.object(Timestamp, "get_time", return_value=cts):
+            grain = EventGrain()
+
+        self.assertEqual(grain.grain_type, "event")
+        self.assertEqual(grain.origin_timestamp, cts)
+        self.assertEqual(grain.final_origin_timestamp(), cts)
+        self.assertEqual(grain.origin_timerange(), TimeRange.from_single_timestamp(cts))
+        self.assertEqual(grain.sync_timestamp, cts)
+        self.assertEqual(grain.creation_timestamp, cts)
+        self.assertEqual(grain.rate, Fraction(25, 1))
+        self.assertEqual(grain.duration, Fraction(1, 25))
+        self.assertEqual(grain.timelabels, [])
+        self.assertEqual(grain.event_type, "")
+        self.assertEqual(grain.topic, "")
+        self.assertEqual(grain.event_data, [])
 
     def test_event_grain_create_from_meta_and_data(self):
         meta = {

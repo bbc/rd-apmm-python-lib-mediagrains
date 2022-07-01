@@ -57,7 +57,7 @@ packages_required = [
     "mediajson >=2.0.0",
     "mediatimestamp >=2.1.0",
     "frozendict >= 1.2",
-    'numpy >= 1.17.2',
+    'numpy >= 1.23.0',
     'deprecated >= 1.2.6',
     "bitstring"
 ]
