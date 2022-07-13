@@ -8,8 +8,8 @@
 #
 # Before including you may want to set the following variables:
 #
-#    USE_VERSION_FILE=
-#		By default "layer" builds get an _version.py, and others don't. Set this to TRUE to generate that file regardless
+#    USE_VERSION_FILE?=TRUE
+#		By default builds get a generated _version.py file. Set this to FALSE to disable this
 #
 #    TWINE_REPO?=
 #    	Change the default wheel upload location (if blank, open source repositories get PyPI, internal repositories get Artifactory)
@@ -20,20 +20,18 @@
 #    EXTRA_INSTALL_REQUIREMENTS?=-r test-requirements.txt
 #       Add extra packages to install when running make install/make editable-install
 #
+#    MOD_WITH_API?=false
+#       If set to true, will generate and pull an external API layer into the source layer
+#       Remember to list any files you wish to be included in the package using in MANIFEST.in using <MODNAME>/apidocs as the base.
+#       Otherwise they WILL NOT be available to your code/tests/etc.
+#
 
-
-PYTHON3=$(eval PYTHON3 := $(shell which python3))$(value PYTHON3)
-
-# By default only "layer" mode uses the VERSION file/git describe version, but it can be overidden by setting this
-ifeq "$(CLOUDFIT_MAKE_MODE)" "layer"
 USE_VERSION_FILE?=TRUE
-else
-USE_VERSION_FILE?=FALSE
-endif
+MOD_WITH_API?=false
 
 # Extract version and module name from working tree
 ifeq "$(PROJECT)" ""
-PROJECT=$(eval PROJECT := $(shell python3 $(topdir)/setup.py --name))$(value PROJECT)
+PROJECT=$(eval PROJECT := $(shell $(DOCKER) run --rm -v $(topdir):/data:ro python:3.10 python /data/setup.py --name))$(value PROJECT)
 endif
 ifeq "$(GITCOMMIT)" ""
 GITCOMMIT=$(eval GITCOMMIT := $(shell git rev-parse --short HEAD))$(value GITCOMMIT)
@@ -41,7 +39,10 @@ endif
 
 MODNAME?=$(PROJECT)
 
-CLEAN_FILES += $(topbuilddir)/build/ MANIFEST
+ifeq "$(MOD_WITH_API)" "true"
+-include $(commontooling_dir)/make/specs.mk
+endif
+
 CLEAN_FILES += $(topbuilddir)/dist
 
 # Identify the source files for pythonic code
@@ -51,36 +52,36 @@ PYTHONIC_TEST_SOURCES:=$(eval PYTHONIC_TEST_SOURCES := $(shell find $(topdir)/te
 # Add extra dependencies to the core targets
 all: help-pythonic
 
-source: source-pythonic
-
 ifeq "${BUILD_TAG}" "local"
 VERSION_IN_PYTHON=${NEXT_VERSION}
 else
 VERSION_IN_PYTHON=${VERSION}
 endif
 
-WHEEL_FILE?=dist/$(MODNAME)-$(VERSION)-py3-none-any.whl
+WHEEL_FILE?=$(topbuilddir)/dist/$(MODNAME)-$(VERSION)-py3-none-any.whl
+SDIST_FILE?=$(topbuilddir)/dist/$(MODNAME)-$(VERSION).tar.gz
 
 wheel: $(WHEEL_FILE)
+source: source-pythonic
+source-pythonic: $(SDIST_FILE)
 
-# New targets with extra capabilities for existing targets
-clean-pythonic:
-	-$(PYTHON3) $(topdir)/setup.py clean
-	-find $(topbuilddir) -name '*.pyc' -delete
-	-find $(topbuilddir) -name '*.py,cover' -delete
+$(WHEEL_FILE): $(topbuilddir)/dist
+$(SDIST_FILE): $(topbuilddir)/dist
 
-source-pythonic: $(topbuilddir)/dist/$(MODNAME)-$(VERSION_IN_PYTHON).tar.gz
-
-$(topbuilddir)/dist/$(MODNAME)-$(VERSION_IN_PYTHON).tar.gz: $(topbuilddir)/dist $(PYTHONIC_SOURCES) $(PYTHONIC_TEST_SOURCES) $(EXTRA_TEST_SOURCES) $(EXTRA_SOURCES)
-	$(PYTHON3) $(topdir)/setup.py sdist $(COMPILE)
+$(topbuilddir)/dist:
+	mkdir -p $@
 
 prepcode: $(EXTRA_MODS_REQUIRED_VERSIONFILE)
 
+# Extract dependency requirements and constraints from setup.py
+PY_REQ_EX_CONTAINER?=bbcrd/pyreqex
+PY_REQ_EX_VERSION?=latest
+PY_REQ_EX_CMD:=$(DOCKER) run --rm -v $(topdir):/data:ro $(PY_REQ_EX_CONTAINER):$(PY_REQ_EX_VERSION)
 $(topbuilddir)/requirements.txt: $(topdir)/setup.py
-	$(PYTHON3) $(commontooling_dir)/misc/extract_requirements.py $< -o $@
+	$(PY_REQ_EX_CMD) $(<F) > $@
 
 $(topbuilddir)/constraints.txt: $(topdir)/setup.py
-	$(PYTHON3) $(commontooling_dir)/misc/extract_requirements.py -c $< -o $@
+	$(PY_REQ_EX_CMD) $(<F) --constraints > $@
 
 CLEAN_FILES += $(topbuilddir)/requirements.txt
 CLEAN_FILES += $(topbuilddir)/constraints.txt
@@ -89,6 +90,7 @@ MISC_FILES+=$(topdir)/.flake8
 
 ifeq "${COMMONTOOLING_BUILD_ENV}" "internal"
 MISC_FILES+=$(topdir)/setup.cfg
+EXTRA_GITIGNORE_LINES+=setup.cfg
 endif
 
 include $(commontooling_dir)/make/include/miscfiles.mk
@@ -130,7 +132,7 @@ TWINE_FLAGS += --client-cert /devcert.pem
 endif
 endif
 
-TWINE=docker run --rm $(TWINE_VOLUMES) bbcrd/twine
+TWINE=$(DOCKER) run --rm $(TWINE_VOLUMES) bbcrd/twine
 
 enable_push=TRUE
 ifneq "${COMMONTOOLING_BUILD_ENV}" "internal"
@@ -141,8 +143,8 @@ endif
 
 ifeq "${enable_push}" "TRUE"
 upload-wheels: upload-wheel
-upload-wheel: push-check-changes $(WHEEL_FILE) $(topbuilddir)/dist/$(MODNAME)-$(VERSION).tar.gz
-	$(TWINE) upload $(TWINE_FLAGS) $(WHEEL_FILE) dist/$(MODNAME)-$(VERSION).tar.gz
+upload-wheel: push-check-changes $(WHEEL_FILE) $(SDIST_FILE)
+	$(TWINE) upload $(TWINE_FLAGS) $(WHEEL_FILE) $(SDIST_FILE)
 else
 no-push-warn:
 	$(warning Dev wheels can't be pushed on external build environments)

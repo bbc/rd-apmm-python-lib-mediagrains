@@ -23,6 +23,22 @@ ifeq "$(CLOUDFIT_MAKE_MODE)" "service"
 
 SKIP_PYTHON_INSTALL?=
 PYTHON_INSTALL_PKGS=$(filter-out $(SKIP_PYTHON_INSTALL), $(CHILD_PKGS))
+
+# Layers to install before any others in service
+PYTHON_INSTALL_FIRST?=common fixtures
+
+# Remaining layers to install
+PYTHON_INSTALL_SECOND:=$(filter-out $(PYTHON_INSTALL_FIRST), $(PYTHON_INSTALL_PKGS))
+
+# Re-calculate _FIRST in case items in it don't actually exist in CHILD_PKGS (i.e. one of the default layers doesn't exists)
+PYTHON_INSTALL_FIRST:= $(filter-out $(PYTHON_INSTALL_SECOND), $(PYTHON_INSTALL_PKGS))
+
+# Install target patterns. NOTE: The actual pattern targets are defined in service.mk
+CHILD_DIRS_INSTALL_FIRST:=$(addsuffix -install,$(PYTHON_INSTALL_FIRST))
+CHILD_DIRS_INSTALL_SECOND:=$(addsuffix -install,$(PYTHON_INSTALL_SECOND))
+CHILD_DIRS_EDITABLE_INSTALL_FIRST:=$(addsuffix -editable-install,$(PYTHON_INSTALL_FIRST))
+CHILD_DIRS_EDITABLE_INSTALL_SECOND:=$(addsuffix -editable-install,$(PYTHON_INSTALL_SECOND))
+
 EXTRA_INSTALL_REQUIREMENTS?=
 
 INSTALL_TEST_REQUIREMENTS?=TRUE
@@ -31,10 +47,18 @@ EXTRA_INSTALL_REQUIREMENTS += $(patsubst %,-r src/%/test-requirements.txt,$(PYTH
 endif
 
 install: check-in-virtualenv
-	$(PYTHON3) -m pip install $(patsubst %,src/%,$(PYTHON_INSTALL_PKGS)) $(EXTRA_INSTALL_REQUIREMENTS)
+	$(MAKE) install-first
+	$(MAKE) install-second
+
+install-first: $(CHILD_DIRS_INSTALL_FIRST)
+install-second: $(CHILD_DIRS_INSTALL_SECOND)
 
 editable-install: check-in-virtualenv
-	$(PYTHON3) -m pip install $(patsubst %,-e src/%,$(PYTHON_INSTALL_PKGS)) $(EXTRA_INSTALL_REQUIREMENTS)
+	$(MAKE) editable-install-first
+	$(MAKE) editable-install-second
+
+editable-install-first: $(CHILD_DIRS_EDITABLE_INSTALL_FIRST)
+editable-install-second: $(CHILD_DIRS_EDITABLE_INSTALL_SECOND)
 
 
 else  # from ifeq "$(CLOUDFIT_MAKE_MODE)" "service"
