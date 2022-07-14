@@ -4,6 +4,8 @@
 
 # Custom gitignore file support
 ifeq "$(CUSTOM_GITIGNORE_FILE)" ""
+CLEAN_FILES+=$(topdir)/.gitignore.gen
+
 $(topdir)/.gitignore: $(topdir)/.gitignore.gen
 	cp -f $< $@
 

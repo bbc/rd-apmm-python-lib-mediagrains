@@ -33,6 +33,8 @@ J2CLI_DOCKER_LABEL?=latest
 CLOUDFIT_BASE_LABEL?=latest
 endif
 
+CLOUDFIT_BASE_NAME?=python
+
 J2CLI_DOCKER_CONTAINER?=bbcrd/j2cli
 
 ifeq "${FORGE_CERT}" ""

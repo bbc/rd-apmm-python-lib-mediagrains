@@ -141,9 +141,6 @@ tox.ini
 # .gitignore intermediary file
 .gitignore.gen
 
-# setup.cfg
-setup.cfg
-
 # commontooling itself
 commontooling
 !static-commontooling/misc/*

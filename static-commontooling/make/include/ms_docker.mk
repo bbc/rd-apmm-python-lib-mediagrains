@@ -10,7 +10,6 @@ BUILD_TAG?=local
 DOCKER_REPO?=bbcrd
 DOCKER?=docker
 
-CLOUDFIT_BASE_NAME?=python
 MS_DOCKERFILE?=Dockerfile.multi
 MS_DOCKERFILE_TEMPLATE?=Dockerfile_multi.j2
 
@@ -64,10 +63,21 @@ ms_docker-build: check-allow-local-wheels ${BUILD_ARTEFACT} ${MS_DOCKERFILE} $(t
 ms_docker-alt-build-%: check-allow-local-wheels ${BUILD_ARTEFACT} ${MS_DOCKERFILE} $(topbuilddir)/wheels prepcode ms_docker-build-base
 	${MS_DOCKER_BUILD} --target layer -t ${MODNAME}_alt_$*:${BUILD_TAG} .
 
+MOD_WITH_API?=false
+ifeq "$(MOD_WITH_API)" "true"
+ms_docker-build: ms_external-layer-docker-build-api
+endif
+
+# NOTE: Addition of prerequisits to pattern rules doesn't work as expected, hence alternet definition of
+# full target definition
+ifeq "$(MOD_WITH_API)" "true"
+ms_docker-build-%: check-allow-local-wheels ${BUILD_ARTEFACT} ${MS_DOCKERFILE} $(topbuilddir)/wheels prepcode ms_docker-build-base ms_external-layer-docker-build-api
+else
 ms_docker-build-%: check-allow-local-wheels ${BUILD_ARTEFACT} ${MS_DOCKERFILE} $(topbuilddir)/wheels prepcode ms_docker-build-base
+endif
 	${MS_DOCKER_BUILD} --target $* -t ${MODNAME}_$*:${BUILD_TAG} .
 
-ms_external-layer-%-docker-build:
+ms_external-layer-docker-build-%:
 	${MAKE} -C ${project_root_dir}/$* ms_docker-build
 
 ms_docker-run: ms_docker-build
@@ -93,9 +103,18 @@ ms_docker-push-latest-%: push-check-changes ms_docker-build-%
 ms_docker-clean:
 	-for IMG in $$(docker images | grep '${MODNAME}' | grep '${BUILD_TAG}' | awk '{print $$1":"$$2}'); do docker rmi $$IMG; done
 
+CLEAN_FILES+=externals.json
+EXTRA_GITIGNORE_LINES+=externals.json
+
+# externals.json passes parameter values into the Dockerfile template
+$(topbuilddir)/externals.json:
+	@echo '{' > $@
+	@echo '    "with_api": ${MOD_WITH_API},' >> $@
+	@echo '    "modname": "${MODNAME}"' >> $@
+	@echo '}' >> $@
 
 # The dockerfile itself
-${MS_DOCKERFILE}: $(MS_DOCKERFILE_TEMPLATE) $(commontooling_dir)/docker/Dockerfile_multi_macros.j2
-	$(J2) $< > $@
+${MS_DOCKERFILE}: $(MS_DOCKERFILE_TEMPLATE) $(commontooling_dir)/docker/Dockerfile_multi_macros.j2 $(topbuilddir)/externals.json
+	$(J2) $< externals.json > $@
 
-.PHONY: check-allow-local-wheels ms_docker-build ms_external-layer-api-docker-build ms_docker-run ms_docker-clean ms_docker-push
+.PHONY: check-allow-local-wheels ms_docker-build ms_docker-run ms_docker-clean ms_docker-push ms_docker-build-source

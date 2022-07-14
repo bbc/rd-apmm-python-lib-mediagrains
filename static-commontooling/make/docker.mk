@@ -17,8 +17,8 @@
 #    project_root_dir?=
 #       The project root directory. If you've included our other Makefile tooling this will already be set.
 #
-#    BUILD_ARTEFACT?=$(topbuilddir)/dist/$(MODNAME)-$(VERSION).tar.gz
-#       The build artefact which is needed to construct the layer docker image. This default will work well with pythonic.mk
+#    BUILD_ARTEFACT?=$(topbuilddir)/requirements.txt $(topbuilddir)/constraints.txt
+#       The build artefacts which are needed to construct the layer docker image. This default will work well with pythonic.mk
 #
 #    ALLOW_LOCAL_WHEELS?=FALSE
 #       Set to TRUE to allow wheel files in the wheels/ directory which are then used in the docker build
@@ -44,8 +44,16 @@
 #    EXTRA_DOCKER_RUN_ARGS?=
 #       Any extra args to add to runs of docker run
 #
+#    MOD_WITH_API?=false
+#       If set to true, will generate and pull an external API layer into the source layer
+#       Remember to list any files you wish to be included in the package using in MANIFEST.in using <MODNAME>/apidocs
+#       as the base. Otherwise they WILL NOT be available to your code/tests/etc.
+#
 #    MS_DOCKER_ARTEFACT?=TRUE
 #       Set to FALSE to not automatically run ms_docker-build when make artefact is run
+#
+#    MS_DOCKER_SOURCE?=TRUE
+#       If set to true, will build a source stage before building a layer stage
 #
 #    MS_DOCKER_CLEAN?=TRUE
 #       Set to FALSE to not automatically clean up docker images when make clean is run
@@ -114,7 +122,7 @@
 #
 
 
-BUILD_ARTEFACT?=$(topbuilddir)/dist/$(MODNAME)-$(VERSION_IN_PYTHON).tar.gz $(topbuilddir)/requirements.txt $(topbuilddir)/constraints.txt
+BUILD_ARTEFACT?=$(topbuilddir)/requirements.txt $(topbuilddir)/constraints.txt
 EXTRA_DOCKER_RUN_ARGS?=
 BASE_MOD_DIR?=
 ALLOW_LOCAL_WHEELS?=FALSE
@@ -132,6 +140,7 @@ PUSH_TAGS=$(patsubst %,ms_docker-ver-push-%,$(DOCKER_TAGS))
 all: docker-help
 include $(commontooling_dir)/make/include/ms_docker.mk
 include $(commontooling_dir)/make/include/ms_docker-compose.mk
+include $(commontooling_dir)/make/include/dockerignore.mk
 -include $(commontooling_dir)/make/artifactory_caretaker.mk
 
 
@@ -139,6 +148,13 @@ include $(commontooling_dir)/make/include/ms_docker-compose.mk
 MS_DOCKER_ARTEFACT?=TRUE
 ifeq "${MS_DOCKER_ARTEFACT}" "TRUE"
 artefact: ms_docker-build
+endif
+
+MS_DOCKER_SOURCE?=TRUE
+ifeq "${MS_DOCKER_SOURCE}" "TRUE"
+ifneq "${CLOUDFIT_MAKE_MODE}" "api"
+ms_docker-build: ms_docker-build-source
+endif
 endif
 
 MS_DOCKER_CLEAN?=TRUE
@@ -180,6 +196,9 @@ ms_docker-build-wheel: $(topbuilddir)/.tmp/run_with_dir_modes.sh $(topbuilddir)/
 
 ms_docker-run-wheel: EXTRA_DOCKER_RUN_ARGS+=--mount type=bind,source=${topbuilddir}/dist,target=/${MODNAME}/dist
 $(WHEEL_FILE): ms_docker-run-wheel
+
+# NOTE: The wheel docker stage also generates sdist distributable tarballs
+$(SDIST_FILE): ms_docker-run-wheel
 endif
 
 MS_DOCKER_DOCS?=TRUE

@@ -12,6 +12,9 @@
 #    PYTHON_VERSION?=
 #       Override the default Python version, and use that version of tools containers as well
 #
+#   OASSPECROOTDIR?=$(project_root_dir)/api/
+#       The directory in which all the specs located
+#
 #
 # In addition, some variables can be overidden to change the versions of tools used by this Makefile. These can either
 # be set in your Makefile, or as environment variables before running Make, although it's unlikely you'll want to
@@ -34,6 +37,7 @@
 CLOUDFIT_MAKE_MODE=standalone
 
 EXTRA_GITIGNORE_LINES?=
+MOD_WITH_API?=false
 
 # Set up basic directories, assuming a Makefile in a layer directory
 ifndef topdir
