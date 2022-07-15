@@ -142,9 +142,12 @@ endif
 endif
 
 ifeq "${enable_push}" "TRUE"
+WHEEL_FILE_IN_CONTAINER=/data/$(shell realpath --relative-to $(topdir) $(WHEEL_FILE))
+SDIST_FILE_IN_CONTAINER=/data/$(shell realpath --relative-to $(topdir) $(SDIST_FILE))
+
 upload-wheels: upload-wheel
 upload-wheel: push-check-changes $(WHEEL_FILE) $(SDIST_FILE)
-	$(TWINE) upload $(TWINE_FLAGS) $(WHEEL_FILE) $(SDIST_FILE)
+	$(TWINE) upload $(TWINE_FLAGS) $(WHEEL_FILE_IN_CONTAINER) $(SDIST_FILE_IN_CONTAINER)
 else
 no-push-warn:
 	$(warning Dev wheels can't be pushed on external build environments)
