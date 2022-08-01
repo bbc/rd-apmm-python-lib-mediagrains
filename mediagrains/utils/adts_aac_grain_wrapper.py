@@ -39,7 +39,7 @@ class ADTSAACGrainWrapper(object):
                                source. origin_timestamp should be set.
         :param input_data: An object to read video data from
         """
-        assert(isinstance(template_grain, CODEDAUDIOGRAIN))
+        assert (isinstance(template_grain, CODEDAUDIOGRAIN))
         self.template_grain = copy.deepcopy(template_grain)  # make a copy as the template defaults will be updated
         self.input_data = input_data
 
@@ -86,8 +86,8 @@ class ADTSAACGrainWrapper(object):
 
         media_rate = self.template_grain.media_rate
         coded_frame_size = self.template_grain.samples
-        assert(media_rate is not None)
-        assert(coded_frame_size is not None)
+        assert (media_rate is not None)
+        assert (coded_frame_size is not None)
 
         norm_origin_ts = self.template_grain.origin_timestamp.normalise(media_rate.numerator, media_rate.denominator)
         grain_timerange = TimeRange.from_start(norm_origin_ts)

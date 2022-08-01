@@ -243,7 +243,7 @@ class H264Parser(object):
                     pps = self._parse_pps(rbsp_bits)
                     self.pps_sets[pps.pic_parameter_set_id] = pps
 
-                assert(offset is not None)
+                assert (offset is not None)
                 nalu_byte_offsets.append(offset//8)
                 offset = next_offset
 
@@ -254,7 +254,7 @@ class H264Parser(object):
 
                 # The NALU offsets assumes 3-byte start codes but the start of the frame should have 4 and
                 # so the next frame start should be at next_offset - 1
-                assert(offset is not None)
+                assert (offset is not None)
                 frame_size = offset//8
                 if frame_size > 0 and frame_data[frame_size - 1] == 0:
                     frame_size -= 1

@@ -136,7 +136,7 @@ def _stringify_timestamp_input(value: Union[SupportsMediaTimestamp, SupportsMedi
 
 # For use in 'new style' grain init. Can be removed once old style is excised.
 def new_attributes_for_grain_type(grain_type: str | GrainType):
-    return(attributes_for_grain_type(grain_type=grain_type, new=True))
+    return (attributes_for_grain_type(grain_type=grain_type, new=True))
 
 
 # As above, the 'new' parameter will give 'new style' grain init info. 'x if not new else' statements can be removed
