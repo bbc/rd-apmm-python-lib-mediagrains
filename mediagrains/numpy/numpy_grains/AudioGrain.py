@@ -49,8 +49,8 @@ def _channel_arrays_for_data_and_type(data: Optional[np.ndarray],
                                       format: CogAudioFormat,
                                       samples: int,
                                       channels: int) -> List[np.ndarray]:
-    """This method returns a list of numpy array views which can be used to directly access the channels of the audio frame
-    without any need for conversion or copying. This is not possible for all formats.
+    """This method returns a list of numpy array views which can be used to directly access the channels of the audio
+    frame without any need for conversion or copying. This is not possible for all formats.
 
     24-bit samples are widened to 32-bit. Planar 24-bit samples held in the lower part of 32-bit are shifted to the
     upper part.

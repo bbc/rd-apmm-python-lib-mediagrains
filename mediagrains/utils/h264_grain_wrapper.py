@@ -42,7 +42,7 @@ class H264GrainWrapper(object):
                                source. origin_timestamp should be set.
         :param input_data: An object to read video data from
         """
-        assert(isinstance(template_grain, CodedVideoGrain))
+        assert (isinstance(template_grain, CodedVideoGrain))
         self.template_grain = copy.deepcopy(template_grain)  # make a copy as the template defaults will be updated
         self.input_data = input_data
         self.input_data_buffer = bytearray()
@@ -90,7 +90,7 @@ class H264GrainWrapper(object):
                     break
 
             if frame_size is not None and frame_size > 0:
-                assert(nalu_byte_offsets is not None)
+                assert (nalu_byte_offsets is not None)
 
                 frame_data = self.input_data_buffer[:frame_size]
                 yield (frame_data, list(nalu_byte_offsets), frame_info)
