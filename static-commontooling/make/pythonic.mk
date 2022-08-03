@@ -45,10 +45,6 @@ endif
 
 CLEAN_FILES += $(topbuilddir)/dist
 
-# Identify the source files for pythonic code
-PYTHONIC_SOURCES:=$(eval PYTHONIC_SOURCES := $(shell find $(topdir)/$(MODNAME) -type f -name '*.py') $(topdir)/setup.py $(topdir)/MANIFEST.in $(topdir)/setup.cfg)$(value PYTHONIC_SOURCES)
-PYTHONIC_TEST_SOURCES:=$(eval PYTHONIC_TEST_SOURCES := $(shell find $(topdir)/tests -type f -name '*.py') $(topdir)/test-requirements.txt)$(value PYTHONIC_TEST_SOURCES)
-
 # Add extra dependencies to the core targets
 all: help-pythonic
 
@@ -89,8 +85,8 @@ CLEAN_FILES += $(topbuilddir)/constraints.txt
 MISC_FILES+=$(topdir)/.flake8
 
 ifeq "${COMMONTOOLING_BUILD_ENV}" "internal"
-MISC_FILES+=$(topdir)/setup.cfg
-EXTRA_GITIGNORE_LINES+=setup.cfg
+MISC_FILES+=$(topdir)/.mypy.ini
+EXTRA_GITIGNORE_LINES+=.mypy.ini
 endif
 
 include $(commontooling_dir)/make/include/miscfiles.mk
@@ -125,7 +121,7 @@ endif
 
 TWINE_FLAGS += ${EXTRA_TWINE_FLAGS}
 
-ifeq "${COMMONTOOLING_BUILD_ENV}" "internal"
+ifeq "$(TWINE_REPO)" "https://artifactory.virt.ch.bbc.co.uk/artifactory/api/pypi/ap-python"
 ifneq "${FORGE_CERT}" ""
 TWINE_VOLUMES += -v $(FORGE_CERT):/devcert.pem:ro
 TWINE_FLAGS += --client-cert /devcert.pem
@@ -135,7 +131,7 @@ endif
 TWINE=$(DOCKER) run --rm $(TWINE_VOLUMES) bbcrd/twine
 
 enable_push=TRUE
-ifneq "${COMMONTOOLING_BUILD_ENV}" "internal"
+ifneq "$(TWINE_REPO)" "https://artifactory.virt.ch.bbc.co.uk/artifactory/api/pypi/ap-python"
 ifneq "${NEXT_VERSION}" "${VERSION}"
 enable_push=FALSE
 endif

@@ -8,10 +8,10 @@
 #
 
 MISC_FILES?=
-MISC_SOURCE_FILES?=$(patsubst $(topdir)/%,$(commontooling_dir)/misc/%,$(MISC_FILES))
 CLEAN_FILES += $(MISC_FILES)
 
-$(MISC_FILES): $(MISC_SOURCE_FILES)
-	cp -f $(commontooling_dir)/misc/${notdir $@} $@
+# Use a static pattern rule to match misc files and their prereqs
+$(MISC_FILES): $(topdir)/%: $(commontooling_dir)/misc/%
+	cp -f $^ $@
 
 prepcode: $(MISC_FILES)
