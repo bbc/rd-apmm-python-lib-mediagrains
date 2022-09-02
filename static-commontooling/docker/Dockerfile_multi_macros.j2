@@ -3,7 +3,7 @@
 
 # Args needed for base images
 ARG BUILD_TAG
-ARG CLOUDFIT_BASE_NAME=ap-docker.virt.ch.bbc.co.uk:443/cloudfit/cloudfit_base
+ARG CLOUDFIT_BASE_NAME=ap-docker.artifactory.labs.bbc/cloudfit/cloudfit_base
 ARG CLOUDFIT_BASE_LABEL=latest
 {%- endmacro %}
 
@@ -167,7 +167,7 @@ CMD ["--html", "--force", "--output-dir", ".", "{{ modname }}"]
 ###############################################################################
 # Stage: alembic - The alembic DB migration tool configured for this layer
 ###############################################################################
-FROM ap-docker.virt.ch.bbc.co.uk:443/cloudfit/alembic:latest as alembic_base
+FROM ap-docker.artifactory.labs.bbc/cloudfit/alembic:latest as alembic_base
 
 FROM layer AS alembic
 

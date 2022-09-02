@@ -121,7 +121,7 @@ endif
 
 TWINE_FLAGS += ${EXTRA_TWINE_FLAGS}
 
-ifeq "$(TWINE_REPO)" "https://artifactory.virt.ch.bbc.co.uk/artifactory/api/pypi/ap-python"
+ifeq "$(TWINE_REPO)" "https://artifactory.labs.bbc/artifactory/api/pypi/ap-python"
 ifneq "${FORGE_CERT}" ""
 TWINE_VOLUMES += -v $(FORGE_CERT):/devcert.pem:ro
 TWINE_FLAGS += --client-cert /devcert.pem
@@ -131,7 +131,7 @@ endif
 TWINE=$(DOCKER) run --rm $(TWINE_VOLUMES) bbcrd/twine
 
 enable_push=TRUE
-ifneq "$(TWINE_REPO)" "https://artifactory.virt.ch.bbc.co.uk/artifactory/api/pypi/ap-python"
+ifneq "$(TWINE_REPO)" "https://artifactory.labs.bbc/artifactory/api/pypi/ap-python"
 ifneq "${NEXT_VERSION}" "${VERSION}"
 enable_push=FALSE
 endif

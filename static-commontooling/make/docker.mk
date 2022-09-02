@@ -249,25 +249,25 @@ $(topbuilddir)/wheels:
 
 docker-help:
 ifeq "${MS_DOCKER_ARTEFACT}" "TRUE"
-	@echo "make artefact          - Build the docker container for this layer"
+	@echo "make artefact                    - Build the docker container for this layer"
 endif
 ifeq "${MS_DOCKER_UNITTEST}" "TRUE"
-	@echo "make test              - Run unit tests in docker"
+	@echo "make test                        - Run unit tests in docker"
 endif
 ifeq "${MS_DOCKER_FLAKE8}" "TRUE"
-	@echo "make lint              - Run flake8 on python code"
+	@echo "make lint                        - Run flake8 on python code"
 endif
 ifeq "${MS_DOCKER_MYPY}" "TRUE"
-	@echo "make mypy              - Run mypy on python code"
+	@echo "make mypy                        - Run mypy on python code"
 endif
 ifeq "${MS_DOCKER_WHEEL}" "TRUE"
-	@echo "make wheel             - Make wheel for layer"
+	@echo "make wheel                       - Make wheel for layer"
 endif
 ifneq "${HELP_PUSH_TAGS}" ""
-	@echo "make push              - Push docker image to $(DOCKER_REPO) with tags: $(HELP_PUSH_TAGS)"
+	@echo "make push                        - Push docker image to $(DOCKER_REPO) with tags: $(HELP_PUSH_TAGS)"
 endif
 ifeq "${MS_DOCKER_DOCS}" "TRUE"
-	@echo "make docs              - Make documentation for layer"
+	@echo "make docs                        - Make documentation for layer"
 endif
 	@if [ -f docker-compose.yml ]; then \
 		echo ""; \

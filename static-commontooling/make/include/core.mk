@@ -100,7 +100,7 @@ $(topbuilddir)/.tmp:
 all: help-static-files
 
 help-static-files:
-	@echo "make static-files        - Update static commontooling files"
-	@echo "make check-static-files  - Check that the current static commontooling files are up to date"
+	@echo "make static-files                - Update static commontooling files"
+	@echo "make check-static-files          - Check that the current static commontooling files are up to date"
 
 .PHONY: prepcode test lint clean install source all forcerebuild help-title push push-check-changes help-static-files static-files check-static-files
