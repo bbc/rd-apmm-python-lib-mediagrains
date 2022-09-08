@@ -2,9 +2,9 @@
 
 {{ macros.preamble() }}
 
-{{ macros.source() }}
+{{ macros.source(base_image="python:3.10.6") }}
 
-{{ macros.layer(entrypoint=False) }}
+{{ macros.layer(entrypoint=False,base_image="python:3.10.6") }}
 
 {{ macros.testdeps() }}
 
