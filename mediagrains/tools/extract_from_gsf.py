@@ -55,6 +55,8 @@ def gsf_probe():
     )
 
     parser.add_argument("input_file", help="Input file. Specify - for stdin", type=str)
+    parser.add_argument("-a", "--all-timestamps", help="Print all the grain timestamps in the file",
+                        action="store_true")
 
     args = parser.parse_args()
 
@@ -74,5 +76,17 @@ def gsf_probe():
             except KeyError:
                 this_segment["timerange"] = grain.origin_timerange()
                 this_segment["grain_data"] = grain.meta["grain"]
+
+            if args.all_timestamps:
+                grain_ts_data = {
+                    "origin_timestamp": grain.origin_timestamp,
+                    "sync_timestamp": grain.sync_timestamp,
+                    "creation_timestamp": grain.creation_timestamp
+                }
+
+                try:
+                    this_segment["grain_timestamps"].append(grain_ts_data)
+                except KeyError:
+                    this_segment["grain_timestamps"] = [grain_ts_data]
 
         print(mediajson.dumps(file_data, indent=True))
