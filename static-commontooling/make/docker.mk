@@ -137,7 +137,7 @@ endif
 PUSH_TAGS=$(patsubst %,ms_docker-ver-push-%,$(DOCKER_TAGS))
 
 
-all: docker-help
+all: help-docker
 include $(commontooling_dir)/make/include/ms_docker.mk
 include $(commontooling_dir)/make/include/ms_docker-compose.mk
 include $(commontooling_dir)/make/include/dockerignore.mk
@@ -247,7 +247,7 @@ endif
 $(topbuilddir)/wheels:
 	mkdir -p $@
 
-docker-help:
+help-docker:
 ifeq "${MS_DOCKER_ARTEFACT}" "TRUE"
 	@echo "make artefact                    - Build the docker container for this layer"
 endif
@@ -275,4 +275,4 @@ endif
 		echo "  $(DOCKER_COMPOSE) <ARGS>"; \
 	fi
 
-.PHONY: docker-help upload-docker ms_docker-compose-images ms_docker-compose-ps push-check-changes
+.PHONY: help-docker artefact upload-docker mypy

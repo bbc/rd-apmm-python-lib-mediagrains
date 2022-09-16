@@ -92,3 +92,5 @@ endif
 
 $(EXTRA_MODS_REQUIRED_VERSIONFILE):
 	$(MAKE) -C $(dir $@)/.. version
+
+.PHONY: common-base

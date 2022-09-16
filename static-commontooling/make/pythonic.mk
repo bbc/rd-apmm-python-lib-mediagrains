@@ -155,4 +155,4 @@ help-pythonic:
 	@echo "make source                      - Create source package"
 	@echo "make upload-wheel                - Upload wheels to ${TWINE_REPO}"
 
-.PHONY: source-pythonic install-pythonic help-pythonic clean-pythonic prepcode install source wheel upload-wheel
+.PHONY: source-pythonic install-pythonic help-pythonic clean-pythonic wheel upload-wheel
