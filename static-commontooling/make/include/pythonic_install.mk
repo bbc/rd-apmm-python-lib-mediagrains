@@ -80,4 +80,4 @@ help-install:
 	@echo "make install                     - Install on local system (only for use during development)"
 	@echo "make editable-install            - Make an editable install on local system (only for use during development)"
 
-.PHONY: check-in-virtualenv
+.PHONY: check-in-virtualenv install-first install-second editable-install editable-install-first editable-install-second help-install

@@ -18,6 +18,8 @@ $(topdir)/.gitignore.gen: $(commontooling_dir)/misc/$(CLOUDFIT_MAKE_MODE).gitign
 		echo $$ignore_line >> $@ ; \
 	done
 
+force_rebuild:
+
 check-gitignore: $(topdir)/.gitignore.gen
 	@diff $< $(topdir)/.gitignore || (\
 		echo "--------------------------------------------------------------------------------" && \
