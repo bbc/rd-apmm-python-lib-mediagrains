@@ -31,12 +31,16 @@ RUN python3 setup.py sdist
 {%- endmacro %}
 
 
-{% macro layer(base_image="${CLOUDFIT_BASE_NAME}:${CLOUDFIT_BASE_LABEL}", entrypoint=True, extra_requirements_file="") -%}
+{% macro layer(base_image="${CLOUDFIT_BASE_NAME}:${CLOUDFIT_BASE_LABEL}", entrypoint=True, extra_requirements_file="", install_target=None, extra_commands=[]) -%}
 ###############################################################################
 # Stage: layer - Has layer package and its requirements installed
 ###############################################################################
 FROM {{ base_image }} AS layer
 WORKDIR /{{ modname }}/
+
+{% for command in extra_commands -%}
+{{ command }}
+{% endfor -%}
 
 # Copy in wheels if provided
 COPY wheels/ ./wheels
@@ -47,12 +51,24 @@ COPY requirements.txt ./
 COPY {{ extra_requirements_file }} ./
 RUN cat {{ extra_requirements_file }} >> ./requirements.txt
 {%-  endif %}
+
+{% if install_target != None -%}
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert mkdir -p {{ install_target }} && pip install -f ./wheels -r requirements.txt -t {{ install_target }}
+
+# Copy in everything else and install the package
+ARG VERSION
+COPY --from=source /{{ modname }}/dist/{{ modname }}-${VERSION}.tar.gz ./
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert tar -xvzp --strip-components=1 -f ./{{ modname }}-${VERSION}.tar.gz && cp -r ./{{ modname }} {{ install_target }}
+
+ENV PYTHONPATH={{ install_target }}
+{% else -%}
 RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert pip install -f ./wheels -r requirements.txt
 
 # Copy in everything else and install the package
 ARG VERSION
 COPY --from=source /{{ modname }}/dist/{{ modname }}-${VERSION}.tar.gz ./
 RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert tar -xvzp --strip-components=1 -f ./{{ modname }}-${VERSION}.tar.gz && pip install -f ./wheels -e .
+{%-  endif %}
 
 # Set the default command
 {%   if entrypoint -%}
@@ -60,6 +76,19 @@ ENTRYPOINT ["{{ modname }}"]
 {%-  else -%}
 ENTRYPOINT []
 {%-  endif %}
+{%- endmacro %}
+
+
+{% macro zip(workdir="/lambda") -%}
+###############################################################################
+# Stage: zip
+###############################################################################
+FROM layer AS zip
+WORKDIR {{ workdir }}
+
+RUN yum -y install zip
+
+ENTRYPOINT ["zip", "-r", "-", "."]
 {%- endmacro %}
 
 {% macro testdeps() -%}
@@ -78,7 +107,7 @@ COPY test-requirements.txt ./
 RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert python -m pip install -f ./wheels --user -c constraints.txt -r ./test-requirements.txt flake8 "mypy>=0.910"
 {%- endmacro %}
 
-{% macro tests() -%}
+{% macro tests(include_extra_layers=[]) -%}
 ###############################################################################
 # Stage: tests - Combines Layer with test dependencies
 ###############################################################################
@@ -87,6 +116,11 @@ WORKDIR /{{ modname }}/
 
 # Install test dependencies
 COPY --from=testdeps /root/.local/lib/ /root/.local/lib/
+
+{% for layer in include_extra_layers -%}
+# Copy the dependencies from the {{ layer }} layer
+COPY --from={{ layer }} /root/.local/lib/ /root/.local/lib/
+{% endfor -%}
 
 ENTRYPOINT []
 {%- endmacro %}
