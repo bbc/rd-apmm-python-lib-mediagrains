@@ -3,7 +3,7 @@
 # Included by other .mk files, do not use directly.
 #
 
-PBRVERSION_VERSION?=1.3.0
+PBRVERSION_VERSION?=1.4.0
 PBRVERSION_CONTAINER?=bbcrd/pbrversion
 # Since the version is pinned above, there's no need to pull images every time, especially since this tool runs very
 # frequently
@@ -12,13 +12,14 @@ PBRVERSION?=$(DOCKER) run --rm -v $(project_root_dir):/data:ro $(PBRVERSION_CONT
 # If VERSION is't already set (because it was exported from a higher-level Makefile, extractit from a top level VERSION
 # file if present, otherwise we use PBR to extract the version from git in the right formats
 ifndef VERSION
-# pbrversion --list gives an output of the form '<full version> <brief version> <dockerised version> <docker tag> [<docker tag>]'
+# pbrversion --list gives an output of the form '<full version> <brief version> <dockerised version> <node version> <docker tag> [<docker tag>]'
 # which gets split out here into the four variables we need (while only calling pbrversion once).
 PBRVERSION_OUTPUT := $(shell $(PBRVERSION) --list)
 export VERSION := $(shell [ -f VERSION ] && cat VERSION || echo $(word 1, $(PBRVERSION_OUTPUT)))
-export DOCKERISED_VERSION := $(shell [ -f VERSION ] && cat VERSION || echo $(word 3, $(PBRVERSION_OUTPUT)))
 export NEXT_VERSION := $(shell [ -f VERSION ] && cat VERSION || echo $(word 2, $(PBRVERSION_OUTPUT)))
-export DOCKER_TAGS := $(wordlist 4, $(words $(PBRVERSION_OUTPUT)), $(PBRVERSION_OUTPUT))
+export DOCKERISED_VERSION := $(shell [ -f VERSION ] && cat VERSION || echo $(word 3, $(PBRVERSION_OUTPUT)))
+export NODEIFIED_VERSION := $(shell [ -f VERSION ] && cat VERSION || echo $(word 4, $(PBRVERSION_OUTPUT)))
+export DOCKER_TAGS := $(wordlist 5, $(words $(PBRVERSION_OUTPUT)), $(PBRVERSION_OUTPUT))
 
 endif
 
