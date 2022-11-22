@@ -158,6 +158,6 @@ _version.py
 .tmp/
 
 # Extra gitignore lines from Makefile
-externals.json
 .dockerignore
 Dockerfile.multi
+externals.json
