@@ -14,7 +14,7 @@ $(topdir)/.gitignore.gen: $(commontooling_dir)/misc/$(CLOUDFIT_MAKE_MODE).gitign
 
 	@[ ! -z "$(EXTRA_GITIGNORE_LINES)" ] && \
 	echo "\n\n# Extra gitignore lines from Makefile" >> $@ && \
-	set -f; for ignore_line in $(EXTRA_GITIGNORE_LINES); do \
+	set -f; for ignore_line in $(sort $(EXTRA_GITIGNORE_LINES)); do \
 		echo $$ignore_line >> $@ ; \
 	done
 
