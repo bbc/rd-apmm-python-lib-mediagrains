@@ -50,8 +50,8 @@ def AudioGrain(*args,
                source_id: Optional[UUID] = None,
                format: Optional[CogAudioFormat] = None,
                flow_id: Optional[UUID] = None,
-               data: GrainDataParameterType = None,
-               meta: AudioGrainMetadataDict = None):
+               data: Optional[GrainDataParameterType] = None,
+               meta: Optional[AudioGrainMetadataDict] = None):
     """If the first argument is a mediagrains.AUDIOGRAIN then return a mediagrains.numpy.AUDIOGRAIN representing the
     same data.
 

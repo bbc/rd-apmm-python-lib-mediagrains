@@ -223,9 +223,9 @@ class VideoGrain (bytesgrain.VideoGrain):
 
     def __init__(self,
                  *args,
-                 grain: bytesgrain.VideoGrain = None,
-                 meta: VideoGrainMetadataDict = None,
-                 data: GrainDataParameterType = None,
+                 grain: Optional[bytesgrain.VideoGrain] = None,
+                 meta: Optional[VideoGrainMetadataDict] = None,
+                 data: Optional[GrainDataParameterType] = None,
                  origin_timestamp: Optional[SupportsMediaTimestamp] = None,
                  creation_timestamp: Optional[SupportsMediaTimestamp] = None,
                  sync_timestamp: Optional[SupportsMediaTimestamp] = None,
@@ -273,7 +273,10 @@ class VideoGrain (bytesgrain.VideoGrain):
         # Get the length Property from the parent class and set the new value L
         super(VideoGrain, type(self)).length.fset(self, L)  # type: ignore
 
-    @property
+    # ignoring typing here because mypy does not accept narrowing of the type here
+    # (np.ndarray is in the GrainDataType union) and it doesn't accept @overload
+    # of Grain.data @property
+    @property  # type: ignore
     def data(self) -> Optional[np.ndarray]:
         return self._data
 

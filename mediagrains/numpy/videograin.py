@@ -50,8 +50,8 @@ def VideoGrain(*args,
                format: Optional[CogFrameFormat] = None,
                layout: Optional[CogFrameLayout] = None,
                flow_id: Optional[UUID] = None,
-               data: GrainDataParameterType = None,
-               meta: VideoGrainMetadataDict = None):
+               data: Optional[GrainDataParameterType] = None,
+               meta: Optional[VideoGrainMetadataDict] = None):
     if len(args) == 1 and isinstance(args[0], bytesgrain.VideoGrain):
         return npVideoGrain(grain=args[0])
 

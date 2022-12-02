@@ -57,7 +57,7 @@ class PatternGenerator (Generic[G], metaclass=ABCMeta):
     @overload
     def __getitem__(self, key: RangeConstructionTypes) -> Union[G, Iterator[G]]: ...
 
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> G | Iterator[G]:
         rng: Optional[TimeValueRange] = None
         val: Optional[TimeValue] = None
         skip: int = 1
@@ -101,6 +101,7 @@ class PatternGenerator (Generic[G], metaclass=ABCMeta):
             else:
                 raise KeyError(f"TimeValue {val!r} does not identify a grain in this pattern generator")
         else:
+            assert rng is not None
             return self.get_range(rng, skip=skip)
 
     def get_range(self, rng: TimeValueRange, skip: int = 1) -> Iterator[G]:

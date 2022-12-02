@@ -245,8 +245,8 @@ length
             return not (self == other)
 
     def __init__(self,
-                 meta: VideoGrainMetadataDict = None,
-                 data: GrainDataParameterType = None,
+                 meta: Optional[VideoGrainMetadataDict] = None,
+                 data: Optional[GrainDataParameterType] = None,
                  src_id: Optional[UUID] = None,
                  flow_id: Optional[UUID] = None,
                  origin_timestamp: Optional[SupportsMediaTimestamp] = None,

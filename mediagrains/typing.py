@@ -23,6 +23,7 @@ from .cogenums import CogFrameFormat, CogAudioFormat, CogFrameLayout
 from typing import Any, Union, SupportsBytes, Sequence, Mapping, List, Optional, Awaitable, Callable, TYPE_CHECKING
 from typing_extensions import TypedDict, Literal
 
+from numpy import ndarray
 from decimal import Decimal
 from numbers import Rational
 from fractions import Fraction
@@ -260,7 +261,7 @@ GrainMetadataDict = Union[
 
 
 # This is the type that defines what can go in a grain data element, there may be some corner cases not covered by this
-GrainDataType = Union[SupportsBytes, bytes]
+GrainDataType = Union[SupportsBytes, bytes, ndarray]
 
 GrainDataParameterType = Optional[Union[GrainDataType, Awaitable[Optional[GrainDataType]]]]
 
