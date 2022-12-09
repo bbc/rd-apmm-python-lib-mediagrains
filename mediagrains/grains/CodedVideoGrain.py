@@ -105,8 +105,8 @@ unit_offsets
     data array.
 """
     def __init__(self,
-                 meta: CodedVideoGrainMetadataDict = None,
-                 data: GrainDataParameterType = None,
+                 meta: Optional[CodedVideoGrainMetadataDict] = None,
+                 data: Optional[GrainDataParameterType] = None,
                  src_id: Optional[UUID] = None,
                  flow_id: Optional[UUID] = None,
                  origin_timestamp: Optional[SupportsMediaTimestamp] = None,

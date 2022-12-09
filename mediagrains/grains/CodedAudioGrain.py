@@ -92,8 +92,8 @@ remainder
     An integer
 """
     def __init__(self,
-                 meta: CodedAudioGrainMetadataDict = None,
-                 data: GrainDataParameterType = None,
+                 meta: Optional[CodedAudioGrainMetadataDict] = None,
+                 data: Optional[GrainDataParameterType] = None,
                  src_id: Optional[UUID] = None,
                  flow_id: Optional[UUID] = None,
                  origin_timestamp: Optional[SupportsMediaTimestamp] = None,

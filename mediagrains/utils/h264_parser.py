@@ -132,7 +132,7 @@ class FrameInfo(object):
 
 
 class H264Parser(object):
-    def __init__(self):
+    def __init__(self) -> None:
         self.sps_sets: Dict[int, SPS] = {}
         self.pps_sets: Dict[int, PPS] = {}
 

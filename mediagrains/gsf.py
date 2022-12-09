@@ -1874,7 +1874,7 @@ class GSFEncoder(object):
                  minor: int = 0,
                  id: Optional[UUID] = None,
                  created: Optional[datetime] = None,
-                 tags: Iterable[Tuple[str, str]] = None,
+                 tags: Optional[Iterable[Tuple[str, str]]] = None,
                  segments: Iterable[SegmentDict] = [],
                  streaming: bool = False):
         self.file = file
@@ -2118,7 +2118,7 @@ class GSFEncoderSegment(object):
     def __init__(self,
                  id: UUID,
                  local_id: int,
-                 tags: Iterable[Tuple[str, str]] = None,
+                 tags: Optional[Iterable[Tuple[str, str]]] = None,
                  parent: Optional[Union[GSFEncoder, OpenGSFEncoderBase]] = None):
         self.id = id
         self.local_id = local_id

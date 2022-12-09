@@ -101,8 +101,8 @@ append(path, pre=None, post=None)
     only json serialisable objects for the values of pre and post.
     """
     def __init__(self,
-                 meta: EventGrainMetadataDict = None,
-                 data: GrainDataParameterType = None,
+                 meta: Optional[EventGrainMetadataDict] = None,
+                 data: Optional[GrainDataParameterType] = None,
                  src_id: Optional[UUID] = None,
                  flow_id: Optional[UUID] = None,
                  origin_timestamp: Optional[SupportsMediaTimestamp] = None,
@@ -175,7 +175,10 @@ append(path, pre=None, post=None)
         if 'data' not in self.meta['grain']['event_payload']:
             self.meta['grain']['event_payload']['data'] = []
 
-    @property
+    # ignoring typing here because mypy does not accept narrowing of the type here
+    # (bytes is in the GrainDataType union) and it doesn't accept @overload
+    # of Grain.data @property
+    @property  # type: ignore
     def data(self) -> bytes:
         return json.dumps({'type': self.event_type,
                            'topic': self.topic,

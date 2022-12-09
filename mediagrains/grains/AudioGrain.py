@@ -100,8 +100,8 @@ sample_rate
     audio flow.
 """
     def __init__(self,
-                 meta: AudioGrainMetadataDict = None,
-                 data: GrainDataParameterType = None,
+                 meta: Optional[AudioGrainMetadataDict] = None,
+                 data: Optional[GrainDataParameterType] = None,
                  src_id: Optional[UUID] = None,
                  flow_id: Optional[UUID] = None,
                  origin_timestamp: Optional[SupportsMediaTimestamp] = None,

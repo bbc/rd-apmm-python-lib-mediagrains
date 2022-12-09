@@ -50,7 +50,7 @@ def get_non_running_loop() -> Optional[asyncio.AbstractEventLoop]:
 
 
 class ResultsType(Generic[T]):
-    def __init__(self):
+    def __init__(self) -> None:
         self.rval: Optional[Tuple[T]] = None
         self.exception: Optional[Exception] = None
 
