@@ -3,7 +3,7 @@
 # Included by other .mk files, do not use directly.
 #
 
-PBRVERSION_VERSION?=1.4.0
+PBRVERSION_VERSION?=1.4.1
 PBRVERSION_CONTAINER?=bbcrd/pbrversion
 # Since the version is pinned above, there's no need to pull images every time, especially since this tool runs very
 # frequently
