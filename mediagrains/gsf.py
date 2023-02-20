@@ -1563,7 +1563,7 @@ class OpenGSFEncoderBase(object):
 
     @property
     def segments(self) -> Mapping[int, "GSFEncoderSegment"]:
-        return frozendict(self._segments)
+        return frozendict(self._segments)  # type: ignore[operator]
 
     def add_tag(self, key: str, value: str):
         """Add a tag to the file"""
@@ -1969,7 +1969,7 @@ class GSFEncoder(object):
 
     @property
     def segments(self) -> Mapping[int, "GSFEncoderSegment"]:
-        return frozendict(self._segments)
+        return frozendict(self._segments)  # type: ignore[operator]
 
     def add_tag(self, key: str, value: str):
         """Add a tag to the file"""
