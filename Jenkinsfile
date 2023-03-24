@@ -136,7 +136,7 @@ pipeline {
                 }
             }
         }
-        stage("Upload Images to Docker Hub"){
+        stage("Upload Images to AWS ECR"){
             when {
                 anyOf{
                     expression { return params.FORCE_DOCKERUPLOAD }
@@ -147,8 +147,10 @@ pipeline {
                 }
             }
             steps{
-                withBBCDockerhubRegistry {
-                    bbcMake("push")
+                withBBCDockerRegistry {
+                    withBBCAWSCredentialsFile(awsAccountID: '613414153832', role: 'jenkins-ecr-access') {
+                        bbcMake("push")
+                    }
                 }
             }
             post {
