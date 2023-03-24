@@ -1,5 +1,5 @@
 MS_DOCKER_PUSH:=TRUE
-DOCKER_REGISTRY:=docker.io/bbcrd/
+DOCKER_REPO:=public.ecr.aws/o4o2s1w1/cloudfit
 
 TOOL_LIST:=gsf_probe extract_gsf_essence wrap_audio_in_gsf wrap_video_in_gsf
 TOOL_TARGETS:=$(addprefix tool-,$(TOOL_LIST))
