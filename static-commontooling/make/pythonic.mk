@@ -70,7 +70,7 @@ $(topbuilddir)/dist:
 prepcode: $(EXTRA_MODS_REQUIRED_VERSIONFILE)
 
 # Extract dependency requirements and constraints from setup.py
-PY_REQ_EX_CONTAINER?=bbcrd/pyreqex
+PY_REQ_EX_CONTAINER?=public.ecr.aws/o4o2s1w1/cloudfit/pyreqex
 PY_REQ_EX_VERSION?=latest
 PY_REQ_EX_CMD:=$(DOCKER) run --rm -v $(topdir):/data:ro $(PY_REQ_EX_CONTAINER):$(PY_REQ_EX_VERSION)
 $(topbuilddir)/requirements.txt: $(topdir)/setup.py
@@ -128,7 +128,7 @@ TWINE_FLAGS += --client-cert /devcert.pem
 endif
 endif
 
-TWINE=$(DOCKER) run --rm $(TWINE_VOLUMES) bbcrd/twine
+TWINE=$(DOCKER) run --rm $(TWINE_VOLUMES) public.ecr.aws/o4o2s1w1/cloudfit/twine
 
 enable_push=TRUE
 ifneq "$(TWINE_REPO)" "https://artifactory.labs.bbc/artifactory/api/pypi/ap-python"

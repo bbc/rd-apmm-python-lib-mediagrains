@@ -7,8 +7,10 @@ VERSION_IN_PYTHON:=${VERSION}
 endif
 
 BUILD_TAG?=local
-DOCKER_REPO?=bbcrd
+DOCKER_REPO?=public.ecr.aws/o4o2s1w1/cloudfit
 DOCKER?=docker
+
+include $(commontooling_dir)/make/include/ecr_docker.mk
 
 MS_DOCKERFILE?=Dockerfile.multi
 MS_DOCKERFILE_TEMPLATE?=Dockerfile_multi.j2
@@ -94,15 +96,27 @@ ms_docker-push: ms_docker-ver-push-$(DOCKERISED_VERSION)
 
 ms_docker-ver-push-%: push-check-changes ms_docker-build
 	docker tag $(MODNAME):$(BUILD_TAG) $(DOCKER_REPO)/$(MODNAME):$*
+ifeq (${IS_ECR_REGISTRY},true)
+	$(call ecr_docker_push,$(DOCKER_REPO)/$(MODNAME):$*)
+else
 	docker push $(DOCKER_REPO)/$(MODNAME):$*
+endif
 
 ms_docker-push-%: push-check-changes ms_docker-build-%
 	docker tag $(MODNAME)_$*:$(BUILD_TAG) $(DOCKER_REPO)/$(MODNAME)_$*:$(DOCKERISED_VERSION)
+ifeq (${IS_ECR_REGISTRY},true)
+	$(call ecr_docker_push,$(DOCKER_REPO)/$(MODNAME)_$*:$(DOCKERISED_VERSION))
+else
 	docker push $(DOCKER_REPO)/$(MODNAME)_$*:$(DOCKERISED_VERSION)
+endif
 
 ms_docker-push-latest-%: push-check-changes ms_docker-build-%
 	docker tag $(MODNAME)_$*:$(BUILD_TAG) $(DOCKER_REPO)/$(MODNAME)_$*:latest
+ifeq (${IS_ECR_REGISTRY},true)
+	$(call ecr_docker_push,$(DOCKER_REPO)/$(MODNAME)_$*:latest)
+else
 	docker push $(DOCKER_REPO)/$(MODNAME)_$*:latest
+endif
 
 ms_docker-clean:
 	-for IMG in $$(docker images | grep '${MODNAME}' | grep '${BUILD_TAG}' | awk '{print $$1":"$$2}'); do docker rmi $$IMG; done

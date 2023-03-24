@@ -35,7 +35,7 @@ endif
 
 CLOUDFIT_BASE_NAME?=python
 
-J2CLI_DOCKER_CONTAINER?=bbcrd/j2cli
+J2CLI_DOCKER_CONTAINER?=public.ecr.aws/o4o2s1w1/cloudfit/j2cli
 
 ifeq "${FORGE_CERT}" ""
 FORGE_CERT:=$(realpath $(HOME)/.certs/devcert.pem)

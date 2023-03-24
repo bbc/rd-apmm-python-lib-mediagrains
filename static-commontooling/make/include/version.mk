@@ -4,7 +4,7 @@
 #
 
 PBRVERSION_VERSION?=1.4.1
-PBRVERSION_CONTAINER?=bbcrd/pbrversion
+PBRVERSION_CONTAINER?=public.ecr.aws/o4o2s1w1/cloudfit/pbrversion
 # Since the version is pinned above, there's no need to pull images every time, especially since this tool runs very
 # frequently
 PBRVERSION?=$(DOCKER) run --rm -v $(project_root_dir):/data:ro $(PBRVERSION_CONTAINER):$(PBRVERSION_VERSION)
