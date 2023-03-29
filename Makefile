@@ -19,4 +19,4 @@ run-cmd: tools
 	@echo docker run --rm -it -v $(shell pwd):/data ${MODNAME}:${BUILD_TAG}
 
 
-.PHONY: tools tool-% run-cmd-%
+.PHONY: tools
