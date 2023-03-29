@@ -5,6 +5,7 @@
 {{ macros.source() }}
 
 {{ macros.layer(entrypoint=False) }}
+CMD [ "echo", "Run one of these commands: gsf_probe extract_gsf_essence wrap_audio_in_gsf wrap_video_in_gsf" ]
 
 {{ macros.testdeps() }}
 
@@ -30,18 +31,3 @@ CMD ["discover", "tests", "-v"]
 
 {{ macros.docs() }}
 CMD ["--html", "--force", "--skip-errors", "--output-dir", ".", "{{ modname }}"]
-
-FROM {{ modname + ":" + "${BUILD_TAG}" }} AS tools_base
-WORKDIR /data
-
-FROM tools_base as extract_gsf_essence
-ENTRYPOINT ["extract_gsf_essence"]
-
-FROM tools_base AS gsf_probe
-ENTRYPOINT ["gsf_probe"]
-
-FROM tools_base AS wrap_audio_in_gsf
-ENTRYPOINT ["wrap_audio_in_gsf"]
-
-FROM tools_base AS wrap_video_in_gsf
-ENTRYPOINT ["wrap_video_in_gsf"]

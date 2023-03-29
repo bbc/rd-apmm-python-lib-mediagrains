@@ -20,14 +20,14 @@
 # be set in your Makefile, or as environment variables before running Make, although it's unlikely you'll want to
 # override them permanently on a per-repo basis
 #
-#    J2CLI_DOCKER_CONTAINER?=bbcrd/j2cli
+#    J2CLI_DOCKER_CONTAINER?=public.ecr.aws/o4o2s1w1/cloudfit/j2cli
 #       Change the container image used for processing Jinja templates, such as to one built locally
 #
 #    J2CLI_DOCKER_LABEL?=latest
 #       Change the label used for the Jinja template container. Note that the default is `latest` unless PYTHON_VERSION
 #       is set, in which case it defaults to the one corresponding to that Python version.
 #
-#    PBRVERSION_CONTAINER?=bbcrd/pbrversion
+#    PBRVERSION_CONTAINER?=public.ecr.aws/o4o2s1w1/cloudfit/pbrversion
 #       Change the container image used for calculating version numbers, such as to one built locally
 #
 #    PBRVERSION_VERSION?=
