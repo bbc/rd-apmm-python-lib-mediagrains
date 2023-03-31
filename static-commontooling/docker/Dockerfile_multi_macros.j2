@@ -191,10 +191,10 @@ ENTRYPOINT ["/run_with_dir_modes.sh", "./dist", "python", "./setup.py", "sdist",
 FROM wheel AS docs
 WORKDIR /docs/
 
-RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert pip install pdoc3
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert pip install pdoc
 
-ENTRYPOINT ["/run_with_dir_modes.sh", ".", "pdoc3"]
-CMD ["--html", "--force", "--output-dir", ".", "{{ modname }}"]
+ENTRYPOINT ["/run_with_dir_modes.sh", ".", "pdoc"]
+CMD ["--output-directory", "{{ modname }}", "{{ modname }}"]
 {%- endmacro %}
 
 {% macro alembic() -%}
