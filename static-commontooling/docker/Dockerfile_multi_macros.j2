@@ -184,17 +184,31 @@ RUN chmod u+x /run_with_dir_modes.sh
 ENTRYPOINT ["/run_with_dir_modes.sh", "./dist", "python", "./setup.py", "sdist", "bdist_wheel"]
 {%- endmacro %}
 
-{% macro docs() -%}
+{% macro docs(with_template=False, extra_submodules=[]) -%}
 ###############################################################################
 # Stage: docs - Generates documentation from docstrings
 ###############################################################################
 FROM wheel AS docs
 WORKDIR /docs/
 
+# Copy the pdoc template file to the module directory
+{%   if with_template -%}
+COPY --from=source /{{ modname }}/module.html.jinja2 /{{ modname }}/
+{%-  endif %}
+
 RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert pip install pdoc
 
 ENTRYPOINT ["/run_with_dir_modes.sh", ".", "pdoc"]
-CMD ["--output-directory", "{{ modname }}", "{{ modname }}"]
+CMD [ \
+    "--output-directory", "{{ modname }}", \
+{%- if with_template %}
+    "--template-dir", "/{{ modname }}", \
+{%- endif %}
+    "{{ modname }}"{{ "," if extra_submodules }} \
+{%- for extra_submodule in extra_submodules %}
+    "{{ modname }}.{{ extra_submodule }}"{{ "," if not loop.last }} \
+{%- endfor %}
+]
 {%- endmacro %}
 
 {% macro alembic() -%}

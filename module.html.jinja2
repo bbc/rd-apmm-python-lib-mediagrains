@@ -1,0 +1,27 @@
+{% extends "default/module.html.jinja2" %}
+
+{#
+Modify the SubModules block to include submodules that aren't exposed through __all__.
+These submodules need to be included in the module list passed to pdoc.
+#}
+{% block nav_submodules %}
+    {% if module.submodules or module.fullname == "mediagrains.patterngenerators" %}
+        <h2>Submodules</h2>
+        <ul>
+            {% for submodule in module.submodules if is_public(submodule) | trim %}
+                <li>{{ submodule.taken_from | link(text=submodule.name) }}</li>
+            {% endfor %}
+            {% if module.fullname == "mediagrains" %}
+                <li><a href="mediagrains/comparison.html">comparison</a></li>
+                <li><a href="mediagrains/grains.html">grains</a></li>
+                <li><a href="mediagrains/numpy/numpy_grains.html">numpy/numpy_grains</a></li>
+                <li><a href="mediagrains/patterngenerators.html">patterngenerators</a></li>
+                <li><a href="mediagrains/tools.html">tools</a></li>
+                <li><a href="mediagrains/utils.html">utils</a></li>
+            {% elif module.fullname == "mediagrains.patterngenerators" %}
+                <li><a href="patterngenerators/audio.html">audio</a></li>
+                <li><a href="patterngenerators/video.html">video</a></li>
+            {% endif %}
+        </ul>
+    {% endif %}
+{% endblock %}

@@ -29,4 +29,8 @@ CMD ["discover", "tests", "-v"]
 
 {{ macros.wheel() }}
 
-{{ macros.docs() }}
+{{ macros.docs(with_template=True, extra_submodules=[
+          "comparison", "grains", "numpy.numpy_grains", "patterngenerators", "patterngenerators.audio",
+          "patterngenerators.video" , "tools", "utils"
+     ])
+}}
