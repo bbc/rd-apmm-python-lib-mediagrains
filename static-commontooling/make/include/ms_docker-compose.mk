@@ -1,5 +1,5 @@
 #
-# Makefile include file to include standard docker-compose targets
+# Makefile include file to include standard docker compose targets
 # Do not include directly, is used by docker.mk and run_locally.mk
 
 BUILD_TAG?=local
@@ -15,7 +15,7 @@ DOCKER_COMPOSE_ENV=\
 	MODNAME=$(MODNAME) \
 	BUILD_TAG=$(BUILD_TAG) \
 	$(DOCKER_COMPOSE_EXTRA_ENV)
-DOCKER_COMPOSE?=$(DOCKER_COMPOSE_ENV) docker-compose -p $(COMPOSE_PROJECT_NAME)
+DOCKER_COMPOSE?=$(DOCKER_COMPOSE_ENV) $(DOCKER_COMPOSE_CMD) -p $(COMPOSE_PROJECT_NAME)
 
 ms_docker-compose-run-%:
 	$(DOCKER_COMPOSE) run --rm $*

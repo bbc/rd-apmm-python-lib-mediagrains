@@ -118,7 +118,8 @@
 #         Contains the executable command to run docker build with the correct settings and build-args set Extra arguments can be added after it
 #
 #      DOCKER_COMPOSE
-#         Contains the executable command to run docker-compose with the correct settings and build-args set. Extra arguments can be added after it
+#         Contains the executable command to run docker compose with the correct settings and build-args set. Extra arguments can be added after it.
+#         Use the DOCKER_COMPOSE_CMD to select either "docker-compose" (V1) or "docker compose" (V2)
 #
 
 
@@ -271,7 +272,7 @@ ifeq "${MS_DOCKER_DOCS}" "TRUE"
 endif
 	@if [ -f docker-compose.yml ]; then \
 		echo ""; \
-		echo "You can also run docker-compose using the command:"; \
+		echo "You can also run docker compose using the command:"; \
 		echo "  $(DOCKER_COMPOSE) <ARGS>"; \
 	fi
 

@@ -46,6 +46,10 @@ DOCKER?=docker
 DOCKER_RUN?=${DOCKER} run --pull always --rm
 J2?=$(DOCKER_RUN) -v $(project_root_dir):/data:ro -w /data/$(reldir) ${J2CLI_DOCKER_CONTAINER}:${J2CLI_DOCKER_LABEL}
 
+# Use docker compose V1 if present, else use the docker plugin for V2
+DOCKER_COMPOSE_CMD?=$(shell type docker-compose >/dev/null && echo docker-compose || echo docker compose)
+
+
 all: ;
 
 include $(commontooling_dir)/make/include/version.mk
