@@ -18,7 +18,7 @@
 from typing import Optional, Dict, Iterator, Iterable, List, Tuple
 from enum import IntEnum
 from itertools import chain
-from bitstring import BitStream, ReadError
+from bitstring import BitStream, ReadError, Bits
 from fractions import Fraction
 
 
@@ -435,7 +435,7 @@ class H264Parser(object):
         else:
             return None
 
-    def _parse_nal_unit_type(self, bits: BitStream) -> int:
+    def _parse_nal_unit_type(self, bits: Bits) -> int:
         """Peek NALU for NAL Unit Type
 
         :param bits: NALU bits
@@ -449,7 +449,7 @@ class H264Parser(object):
 
         return nal_unit_type
 
-    def _parse_sps(self, rbsp_bits: BitStream) -> SPS:
+    def _parse_sps(self, rbsp_bits: Bits) -> SPS:
         """Parse SPS NALU
 
         :param bits: RBSP bits
@@ -560,7 +560,7 @@ class H264Parser(object):
 
         return sps
 
-    def _parse_pps(self, rbsp_bits: BitStream) -> PPS:
+    def _parse_pps(self, rbsp_bits: Bits) -> PPS:
         """Parse PPS NALU
 
         :param bits: RBSP bits
@@ -613,7 +613,7 @@ class H264Parser(object):
 
         return pps
 
-    def _parse_slice_header(self, rbsp_bits: BitStream) -> SliceHeader:
+    def _parse_slice_header(self, rbsp_bits: Bits) -> SliceHeader:
         """Parse slice header NALU
 
         :param bits: RBSP bits
@@ -663,7 +663,7 @@ class H264Parser(object):
 
         return slice_header
 
-    def _get_nalu_offsets(self, bits: BitStream) -> Iterator[int]:
+    def _get_nalu_offsets(self, bits: Bits) -> Iterator[int]:
         """Returns a generator of NALU offsets in the frame
 
         The offsets are at the prefix 0x000001.
@@ -673,7 +673,7 @@ class H264Parser(object):
         """
         return bits.findall('0x000001', bytealigned=True)
 
-    def _parse_rbsp_bits(self, bits: BitStream) -> BitStream:
+    def _parse_rbsp_bits(self, bits: Bits) -> Bits:
         """Return raw byte sequence payload that excludes emulation prevention bytes
 
         :param bits: the NALU bits
@@ -695,7 +695,7 @@ class H264Parser(object):
 
         return rbsp_bits
 
-    def _parse_start_code_prefix(self, bits: BitStream) -> List[int]:
+    def _parse_start_code_prefix(self, bits: Bits) -> List[int]:
         """Parse the 3 or 4 byte start code prefix
 
         :param bits: the NALU bits
