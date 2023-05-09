@@ -16,7 +16,8 @@
 
 from unittest import IsolatedAsyncioTestCase, mock
 import uuid
-from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
+from mediagrains.grains import VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
+from mediagrains.grains.Grain import GrainFactory as Grain
 from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from mediatimestamp.immutable import Timestamp, TimeOffset, TimeRange
 from fractions import Fraction
@@ -92,7 +93,7 @@ class ConvertsToTimestamp (object):
 class TestGrain (IsolatedAsyncioTestCase):
     def test_empty_grain_creation(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = Grain(src_id, flow_id)
+            grain = Grain(src_id=src_id, flow_id=flow_id)
 
         self.assertEqual(grain.grain_type, "empty")
         self.assertEqual(grain.source_id, src_id)
@@ -153,7 +154,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_empty_grain_creation_with_ots(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = Grain(src_id, flow_id, origin_timestamp=ots)
+            grain = Grain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots)
 
         self.assertEqual(grain.grain_type, "empty")
         self.assertEqual(grain.source_id, src_id)
@@ -171,7 +172,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         converts_to_ots = ConvertsToTimestamp(ots)
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = Grain(src_id, flow_id, origin_timestamp=converts_to_ots)
+            grain = Grain(src_id=src_id, flow_id=flow_id, origin_timestamp=converts_to_ots)
 
         self.assertEqual(grain.grain_type, "empty")
         self.assertEqual(grain.source_id, src_id)
@@ -187,7 +188,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_empty_grain_creation_with_ots_and_sts(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = Grain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts)
+            grain = Grain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts)
 
         self.assertEqual(grain.grain_type, "empty")
         self.assertEqual(grain.source_id, src_id)
@@ -203,7 +204,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_empty_grain_castable_to_tuple(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = Grain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts)
+            grain = Grain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts)
 
         self.assertEqual(len(grain), 2)
         self.assertIsInstance(grain[0], dict)
@@ -245,7 +246,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         }
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = Grain(meta)
+            grain = Grain(meta=meta)
 
         self.assertEqual(grain.grain_type, "empty")
         self.assertEqual(grain.source_id, src_id)
@@ -272,7 +273,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_empty_grain_setters(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = Grain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts)
+            grain = Grain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts)
 
         new_src_id = uuid.UUID("18d1a52e-0a67-11e8-ba57-776dc8ceabcb")
         new_flow_id = uuid.UUID("1ed4cfb4-0a67-11e8-b803-733e0764879a")
@@ -368,7 +369,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_video_grain_create_YUV422_10bit(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
                                width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
@@ -457,7 +458,7 @@ class TestGrain (IsolatedAsyncioTestCase):
                 (CogFrameFormat.UNKNOWN, ()),
                 ]:
             with mock.patch.object(Timestamp, "get_time", return_value=cts):
-                grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                    cog_frame_format=fmt,
                                    width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
@@ -472,7 +473,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_video_component_setters(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
                                width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
@@ -551,7 +552,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_video_grain_with_numeric_identifiers(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=0x2805,
                                width=1920, height=1080,
                                cog_frame_layout=0)
@@ -609,7 +610,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_video_grain_setters(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
                                width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
@@ -644,9 +645,9 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_grain_fails_with_bad_src_id(self):
         with self.assertRaises(AttributeError):
-            Grain([], 0x44)
+            Grain(src_id=[], flow_id=0x44)
 
-    def test_video_grain_with_no_metadata(self):
+    def test_video_grain_create_with_no_metadata(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain()
 
@@ -667,7 +668,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_video_grain_create_with_ots_and_no_sts(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots,
+            grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
                                width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
@@ -679,7 +680,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_video_grain_create_with_no_ots_and_no_sts(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id,
+            grain = VideoGrain(src_id=src_id, flow_id=flow_id,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
                                width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
@@ -691,7 +692,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_videograin_meta_is_json_serialisable(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots,
+            grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
                                width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
@@ -734,7 +735,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         expected_data = await _get_data()
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = Grain(meta, data=data_awaitable)
+            grain = Grain(meta=meta, data=data_awaitable)
 
         self.assertEqual(grain.grain_type, "video")
         self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
@@ -757,7 +758,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         expected_data = await _get_data()
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = Grain(meta, data=data_awaitable)
+            grain = Grain(meta=meta, data=data_awaitable)
 
         self.assertEqual(grain.grain_type, "video")
         self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
@@ -769,7 +770,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_video_grain_normalise(self):
         with mock.patch.object(Timestamp, "get_time", return_value=ots):
-            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots,
+            grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots,
                                rate=Fraction(25, 1),
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
                                width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
@@ -787,7 +788,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_audio_grain_create_S16_PLANES(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = AudioGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = AudioGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_audio_format=CogAudioFormat.S16_PLANES,
                                channels=2, samples=1920, sample_rate=48000)
 
@@ -818,7 +819,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_audio_grain_create_fills_in_missing_sts(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = AudioGrain(src_id, flow_id, origin_timestamp=ots,
+            grain = AudioGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots,
                                cog_audio_format=CogAudioFormat.S16_PLANES,
                                channels=2, samples=1920, sample_rate=48000)
 
@@ -847,7 +848,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_audio_grain_create_fills_in_missing_ots(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = AudioGrain(src_id, flow_id,
+            grain = AudioGrain(src_id=src_id, flow_id=flow_id,
                                cog_audio_format=CogAudioFormat.S16_PLANES,
                                channels=2, samples=1920, sample_rate=48000)
 
@@ -874,7 +875,7 @@ class TestGrain (IsolatedAsyncioTestCase):
             repr(grain),
             "AudioGrain({!r},< binary data of length {} >)".format(grain.meta, len(grain.data)))
 
-    def test_audio_grain_create_no_params(self):
+    def test_audio_grain_create_with_no_params(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = AudioGrain()
 
@@ -905,7 +906,7 @@ class TestGrain (IsolatedAsyncioTestCase):
                               (CogAudioFormat.DOUBLE_PAIRS,       1920*2*8),
                               (CogAudioFormat.DOUBLE_INTERLEAVED, 1920*2*8)]:
             with mock.patch.object(Timestamp, "get_time", return_value=cts):
-                grain = AudioGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                grain = AudioGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                    cog_audio_format=fmt,
                                    channels=2, samples=1920, sample_rate=48000)
 
@@ -949,7 +950,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_audiograin_meta_is_json_serialisable(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = AudioGrain(src_id, flow_id,
+            grain = AudioGrain(src_id=src_id, flow_id=flow_id,
                                cog_audio_format=CogAudioFormat.S16_PLANES,
                                channels=2, samples=1920, sample_rate=48000)
 
@@ -998,7 +999,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_audio_grain_normalise(self):
         with mock.patch.object(Timestamp, "get_time", return_value=ots):
-            grain = AudioGrain(src_id, flow_id,
+            grain = AudioGrain(src_id=src_id, flow_id=flow_id,
                                cog_audio_format=CogAudioFormat.S16_PLANES,
                                channels=2, samples=1920, sample_rate=48000)
 
@@ -1017,7 +1018,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_coded_video_grain_create_VC2(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = CodedVideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = CodedVideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                     cog_frame_format=CogFrameFormat.VC2,
                                     origin_width=1920, origin_height=1080,
                                     length=1296000, cog_frame_layout=CogFrameLayout.FULL_FRAME,
@@ -1102,7 +1103,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_coded_video_grain_setters(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = CodedVideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = CodedVideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                     cog_frame_format=CogFrameFormat.VC2,
                                     origin_width=1920, origin_height=1080,
                                     length=1296000, cog_frame_layout=CogFrameLayout.FULL_FRAME)
@@ -1159,7 +1160,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         data = bytearray(500)
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = CodedVideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = CodedVideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                     cog_frame_format=CogFrameFormat.VC2,
                                     origin_width=1920, origin_height=1080,
                                     cog_frame_layout=CogFrameLayout.FULL_FRAME,
@@ -1170,7 +1171,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_coded_video_grain_create_with_cts_and_ots(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = CodedVideoGrain(src_id, flow_id, origin_timestamp=ots,
+            grain = CodedVideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots,
                                     cog_frame_format=CogFrameFormat.VC2,
                                     origin_width=1920, origin_height=1080,
                                     cog_frame_layout=CogFrameLayout.FULL_FRAME)
@@ -1181,7 +1182,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_coded_video_grain_create_with_cts(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = CodedVideoGrain(src_id, flow_id,
+            grain = CodedVideoGrain(src_id=src_id, flow_id=flow_id,
                                     cog_frame_format=CogFrameFormat.VC2,
                                     origin_width=1920, origin_height=1080,
                                     cog_frame_layout=CogFrameLayout.FULL_FRAME)
@@ -1190,7 +1191,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.sync_timestamp, cts)
 
-    def test_coded_video_grain_create_with_empty(self):
+    def test_coded_video_grain_create_empty(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedVideoGrain()
 
@@ -1212,7 +1213,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_coded_video_grain_meta_is_json_serialisable(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = CodedVideoGrain(src_id, flow_id,
+            grain = CodedVideoGrain(src_id=src_id, flow_id=flow_id,
                                     cog_frame_format=CogFrameFormat.VC2,
                                     origin_width=1920, origin_height=1080,
                                     cog_frame_layout=CogFrameLayout.FULL_FRAME)
@@ -1261,7 +1262,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_coded_video_grain_normalise(self):
         with mock.patch.object(Timestamp, "get_time", return_value=ots):
-            grain = CodedVideoGrain(src_id, flow_id, origin_timestamp=ots,
+            grain = CodedVideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots,
                                     rate=Fraction(25, 1),
                                     cog_frame_format=CogFrameFormat.VC2,
                                     origin_width=1920, origin_height=1080,
@@ -1280,7 +1281,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_coded_audio_grain_create_MP1(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = CodedAudioGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = CodedAudioGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                     cog_audio_format=CogAudioFormat.MP1,
                                     samples=1920,
                                     channels=6,
@@ -1318,7 +1319,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_coded_audio_grain_create_without_sts(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = CodedAudioGrain(src_id, flow_id, origin_timestamp=ots,
+            grain = CodedAudioGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots,
                                     cog_audio_format=CogAudioFormat.MP1,
                                     samples=1920,
                                     channels=6,
@@ -1355,7 +1356,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_coded_audio_grain_create_without_sts_or_ots(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = CodedAudioGrain(src_id, flow_id,
+            grain = CodedAudioGrain(src_id=src_id, flow_id=flow_id,
                                     cog_audio_format=CogAudioFormat.MP1,
                                     samples=1920,
                                     channels=6,
@@ -1474,9 +1475,10 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.length, len(data))
         self.assertEqual(grain.data, data)
 
-    def test_coded_audio_grain_creates_with_none(self):
+    def test_coded_audio_grain_empty(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedAudioGrain()
+
         self.assertEqual(grain.grain_type, "coded_audio")
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.sync_timestamp, cts)
@@ -1494,7 +1496,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_codedaudiograin_meta_is_json_serialisable(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = CodedAudioGrain(src_id, flow_id,
+            grain = CodedAudioGrain(src_id=src_id, flow_id=flow_id,
                                     cog_audio_format=CogAudioFormat.MP1,
                                     samples=1920,
                                     channels=6,
@@ -1550,7 +1552,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_coded_audio_grain_normalise(self):
         with mock.patch.object(Timestamp, "get_time", return_value=ots):
-            grain = CodedAudioGrain(src_id, flow_id, origin_timestamp=ots,
+            grain = CodedAudioGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots,
                                     cog_audio_format=CogAudioFormat.MP1,
                                     samples=1920,
                                     channels=6,
@@ -1574,7 +1576,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_event_grain_create(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = EventGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = EventGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                event_type='urn:x-ipstudio:format:event.query', topic='/dummy')
 
         self.assertEqual(grain.grain_type, "event")
@@ -1600,7 +1602,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_event_grain_create_without_sts(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = EventGrain(src_id, flow_id, origin_timestamp=ots,
+            grain = EventGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots,
                                event_type='urn:x-ipstudio:format:event.query', topic='/dummy')
 
         self.assertEqual(grain.grain_type, "event")
@@ -1622,7 +1624,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_event_grain_create_without_sts_or_ots(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = EventGrain(src_id, flow_id,
+            grain = EventGrain(src_id=src_id, flow_id=flow_id,
                                event_type='urn:x-ipstudio:format:event.query', topic='/dummy')
 
         self.assertEqual(grain.grain_type, "event")
@@ -1802,7 +1804,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_copy(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
                                width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
@@ -1822,7 +1824,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
     def test_deepcopy(self):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
                                width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 

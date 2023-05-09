@@ -19,12 +19,12 @@ from unittest import TestCase
 
 from hypothesis import given, assume, settings
 from hypothesis.strategies import sampled_from, just, tuples, integers
-from mediagrains.hypothesis.strategies import grains_with_data, grains
+from mediagrains.hypothesis.strategies_new import grains_with_data, grains
 
 from mediagrains.comparison import compare_grain, compare_grains_pairwise
 from mediagrains.comparison.options import Exclude, Include
 
-from mediagrains.grain import attributes_for_grain_type
+from mediagrains.grains import new_attributes_for_grain_type as attributes_for_grain_type
 
 from copy import deepcopy
 
@@ -117,8 +117,11 @@ class TestCompareGrainIterators(TestCase):
 
     Note that a maximum of 20 Grains is applied here; there's no significant change to the code path as the number
     of grains increases beyond that point.
+
+    Due to Hypothesis weirdness timeouts are also surpressed on this test, and it runs very slowly.
     """
     @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains), integers(min_value=1, max_value=20))
+    @settings(deadline=None)
     def test_pairwise_comparison__equal(self, sample_grain, grain_count):
         a_grains = [sample_grain] * grain_count
         b_grains = deepcopy(a_grains)
@@ -133,6 +136,7 @@ class TestCompareGrainIterators(TestCase):
         self.assertEqual(len(a_grains), len(c.children))
 
     @given(pairs_of(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains)), integers(min_value=0, max_value=19))
+    @settings(deadline=None)
     def test_pairwise_comparison__unequal(self, pair, difference_index):
         (a, b) = pair
         assume(a != b)
@@ -153,6 +157,7 @@ class TestCompareGrainIterators(TestCase):
 
     @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains),
            integers(min_value=1, max_value=20), integers(min_value=1, max_value=20))
+    @settings(deadline=None)
     def test_pairwise_comparison__different_length_unequal(self, sample_grain, grain_count_a, grain_count_b):
         """Test that pairwise comparison doesn't match if the grain iterators have different lengths"""
         assume(grain_count_a != grain_count_b)
@@ -169,6 +174,7 @@ class TestCompareGrainIterators(TestCase):
         )
 
     @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains), integers(min_value=1, max_value=20))
+    @settings(deadline=None)
     def test_pairwise_comparison__return_last_only(self, sample_grain, grain_count):
         a_grains = [sample_grain] * grain_count
         b_grains = deepcopy(a_grains)
