@@ -19,7 +19,7 @@ import uuid
 from fractions import Fraction
 import math
 
-from mediagrains.grain_constructors import AudioGrain as bytes_AudioGrain
+from mediagrains.grains import AudioGrain as bytes_AudioGrain
 from mediagrains.cogenums import (
     CogAudioFormat,
     COG_AUDIO_FORMAT_DEPTH,

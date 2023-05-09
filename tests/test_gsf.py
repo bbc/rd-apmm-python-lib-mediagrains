@@ -17,8 +17,9 @@
 
 from unittest import IsolatedAsyncioTestCase, mock
 from uuid import UUID
-from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
-from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
+from mediagrains.grains import VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
+from mediagrains.grains import GrainFactory as Grain
+from mediagrains.grains import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
 from mediagrains.gsf import loads, load, dumps, GSFEncoder, GSFDecoder, AsyncGSFBlock, GrainDataLoadingMode
 from mediagrains.gsf import GSFDecodeError
 from mediagrains.gsf import GSFEncodeError
@@ -126,7 +127,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_videograin(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                           width=1920, height=1080)
         for i in range(0, len(grain.data)):
             grain.data[i] = i & 0xFF
         grain.source_aspect_ratio = Fraction(16, 9)
@@ -173,7 +175,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_videograin(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                           width=1920, height=1080)
         for i in range(0, len(grain.data)):
             grain.data[i] = i & 0xFF
         grain.source_aspect_ratio = Fraction(16, 9)
@@ -223,8 +226,10 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_videograins(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain0 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                            width=1920, height=1080)
+        grain1 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                            width=1920, height=1080)
         for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
         for i in range(0, len(grain1.data)):
@@ -284,8 +289,10 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_videograins(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain0 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
+        grain1 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
         for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
         for i in range(0, len(grain1.data)):
@@ -349,9 +356,9 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = AudioGrain(
-            src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
+            src_id=src_id, flow_id=flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
         grain1 = AudioGrain(
-            src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
+            src_id=src_id, flow_id=flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
         for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
         for i in range(0, len(grain1.data)):
@@ -406,9 +413,9 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = AudioGrain(
-            src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
+            src_id=src_id, flow_id=flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
         grain1 = AudioGrain(
-            src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
+            src_id=src_id, flow_id=flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
         for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
         for i in range(0, len(grain1.data)):
@@ -466,8 +473,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = CodedVideoGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_frame_format=CogFrameFormat.VC2,
             origin_width=1920,
             origin_height=1080,
@@ -478,8 +485,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
             length=1024,
             unit_offsets=[5, 15, 105])
         grain1 = CodedVideoGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_frame_format=CogFrameFormat.VC2,
             origin_width=1920,
             origin_height=1080,
@@ -551,8 +558,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = CodedVideoGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_frame_format=CogFrameFormat.VC2,
             origin_width=1920,
             origin_height=1080,
@@ -563,8 +570,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
             length=1024,
             unit_offsets=[5, 15, 105])
         grain1 = CodedVideoGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_frame_format=CogFrameFormat.VC2,
             origin_width=1920,
             origin_height=1080,
@@ -639,8 +646,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = CodedAudioGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_audio_format=CogAudioFormat.AAC,
             samples=1920,
             sample_rate=48000,
@@ -648,8 +655,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
             remainder=17,
             length=1024)
         grain1 = CodedAudioGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_audio_format=CogAudioFormat.AAC,
             samples=1920,
             sample_rate=48000,
@@ -714,8 +721,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = CodedAudioGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_audio_format=CogAudioFormat.AAC,
             samples=1920,
             sample_rate=48000,
@@ -723,8 +730,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
             remainder=17,
             length=1024)
         grain1 = CodedAudioGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_audio_format=CogAudioFormat.AAC,
             samples=1920,
             sample_rate=48000,
@@ -791,11 +798,11 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_eventgrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = EventGrain(src_id, flow_id)
+        grain0 = EventGrain(src_id=src_id, flow_id=flow_id)
         grain0.event_type = "urn:x-testing:stupid/type"
         grain0.topic = "/watashi"
         grain0.append("/inu", post="desu")
-        grain1 = EventGrain(src_id, flow_id)
+        grain1 = EventGrain(src_id=src_id, flow_id=flow_id)
         grain1.event_type = "urn:x-testing:clever/type"
         grain1.topic = "/inu"
         grain1.append("/sukimono", pre="da")
@@ -850,11 +857,11 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_eventgrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = EventGrain(src_id, flow_id)
+        grain0 = EventGrain(src_id=src_id, flow_id=flow_id)
         grain0.event_type = "urn:x-testing:stupid/type"
         grain0.topic = "/watashi"
         grain0.append("/inu", post="desu")
-        grain1 = EventGrain(src_id, flow_id)
+        grain1 = EventGrain(src_id=src_id, flow_id=flow_id)
         grain1.event_type = "urn:x-testing:clever/type"
         grain1.topic = "/inu"
         grain1.append("/sukimono", pre="da")
@@ -912,7 +919,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_emptygrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = Grain(src_id, flow_id)
+        grain0 = Grain(src_id=src_id, flow_id=flow_id)
         grain0.timelabels = [{
             'tag': 'tiggle',
             'timelabel': {
@@ -922,7 +929,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
                 'drop_frame': False
             }
         }]
-        grain1 = Grain(src_id, flow_id)
+        grain1 = Grain(src_id=src_id, flow_id=flow_id)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
         created = datetime(1983, 3, 29, 15, 15)
@@ -973,7 +980,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_emptygrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = Grain(src_id, flow_id)
+        grain0 = Grain(src_id=src_id, flow_id=flow_id)
         grain0.timelabels = [{
             'tag': 'tiggle',
             'timelabel': {
@@ -983,7 +990,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
                 'drop_frame': False
             }
         }]
-        grain1 = Grain(src_id, flow_id)
+        grain1 = Grain(src_id=src_id, flow_id=flow_id)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
         created = datetime(1983, 3, 29, 15, 15)
@@ -1037,7 +1044,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_invalidgrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain = Grain(src_id, flow_id)
+        grain = Grain(src_id=src_id, flow_id=flow_id)
         grain.grain_type = "invalid"
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1050,7 +1057,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_invalidgrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain = Grain(src_id, flow_id)
+        grain = Grain(src_id=src_id, flow_id=flow_id)
         grain.grain_type = "invalid"
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1065,8 +1072,10 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dump_progressively__deprecated(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain0 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
+        grain1 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
 
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1106,8 +1115,10 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dump_progressively_with_segments__deprecated(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain0 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
+        grain1 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
 
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1146,8 +1157,10 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dump_progressively(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain0 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
+        grain1 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
 
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1185,8 +1198,10 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_progressively(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain0 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
+        grain1 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
 
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1326,7 +1341,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_encoder_can_add_grains_to_nonexistent_segment(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain0 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
         created = datetime(1983, 3, 29, 15, 15)
