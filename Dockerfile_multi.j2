@@ -11,17 +11,9 @@ CMD [ "echo", "Run one of these commands: gsf_probe extract_gsf_essence wrap_aud
 
 {{ macros.tests() }}
 
-###############################################################################
-# Stage: unittest
-###############################################################################
-FROM tests AS unittest
-WORKDIR /{{ modname }}/
-
+{{ macros.unittest() }}
+# Copy in some test data for the unit test
 COPY tests/audio.aac tests/
-
-# Set the default command
-ENTRYPOINT ["python", "-m", "unittest"]
-CMD ["discover", "tests", "-v"]
 
 {{ macros.flake8() }}
 

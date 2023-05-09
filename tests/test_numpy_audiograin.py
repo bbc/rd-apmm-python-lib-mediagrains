@@ -31,7 +31,7 @@ from mediagrains.cogenums import (
 )
 from mediagrains import grain_constructors as bytesgrain_constructors
 
-from audio_utils import construct_audio_grain_data
+from .audio_utils import construct_audio_grain_data
 
 PCM_FORMATS = [
     CogAudioFormat.S16_PLANES,

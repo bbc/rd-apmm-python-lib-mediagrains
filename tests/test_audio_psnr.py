@@ -32,7 +32,7 @@ from mediagrains.cogenums import (
 from mediagrains.comparison import compare_grain, compute_psnr
 from mediagrains.comparison.options import PSNR as PSNR_option
 
-from audio_utils import construct_audio_grain_data
+from .audio_utils import construct_audio_grain_data
 
 PCM_FORMATS = [
     CogAudioFormat.S16_PLANES,
