@@ -28,7 +28,7 @@ from mediagrains.grains import new_attributes_for_grain_type as attributes_for_g
 
 from copy import deepcopy
 
-from fixtures import pairs_of, attribute_and_pairs_of_grains_of_type_differing_only_in_one_attribute
+from .fixtures import pairs_of, attribute_and_pairs_of_grains_of_type_differing_only_in_one_attribute
 
 
 GRAIN_TYPES_TO_TEST = ["empty", "event", "audio", "video", "coded_audio", "coded_video"]

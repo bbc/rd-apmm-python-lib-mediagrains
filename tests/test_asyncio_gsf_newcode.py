@@ -28,7 +28,7 @@ import aiofiles
 from datetime import datetime
 from uuid import UUID
 
-from fixtures import async_test
+from .fixtures import async_test
 
 from mediagrains.asyncio import AsyncGSFDecoder, AsyncLazyLoaderUnloadedError, loads
 from mediagrains.grains import VideoGrain, AudioGrain, EventGrain, CodedVideoGrain, CodedAudioGrain

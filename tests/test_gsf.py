@@ -35,7 +35,7 @@ from mediagrains.utils.asyncbinaryio import AsyncBytesIO
 from frozendict import frozendict
 from os import SEEK_SET
 
-from fixtures import suppress_deprecation_warnings
+from .fixtures import suppress_deprecation_warnings
 
 
 with open('examples/video.gsf', 'rb') as f:
