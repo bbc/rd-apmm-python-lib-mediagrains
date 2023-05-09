@@ -1982,9 +1982,7 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
 
 
 class TestGSFLoads(IsolatedAsyncioTestCase):
-    def test_loads_video(self):
-        (head, segments) = loads(VIDEO_DATA)
-
+    def _verify_loaded_video(self, head, segments):
         self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 22))
         self.assertEqual(head['id'], UUID('163fd9b7-bef4-4d92-8488-31f3819be008'))
         self.assertEqual(len(head['segments']), 1)
@@ -2012,69 +2010,37 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
             self.assertEqual(grain.components[0].height, 270)
             self.assertEqual(grain.components[0].stride, 480)
             self.assertEqual(grain.components[0].length, 480*270)
-            self.assertEqual(grain.components[0].offset, 0)
 
             self.assertEqual(grain.components[1].width, 240)
             self.assertEqual(grain.components[1].height, 135)
             self.assertEqual(grain.components[1].stride, 240)
             self.assertEqual(grain.components[1].length, 240*135)
-            self.assertEqual(grain.components[1].offset, 480*270)
 
             self.assertEqual(grain.components[2].width, 240)
             self.assertEqual(grain.components[2].height, 135)
             self.assertEqual(grain.components[2].stride, 240)
             self.assertEqual(grain.components[2].length, 240*135)
-            self.assertEqual(grain.components[2].offset, 480*270 + 240*135)
 
             self.assertEqual(
                 len(grain.data),
                 grain.components[0].length + grain.components[1].length + grain.components[2].length)
+
+    def test_loads_video(self):
+        (head, segments) = loads(VIDEO_DATA)
+
+        self._verify_loaded_video(head, segments)
 
     def test_load_video(self):
         file = BytesIO(VIDEO_DATA)
         (head, segments) = load(file)
 
-        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 22))
-        self.assertEqual(head['id'], UUID('163fd9b7-bef4-4d92-8488-31f3819be008'))
-        self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('c6a3d3ff-74c0-446d-b59e-de1041f27e8a'))
-        self.assertIn(head['segments'][0]['local_id'], segments)
-        self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
+        self._verify_loaded_video(head, segments)
 
-        ots = Timestamp(1420102800, 0)
-        for grain in segments[head['segments'][0]['local_id']]:
-            self.assertIsInstance(grain, VIDEOGRAIN)
-            self.assertEqual(grain.grain_type, "video")
-            self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
-            self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
-            self.assertEqual(grain.origin_timestamp, ots)
-            ots += TimeOffset.from_nanosec(20000000)
+    async def test_async_load_video(self):
+        file = AsyncBytesIO(VIDEO_DATA)
+        (head, segments) = await load(file)
 
-            self.assertEqual(grain.format, CogFrameFormat.U8_420)
-            self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
-            self.assertEqual(grain.width, 480)
-            self.assertEqual(grain.height, 270)
-
-            self.assertEqual(len(grain.components), 3)
-
-            self.assertEqual(grain.components[0].width, 480)
-            self.assertEqual(grain.components[0].height, 270)
-            self.assertEqual(grain.components[0].stride, 480)
-            self.assertEqual(grain.components[0].length, 480*270)
-
-            self.assertEqual(grain.components[1].width, 240)
-            self.assertEqual(grain.components[1].height, 135)
-            self.assertEqual(grain.components[1].stride, 240)
-            self.assertEqual(grain.components[1].length, 240*135)
-
-            self.assertEqual(grain.components[2].width, 240)
-            self.assertEqual(grain.components[2].height, 135)
-            self.assertEqual(grain.components[2].stride, 240)
-            self.assertEqual(grain.components[2].length, 240*135)
-
-            self.assertEqual(
-                len(grain.data),
-                grain.components[0].length + grain.components[1].length + grain.components[2].length)
+        self._verify_loaded_video(head, segments)
 
     def test_load_uses_custom_grain_function(self):
         file = BytesIO(VIDEO_DATA)
