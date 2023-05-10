@@ -118,7 +118,7 @@ class TestGrain (IsolatedAsyncioTestCase):
     def assertComponentsAreModifiable(self, grain):
         width = grain.width
         height = grain.height
-        fmt = grain.format
+        fmt = grain.cog_frame_format
 
         (hs, vs, _) = self._get_hs_vs_and_bps(fmt)
 
@@ -214,10 +214,10 @@ class TestGrain (IsolatedAsyncioTestCase):
             self.assertEqual(grain.rate, rate)
             self.assertEqual(grain.duration, 1/rate)
             self.assertEqual(grain.timelabels, [])
-            self.assertEqual(grain.format, fmt)
+            self.assertEqual(grain.cog_frame_format, fmt)
             self.assertEqual(grain.width, width)
             self.assertEqual(grain.height, height)
-            self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
+            self.assertEqual(grain.cog_frame_layout, CogFrameLayout.FULL_FRAME)
             self.assertEqual(grain.extension, 0)
             self.assertIsNone(grain.source_aspect_ratio)
             self.assertIsNone(grain.pixel_aspect_ratio)
@@ -411,7 +411,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         return output
 
     def write_test_pattern(self, grain):
-        fmt = grain.format
+        fmt = grain.cog_frame_format
 
         if self._is_rgb(fmt):
             (R, G, B) = self._test_pattern_rgb(fmt)
@@ -438,7 +438,7 @@ class TestGrain (IsolatedAsyncioTestCase):
                             msg="{} - {} = {} (allowing up to {} difference)".format(a, b, a - b, max_diff))
 
     def assertMatchesTestPattern(self, grain: VideoGrain, max_diff: Optional[int] = None):
-        fmt = grain.format
+        fmt = grain.cog_frame_format
 
         if self._is_rgb(fmt):
             (R, G, B) = self._test_pattern_rgb(fmt)

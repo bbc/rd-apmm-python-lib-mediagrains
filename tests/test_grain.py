@@ -385,10 +385,10 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.media_rate, Fraction(25, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(grain.width, 1920)
         self.assertEqual(grain.height, 1080)
-        self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
+        self.assertEqual(grain.cog_frame_layout, CogFrameLayout.FULL_FRAME)
         self.assertEqual(grain.extension, 0)
         self.assertIsNone(grain.source_aspect_ratio)
         self.assertIsNone(grain.pixel_aspect_ratio)
@@ -543,10 +543,10 @@ class TestGrain (IsolatedAsyncioTestCase):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = VideoGrain(meta)
 
-        self.assertEqual(grain.format, CogFrameFormat.UNKNOWN)
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.UNKNOWN)
         self.assertEqual(grain.width, 0)
         self.assertEqual(grain.height, 0)
-        self.assertEqual(grain.layout, CogFrameLayout.UNKNOWN)
+        self.assertEqual(grain.cog_frame_layout, CogFrameLayout.UNKNOWN)
         self.assertEqual(grain.extension, 0)
         self.assertEqual(len(grain.components), 0)
 
@@ -568,10 +568,10 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.rate, Fraction(25, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(grain.width, 1920)
         self.assertEqual(grain.height, 1080)
-        self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
+        self.assertEqual(grain.cog_frame_layout, CogFrameLayout.FULL_FRAME)
         self.assertEqual(grain.extension, 0)
         self.assertIsNone(grain.source_aspect_ratio)
         self.assertIsNone(grain.pixel_aspect_ratio)
@@ -614,10 +614,10 @@ class TestGrain (IsolatedAsyncioTestCase):
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
                                width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
-        grain.format = CogFrameFormat.S16_444
-        self.assertEqual(grain.format, CogFrameFormat.S16_444)
-        grain.format = 0x0207
-        self.assertEqual(grain.format, CogFrameFormat.VC2)
+        grain.cog_frame_format = CogFrameFormat.S16_444
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.S16_444)
+        grain.cog_frame_format = 0x0207
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.VC2)
 
         grain.width = 2
         self.assertEqual(grain.width, 2)
@@ -625,10 +625,10 @@ class TestGrain (IsolatedAsyncioTestCase):
         grain.height = 13
         self.assertEqual(grain.height, 13)
 
-        grain.layout = CogFrameLayout.SEPARATE_FIELDS
-        self.assertEqual(grain.layout, CogFrameLayout.SEPARATE_FIELDS)
-        grain.layout = 0x02
-        self.assertEqual(grain.layout, CogFrameLayout.SINGLE_FIELD)
+        grain.cog_frame_layout = CogFrameLayout.SEPARATE_FIELDS
+        self.assertEqual(grain.cog_frame_layout, CogFrameLayout.SEPARATE_FIELDS)
+        grain.cog_frame_layout = 0x02
+        self.assertEqual(grain.cog_frame_layout, CogFrameLayout.SINGLE_FIELD)
 
         grain.extension = 1
         self.assertEqual(grain.extension, 1)
@@ -658,10 +658,10 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.rate, Fraction(25, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogFrameFormat.UNKNOWN)
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.UNKNOWN)
         self.assertEqual(grain.width, 1920)
         self.assertEqual(grain.height, 1080)
-        self.assertEqual(grain.layout, CogFrameLayout.UNKNOWN)
+        self.assertEqual(grain.cog_frame_layout, CogFrameLayout.UNKNOWN)
         self.assertEqual(grain.extension, 0)
         self.assertIsNone(grain.source_aspect_ratio)
         self.assertIsNone(grain.pixel_aspect_ratio)
@@ -706,7 +706,7 @@ class TestGrain (IsolatedAsyncioTestCase):
             grain = Grain(meta, data=data)
 
         self.assertEqual(grain.grain_type, "video")
-        self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(grain.meta, meta)
         self.assertEqual(grain.data, data)
 
@@ -717,7 +717,7 @@ class TestGrain (IsolatedAsyncioTestCase):
             grain = Grain(meta)
 
         self.assertEqual(grain.grain_type, "video")
-        self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(grain.meta, meta)
         self.assertEqual(grain.length, 0)
         self.assertEqual(grain.expected_length, 8192*1080)
@@ -738,7 +738,7 @@ class TestGrain (IsolatedAsyncioTestCase):
             grain = Grain(meta=meta, data=data_awaitable)
 
         self.assertEqual(grain.grain_type, "video")
-        self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(grain.meta, meta)
         self.assertIsNone(grain.data)
 
@@ -761,7 +761,7 @@ class TestGrain (IsolatedAsyncioTestCase):
             grain = Grain(meta=meta, data=data_awaitable)
 
         self.assertEqual(grain.grain_type, "video")
-        self.assertEqual(grain.format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(grain.meta, meta)
         self.assertIsNone(grain.data)
 
@@ -804,7 +804,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.media_rate, Fraction(48000, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.S16_PLANES)
         self.assertEqual(grain.channels, 2)
         self.assertEqual(grain.samples, 1920)
         self.assertEqual(grain.sample_rate, 48000)
@@ -834,7 +834,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.rate, Fraction(25, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.S16_PLANES)
         self.assertEqual(grain.channels, 2)
         self.assertEqual(grain.samples, 1920)
         self.assertEqual(grain.sample_rate, 48000)
@@ -863,7 +863,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.rate, Fraction(25, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.S16_PLANES)
         self.assertEqual(grain.channels, 2)
         self.assertEqual(grain.samples, 1920)
         self.assertEqual(grain.sample_rate, 48000)
@@ -882,7 +882,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.sync_timestamp, cts)
-        self.assertEqual(grain.format, CogAudioFormat.INVALID)
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.INVALID)
         self.assertEqual(grain.channels, 0)
         self.assertEqual(grain.samples, 0)
         self.assertEqual(grain.sample_rate, 48000)
@@ -911,7 +911,7 @@ class TestGrain (IsolatedAsyncioTestCase):
                                    channels=2, samples=1920, sample_rate=48000)
 
                 self.assertEqual(grain.grain_type, "audio")
-                self.assertEqual(grain.format, fmt)
+                self.assertEqual(grain.cog_audio_format, fmt)
                 self.assertIsInstance(grain.data, bytearray)
                 self.assertEqual(len(grain.data), length)
 
@@ -923,7 +923,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.creation_timestamp, cts)
         self.assertEqual(grain.origin_timestamp, cts)
         self.assertEqual(grain.sync_timestamp, cts)
-        self.assertEqual(grain.format, CogAudioFormat.INVALID)
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.INVALID)
         self.assertEqual(grain.channels, 0)
         self.assertEqual(grain.samples, 0)
         self.assertEqual(grain.sample_rate, 0)
@@ -934,10 +934,10 @@ class TestGrain (IsolatedAsyncioTestCase):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = AudioGrain(meta)
 
-        grain.format = CogAudioFormat.S16_PLANES
-        self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
-        grain.format = 0xA
-        self.assertEqual(grain.format, CogAudioFormat.S32_INTERLEAVED)
+        grain.cog_audio_format = CogAudioFormat.S16_PLANES
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.S16_PLANES)
+        grain.cog_audio_format = 0xA
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.S32_INTERLEAVED)
 
         grain.channels = 2
         self.assertEqual(grain.channels, 2)
@@ -993,7 +993,7 @@ class TestGrain (IsolatedAsyncioTestCase):
             grain = Grain(meta, data=data)
 
         self.assertEqual(grain.grain_type, "audio")
-        self.assertEqual(grain.format, CogAudioFormat.S16_PLANES)
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.S16_PLANES)
         self.assertEqual(grain.meta, meta)
         self.assertEqual(grain.data, data)
 
@@ -1034,13 +1034,13 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.media_rate, Fraction(25, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogFrameFormat.VC2)
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.VC2)
         self.assertEqual(grain.origin_width, 1920)
         self.assertEqual(grain.origin_height, 1080)
         self.assertEqual(grain.coded_width, 1920)
         self.assertEqual(grain.coded_height, 1080)
         self.assertEqual(grain.length, 1296000)
-        self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
+        self.assertEqual(grain.cog_frame_layout, CogFrameLayout.FULL_FRAME)
         self.assertEqual(grain.unit_offsets, [3, 2])
         self.assertEqual(repr(grain.unit_offsets), repr([3, 2]))
 
@@ -1063,13 +1063,13 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.rate, Fraction(0, 1))
         self.assertEqual(grain.duration, Fraction(0, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogFrameFormat.UNKNOWN)
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.UNKNOWN)
         self.assertEqual(grain.origin_width, 0)
         self.assertEqual(grain.origin_height, 0)
         self.assertEqual(grain.coded_width, 0)
         self.assertEqual(grain.coded_height, 0)
         self.assertEqual(grain.length, 0)
-        self.assertEqual(grain.layout, CogFrameLayout.UNKNOWN)
+        self.assertEqual(grain.cog_frame_layout, CogFrameLayout.UNKNOWN)
         self.assertEqual(grain.unit_offsets, [])
 
     def test_coded_video_grain_create_corrects_numeric_data(self):
@@ -1092,13 +1092,13 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.rate, Fraction(0, 1))
         self.assertEqual(grain.duration, Fraction(0, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogFrameFormat.MJPEG)
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.MJPEG)
         self.assertEqual(grain.origin_width, 0)
         self.assertEqual(grain.origin_height, 0)
         self.assertEqual(grain.coded_width, 0)
         self.assertEqual(grain.coded_height, 0)
         self.assertEqual(grain.length, 0)
-        self.assertEqual(grain.layout, CogFrameLayout.SEGMENTED_FRAME)
+        self.assertEqual(grain.cog_frame_layout, CogFrameLayout.SEGMENTED_FRAME)
         self.assertEqual(grain.unit_offsets, [])
 
     def test_coded_video_grain_setters(self):
@@ -1108,8 +1108,8 @@ class TestGrain (IsolatedAsyncioTestCase):
                                     origin_width=1920, origin_height=1080,
                                     length=1296000, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
-        grain.format = CogFrameFormat.MJPEG
-        self.assertEqual(grain.format, CogFrameFormat.MJPEG)
+        grain.cog_frame_format = CogFrameFormat.MJPEG
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.MJPEG)
 
         grain.origin_width = 1
         self.assertEqual(grain.origin_width, 1)
@@ -1119,8 +1119,8 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.coded_width, 3)
         grain.coded_height = 4
         self.assertEqual(grain.coded_height, 4)
-        grain.layout = CogFrameLayout.UNKNOWN
-        self.assertEqual(grain.layout, CogFrameLayout.UNKNOWN)
+        grain.cog_frame_layout = CogFrameLayout.UNKNOWN
+        self.assertEqual(grain.cog_frame_layout, CogFrameLayout.UNKNOWN)
         grain.temporal_offset = 75
         self.assertEqual(grain.temporal_offset, 75)
         grain.is_key_frame = True
@@ -1202,13 +1202,13 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.rate, Fraction(25, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogFrameFormat.UNKNOWN)
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.UNKNOWN)
         self.assertEqual(grain.origin_width, 1920)
         self.assertEqual(grain.origin_height, 1080)
         self.assertEqual(grain.coded_width, 1920)
         self.assertEqual(grain.coded_height, 1080)
         self.assertEqual(grain.length, 0)
-        self.assertEqual(grain.layout, CogFrameLayout.UNKNOWN)
+        self.assertEqual(grain.cog_frame_layout, CogFrameLayout.UNKNOWN)
         self.assertEqual(grain.unit_offsets, [])
 
     def test_coded_video_grain_meta_is_json_serialisable(self):
@@ -1256,7 +1256,7 @@ class TestGrain (IsolatedAsyncioTestCase):
             grain = Grain(meta, data=data)
 
         self.assertEqual(grain.grain_type, "coded_video")
-        self.assertEqual(grain.format, CogFrameFormat.VC2)
+        self.assertEqual(grain.cog_frame_format, CogFrameFormat.VC2)
         self.assertEqual(grain.meta, meta)
         self.assertEqual(grain.data, data)
 
@@ -1301,7 +1301,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.rate, Fraction(25, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogAudioFormat.MP1)
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.MP1)
         self.assertEqual(grain.samples, 1920)
         self.assertEqual(grain.channels, 6)
         self.assertEqual(grain.priming, 0)
@@ -1339,7 +1339,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.rate, Fraction(25, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogAudioFormat.MP1)
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.MP1)
         self.assertEqual(grain.samples, 1920)
         self.assertEqual(grain.channels, 6)
         self.assertEqual(grain.priming, 0)
@@ -1376,7 +1376,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.rate, Fraction(25, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogAudioFormat.MP1)
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.MP1)
         self.assertEqual(grain.samples, 1920)
         self.assertEqual(grain.channels, 6)
         self.assertEqual(grain.priming, 0)
@@ -1404,7 +1404,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.rate, Fraction(0, 1))
         self.assertEqual(grain.duration, Fraction(0, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogAudioFormat.INVALID)
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.INVALID)
         self.assertEqual(grain.samples, 0)
         self.assertEqual(grain.channels, 0)
         self.assertEqual(grain.priming, 0)
@@ -1431,7 +1431,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.rate, Fraction(0, 1))
         self.assertEqual(grain.duration, Fraction(0, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogAudioFormat.MP1)
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.MP1)
         self.assertEqual(grain.samples, 0)
         self.assertEqual(grain.channels, 0)
         self.assertEqual(grain.priming, 0)
@@ -1445,10 +1445,10 @@ class TestGrain (IsolatedAsyncioTestCase):
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
             grain = CodedAudioGrain(meta)
 
-        grain.format = CogAudioFormat.MP1
-        self.assertEqual(grain.format, CogAudioFormat.MP1)
-        grain.format = 0x202
-        self.assertEqual(grain.format, CogAudioFormat.OPUS)
+        grain.cog_audio_format = CogAudioFormat.MP1
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.MP1)
+        grain.cog_audio_format = 0x202
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.OPUS)
 
         grain.channels = 2
         self.assertEqual(grain.channels, 2)
@@ -1486,7 +1486,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         self.assertEqual(grain.rate, Fraction(25, 1))
         self.assertEqual(grain.duration, Fraction(1, 25))
         self.assertEqual(grain.timelabels, [])
-        self.assertEqual(grain.format, CogAudioFormat.INVALID)
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.INVALID)
         self.assertEqual(grain.samples, 0)
         self.assertEqual(grain.channels, 0)
         self.assertEqual(grain.priming, 0)
@@ -1546,7 +1546,7 @@ class TestGrain (IsolatedAsyncioTestCase):
             grain = Grain(meta, data=data)
 
         self.assertEqual(grain.grain_type, "coded_audio")
-        self.assertEqual(grain.format, CogAudioFormat.MP1)
+        self.assertEqual(grain.cog_audio_format, CogAudioFormat.MP1)
         self.assertEqual(grain.meta, meta)
         self.assertEqual(grain.data, data)
 
