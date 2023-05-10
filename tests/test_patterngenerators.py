@@ -120,7 +120,7 @@ class VideoPatternGeneratorTestCase(PatternGeneratorTestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, ts)
         self.assertEqual(grain.sync_timestamp, ts)
-        self.assertEqual(grain.format, cog_frame_format)
+        self.assertEqual(grain.cog_frame_format, cog_frame_format)
         self.assertEqual(grain.rate, rate)
 
 
@@ -520,7 +520,7 @@ class AudioPatternGeneratorTestCase(PatternGeneratorTestCase):
         self.assertEqual(grain.flow_id, flow_id)
         self.assertEqual(grain.origin_timestamp, ts)
         self.assertEqual(grain.sync_timestamp, ts)
-        self.assertEqual(grain.format, cog_audio_format)
+        self.assertEqual(grain.cog_audio_format, cog_audio_format)
         self.assertEqual(grain.rate, grain_rate)
         self.assertEqual(grain.sample_rate, sample_rate)
         self.assertEqual(grain.channels, channels)

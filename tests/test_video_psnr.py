@@ -55,7 +55,7 @@ def _set_colour_bars(vg, noise_mask=0xffff):
     :params vg: A video GRAIN
     :params noise_mask: A mask applied to the colour bar line pixels
     """
-    cog_frame_format = vg.format
+    cog_frame_format = vg.cog_frame_format
     intensity = 0.75
 
     _bpp = pixel_ranges[cog_frame_format][0]
