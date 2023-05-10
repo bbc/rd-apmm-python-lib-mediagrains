@@ -491,7 +491,9 @@ def grains_from_template_with_data(grain, data=None):
                 ln = grain.expected_length//4
                 data = lists(floats(width=32,
                                     allow_nan=False,
-                                    allow_infinity=False),
+                                    allow_infinity=False,
+                                    min_value=0.0),  # Avoids ending up comparing unequal Grains that have +0.0 and -0.0
+                                                     # (which compare as equal)
                              min_size=ln,
                              max_size=ln).map(lambda x: struct.pack('@' + ('f'*ln), *x))
             elif grain.format in [CogAudioFormat.DOUBLE_PLANES,
@@ -500,7 +502,9 @@ def grains_from_template_with_data(grain, data=None):
                 ln = grain.expected_length//8
                 data = lists(floats(width=64,
                                     allow_nan=False,
-                                    allow_infinity=False),
+                                    allow_infinity=False,
+                                    min_value=0.0),  # Avoids ending up comparing unequal Grains that have +0.0 and -0.0
+                                                     # (which compare as equal)
                              min_size=ln,
                              max_size=ln).map(lambda x: struct.pack('@' + ('d'*ln), *x))
             else:
