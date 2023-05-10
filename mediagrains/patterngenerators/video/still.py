@@ -34,7 +34,7 @@ class StillPatternGenerator (VideoPatternGenerator):
             width=template_grain.width,
             height=template_grain.height,
             rate=template_grain.rate,
-            cog_frame_format=template_grain.format)
+            cog_frame_format=template_grain.cog_frame_format)
         self._template_grain = template_grain
 
     def get(self, key: TimeValue, default: Optional[VideoGrain] = None) -> Optional[VideoGrain]:

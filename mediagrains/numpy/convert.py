@@ -105,7 +105,10 @@ def _unbiased_right_shift(a: np.ndarray, n: int) -> np.ndarray:
 
 
 def _bitdepth_down_convert_yuv(grain_in: VideoGrain, grain_out: VideoGrain) -> None:
-    bitshift = COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format) - COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.format)
+    bitshift = (
+        COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.cog_frame_format) -
+        COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.cog_frame_format)
+    )
 
     grain_out.component_data[0][:] = _unbiased_right_shift(grain_in.component_data[0][:], bitshift)
     grain_out.component_data[1][:] = _unbiased_right_shift(grain_in.component_data[1][:], bitshift)
@@ -113,7 +116,10 @@ def _bitdepth_down_convert_yuv(grain_in: VideoGrain, grain_out: VideoGrain) -> N
 
 
 def _bitdepth_down_convert_rgb(grain_in: VideoGrain, grain_out: VideoGrain) -> None:
-    bitshift = COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format) - COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.format)
+    bitshift = (
+        COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.cog_frame_format) -
+        COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.cog_frame_format)
+    )
 
     grain_out.component_data.R[:] = _unbiased_right_shift(grain_in.component_data.R[:], bitshift)
     grain_out.component_data.G[:] = _unbiased_right_shift(grain_in.component_data.G[:], bitshift)
@@ -126,7 +132,10 @@ def _noisy_left_shift(a: np.ndarray, n: int) -> np.ndarray:
 
 
 def _bitdepth_up_convert_yuv(grain_in: VideoGrain, grain_out: VideoGrain) -> None:
-    bitshift = COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.format) - COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format)
+    bitshift = (
+        COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.cog_frame_format) -
+        COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.cog_frame_format)
+    )
 
     dt = grain_out.component_data[0].dtype
 
@@ -136,7 +145,10 @@ def _bitdepth_up_convert_yuv(grain_in: VideoGrain, grain_out: VideoGrain) -> Non
 
 
 def _bitdepth_up_convert_rgb(grain_in: VideoGrain, grain_out: VideoGrain) -> None:
-    bitshift = COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.format) - COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format)
+    bitshift = (
+        COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.cog_frame_format) -
+        COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.cog_frame_format)
+    )
 
     dt = grain_out.component_data[0].dtype
 
@@ -147,7 +159,7 @@ def _bitdepth_up_convert_rgb(grain_in: VideoGrain, grain_out: VideoGrain) -> Non
 
 # Colourspace conversions (based on rec.709)
 def _convert_rgb_to_yuv444(grain_in: VideoGrain, grain_out: VideoGrain) -> None:
-    bd = COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.format)
+    bd = COG_FRAME_FORMAT_ACTIVE_BITS(grain_out.cog_frame_format)
     (R, G, B) = (grain_in.component_data.R,
                  grain_in.component_data.G,
                  grain_in.component_data.B)
@@ -162,7 +174,7 @@ def _convert_rgb_to_yuv444(grain_in: VideoGrain, grain_out: VideoGrain) -> None:
 
 
 def _convert_yuv444_to_rgb(grain_in: VideoGrain, grain_out: VideoGrain) -> None:
-    bd = COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.format)
+    bd = COG_FRAME_FORMAT_ACTIVE_BITS(grain_in.cog_frame_format)
     (Y, U, V) = (grain_in.component_data.Y.astype(np.dtype(np.double)),
                  grain_in.component_data.U.astype(np.dtype(np.double)) - (1 << (bd - 1)),
                  grain_in.component_data.V.astype(np.dtype(np.double)) - (1 << (bd - 1)))

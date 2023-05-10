@@ -2276,8 +2276,8 @@ class GSFEncoderSegment(object):
         data = (b"vghd" +
                 _encode_uint(self._vghd_size_for_grain(grain), 4) +
 
-                _encode_uint(int(grain.format), 4) +
-                _encode_uint(int(grain.layout), 4) +
+                _encode_uint(int(grain.cog_frame_format), 4) +
+                _encode_uint(int(grain.cog_frame_layout), 4) +
                 _encode_uint(int(grain.width), 4) +
                 _encode_uint(int(grain.height), 4) +
                 _encode_uint(int(grain.extension), 4))
@@ -2320,7 +2320,7 @@ class GSFEncoderSegment(object):
         return (b"aghd" +
                 _encode_uint(self._aghd_size_for_grain(grain), 4) +
 
-                _encode_uint(int(grain.format), 4) +
+                _encode_uint(int(grain.cog_audio_format), 4) +
                 _encode_uint(int(grain.channels), 2) +
                 _encode_uint(int(grain.samples), 4) +
                 _encode_uint(int(grain.sample_rate), 4))
@@ -2335,8 +2335,8 @@ class GSFEncoderSegment(object):
         data = (b"cghd" +
                 _encode_uint(self._cghd_size_for_grain(grain), 4) +
 
-                _encode_uint(int(grain.format), 4) +
-                _encode_uint(int(grain.layout), 4) +
+                _encode_uint(int(grain.cog_frame_format), 4) +
+                _encode_uint(int(grain.cog_frame_layout), 4) +
                 _encode_uint(int(grain.origin_width), 4) +
                 _encode_uint(int(grain.origin_height), 4) +
                 _encode_uint(int(grain.coded_width), 4) +
@@ -2361,7 +2361,7 @@ class GSFEncoderSegment(object):
         return (b"cahd" +
                 _encode_uint(self._cahd_size_for_grain(grain), 4) +
 
-                _encode_uint(int(grain.format), 4) +
+                _encode_uint(int(grain.cog_audio_format), 4) +
                 _encode_uint(int(grain.channels), 2) +
                 _encode_uint(int(grain.samples), 4) +
                 _encode_uint(int(grain.priming), 4) +
