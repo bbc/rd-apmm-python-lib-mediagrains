@@ -117,7 +117,7 @@ def _compute_video_psnr(grain_a: Union[VideoGrain, numpy_VideoGrain],
     if grain_a.width != grain_b.width or grain_a.height != grain_b.height:
         raise AttributeError("Frame dimensions differ")
 
-    if COG_FRAME_IS_COMPRESSED(grain_a.format):
+    if COG_FRAME_IS_COMPRESSED(grain_a.cog_frame_format):
         raise NotImplementedError("Compressed video is not supported")
 
     if not isinstance(grain_a, numpy_VideoGrain):
@@ -126,7 +126,7 @@ def _compute_video_psnr(grain_a: Union[VideoGrain, numpy_VideoGrain],
         grain_b = numpy_VideoGrain(grain=grain_b)
 
     if max_val is None:
-        max_val = (1 << COG_FRAME_FORMAT_ACTIVE_BITS(grain_a.format)) - 1
+        max_val = (1 << COG_FRAME_FORMAT_ACTIVE_BITS(grain_a.cog_frame_format)) - 1
 
     psnr = []
     for comp_data_a, comp_data_b in zip(grain_a.component_data, grain_b.component_data):
