@@ -19,7 +19,7 @@ from copy import deepcopy
 
 from mediatimestamp import TimeValue
 
-from ...grain import VIDEOGRAIN
+from ...grains import VideoGrain
 from .abc import VideoPatternGenerator
 
 
@@ -27,7 +27,7 @@ __all__ = ["StillPatternGenerator"]
 
 
 class StillPatternGenerator (VideoPatternGenerator):
-    def __init__(self, template_grain: VIDEOGRAIN):
+    def __init__(self, template_grain: VideoGrain):
         super().__init__(
             src_id=template_grain.source_id,
             flow_id=template_grain.flow_id,
@@ -37,7 +37,7 @@ class StillPatternGenerator (VideoPatternGenerator):
             cog_frame_format=template_grain.format)
         self._template_grain = template_grain
 
-    def get(self, key: TimeValue, default: Optional[VIDEOGRAIN] = None) -> Optional[VIDEOGRAIN]:
+    def get(self, key: TimeValue, default: Optional[VideoGrain] = None) -> Optional[VideoGrain]:
         tv = TimeValue(key, rate=self.rate)
 
         if tv == key:

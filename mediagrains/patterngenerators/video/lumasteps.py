@@ -17,7 +17,7 @@ from fractions import Fraction
 
 from .still import StillPatternGenerator
 from .constants import pixel_ranges
-from ...grain_constructors import VideoGrain
+from ...grains import VideoGrain
 from ...cogenums import CogFrameFormat, CogFrameLayout
 
 __all__ = ["LumaSteps"]
@@ -37,7 +37,8 @@ class LumaSteps(StillPatternGenerator):
 
         _chromaval = pixel_ranges[cog_frame_format][2][0]
 
-        vg = VideoGrain(src_id, flow_id,
+        vg = VideoGrain(src_id=src_id,
+                        flow_id=flow_id,
                         rate=rate,
                         cog_frame_format=cog_frame_format,
                         cog_frame_layout=CogFrameLayout.FULL_FRAME,
