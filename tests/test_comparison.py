@@ -19,7 +19,7 @@ from unittest import TestCase
 
 from hypothesis import given, assume, settings
 from hypothesis.strategies import sampled_from, just, tuples, integers
-from mediagrains.hypothesis.strategies_new import grains_with_data, grains
+from mediagrains.hypothesis.strategies import grains_with_data, grains
 
 from mediagrains.comparison import compare_grain, compare_grains_pairwise
 from mediagrains.comparison.options import Exclude, Include
