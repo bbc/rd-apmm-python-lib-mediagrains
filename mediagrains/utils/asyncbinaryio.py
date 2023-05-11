@@ -30,8 +30,6 @@ from asyncio import StreamReader, StreamWriter
 import asyncio
 from functools import wraps
 
-from deprecated import deprecated
-
 
 class OpenAsyncBinaryIO(metaclass=ABCMeta):
     async def read(self, size: int = -1) -> bytes:
@@ -184,10 +182,6 @@ class OpenAsyncBytesIO(OpenAsyncBinaryIO):
 
     def getbuffer(self) -> bytearray:
         return self._buffer[:self._len]
-
-    @deprecated(version="2.8.0", reason="Use getvalue instead to be more consistent with the standard library")
-    def value(self) -> bytes:
-        return self.getvalue()
 
     def getvalue(self) -> bytes:
         return bytes(self._buffer[:self._len])
