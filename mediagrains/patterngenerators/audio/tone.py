@@ -22,7 +22,6 @@ from fractions import Fraction
 from mediatimestamp import TimeValue
 
 from .abc import AudioPatternGenerator
-from ...grains import AUDIOGRAIN
 from ...grains import AudioGrain
 from ...cogenums import CogAudioFormat
 
@@ -158,7 +157,7 @@ class Tone(AudioPatternGenerator):
 
         return self.data_samples[offs]
 
-    def get(self, key: TimeValue, default: Optional[AUDIOGRAIN] = None) -> Optional[AUDIOGRAIN]:
+    def get(self, key: TimeValue, default: Optional[AudioGrain] = None) -> Optional[AudioGrain]:
         tv = TimeValue(key, rate=Fraction(self.sample_rate))
         sample_count = tv.as_count()
 

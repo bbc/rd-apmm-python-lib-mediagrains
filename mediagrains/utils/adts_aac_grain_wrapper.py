@@ -22,7 +22,7 @@ from fractions import Fraction
 
 from mediatimestamp.immutable import TimeRange
 
-from ..grain import GRAIN, CODEDAUDIOGRAIN
+from ..grains import Grain, CodedAudioGrain
 from .adts_aac_parser import ADTSAACParser, FrameInfo, MIN_ADTS_HEADER_SIZE
 
 
@@ -30,7 +30,7 @@ class ADTSAACGrainWrapper(object):
     """Raw input and wrap it in Grains"""
     def __init__(
         self,
-        template_grain: GRAIN,
+        template_grain: Grain,
         input_data: typing.IO[bytes]
     ):
         """Set up the wrapper and the Grains that will be generated
@@ -39,7 +39,7 @@ class ADTSAACGrainWrapper(object):
                                source. origin_timestamp should be set.
         :param input_data: An object to read video data from
         """
-        assert (isinstance(template_grain, CODEDAUDIOGRAIN))
+        assert (isinstance(template_grain, CodedAudioGrain))
         self.template_grain = copy.deepcopy(template_grain)  # make a copy as the template defaults will be updated
         self.input_data = input_data
 
@@ -60,7 +60,7 @@ class ADTSAACGrainWrapper(object):
 
             yield (frame_data, frame_info)
 
-    def grains(self) -> typing.Iterator[CODEDAUDIOGRAIN]:
+    def grains(self) -> typing.Iterator[CodedAudioGrain]:
         """Generator that yields Grains read from the input given
 
         :yields: Grain objects read from the raw input supplied
