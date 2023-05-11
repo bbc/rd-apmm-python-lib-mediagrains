@@ -17,8 +17,8 @@
 Library for handling mediagrains in numpy arrays
 """
 
-from .videograin import VIDEOGRAIN, VideoGrain
-from .audiograin import AUDIOGRAIN, AudioGrain
+from .numpy_grains.VideoGrain import VideoGrain
+from .numpy_grains.AudioGrain import AudioGrain
 from . import convert  # noqa: F401
 
-__all__ = ['VideoGrain', 'VIDEOGRAIN', 'AudioGrain', 'AUDIOGRAIN']
+__all__ = ['VideoGrain', 'AudioGrain']

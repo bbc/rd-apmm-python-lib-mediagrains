@@ -20,7 +20,7 @@ from __future__ import absolute_import
 from hypothesis.strategies import lists, sampled_from, just, tuples, fixed_dictionaries
 from mediagrains.hypothesis.strategies_new import grains, strategy_for_grain_attribute, grains_from_template_with_data
 
-from mediagrains.grain import attributes_for_grain_type
+from mediagrains.grains import attributes_for_grain_type
 
 from copy import deepcopy
 
