@@ -16,15 +16,17 @@
 
 import unittest
 from unittest import TestCase
+from uuid import UUID
 
 from hypothesis import given, assume, settings
 from hypothesis.strategies import sampled_from, just, tuples, integers
+from mediagrains.cogenums import CogAudioFormat, CogFrameFormat, CogFrameLayout
 from mediagrains.hypothesis.strategies import grains_with_data, grains
 
 from mediagrains.comparison import compare_grain, compare_grains_pairwise
 from mediagrains.comparison.options import Exclude, Include
 
-from mediagrains.grains import new_attributes_for_grain_type as attributes_for_grain_type
+from mediagrains.grains import AudioGrain, VideoGrain, new_attributes_for_grain_type as attributes_for_grain_type
 
 from copy import deepcopy
 
@@ -94,6 +96,47 @@ class TestCompareGrain(TestCase):
             msg="Comparison of {!r} and {!r} excluding {} was unequal when equality was expected:\n\n{}".format(
                 a, b, excl, str(c)))
         self.assertEqual(c.failing_attributes(), [])
+
+    def test_excluding_equivalent_attributes__videograin(self):
+        base_grain = VideoGrain(
+            src_id=UUID("34a02375-0235-4e08-9423-b41de5eea9e1"),
+            flow_id=UUID("0b2bf00f-d669-410f-a52f-50715d3bb2ba"),
+            cog_frame_format=CogFrameFormat.RGB,
+            cog_frame_layout=CogFrameLayout.FULL_FRAME
+        )
+
+        alternative_attributes = {
+            "source_id": UUID("82247c5c-df69-4e8c-abce-d8548bf02b2a"),
+            "format": CogFrameFormat.ALPHA_U8,
+            "layout": CogFrameLayout.MIXED_FIELDS
+        }
+
+        for attribute in alternative_attributes.keys():
+            with self.subTest(attribute=attribute):
+                comparison_grain = deepcopy(base_grain)
+                setattr(comparison_grain, attribute, alternative_attributes[attribute])
+
+                c = compare_grain(base_grain, comparison_grain, Include.creation_timestamp, getattr(Exclude, attribute))
+                self.assertTrue(
+                    c,
+                    msg="Comparison of {!r} and {!r} excluding {} was unequal when equality was expected:\n\n{}".format(
+                        base_grain, compare_grain, attribute, str(c)))
+
+    def test_excluding_equivalent_attributes__audiograin(self):
+        base_grain = AudioGrain(
+            src_id=UUID("77bce283-6387-48fd-b7e9-ace8df438fdc"),
+            flow_id=UUID("a367a089-22a5-4511-9682-f2f687cd0c1b"),
+            cog_audio_format=CogAudioFormat.AAC
+        )
+
+        comparison_grain = deepcopy(base_grain)
+        comparison_grain.cog_audio_format = CogAudioFormat.DOUBLE_INTERLEAVED
+
+        c = compare_grain(base_grain, comparison_grain, Include.creation_timestamp, getattr(Exclude, "format"))
+        self.assertTrue(
+            c,
+            msg="Comparison of {!r} and {!r} excluding {} was unequal when equality was expected:\n\n{}".format(
+                base_grain, compare_grain, "format", str(c)))
 
     @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(lambda grain_type: tuples(
         sampled_from(

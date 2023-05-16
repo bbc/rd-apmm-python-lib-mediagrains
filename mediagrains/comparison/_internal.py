@@ -128,9 +128,19 @@ class ComparisonResult(Generic[CR]):
 
     def excluded(self) -> bool:
         """Return a boolean value to show whether the identifier is Included or Excluded from the result."""
+        # Some Grain parameters have equivalent alternative parameters: deduplicate accordingly
+        alternative_attrs = {
+            "{}.src_id": "{}.source_id",
+            "{}.cog_frame_format": "{}.format",
+            "{}.cog_audio_format": "{}.format",
+            "{}.cog_frame_layout": "{}.layout"
+        }
+
         return bool(len([
-            option for option in self._options if isinstance(
-                option, ComparisonExclude) and self._identifier == option.path]) != 0)
+            option for option in self._options if (
+                isinstance(option, ComparisonExclude) and
+                (self._identifier == option.path or option.path == alternative_attrs.get(self._identifier, []))
+            )]) != 0)
 
     def ownoptions(self) -> list[ComparisonOption]:
         """Return any ComparisonOptions to do with what is being compared in the ComparisonResult (identifier)."""
