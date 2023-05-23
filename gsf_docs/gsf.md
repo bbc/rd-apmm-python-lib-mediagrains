@@ -1,8 +1,10 @@
 # Grain Sequence Format
 
+**Version 8.0**
+
 A Grain Sequence Format (GSF) file contains a sequence of grains from one or more flows. It has the mimetype application/x-ips-gsf and a filename typically uses the suffix `.gsf`.
 
-The GSF file uses the [SSB format](ssb.md) that defines the base file structure and data types.
+The GSF file uses version **2.0** of the [SSB format](ssb.md) that defines the base file structure and data types.
 
 
 ## General File Structure
@@ -13,10 +15,10 @@ Each file begins with a 12 octet [SSB header](ssb.md#SSBHeader):
 |---------------|------------|----------|----------|
 | signature     | "SSBB"     | Tag      | 4 octets |
 | file_type     | "grsg"     | Tag      | 4 octets |
-| major_version | 0x0007     | Unsigned | 2 octets |
+| major_version | 0x0008     | Unsigned | 2 octets |
 | minor_version | 0x0000     | Unsigned | 2 octets |
 
-The current GSF version is 7.0.
+The current GSF version is 8.0.
 
 Every GSF file contains a single "head" block, which itself contains other types of block, followed by a (possibly empty) sequence of "grai" blocks and finally a "grai" terminator block.
 

@@ -1,5 +1,7 @@
 # Sequence Store Binary Format
 
+**Version 2.0**
+
 The Sequence Store Binary (SSB) format is a basic format for binary encoding data for storage or transfer. It is the basis for the storage segment data files as well as the [Grain Sequence Format (GSF)](gsf.md) used for external storage and transfer. A SSB file would typically use the filename suffix `.ssb`, but some file types would have their own preferred suffix, eg. `.gsf` for GSF.
 
 The format uses Little Endian (low order byte first) encoding.
