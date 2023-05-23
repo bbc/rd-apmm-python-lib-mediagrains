@@ -9,7 +9,7 @@ The GSF file uses version **2.0** of the [SSB format](ssb.md) that defines the b
 
 ## General File Structure
 
-Each file begins with a 12 octet [SSB header](ssb.md#SSBHeader):
+Each file begins with a 12 octet [SSB header](ssb.md#general-file-structure):
 
 | Name          | Data       | Type     | Size     |
 |---------------|------------|----------|----------|
