@@ -81,6 +81,8 @@ Where *tag* is a four-character string identifying the type of block, and *size*
 
 The block header is immediately followed by the block payload, the format of which is defined for the individual types of block. Some blocks are structured to consist of an initial header followed by a list of sequential subblocks, identified in the same way.
 
+SSB file type specifications may define specific ordering of blocks, but by default blocks can appear in any order. SSB file type specifications may define whether a block must directly follow another block, but by default any number of other blocks can be placed in-between.
+
 
 ## Versioning
 

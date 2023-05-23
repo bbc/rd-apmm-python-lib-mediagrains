@@ -20,7 +20,7 @@ Each file begins with a 12 octet [SSB header](ssb.md#general-file-structure):
 
 The current GSF version is 8.0. See the SSB [Versioning ](ssb.md#versioning) section for a description of how versions work from a readers perspective.
 
-Every GSF file contains a single "head" block, which itself contains other types of block, followed by a (possibly empty) sequence of "grai" blocks and finally a "grai" terminator block.
+Every GSF file starts with a single "head" block, which itself contains other types of blocks, followed by a (possibly empty) sequence of "grai" blocks and finally a "grai" terminator block.
 
 The "grai" terminator block has the block *size* set to 0 (and no content) which signals to readers that the GSF stream has ended. It is typically used by readers when receiving a GSF stream where the sender does not know the duration beforehand and has set *count* in "segm" to -1.
 
@@ -93,7 +93,7 @@ followed by some special header fields:
 
 Where *id* is a UUID identifying the file itself, and *created* is a timestamp identifying when the file was laid down.
 
-After this the "head" block contains a sequence of "segm", which is followed by "tag " blocks.
+The "head" block then contains any number of "segm" and "tag " blocks (with any other block in-between).
 
 ## "segm" Block
 
@@ -118,7 +118,7 @@ where *local_id* is a numerical identifier for the segment, which is unique with
 
 ## "tag " Block
 
-Each "tag " block contains a 'tag' used to provide user extensible metadata for the immediate parent block. Each such tag is a pair of strings, referred to as the *key* and *val*.
+Each "tag " block contains a 'tag' used to provide user extensible metadata for the immediate parent block - the "segm" and "grai" block. Each such tag is a pair of strings, referred to as the *key* and *val*.
 
 It begins with a standard block header:
 
@@ -155,7 +155,7 @@ followed by a single field containing the *local_id* of the segment to which the
 |---------------|------------|----------|-----------|
 | local_id      |            | Unsigned | 2 octets  |
 
-and then followed by a "gbhd" block and then a "grdt" block. Note that an empty grain type still requires a (empty) "grdt" block.
+It is then followed by a "gbhd" block and then a "grdt" block (with any other blocks in-between). Note that an empty grain type still requires a (empty) "grdt" block.
 
 ## "gbhd" Block
 
@@ -180,7 +180,7 @@ followed by the fields of the common grain header:
 
 The *src_id* is the source identifier for the grains, *flow_id* is the flow identifier, *origin_ts* is the origin timestamp, *sync_ts* is the synchronisation timestamp, *rate* is the grain rate and *duration* is the grain duration. A deprecated property is currently present in the data and should be set to all zeros. The deprecated property is likely to be removed when moving to the next *major_version*. In addition, the *sync_ts* field is not used in practice.
 
-The "gbhd" block is followed by an optional "tils" block, and then an additional mandatory block for the non-empty grain types:
+The "gbhd" block then contains (in any order and with any other blocks in-between) an optional "tils" block, and then a mandatory block for the non-empty grain types:
 
 * Video Grain: a "vghd" block.
 * Coded Video Grain: a "cghd" block.
@@ -231,7 +231,7 @@ followed by the grain data:
 | aspect_ratio  |            | Rational | 8 octets  |
 | pixel\_aspect_ratio  |            | Rational | 8 octets  |
 
-followed by an optional "comp" block.
+followed by an optional "comp" block (with any other blocks in-between).
 
 The *format* and *layout* parameters are enumerated values as used in the [COG library](https://github.com/bbc/rd-ips-core-lib-cog2). The current set of known *formats* taken from [CogFrameLayout](https://github.com/bbc/rd-ips-core-lib-cog2/blob/master/cog/cogframe.h#L41) are:
 
@@ -348,7 +348,7 @@ The *format* and *layout* parameters are enumerated values as used in the [COG l
 
 The *layouts* is the same as that described in the "vghd" block. The *origin_width* and *origin_height* are the original frame dimensions that were input to the encoder and is the output of the decoder after applying any clipping. The *coded_width* and *coded_height* are the frame dimensions used to encode from, eg. including padding to meet the fixed macroblock size requirement. The *key_frame* is set to true if the video frame is a key frame, eg. an I-frame. The *temporal_offset* is the offset between display and stored order for inter-frame coding schemes (offset = display - stored).
 
-The "cghd" block is followed by an optional "unof" block.
+The "cghd" block is followed by an optional "unof" block (with any other block in-between).
 
 ## "unof" Block
 
