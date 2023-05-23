@@ -70,8 +70,6 @@ The *signature* "SSBB" identifies the file to be a SSB file.
 
 The *file_type* identifies the type of content in the file. For example, the GSF file uses the type "grsg" and the essence file in a storage segment uses the type "esse". The *file_type* provides an indication to a reader of what it can expect to find in the file.
 
-The format version is split into a *major_version* and *minor_version*. This information is used by a reader to determine whether it supports the file or not. The *major_version* changes when a change is made to the format that would break readers, i.e. a reader would fail to parse the file or fail to interpret the data correctly. The *minor_version* changes when a change is made to the format that does not break readers. It indicates that there is potentially additional information in the file that is not essential to understanding and using the contents of the file.
-
 The rest of the file consists of a number of sequential "blocks". Each block begins with an 8-octet block header of the form:
 
 | Name          | Data       | Type     | Size     |
@@ -83,7 +81,13 @@ Where *tag* is a four-character string identifying the type of block, and *size*
 
 The block header is immediately followed by the block payload, the format of which is defined for the individual types of block. Some blocks are structured to consist of an initial header followed by a list of sequential subblocks, identified in the same way.
 
-A block could contain more properties than a reader expects. A block could contain sub-blocks that a reader does not recognise. The reader must ignore the additional properties and blocks, e.g. by skipping over them using the parent block's size information. The presence of additional data can be signalled by the *minor_version* in the file header or by a parent block including some indication of a local extension. A file type can therefore be extended without breaking existing reader implementations.
+
+## Versioning
+
+The format version is split into a *major_version* and *minor_version*. This information is used by a reader to determine whether it supports the file or not. The *major_version* changes when a change is made to the format that would break readers, i.e. a reader would fail to parse the file or fail to interpret the data correctly. The *minor_version* changes when a change is made to the format that does not break readers. It indicates that there is potentially additional information in the file that is not essential to understanding and using the contents of the file.
+
+Block could contain more properties than a reader expects. Blocks could contain sub-blocks that a reader does not recognise. The reader must ignore the additional properties and blocks, e.g. by skipping over them using the parent block's size information. The presence of additional data can be signalled by the *minor_version* in the file header or by a parent block including some indication of a local extension. A file type can therefore be extended without breaking existing reader implementations.
+
 
 ## "fill" Block
 

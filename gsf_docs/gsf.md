@@ -18,7 +18,7 @@ Each file begins with a 12 octet [SSB header](ssb.md#SSBHeader):
 | major_version | 0x0008     | Unsigned | 2 octets |
 | minor_version | 0x0000     | Unsigned | 2 octets |
 
-The current GSF version is 8.0.
+The current GSF version is 8.0. See the SSB [Versioning ](ssb.md#versioning) section for a description of how versions work from a readers perspective.
 
 Every GSF file contains a single "head" block, which itself contains other types of block, followed by a (possibly empty) sequence of "grai" blocks and finally a "grai" terminator block.
 
