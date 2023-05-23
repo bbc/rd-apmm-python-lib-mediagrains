@@ -57,7 +57,7 @@ A number of data types are defined for the SSB format structures and the data it
 
 ## General File Structure
 
-<a name="SSBHeader"></a>A SSB file starts with a 12 octet file header of the form:
+A SSB file starts with a 12 octet file header of the form:
 
 | Name          | Data       | Type     | Size     |
 |---------------|------------|----------|----------|
@@ -91,7 +91,6 @@ Block could contain more properties than a reader expects. Blocks could contain 
 
 ## "fill" Block
 
-<a name="FillBlock"></a>
 The "fill" block is used to reserve space for overwriting later or to position blocks at certain offsets in the file. It consists of a standard block header
 
 | Name          | Data       | Type     | Size      |
