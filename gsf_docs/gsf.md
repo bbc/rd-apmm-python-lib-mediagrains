@@ -142,12 +142,14 @@ followed by the fields of the common grain header:
 |---------------|------------|--------------|-----------|
 | src_id        |            | UUID         | 16 octets |
 | flow_id       |            | UUID         | 16 octets |
-| origin_ts     |            | Timestamp    | 11 octets |
-| sync_ts       |            | Timestamp    | 11 octets |
+| primary_ts    |            | Timestamp    | 11 octets |
+| secondary_ts  |            | Timestamp    | 11 octets |
 | rate          |            | Rational     | 8 octets  |
 | duration      |            | Rational     | 8 octets  |
 
-The *src_id* is the source identifier for the grains, *flow_id* is the flow identifier, *origin_ts* is the origin timestamp, *sync_ts* is the synchronisation timestamp, *rate* is the grain rate and *duration* is the grain duration. The *sync_ts* field is not used in practice.
+The *src_id* is the source identifier for the grains, *flow_id* is the flow identifier, *primary_ts* is the primary timestamp (it contained an "origination" timestamp in version <= 7.0.0), *secondary_ts* is the secondary timestamp (contained a "synchronization" timestamp in version <= 7.0.0), *rate* is the grain rate and *duration* is the grain duration.
+
+The source and use of the *primary_ts* and *secondary_ts* should be defined as part of the flow.
 
 The [gbhd](#gbhd-block) block then contains (in any order and with any other blocks in-between) an optional [tils](#tils-block) block, and a mandatory block for the non-empty grain types:
 
