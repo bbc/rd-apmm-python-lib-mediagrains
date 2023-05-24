@@ -202,43 +202,54 @@ followed by the grain data:
 
 followed by an optional [comp](#comp-block) block (with any other blocks in-between).
 
-The *format* and *layout* parameters are enumerated values as used in the [COG library](https://github.com/bbc/rd-ips-core-lib-cog2). The current set of known *formats* taken from [CogFrameLayout](https://github.com/bbc/rd-ips-core-lib-cog2/blob/master/cog/cogframe.h#L41) are:
+The *format* and *layout* parameters are enumerated values as defined in [cogenums.py](../mediagrains/cogenums.py). The values originated from the [COG library](https://github.com/bbc/rd-ips-core-lib-cog2). The current set of known *formats* (from the `CogFrameFormat` enum class) are:
 
-| Name          | Enumeration   |
-|---------------|---------------|
-| U8_444        | 0x2000        |
-| U8_422        | 0x2001        |
-| U8_420        | 0x2003        |
-| S16_444       | 0x4004        |
-| S16_422       | 0x4005        |
-| S16_420       | 0x4007        |
-| S16_444_10BIT | 0x2804        |
-| S16_422_10BIT | 0x2805        |
-| S16_420_10BIT | 0x2807        |
-| S16_444_12BIT | 0x3004        |
-| S16_422_12BIT | 0x3005        |
-| S16_420_12BIT | 0x3007        |
-| S32_444       | 0x8008        |
-| S32_422       | 0x8009        |
-| S32_420       | 0x800b        |
-| YUYV          | 0x2100        |
-| UYVY          | 0x2101        |
-| AYUV          | 0x2102        |
-| RGB           | 0x2104        |
-| v216          | 0x4105        |
-| v210          | 0x2906        |
-| RGBx          | 0x2110        |
-| xRGB          | 0x2111        |
-| BGRx          | 0x2112        |
-| xBGR          | 0x2113        |
-| RGBA          | 0x2114        |
-| ARGB          | 0x2115        |
-| BGRA          | 0x2116        |
-| ABGR          | 0x2117        |
-| UNKNOWN       | 0xfffffffe    |
-| INVALID       | 0xffffffff    |
+| Name              | Enumeration   |
+|-------------------|---------------|
+| ALPHA_U8_1BIT     | 0x1080        |
+| U8_444            | 0x2000        |
+| U8_422            | 0x2001        |
+| U8_420            | 0x2003        |
+| U8_444_RGB        | 0x2010        |
+| ALPHA_U8          | 0x2080        |
+| YUYV              | 0x2100        |
+| UYVY              | 0x2101        |
+| AYUV              | 0x2102        |
+| RGB               | 0x2104        |
+| RGBx              | 0x2110        |
+| xRGB              | 0x2111        |
+| BGRx              | 0x2112        |
+| xBGR              | 0x2113        |
+| RGBA              | 0x2114        |
+| ARGB              | 0x2115        |
+| BGRA              | 0x2116        |
+| ABGR              | 0x2117        |
+| S16_444_10BIT     | 0x2804        |
+| S16_444_10BIT_RGB | 0x2814        |
+| S16_422_10BIT     | 0x2805        |
+| S16_420_10BIT     | 0x2807        |
+| ALPHA_S16_10BIT   | 0x2884        |
+| v210              | 0x2906        |
+| S16_444_12BIT     | 0x3004        |
+| S16_444_12BIT_RGB | 0x3014        |
+| S16_422_12BIT     | 0x3005        |
+| S16_420_12BIT     | 0x3007        |
+| ALPHA_S16_12BIT   | 0x3084        |
+| S16_444           | 0x4004        |
+| S16_444_RGB       | 0x4014        |
+| S16_422           | 0x4005        |
+| S16_420           | 0x4007        |
+| ALPHA_S16         | 0x4084        |
+| v216              | 0x4105        |
+| S32_444           | 0x8008        |
+| S32_444_RGB       | 0x8018        |
+| S32_422           | 0x8009        |
+| S32_420           | 0x800b        |
+| ALPHA_S32         | 0x8088        |
+| UNKNOWN           | 0xfffffffe    |
+| INVALID           | 0xffffffff    |
 
-The current set of known *layouts* taken from the [CogFrameLayout enum](https://github.com/bbc/rd-ips-core-lib-cog2/blob/master/cog/cogframe.h#L107) are:
+The current set of known *layouts* (from the `CogFrameLayout` enum class) are:
 
 | Name            | Enumeration   |
 |-----------------|---------------|
@@ -299,7 +310,7 @@ followed by the grain data:
 | key_frame     |            | Boolean  | 1 octet   |
 | temporal_offset |            | Signed | 4 octets  |
 
-The *format* and *layout* parameters are enumerated values as used in the [COG library](https://github.com/bbc/rd-ips-core-lib-cog2). The current set of known (compressed) *formats* taken from the [CogFrameLayout enum](https://github.com/bbc/rd-ips-core-lib-cog2/blob/master/cog/cogframe.h#L41) are:
+The *format* and *layout* parameters are enumerated values as defined in [cogenums.py](../mediagrains/cogenums.py). The values originated from the [COG library](https://github.com/bbc/rd-ips-core-lib-cog2). The current set of known *formats* (from the `CogFrameFormat` enum class) are:
 
 | Name          | Enumeration   |
 |---------------|---------------|
@@ -312,10 +323,11 @@ The *format* and *layout* parameters are enumerated values as used in the [COG l
 | D10           | 0x0206        |
 | VC2           | 0x0207        |
 | VP8           | 0x0208        |
+| H265          | 0x0209        |
 | UNKNOWN       | 0xfffffffe    |
 | INVALID       | 0xffffffff    |
 
-The *layouts* is the same as that described in the [vghd](#vghd-block) block. The *origin_width* and *origin_height* are the original frame dimensions that were input to the encoder and is the output of the decoder after applying any clipping. The *coded_width* and *coded_height* are the frame dimensions used to encode from, eg. including padding to meet the fixed macroblock size requirement. The *key_frame* is set to true if the video frame is a key frame, eg. an I-frame. The *temporal_offset* is the offset between display and stored order for inter-frame coding schemes (offset = display - stored).
+The *layouts* are the same as those described in the [vghd](#vghd-block) block. The *origin_width* and *origin_height* are the original frame dimensions that were input to the encoder and is the output of the decoder after applying any clipping. The *coded_width* and *coded_height* are the frame dimensions used to encode from, eg. including padding to meet the fixed macroblock size requirement. The *key_frame* is set to true if the video frame is a key frame, eg. an I-frame. The *temporal_offset* is the offset between display and stored order for inter-frame coding schemes (offset = display - stored).
 
 The [cghd](#cghd-block) block is followed by an optional [unof](#unof-block) block (with any other blocks in-between).
 
@@ -360,7 +372,7 @@ followed by the grain data:
 | samples       |            | Unsigned | 4 octets  |
 | sample_rate   |            | Unsigned | 4 octets  |
 
-The *format* parameter are enumerated values as used in the [COG library](https://github.com/bbc/rd-ips-core-lib-cog2). The current set of known *formats* taken from the [CogAudioFormat enum](https://github.com/bbc/rd-ips-core-lib-cog2/blob/master/cog/cogaudio.h#L23) are:
+The *format* parameter enumerated values are defined in [cogenums.py](../mediagrains/cogenums.py). The values originated from the [COG library](https://github.com/bbc/rd-ips-core-lib-cog2). The current set of known *formats* (from the `CogAudioFormat` class) are:
 
 | Name               | Enumeration   |
 |--------------------|---------------|
@@ -404,7 +416,7 @@ followed by the grain data:
 | remainder     |            | Unsigned | 4 octets  |
 | sample_rate   |            | Unsigned | 4 octets  |
 
-The *format* parameter are enumerated values as used in the [COG library](https://github.com/bbc/rd-ips-core-lib-cog2). The current set of known (compressed) *formats* taken from the [CogAudioFormat enum](https://github.com/bbc/rd-ips-core-lib-cog2/blob/master/cog/cogaudio.h#L23) are:
+The *format* parameter enumerated values are defined in [cogenums.py](../mediagrains/cogenums.py). The values originated from the [COG library](https://github.com/bbc/rd-ips-core-lib-cog2). The current set of known *formats* (from the `CogAudioFormat` enum class) are:
 
 | Name    | Enumeration   |
 |---------|---------------|
