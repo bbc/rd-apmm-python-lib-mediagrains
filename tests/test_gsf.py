@@ -2345,32 +2345,6 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
                 'frame_rate_denominator': 1,
                 'drop_frame': False}}])
 
-    def test_loads_raises_when_grain_type_unknown(self):
-        with self.assertRaises(GSFDecodeError) as cm:
-            src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
-            flow_id = UUID('da78668a-1596-11e8-a577-dca904824eec')
-            (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
-                                     (b"head\x41\x00\x00\x00" +
-                                      b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
-                                      b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
-                                      (b"segm\x22\x00\x00\x00" +
-                                       b"\x01\x00" +
-                                       b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
-                                       b"\x01\x00\x00\x00\x00\x00\x00\x00")) +
-                                     (b"grai\x8d\x00\x00\x00" +
-                                      b"\x01\x00" +
-                                      (b"gbhd\x83\x00\x00\x00" +
-                                       src_id.bytes +
-                                       flow_id.bytes +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       (b"dumy\x08\x00\x00\x00"))))
-
-        self.assertEqual(cm.exception.offset, 179)
-
     def test_loads_decodes_empty_grains(self):
         src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
         flow_id = UUID('da78668a-1596-11e8-a577-dca904824eec')

@@ -857,22 +857,24 @@ class GSFAsyncDecoderSession(object):
                     }
 
                 meta['grain']['cog_frame']['components'] = []
-                if gbhd_child.has_child_block():
-                    async with AsyncGSFBlock(self.file_data) as comp_block:
-                        if comp_block.tag != "comp":
-                            continue  # Skip unknown/unexpected block
+                async for comp_block in gbhd_child.child_blocks():
+                    if comp_block.tag != 'comp':
+                        continue
 
-                        comp_count = await comp_block.read_uint(2)
-                        offset = 0
-                        for i in range(0, comp_count):
-                            comp = {}
-                            comp['width'] = await comp_block.read_uint(4)
-                            comp['height'] = await comp_block.read_uint(4)
-                            comp['stride'] = await comp_block.read_uint(4)
-                            comp['length'] = await comp_block.read_uint(4)
-                            comp['offset'] = offset
-                            offset += comp['length']
-                            meta['grain']['cog_frame']['components'].append(comp)
+                    # Guard against bad files with multiple 'comp'
+                    meta['grain']['cog_frame']['components'] = []
+
+                    comp_count = await comp_block.read_uint(2)
+                    offset = 0
+                    for i in range(0, comp_count):
+                        comp = {}
+                        comp['width'] = await comp_block.read_uint(4)
+                        comp['height'] = await comp_block.read_uint(4)
+                        comp['stride'] = await comp_block.read_uint(4)
+                        comp['length'] = await comp_block.read_uint(4)
+                        comp['offset'] = offset
+                        offset += comp['length']
+                        meta['grain']['cog_frame']['components'].append(comp)
 
             elif gbhd_child.tag == 'cghd':
                 meta['grain']['grain_type'] = "coded_video"
@@ -886,13 +888,15 @@ class GSFAsyncDecoderSession(object):
                 meta['grain']['cog_coded_frame']['is_key_frame'] = await gbhd_child.read_bool()
                 meta['grain']['cog_coded_frame']['temporal_offset'] = await gbhd_child.read_sint(4)
 
-                if gbhd_child.has_child_block():
-                    async with AsyncGSFBlock(self.file_data) as unof_block:
-                        meta['grain']['cog_coded_frame']['unit_offsets'] = []
+                async for unof_block in gbhd_child.child_block():
+                    if unof_block.tag != 'unof':
+                        continue
 
-                        unit_offsets = await unof_block.read_uint(2)
-                        for i in range(0, unit_offsets):
-                            meta['grain']['cog_coded_frame']['unit_offsets'].append(await unof_block.read_uint(4))
+                    meta['grain']['cog_coded_frame']['unit_offsets'] = []
+
+                    unit_offsets = await unof_block.read_uint(2)
+                    for i in range(0, unit_offsets):
+                        meta['grain']['cog_coded_frame']['unit_offsets'].append(await unof_block.read_uint(4))
 
             elif gbhd_child.tag == "aghd":
                 meta['grain']['grain_type'] = "audio"
@@ -914,12 +918,6 @@ class GSFAsyncDecoderSession(object):
 
             elif gbhd_child.tag == "eghd":
                 meta['grain']['grain_type'] = "event"
-            else:
-                raise GSFDecodeError(
-                    "Unknown type {} at offset {}".format(gbhd_child.tag, gbhd_child.block_start),
-                    gbhd_child.block_start,
-                    length=gbhd_child.size
-                )
 
         return cast(GrainMetadataDict, meta)
 
@@ -1195,22 +1193,24 @@ class GSFSyncDecoderSession(object):
                     }
 
                 meta['grain']['cog_frame']['components'] = []
-                if gbhd_child.has_child_block():
-                    with SyncGSFBlock(self.file_data) as comp_block:
-                        if comp_block.tag != "comp":
-                            continue  # Skip unknown/unexpected block
+                for comp_block in gbhd_child.child_blocks():
+                    if comp_block.tag != 'comp':
+                        continue
 
-                        comp_count = comp_block.read_uint(2)
-                        offset = 0
-                        for i in range(0, comp_count):
-                            comp = {}
-                            comp['width'] = comp_block.read_uint(4)
-                            comp['height'] = comp_block.read_uint(4)
-                            comp['stride'] = comp_block.read_uint(4)
-                            comp['length'] = comp_block.read_uint(4)
-                            comp['offset'] = offset
-                            offset += comp['length']
-                            meta['grain']['cog_frame']['components'].append(comp)
+                    # Guard against bad files with multiple 'comp'
+                    meta['grain']['cog_frame']['components'] = []
+
+                    comp_count = comp_block.read_uint(2)
+                    offset = 0
+                    for i in range(0, comp_count):
+                        comp = {}
+                        comp['width'] = comp_block.read_uint(4)
+                        comp['height'] = comp_block.read_uint(4)
+                        comp['stride'] = comp_block.read_uint(4)
+                        comp['length'] = comp_block.read_uint(4)
+                        comp['offset'] = offset
+                        offset += comp['length']
+                        meta['grain']['cog_frame']['components'].append(comp)
 
             elif gbhd_child.tag == 'cghd':
                 meta['grain']['grain_type'] = "coded_video"
@@ -1224,13 +1224,15 @@ class GSFSyncDecoderSession(object):
                 meta['grain']['cog_coded_frame']['is_key_frame'] = gbhd_child.read_bool()
                 meta['grain']['cog_coded_frame']['temporal_offset'] = gbhd_child.read_sint(4)
 
-                if gbhd_child.has_child_block():
-                    with SyncGSFBlock(self.file_data) as unof_block:
-                        meta['grain']['cog_coded_frame']['unit_offsets'] = []
+                for unof_block in gbhd_child.child_blocks():
+                    if unof_block.tag != 'unof':
+                        continue
 
-                        unit_offsets = unof_block.read_uint(2)
-                        for i in range(0, unit_offsets):
-                            meta['grain']['cog_coded_frame']['unit_offsets'].append(unof_block.read_uint(4))
+                    meta['grain']['cog_coded_frame']['unit_offsets'] = []
+
+                    unit_offsets = unof_block.read_uint(2)
+                    for i in range(0, unit_offsets):
+                        meta['grain']['cog_coded_frame']['unit_offsets'].append(unof_block.read_uint(4))
 
             elif gbhd_child.tag == "aghd":
                 meta['grain']['grain_type'] = "audio"
@@ -1252,12 +1254,6 @@ class GSFSyncDecoderSession(object):
 
             elif gbhd_child.tag == "eghd":
                 meta['grain']['grain_type'] = "event"
-            else:
-                raise GSFDecodeError(
-                    "Unknown type {} at offset {}".format(gbhd_child.tag, gbhd_child.block_start),
-                    gbhd_child.block_start,
-                    length=gbhd_child.size
-                )
 
         return cast(GrainMetadataDict, meta)
 
