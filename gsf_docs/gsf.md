@@ -142,8 +142,8 @@ followed by the fields of the common grain header:
 |---------------|------------|--------------|-----------|
 | src_id        |            | UUID         | 16 octets |
 | flow_id       |            | UUID         | 16 octets |
-| origin_ts     |            | IPPTimestamp | 10 octets |
-| sync_ts       |            | IPPTimestamp | 10 octets |
+| origin_ts     |            | Timestamp    | 10 octets |
+| sync_ts       |            | Timestamp    | 10 octets |
 | rate          |            | Rational     | 8 octets  |
 | duration      |            | Rational     | 8 octets  |
 
