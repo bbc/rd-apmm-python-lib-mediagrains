@@ -18,31 +18,31 @@ Each file begins with a 12 octet [SSB header](ssb.md#general-file-structure):
 | major_version | 0x0008     | Unsigned | 2 octets |
 | minor_version | 0x0000     | Unsigned | 2 octets |
 
-The current GSF version is 8.0. See the SSB [Versioning ](ssb.md#versioning) section for a description of how versions work from a readers perspective.
+The current GSF version is 8.0. See the [SSB Versioning ](ssb.md#versioning) section for a description of how versioning works from a reader's perspective.
 
-Every GSF file starts with a single "head" block, which itself contains other types of blocks, followed by a (possibly empty) sequence of "grai" blocks and finally a "grai" terminator block.
+Every GSF file starts with a single [head](#head-block) block, which itself contains other types of blocks, followed by a (possibly empty) sequence of [grai](#grai-block) blocks and finally a [grai](#grai-block) terminator block.
 
-The "grai" terminator block has the block *size* set to 0 (and no content) which signals to readers that the GSF stream has ended. It is typically used by readers when receiving a GSF stream where the sender does not know the duration beforehand and has set *count* in "segm" to -1.
+The [grai](#grai-block) terminator block has the block *size* set to 0 (and no content) which signals to readers that the GSF stream has ended. It is typically used by readers when receiving a GSF stream where the sender does not know the duration beforehand and has set *count* in [segm](#segm-block) to -1.
 
 As such the overall structure of the file is (count shown in brackets):
 
 * File header
-* "head" (1): file identify and creation time
-    * "segm" (0..*): segment info
-        * "tag " (0..*): segment tags
-    * "tag " (0..*): file tags
-* "grai" (0..*): grain info and data
-    * "gbhd" (0..1): grain header
-        * "tils" (0..1): time labels
-        * "vghd" (0..1): video grain header
-            * "comp" (0..1): video component info
-        * "cghd" (0..1): coded video grain header
-            * "unof" (0..1): unit offsets in coded data
-        * "aghd" (0..1): audio grain header
-        * "cahd" (0..1): coded audio grain header
-        * "eghd" (0..1): data grain header
-    * "grdt"
-* "grai" (0..1): terminator block
+* [head](#head-block) (1): file identify and creation time
+    * [segm](#segm-block) (0..*): segment info
+        * [tag](#tag-block) (0..*): segment tags
+    * [tag](#tag-block) (0..*): file tags
+* [grai](#grai-block) (0..*): grain info and data
+    * [gbhd](#gbhd-block) (0..1): grain header
+        * [tils](#tils-block) (0..1): time labels
+        * [vghd](#vghd-block) (0..1): video grain header
+            * [comp](#comp-block) (0..1): video component info
+        * [cghd](#cghd-block) (0..1): coded video grain header
+            * [unof](#unof-block) (0..1): unit offsets in coded data
+        * [aghd](#aghd-block) (0..1): audio grain header
+        * [cahd](#cahd-block) (0..1): coded audio grain header
+        * [eghd](#eghd-block) (0..1): data grain header
+    * [grdt](#grdt-block): grain data
+* [grai](#grai-block) (0..1): terminator block
 
 
 ## "head" Block
@@ -63,11 +63,11 @@ followed by some special header fields:
 
 Where *id* is a UUID identifying the file itself, and *created* is a timestamp identifying when the file was laid down.
 
-The "head" block then contains any number of "segm" and "tag " blocks (with any other block in-between).
+The "head" block then contains any number of [segm](#segm-block) and [tag](#tag-block) blocks (with any other block in-between).
 
 ## "segm" Block
 
-Each "segm" block describes a segment within the file. Each segment contains a number of grains, but the actual grain data is not included in this block, which is more of an *index* of segments.
+Each [segm](#segm-block) block describes a segment within the file. Each segment contains a number of grains, but the actual grain data is not included in this block, which is more of an *index* of segments.
 
 It begins with a standard block header:
 
@@ -88,7 +88,7 @@ where *local_id* is a numerical identifier for the segment, which is unique with
 
 ## "tag " Block
 
-Each "tag " block contains a 'tag' used to provide user extensible metadata for the immediate parent block - the "segm" and "grai" block. Each such tag is a pair of strings, referred to as the *key* and *val*.
+Each [tag](#tag-block) block contains a 'tag' used to provide user extensible metadata for the immediate parent block - the [segm](#segm-block) and [grai](#grai-block) block. Each such tag is a pair of strings, referred to as the *key* and *val*.
 
 It begins with a standard block header:
 
@@ -106,11 +106,11 @@ followed by two variable length string fields, one for *key* and one for *val*:
 
 where the maximum string length for either *key* or *val* is 65535 octets. Note that the VarString *size* includes 2 octets to encode the string length.
 
-A "tag " block will not have any child blocks.
+A [tag](#tag-block) block will not have any child blocks.
 
 ## "grai" Block
 
-Each "grai" block contains the actual data for a grain. Every grain in every segment in the file is represented by such a block.
+Each [grai](#grai-block) block contains the actual data for a grain. Every grain in every segment in the file is represented by such a block.
 
 It begins with a standard block header:
 
@@ -125,11 +125,11 @@ followed by a single field containing the *local_id* of the segment to which the
 |---------------|------------|----------|-----------|
 | local_id      |            | Unsigned | 2 octets  |
 
-It is then followed by a "gbhd" block and then a "grdt" block (with any other blocks in-between). Note that an empty grain type still requires a (empty) "grdt" block.
+It is then followed by a [gbhd](#gbhd-block) block and then a [grdt](#grdt-block) block (with any other blocks in-between). Note that an empty grain type still requires a (empty) [grdt](#grdt-block) block.
 
 ## "gbhd" Block
 
-Each "gbhd" block contains the metadata for a grain header. It begins with a standard block header:
+Each [gbhd](#gbhd-block) block contains the metadata for a grain header. It begins with a standard block header:
 
 | Name          | Data       | Type     | Size      |
 |---------------|------------|----------|-----------|
@@ -150,18 +150,18 @@ followed by the fields of the common grain header:
 
 The *src_id* is the source identifier for the grains, *flow_id* is the flow identifier, *origin_ts* is the origin timestamp, *sync_ts* is the synchronisation timestamp, *rate* is the grain rate and *duration* is the grain duration. A deprecated property is currently present in the data and should be set to all zeros. The deprecated property is likely to be removed when moving to the next *major_version*. In addition, the *sync_ts* field is not used in practice.
 
-The "gbhd" block then contains (in any order and with any other blocks in-between) an optional "tils" block, and then a mandatory block for the non-empty grain types:
+The [gbhd](#gbhd-block) block then contains (in any order and with any other blocks in-between) an optional [tils](#tils-block) block, and then a mandatory block for the non-empty grain types:
 
-* Video Grain: a "vghd" block.
-* Coded Video Grain: a "cghd" block.
-* Audio Grain: an "aghd" block.
-* Coded Audio Grain: a "cahd" block.
-* Event Grain: an "eghd" block.
+* Video Grain: a [vghd](#vghd-block) block.
+* Coded Video Grain: a [cghd](#cghd-block) block.
+* Audio Grain: an [aghd](#aghd-block) block.
+* Coded Audio Grain: a [cahd](#cahd-block) block.
+* Event Grain: an [eghd](#eghd-block) block.
 * Empty Grain: no block.
 
 ## "tils" Block
 
-Each "tils" block contains tagged time labels for the grain it exists in. If the grain has none then this block should be ommitted. It consists of a standard block header:
+Each [tils](#tils-block) block contains tagged time labels for the grain it exists in. If the grain has none then this block should be ommitted. It consists of a standard block header:
 
 | Name          | Data       | Type     | Size      |
 |---------------|------------|----------|-----------|
@@ -182,7 +182,7 @@ Then, for each label the following data:
 
 ## "vghd" Block
 
-Each "vghd" block contains the header data for a video grain. It consists of a standard block header:
+Each [vghd](#vghd-block) block contains the header data for a video grain. It consists of a standard block header:
 
 | Name          | Data       | Type     | Size      |
 |---------------|------------|----------|-----------|
@@ -201,7 +201,7 @@ followed by the grain data:
 | aspect_ratio  |            | Rational | 8 octets  |
 | pixel\_aspect_ratio  |            | Rational | 8 octets  |
 
-followed by an optional "comp" block (with any other blocks in-between).
+followed by an optional [comp](#comp-block) block (with any other blocks in-between).
 
 The *format* and *layout* parameters are enumerated values as used in the [COG library](https://github.com/bbc/rd-ips-core-lib-cog2). The current set of known *formats* taken from [CogFrameLayout](https://github.com/bbc/rd-ips-core-lib-cog2/blob/master/cog/cogframe.h#L41) are:
 
@@ -254,7 +254,7 @@ The *width* and *height* are the video dimensions, *extension* is the number of 
 
 ## "comp" Block
 
-Each "comp" block contains the component sizes for a video grain. It consists of a standard block header:
+Each [comp](#comp-block) block contains the component sizes for a video grain. It consists of a standard block header:
 
 | Name          | Data       | Type     | Size      |
 |---------------|------------|----------|-----------|
@@ -280,7 +280,7 @@ where *width* is the number of samples per line, *height* is the number of lines
 
 ## "cghd" Block
 
-Each "cghd" block contains the header data for a coded video grain. It consists of a standard block header:
+Each [cghd](#cghd-block) block contains the header data for a coded video grain. It consists of a standard block header:
 
 | Name          | Data       | Type     | Size      |
 |---------------|------------|----------|-----------|
@@ -316,13 +316,13 @@ The *format* and *layout* parameters are enumerated values as used in the [COG l
 | UNKNOWN       | 0xfffffffe    |
 | INVALID       | 0xffffffff    |
 
-The *layouts* is the same as that described in the "vghd" block. The *origin_width* and *origin_height* are the original frame dimensions that were input to the encoder and is the output of the decoder after applying any clipping. The *coded_width* and *coded_height* are the frame dimensions used to encode from, eg. including padding to meet the fixed macroblock size requirement. The *key_frame* is set to true if the video frame is a key frame, eg. an I-frame. The *temporal_offset* is the offset between display and stored order for inter-frame coding schemes (offset = display - stored).
+The *layouts* is the same as that described in the [vghd](#vghd-block) block. The *origin_width* and *origin_height* are the original frame dimensions that were input to the encoder and is the output of the decoder after applying any clipping. The *coded_width* and *coded_height* are the frame dimensions used to encode from, eg. including padding to meet the fixed macroblock size requirement. The *key_frame* is set to true if the video frame is a key frame, eg. an I-frame. The *temporal_offset* is the offset between display and stored order for inter-frame coding schemes (offset = display - stored).
 
-The "cghd" block is followed by an optional "unof" block (with any other block in-between).
+The [cghd](#cghd-block) block is followed by an optional [unof](#unof-block) block (with any other block in-between).
 
 ## "unof" Block
 
-Each "unof" block contains the offsets from the start of the data section for coded units within a coded grain. It consists of a standard block header:
+Each [unof](#unof-block) block contains the offsets from the start of the data section for coded units within a coded grain. It consists of a standard block header:
 
 | Name          | Data       | Type     | Size      |
 |---------------|------------|----------|-----------|
@@ -345,7 +345,7 @@ this information is optional, and not meaningful for all coded formats.
 
 ## "aghd" Block
 
-Each "aghd" block contains the header data for an audio grain. It consists of a standard block header:
+Each [aghd](#aghd-block) block contains the header data for an audio grain. It consists of a standard block header:
 
 | Name          | Data       | Type     | Size      |
 |---------------|------------|----------|-----------|
@@ -387,7 +387,7 @@ The *channels* is the number of audio channels, *samples* is the number of (mult
 
 ## "cahd" Block
 
-Each "cahd" block contains the header data for a coded audio grain. It consists of a standard block header:
+Each [cahd](#cahd-block) block contains the header data for a coded audio grain. It consists of a standard block header:
 
 | Name          | Data       | Type     | Size      |
 |---------------|------------|----------|-----------|
@@ -418,7 +418,7 @@ The *channels* is the number of audio channels, *samples* is the number of (mult
 
 ## "eghd" Block
 
-Each "eghd" block contains the header data for an event grain. It consists of a standard block header:
+Each [eghd](#eghd-block) block contains the header data for an event grain. It consists of a standard block header:
 
 | Name          | Data       | Type     | Size      |
 |---------------|------------|----------|-----------|
@@ -435,7 +435,7 @@ The event payload *type* identifies the encoding and/or content for the event da
 
 ## "grdt" Block
 
-Each "grdt" block contains the raw data of a grain of any type. It consists of a standard block header:
+Each [grdt](#grdt-block) block contains the raw data of a grain of any type. It consists of a standard block header:
 
 | Name          | Data       | Type     | Size      |
 |---------------|------------|----------|-----------|
