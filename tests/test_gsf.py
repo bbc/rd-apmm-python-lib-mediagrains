@@ -1415,14 +1415,14 @@ class TestGSFBlock(IsolatedAsyncioTestCase):
 
             self.assertEqual(test_uuid, await UUT.read_uuid())
 
-    async def test_read_timestamp(self):
-        test_timestamp = datetime(2018, 9, 8, 16, 0, 0)
+    async def test_read_datetime(self):
+        test_datetime = datetime(2018, 9, 8, 16, 0, 0)
         test_data = b"\xe2\x07\x09\x08\x10\x00\x00"
 
         async with AsyncBytesIO(test_data) as fp:
             UUT = AsyncGSFBlock(fp)
 
-            self.assertEqual(test_timestamp, await UUT.read_timestamp())
+            self.assertEqual(test_datetime, await UUT.read_datetime())
 
     async def test_read_ippts(self):
         test_timestamp = Timestamp(1536422400, 500)

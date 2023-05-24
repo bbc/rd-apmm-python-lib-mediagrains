@@ -416,7 +416,7 @@ class AsyncGSFBlock():
 
         return UUID(bytes=uuid_data)
 
-    async def read_timestamp(self) -> datetime:
+    async def read_datetime(self) -> datetime:
         """Read a date-time (with seconds resolution) stored in 7 bytes
 
         :returns: Datetime
@@ -640,7 +640,7 @@ class SyncGSFBlock():
 
         return UUID(bytes=uuid_data)
 
-    def read_timestamp(self) -> datetime:
+    def read_datetime(self) -> datetime:
         """Read a date-time (with seconds resolution) stored in 7 bytes
 
         :returns: Datetime
@@ -753,7 +753,7 @@ class GSFAsyncDecoderSession(object):
         """
         head: GSFFileHeaderDict = {}
         head['id'] = await head_block.read_uuid()
-        head['created'] = await head_block.read_timestamp()
+        head['created'] = await head_block.read_datetime()
 
         head['segments'] = []
         head['tags'] = []
@@ -1091,7 +1091,7 @@ class GSFSyncDecoderSession(object):
         """
         head: GSFFileHeaderDict = {}
         head['id'] = head_block.read_uuid()
-        head['created'] = head_block.read_timestamp()
+        head['created'] = head_block.read_datetime()
 
         head['segments'] = []
         head['tags'] = []
