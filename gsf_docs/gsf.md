@@ -142,13 +142,12 @@ followed by the fields of the common grain header:
 |---------------|------------|--------------|-----------|
 | src_id        |            | UUID         | 16 octets |
 | flow_id       |            | UUID         | 16 octets |
-| (deprecated)  | 0x00 * 16  | FixByteArray | 16 octets |
 | origin_ts     |            | IPPTimestamp | 10 octets |
 | sync_ts       |            | IPPTimestamp | 10 octets |
 | rate          |            | Rational     | 8 octets  |
 | duration      |            | Rational     | 8 octets  |
 
-The *src_id* is the source identifier for the grains, *flow_id* is the flow identifier, *origin_ts* is the origin timestamp, *sync_ts* is the synchronisation timestamp, *rate* is the grain rate and *duration* is the grain duration. A deprecated property is currently present in the data and should be set to all zeros. The deprecated property is likely to be removed when moving to the next *major_version*. In addition, the *sync_ts* field is not used in practice.
+The *src_id* is the source identifier for the grains, *flow_id* is the flow identifier, *origin_ts* is the origin timestamp, *sync_ts* is the synchronisation timestamp, *rate* is the grain rate and *duration* is the grain duration. The *sync_ts* field is not used in practice.
 
 The [gbhd](#gbhd-block) block then contains (in any order and with any other blocks in-between) an optional [tils](#tils-block) block, and a mandatory block for the non-empty grain types:
 
