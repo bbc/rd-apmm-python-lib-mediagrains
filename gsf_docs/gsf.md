@@ -59,7 +59,7 @@ followed by some special header fields:
 | Name          | Data       | Type     | Size      |
 |---------------|------------|----------|-----------|
 | id            |            | UUID     | 16 octets |
-| created       |            | Timestamp| 7 octets  |
+| created       |            | DateTime | 7 octets  |
 
 Where *id* is a UUID identifying the file itself, and *created* is a timestamp identifying when the file was laid down.
 
