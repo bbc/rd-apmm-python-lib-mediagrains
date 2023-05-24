@@ -26,7 +26,7 @@ A number of data types are defined for the SSB format structures and the data it
 |               | Numerator   | 4              | *Unsigned* numerator                                           |
 |               | Denominator | 4              | *Unsigned* denominator                                         |
 | UUID          |             | 16             | 16 octets of a Universal Unique Identifier                     |
-| IPPTimestamp  |             | 10             | Timestamp with nanosecond resolution                           |
+| Timestamp     |             | 10             | Timestamp with nanosecond resolution                           |
 |               | Seconds     | 6              | *Unsigned* seconds                                             |
 |               | Nanoseconds | 4              | *Unsigned* nanoseconds                                         |
 | FixString     |             | Fixed size     | UTF-8 encoded string with a fixed size specified by the        |
