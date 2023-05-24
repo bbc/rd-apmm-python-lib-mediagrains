@@ -219,7 +219,7 @@ class GSFDecodeBadFileTypeError(GSFDecodeError):
 
 
 class GSFDecodeBadVersionError(GSFDecodeError):
-    """The version was not 7.0
+    """The version was unsupported
 
     properties:
 
@@ -928,7 +928,7 @@ class GSFAsyncDecoderSession(object):
         :raises GSFDecodeError: If the file doesn't have a "head" block
         """
         (major, minor) = await self._decode_ssb_header()
-        if (major, minor) != (7, 0):
+        if major not in [7, 8]:
             raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
 
         try:
@@ -1263,7 +1263,7 @@ class GSFSyncDecoderSession(object):
         :raises GSFDecodeError: If the file doesn't have a "head" block
         """
         (major, minor) = self._decode_ssb_header()
-        if (major, minor) != (7, 0):
+        if major not in [7, 8]:
             raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
 
         try:

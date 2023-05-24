@@ -2147,11 +2147,29 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
         self.assertEqual(cm.exception.offset, 0)
         self.assertEqual(cm.exception.filetype, "POTATO23")
 
-    def test_loads_rejects_incorrect_version_file(self):
+    def test_loads_accepts_version_7_file(self):
+        loads(b"SSBBgrsg\x07\x00\x00\x00" +
+              b"head\x1f\x00\x00\x00" +
+              b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+              b"\xbf\x07\x03\x1d\x0f\x0f\x0f")
+
+    def test_loads_accepts_version_8_file(self):
+        loads(b"SSBBgrsg\x08\x00\x00\x00" +
+              b"head\x1f\x00\x00\x00" +
+              b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+              b"\xbf\x07\x03\x1d\x0f\x0f\x0f")
+
+    def test_loads_accepts_unknown_minor_version_file(self):
+        loads(b"SSBBgrsg\x07\x00\x03\x00" +
+              b"head\x1f\x00\x00\x00" +
+              b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+              b"\xbf\x07\x03\x1d\x0f\x0f\x0f")
+
+    def test_loads_rejects_unknown_version_file(self):
         with self.assertRaises(GSFDecodeBadVersionError) as cm:
-            loads(b"SSBBgrsg\x08\x00\x03\x00")
+            loads(b"SSBBgrsg\x09\x00\x03\x00")
         self.assertEqual(cm.exception.offset, 0)
-        self.assertEqual(cm.exception.major, 8)
+        self.assertEqual(cm.exception.major, 9)
         self.assertEqual(cm.exception.minor, 3)
 
     def test_loads_rejects_bad_head_tag(self):
