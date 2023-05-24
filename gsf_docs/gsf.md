@@ -41,7 +41,7 @@ As such the overall structure of the file is (count shown in brackets):
         * [aghd](#aghd-block) (0..1): audio grain header
         * [cahd](#cahd-block) (0..1): coded audio grain header
         * [eghd](#eghd-block) (0..1): data grain header
-    * [grdt](#grdt-block): grain data
+    * [grdt](#grdt-block) (1): grain data
 * [grai](#grai-block) (0..1): terminator block
 
 
@@ -63,7 +63,7 @@ followed by some special header fields:
 
 Where *id* is a UUID identifying the file itself, and *created* is a timestamp identifying when the file was laid down.
 
-The "head" block then contains any number of [segm](#segm-block) and [tag](#tag-block) blocks (with any other block in-between).
+The "head" block then contains any number of [segm](#segm-block) and [tag](#tag-block) blocks (with any other blocks in-between).
 
 ## "segm" Block
 
@@ -150,7 +150,7 @@ followed by the fields of the common grain header:
 
 The *src_id* is the source identifier for the grains, *flow_id* is the flow identifier, *origin_ts* is the origin timestamp, *sync_ts* is the synchronisation timestamp, *rate* is the grain rate and *duration* is the grain duration. A deprecated property is currently present in the data and should be set to all zeros. The deprecated property is likely to be removed when moving to the next *major_version*. In addition, the *sync_ts* field is not used in practice.
 
-The [gbhd](#gbhd-block) block then contains (in any order and with any other blocks in-between) an optional [tils](#tils-block) block, and then a mandatory block for the non-empty grain types:
+The [gbhd](#gbhd-block) block then contains (in any order and with any other blocks in-between) an optional [tils](#tils-block) block, and a mandatory block for the non-empty grain types:
 
 * Video Grain: a [vghd](#vghd-block) block.
 * Coded Video Grain: a [cghd](#cghd-block) block.
@@ -318,7 +318,7 @@ The *format* and *layout* parameters are enumerated values as used in the [COG l
 
 The *layouts* is the same as that described in the [vghd](#vghd-block) block. The *origin_width* and *origin_height* are the original frame dimensions that were input to the encoder and is the output of the decoder after applying any clipping. The *coded_width* and *coded_height* are the frame dimensions used to encode from, eg. including padding to meet the fixed macroblock size requirement. The *key_frame* is set to true if the video frame is a key frame, eg. an I-frame. The *temporal_offset* is the offset between display and stored order for inter-frame coding schemes (offset = display - stored).
 
-The [cghd](#cghd-block) block is followed by an optional [unof](#unof-block) block (with any other block in-between).
+The [cghd](#cghd-block) block is followed by an optional [unof](#unof-block) block (with any other blocks in-between).
 
 ## "unof" Block
 
