@@ -24,55 +24,25 @@ Every GSF file starts with a single "head" block, which itself contains other ty
 
 The "grai" terminator block has the block *size* set to 0 (and no content) which signals to readers that the GSF stream has ended. It is typically used by readers when receiving a GSF stream where the sender does not know the duration beforehand and has set *count* in "segm" to -1.
 
-As such the overall structure of the file is:
+As such the overall structure of the file is (count shown in brackets):
 
-* File header (12 octets)
-* "head" block
-    * block header
-    * head header (id, and timestamp)
-    * "segm" blocks (optional, repeatable)
-        * block header
-        * segm header (local_id, id, count)
-        * "tag " blocks (optional, repeatable)
-    * "tag " blocks (optional, repeatable)
-* "grai" blocks (optional, repeatable)
-    * block header
-    * grai header (local_id)
-    * "gbhd" block
-        * block header
-        * gbhd header (src_id, flow_id, origin_ts, sync_ts, rate, duration)
-        * "tils" block (optional)
-            * block header
-            * timelabel count
-            * timelabel (repeatable)
-        * "vghd" block (if video grain)
-            * block header
-            * vghd header (format, layout, etc ...)
-            * "comp" block (optional)
-                * block header
-                * comp count
-                * comp (repeatable)
-        * "cghd" block (if coded video grain)
-            * block header
-            * cghd header (format, layout, etc ...)
-            * "unof" block (optional)
-                * block header
-                * unof count
-                * unof (repeatable)
-        * "aghd" block (if audio grain)
-            * block header
-            * aghd header (format, rate, etc ...)
-        * "cahd" block (if coded audio grain)
-            * block header
-            * cahd header (format, rate, etc ...)
-        * "eghd" block (if data grain)
-            * block header
-            * eghd header (type)
-    * "grdt" block
-        * block header
-        * raw data
-* "grai" terminator block
-    * block header with size 0
+* File header
+* "head" (1): file identify and creation time
+    * "segm" (0..*): segment info
+        * "tag " (0..*): segment tags
+    * "tag " (0..*): file tags
+* "grai" (0..*): grain info and data
+    * "gbhd" (0..1): grain header
+        * "tils" (0..1): time labels
+        * "vghd" (0..1): video grain header
+            * "comp" (0..1): video component info
+        * "cghd" (0..1): coded video grain header
+            * "unof" (0..1): unit offsets in coded data
+        * "aghd" (0..1): audio grain header
+        * "cahd" (0..1): coded audio grain header
+        * "eghd" (0..1): data grain header
+    * "grdt"
+* "grai" (0..1): terminator block
 
 
 ## "head" Block
