@@ -716,6 +716,8 @@ class GSFAsyncDecoderSession(object):
             raise RuntimeError("Cannot decode a stream that is not at least forward seekable")
 
         self.Grain = parse_grain
+        self.major = 0
+        self.minor = 0
         self.file_headers: Optional[GSFFileHeaderDict] = None
 
         self._exiting = False
@@ -821,7 +823,8 @@ class GSFAsyncDecoderSession(object):
 
         meta['grain']['source_id'] = await gbhd_block.read_uuid()
         meta['grain']['flow_id'] = await gbhd_block.read_uuid()
-        self.file_data.seek(16, 1)  # Skip over deprecated byte array
+        if self.major == 7:
+            self.file_data.seek(16, 1)  # Skip over deprecated byte array
         meta['grain']['origin_timestamp'] = await gbhd_block.read_ippts()
         meta['grain']['sync_timestamp'] = await gbhd_block.read_ippts()
         meta['grain']['rate'] = await gbhd_block.read_rational()
@@ -927,9 +930,9 @@ class GSFAsyncDecoderSession(object):
         :raises GSFDecodeBadFileTypeError: If this isn't a GSF file
         :raises GSFDecodeError: If the file doesn't have a "head" block
         """
-        (major, minor) = await self._decode_ssb_header()
-        if major not in [7, 8]:
-            raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
+        (self.major, self.minor) = await self._decode_ssb_header()
+        if self.major not in [7, 8]:
+            raise GSFDecodeBadVersionError(f"Unknown Version {self.major}.{self.minor}", 0, self.major, self.minor)
 
         try:
             async with AsyncGSFBlock(self.file_data, want_tag="head") as head_block:
@@ -1055,6 +1058,8 @@ class GSFSyncDecoderSession(object):
         self.file_data = file_data
 
         self.Grain = parse_grain
+        self.major = 0
+        self.minor = 0
         self.file_headers: Optional[GSFFileHeaderDict] = None
 
         self._exiting = False
@@ -1156,7 +1161,8 @@ class GSFSyncDecoderSession(object):
 
         meta['grain']['source_id'] = gbhd_block.read_uuid()
         meta['grain']['flow_id'] = gbhd_block.read_uuid()
-        self.file_data.seek(16, 1)  # Skip over deprecated byte array
+        if self.major == 7:
+            self.file_data.seek(16, 1)  # Skip over deprecated byte array
         meta['grain']['origin_timestamp'] = gbhd_block.read_ippts()
         meta['grain']['sync_timestamp'] = gbhd_block.read_ippts()
         meta['grain']['rate'] = gbhd_block.read_rational()
@@ -1262,9 +1268,9 @@ class GSFSyncDecoderSession(object):
         :raises GSFDecodeBadFileTypeError: If this isn't a GSF file
         :raises GSFDecodeError: If the file doesn't have a "head" block
         """
-        (major, minor) = self._decode_ssb_header()
-        if major not in [7, 8]:
-            raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
+        (self.major, self.minor) = self._decode_ssb_header()
+        if self.major not in [7, 8]:
+            raise GSFDecodeBadVersionError(f"Unknown Version {self.major}.{self.minor}", 0, self.major, self.minor)
 
         try:
             with SyncGSFBlock(self.file_data, want_tag="head") as head_block:
@@ -2192,6 +2198,10 @@ class GSFEncoderSegment(object):
     def encode_grain(self, grain: Grain) -> bytes:
         gbhd_size = self._gbhd_size_for_grain(grain)
 
+        version_7_deprecated_bytes = b""
+        if self._parent is not None and self._parent.major == 7:
+            version_7_deprecated_bytes = b"\x00"*16
+
         data = (
             b"grai" +
             _encode_uint(10 + gbhd_size + 8 + grain.length, 4) +
@@ -2202,7 +2212,7 @@ class GSFEncoderSegment(object):
 
             _encode_uuid(grain.source_id) +
             _encode_uuid(grain.flow_id) +
-            b"\x00"*16 +
+            version_7_deprecated_bytes +
             _encode_ts(grain.origin_timestamp) +
             _encode_ts(grain.sync_timestamp) +
             _encode_rational(grain.rate) +
@@ -2249,7 +2259,9 @@ class GSFEncoderSegment(object):
         return data
 
     def _gbhd_size_for_grain(self, grain: Grain) -> int:
-        size = 92
+        size = 76
+        if self._parent is not None and self._parent.major == 7:
+            size += 16  # deprecated bytes
         if len(grain.timelabels) > 0:
             size += 10 + 29*len(grain.timelabels)
         if grain.grain_type == "video":
