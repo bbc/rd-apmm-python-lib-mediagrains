@@ -430,7 +430,7 @@ class AsyncGSFBlock():
         second = await self.read_uint(1)
         return datetime(year, month, day, hour, minute, second)
 
-    async def read_ippts(self) -> Timestamp:
+    async def read_timestamp(self) -> Timestamp:
         """Read a mediatimestamp.Timestamp
 
         :returns: Timestamp
@@ -654,7 +654,7 @@ class SyncGSFBlock():
         second = self.read_uint(1)
         return datetime(year, month, day, hour, minute, second)
 
-    def read_ippts(self) -> Timestamp:
+    def read_timestamp(self) -> Timestamp:
         """Read a mediatimestamp.Timestamp
 
         :returns: Timestamp
@@ -825,8 +825,8 @@ class GSFAsyncDecoderSession(object):
         meta['grain']['flow_id'] = await gbhd_block.read_uuid()
         if self.major == 7:
             self.file_data.seek(16, 1)  # Skip over deprecated byte array
-        meta['grain']['origin_timestamp'] = await gbhd_block.read_ippts()
-        meta['grain']['sync_timestamp'] = await gbhd_block.read_ippts()
+        meta['grain']['origin_timestamp'] = await gbhd_block.read_timestamp()
+        meta['grain']['sync_timestamp'] = await gbhd_block.read_timestamp()
         meta['grain']['rate'] = await gbhd_block.read_rational()
         meta['grain']['duration'] = await gbhd_block.read_rational()
 
@@ -1163,8 +1163,8 @@ class GSFSyncDecoderSession(object):
         meta['grain']['flow_id'] = gbhd_block.read_uuid()
         if self.major == 7:
             self.file_data.seek(16, 1)  # Skip over deprecated byte array
-        meta['grain']['origin_timestamp'] = gbhd_block.read_ippts()
-        meta['grain']['sync_timestamp'] = gbhd_block.read_ippts()
+        meta['grain']['origin_timestamp'] = gbhd_block.read_timestamp()
+        meta['grain']['sync_timestamp'] = gbhd_block.read_timestamp()
         meta['grain']['rate'] = gbhd_block.read_rational()
         meta['grain']['duration'] = gbhd_block.read_rational()
 
