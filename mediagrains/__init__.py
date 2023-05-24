@@ -38,7 +38,16 @@ with numpy and similar libraries.
 
 The gsf and grains submodules have their own documentation.
 """
-from .grains import Grain, VideoGrain, CodedVideoGrain, AudioGrain, CodedAudioGrain, EventGrain
+from .grains import Grain, VideoGrain, CodedVideoGrain, AudioGrain, CodedAudioGrain, EventGrain, GrainFactory
 from .typing import ParseGrainType
 
-__all__ = ["Grain", "VideoGrain", "CodedVideoGrain", "AudioGrain", "CodedAudioGrain", "EventGrain", "ParseGrainType"]
+__all__ = [
+    "Grain",
+    "VideoGrain",
+    "CodedVideoGrain",
+    "AudioGrain",
+    "CodedAudioGrain",
+    "EventGrain",
+    "ParseGrainType",
+    "GrainFactory"
+]
