@@ -93,11 +93,11 @@ Block could contain more properties than a reader expects. Blocks could contain 
 
 ## "fill" Block
 
-The "fill" block is used to reserve space for overwriting later or to position blocks at certain offsets in the file. It consists of a standard block header
+The [fill](#fill-block) block is used to reserve space for overwriting later or to position blocks at certain offsets in the file. It consists of a standard block header
 
 | Name          | Data       | Type     | Size      |
 |---------------|------------|----------|-----------|
 | tag           | "fill"     | Tag      | 4 octets  |
 | size          |            | Unsigned | 4 octets  |
 
-The data can be anything but is typically set to all zeros. A reader must ignore a "fill" block.
+The data can be anything but is typically set to all zeros. A reader must ignore a [fill](#fill-block) block.
