@@ -1858,19 +1858,19 @@ class GSFEncoder(object):
 
     In addition the following properties provide access to file-level metadata:
 
-    major    -- an integer (default 7)
+    major    -- an integer (default 8)
     minor    -- an integer (default 0)
     id       -- a uuid.UUID
     created  -- a datetime.datetime
     tags     -- a tuple of tags
     segments -- a frozendict of GSFEncoderSegments
 
-    The current version of the library is designed for compatibility with v.7.0 of the GSF format. Setting a
+    The current version of the library is designed for compatibility with v.8.0 of the GSF format. Setting a
     different version number will simply change the reported version number in the file, but will not alter the
     syntax at all. If future versions of this code add support for other versions of GSF then this will change."""
     def __init__(self,
                  file: Union[IO[bytes], AsyncBinaryIO, OpenAsyncBinaryIO],
-                 major: int = 7,
+                 major: int = 8,
                  minor: int = 0,
                  id: Optional[UUID] = None,
                  created: Optional[datetime] = None,
