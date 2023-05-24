@@ -26,7 +26,9 @@ A number of data types are defined for the SSB format structures and the data it
 |               | Numerator   | 4              | *Unsigned* numerator                                           |
 |               | Denominator | 4              | *Unsigned* denominator                                         |
 | UUID          |             | 16             | 16 octets of a Universal Unique Identifier                     |
-| Timestamp     |             | 10             | Timestamp with nanosecond resolution                           |
+| Timestamp     |             | 11             | Timestamp with nanosecond resolution                           |
+|               | Sign        | 1              | A *Boolean* indicating whether the timestamp is                |
+|               |             |                | positive (true) or negative (false) signed.                    |
 |               | Seconds     | 6              | *Unsigned* seconds                                             |
 |               | Nanoseconds | 4              | *Unsigned* nanoseconds                                         |
 | FixString     |             | Fixed size     | UTF-8 encoded string with a fixed size specified by the        |
@@ -34,13 +36,13 @@ A number of data types are defined for the SSB format structures and the data it
 |               |             |                | character or by the end of the fixed size value                |
 | VarString     |             | 2 + Length     | UTF-8 encoded string with size equal to the Length value       |
 |               | Length      | 2              | *Unsigned* string length                                       |
-|               | Value       | Length         | A *FixString* with fixed size equal to Length               |
+|               | Value       | Length         | A *FixString* with fixed size equal to Length                  |
 | Timecode      |             | 13             | A media timecode                                               |
 |               | Count       | 4              | *Unsigned* count of frames since midnight                      |
 |               | Rate        | 8              | *Rational* timecode rate                                       |
 |               | Drop        | 1              | *Boolean* drop frame timecode flag                             |
 | Timelabel     |             | 29             | Timelabel containing a tag and a timecode                      |
-|               | Tag         | 16             | A *FixString* with Fixed size equal to 16. The tag used to  |
+|               | Tag         | 16             | A *FixString* with fixed size equal to 16. The tag used to     |
 |               |             |                | identify the origination of the timecode for example           |
 |               | Timecode    | 13             | A Timecode                                                     |
 | DateTime      |             | 7              | A date-time structure with seconds resolution. A date-time     |
