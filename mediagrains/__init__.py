@@ -36,12 +36,18 @@ objects are stringlike, but in Python 3 they resemble sequences of integers.
 Notably this means that the data element of these grains is fully compatible
 with numpy and similar libraries.
 
-The gsf and grain submodules have their own documentation.
+The gsf and grains submodules have their own documentation.
 """
-# TO_CHANGE: Export the grain classes directly on version change. (e.g. from .grains import ...)
-from .grain_constructors import Grain, VideoGrain, CodedVideoGrain, AudioGrain, CodedAudioGrain, EventGrain
+from .grains import Grain, VideoGrain, CodedVideoGrain, AudioGrain, CodedAudioGrain, EventGrain, GrainFactory
 from .typing import ParseGrainType
-from . import grain
 
-__all__ = ["Grain", "VideoGrain", "CodedVideoGrain", "AudioGrain", "CodedAudioGrain", "EventGrain", "ParseGrainType",
-           "grain"]
+__all__ = [
+    "Grain",
+    "VideoGrain",
+    "CodedVideoGrain",
+    "AudioGrain",
+    "CodedAudioGrain",
+    "EventGrain",
+    "ParseGrainType",
+    "GrainFactory"
+]

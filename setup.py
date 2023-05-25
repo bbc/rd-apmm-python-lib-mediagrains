@@ -40,7 +40,6 @@ package_names = [
     'mediagrains.hypothesis',
     'mediagrains.comparison',
     'mediagrains.utils',
-    'mediagrains.asyncio',
     'mediagrains.numpy',
     'mediagrains.tools',
     'mediagrains.patterngenerators',

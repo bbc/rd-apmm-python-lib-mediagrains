@@ -32,7 +32,7 @@ from mediatimestamp.immutable import TimeOffset, TimeRange, Timestamp
 
 
 if TYPE_CHECKING:
-    from .grains import GRAIN  # noqa: F401
+    from . import Grain  # noqa: F401
 
 
 __all__ = ["RationalTypes",
@@ -268,4 +268,4 @@ GrainDataParameterType = Optional[Union[GrainDataType, Awaitable[Optional[GrainD
 
 # This is the type of a function that can be called to construct a GRAIN object from a metadata dict and a data
 # parameter
-ParseGrainType = Callable[[GrainMetadataDict, GrainDataParameterType], "GRAIN"]
+ParseGrainType = Callable[[GrainMetadataDict, GrainDataParameterType], "Grain"]

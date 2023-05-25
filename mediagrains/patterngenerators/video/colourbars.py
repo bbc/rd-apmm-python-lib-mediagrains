@@ -15,7 +15,7 @@
 #
 from fractions import Fraction
 
-from ...grain_constructors import VideoGrain
+from ...grains import VideoGrain
 from .constants import pixel_ranges
 from .still import StillPatternGenerator
 from ...cogenums import CogFrameFormat, CogFrameLayout
@@ -45,7 +45,8 @@ class ColourBars(StillPatternGenerator):
             (int((0x1DFF >> bs) * intensity), 0xFFFF >> bs, 0x6BFF >> bs),
             (int((0x0000 >> bs) * intensity), 0x8000 >> bs, 0x8000 >> bs)]
 
-        vg = VideoGrain(src_id, flow_id,
+        vg = VideoGrain(src_id=src_id,
+                        flow_id=flow_id,
                         rate=rate,
                         cog_frame_format=cog_frame_format,
                         cog_frame_layout=CogFrameLayout.FULL_FRAME,

@@ -67,7 +67,7 @@ it with colour-bars:
 >>> from mediagrains.cogenum import CogFrameFormat, CogFrameLayout
 >>> src_id = uuid1()
 >>> flow_id = uuid1()
->>> grain = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+>>> grain = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
 >>> colours = [
 ...      (0x3FF, 0x000, 0x3FF),
 ...      (0x3FF, 0x3FF, 0x000),
@@ -112,9 +112,9 @@ and will be written to the output file as they are added.
 >>> enc = GSFEncoder(f)
 >>> seg = enc.add_segment()  # This must be done before the call to start_dump
 >>> enc.start_dump()  # This writes the file header and starts the export
->>> seg.add_grain(Grain(src_id, flow_id))  # Adds a grain and writes it to the file
->>> seg.add_grain(Grain(src_id, flow_id))  # Adds a grain and writes it to the file
->>> seg.add_grain(Grain(src_id, flow_id))  # Adds a grain and writes it to the file
+>>> seg.add_grain(Grain(src_id=src_id, flow_id=flow_id))  # Adds a grain and writes it to the file
+>>> seg.add_grain(Grain(src_id=src_id, flow_id=flow_id))  # Adds a grain and writes it to the file
+>>> seg.add_grain(Grain(src_id=src_id, flow_id=flow_id))  # Adds a grain and writes it to the file
 >>> enc.end_dump()  # This ends the export and finishes off the file
 >>> f.close()
 ```
@@ -149,10 +149,10 @@ An example of usage is as follows:
   ◯   a.creation_timestamp - b.creation_timestamp == mediatimestamp.immutable.TimeOffset.from_sec_nsec('0:0') as expected
   ✅   Lists match
     ✅   len(<a/b>.timelabels) == 0
-  ✅   <a/b>.format == CogFrameFormat.U8_444
+  ✅   <a/b>.cog_frame_format == CogFrameFormat.U8_444
   ✅   <a/b>.width == 1920
   ✅   <a/b>.height == 1080
-  ✅   <a/b>.layout == CogFrameLayout.FULL_FRAME
+  ✅   <a/b>.cog_frame_layout == CogFrameLayout.FULL_FRAME
   ✅   Binary data <a/b>.data are equal
 ```
 
@@ -171,7 +171,7 @@ An additional feature is provided in the form of numpy array access to the data 
 >>> from mediagrains.cogenums import CogFrameFormat, CogFrameLayout
 >>> src_id = uuid1()
 >>> flow_id = uuid1()
->>> grain = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+>>> grain = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
 >>> colours = [
 ...      (0x3FF, 0x000, 0x3FF),
 ...      (0x3FF, 0x3FF, 0x000),

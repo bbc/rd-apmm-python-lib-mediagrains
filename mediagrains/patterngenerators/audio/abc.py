@@ -18,14 +18,14 @@ from fractions import Fraction
 from uuid import UUID
 
 from ...cogenums import CogAudioFormat
-from ...grain import AUDIOGRAIN
+from ...grains import AudioGrain
 from ..abc import FixedRatePatternGenerator
 
 
 __all__ = ["AudioPatternGenerator"]
 
 
-class AudioPatternGenerator (FixedRatePatternGenerator[AUDIOGRAIN]):
+class AudioPatternGenerator (FixedRatePatternGenerator[AudioGrain]):
     def __init__(
         self,
         src_id: UUID,

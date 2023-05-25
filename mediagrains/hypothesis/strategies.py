@@ -15,7 +15,9 @@
 
 """\
 Contains a number of useful hypothesis strategies which can be used to
-generate mediagrains for hypothesis based testing
+generate mediagrains for hypothesis based testing.
+
+This is for the 'new style' of instantiating grains.
 """
 
 from mediatimestamp.hypothesis.strategies import immutabletimestamps as timestamps
@@ -37,13 +39,14 @@ from hypothesis.strategies import (
 
 import struct
 
-from uuid import UUID
 from fractions import Fraction
 from copy import copy
+from uuid import UUID
 
-from ..grain import attributes_for_grain_type
+from ..grains import new_attributes_for_grain_type as attributes_for_grain_type
 from ..cogenums import CogAudioFormat, CogFrameFormat, CogFrameLayout
-from .. import Grain, EventGrain, AudioGrain, CodedAudioGrain, CodedVideoGrain, VideoGrain
+from ..grains import EventGrain, AudioGrain, CodedAudioGrain, CodedVideoGrain, VideoGrain
+from ..grains import GrainFactory as Grain
 
 
 __all__ = ["DONOTSET",
@@ -98,26 +101,27 @@ def strategy_for_grain_attribute(attr, grain_type=None):
         else:
             return ValueError("Cannot generate formats for grain type: {!r}".format(grain_type))
 
-    strats = {'source_id': shrinking_uuids(),
+    strats = {'src_id': shrinking_uuids(),
               'flow_id': shrinking_uuids(),
               'origin_timestamp': timestamps(),
               'sync_timestamp': timestamps(),
               'creation_timestamp': timestamps(),
-              'rate': fractions(min_value=0),
-              'duration': fractions(min_value=0),
+              'rate': fractions(min_value=0, max_value=200),
+              'duration': fractions(min_value=0, max_value=200),
               'event_type': from_regex(r"^urn:[a-z0-9][a-z0-9-]{0,31}:[a-z0-9()+,\-.:=@;$_!*'%/?#]+$"),
               'topic': from_regex(r'^[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-/]*$'),
               'event_data': lists(fixed_dictionaries({
                 'path': from_regex(r'^[a-zA-Z0-9_\-]+[a-zA-Z0-9_\-/]*$'),
                 'pre': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str)),
                 'post': one_of(integers(), booleans(), fraction_dicts(), timestamps().map(str))})),
-              'format': _format_strategy(grain_type),
+              'cog_audio_format': _format_strategy(grain_type),
+              'cog_frame_format': _format_strategy(grain_type),
               'samples': integers(min_value=1, max_value=16),
               'channels': integers(min_value=1, max_value=16),
               'sample_rate': sampled_from((48000, 44100)),
               'width': just(240),
               'height': just(135),
-              'layout': sampled_from(CogFrameLayout).filter(lambda x: x != CogFrameLayout.UNKNOWN),
+              'cog_frame_layout': sampled_from(CogFrameLayout).filter(lambda x: x != CogFrameLayout.UNKNOWN),
               'priming': integers(min_value=0, max_value=65535),
               'remainder': integers(min_value=0, max_value=256),
               'coded_width': just(240),
@@ -159,7 +163,7 @@ def empty_grains(src_id=None,
                  duration=DONOTSET):
     """Draw from this strategy to get empty grains.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
+    :param src_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
                       strategy based on hypothesis.strategies.integers which shrinks towards smaller numerical
                       values will be used.
     :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on
@@ -185,7 +189,7 @@ def empty_grains(src_id=None,
                      0.
     """
     return _grain_strategy(Grain, "empty",
-                           source_id=src_id,
+                           src_id=src_id,
                            flow_id=flow_id,
                            creation_timestamp=creation_timestamp,
                            origin_timestamp=origin_timestamp,
@@ -207,7 +211,7 @@ def audio_grains(src_id=None,
                  sample_rate=None):
     """Draw from this strategy to get audio grains. The data element of these grains will always be all 0s.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
+    :param src_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
                       strategy based on hypothesis.strategies.integers which shrinks towards smaller numerical values
                       will be used.
     :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on
@@ -241,7 +245,7 @@ def audio_grains(src_id=None,
                         generate either 48000 or 44100.
     """
     return _grain_strategy(AudioGrain, "audio",
-                           source_id=src_id,
+                           src_id=src_id,
                            flow_id=flow_id,
                            creation_timestamp=creation_timestamp,
                            origin_timestamp=origin_timestamp,
@@ -269,7 +273,7 @@ def coded_audio_grains(src_id=None,
                        sample_rate=None):
     """Draw from this strategy to get coded audio grains. The data element of these grains will always be all 0s.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
+    :param src_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
                       strategy based on hypothesis.strategies.integers which shrinks towards smaller numerical values
                       will be used.
     :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on
@@ -307,7 +311,7 @@ def coded_audio_grains(src_id=None,
                         generate either 48000 or 44100.
     """
     return _grain_strategy(CodedAudioGrain, "coded_audio",
-                           source_id=src_id,
+                           src_id=src_id,
                            flow_id=flow_id,
                            origin_timestamp=origin_timestamp,
                            sync_timestamp=sync_timestamp,
@@ -331,10 +335,10 @@ def video_grains(src_id=None,
                  format=None,
                  width=None,
                  height=None,
-                 layout=None):
+                 cog_frame_layout=None):
     """Draw from this strategy to get video grains. The data element of these grains will always be all 0s.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
+    :param src_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
                       strategy based on hypothesis.strategies.integers which shrinks towards smaller numerical values
                       will be used.
     :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on
@@ -366,7 +370,7 @@ def video_grains(src_id=None,
                    will not generate UNKNOWN layout.
     """
     return _grain_strategy(VideoGrain, "video",
-                           source_id=src_id,
+                           src_id=src_id,
                            flow_id=flow_id,
                            creation_timestamp=creation_timestamp,
                            origin_timestamp=origin_timestamp,
@@ -376,7 +380,7 @@ def video_grains(src_id=None,
                            format=format,
                            width=width,
                            height=height,
-                           layout=layout)
+                           cog_frame_layout=cog_frame_layout)
 
 
 def coded_video_grains(src_id=None,
@@ -389,7 +393,7 @@ def coded_video_grains(src_id=None,
                        format=None,
                        coded_width=None,
                        coded_height=None,
-                       layout=None,
+                       cog_frame_layout=None,
                        origin_width=None,
                        origin_height=None,
                        is_key_frame=None,
@@ -397,7 +401,7 @@ def coded_video_grains(src_id=None,
                        unit_offsets=None):
     """Draw from this strategy to get coded video grains. The data element of these grains will always be all 0s.
 
-    :param source_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
+    :param src_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then an
                       strategy based on hypothesis.strategies.integers which shrinks towards smaller numerical values
                       will be used.
     :param flow_id: A uuid.UUID *or* a strategy from which uuid.UUIDs can be drawn, if None is provided then based on
@@ -438,7 +442,7 @@ def coded_video_grains(src_id=None,
                    will not generate UNKNOWN layout.
     """
     return _grain_strategy(CodedVideoGrain, "coded_video",
-                           source_id=src_id,
+                           src_id=src_id,
                            flow_id=flow_id,
                            creation_timestamp=creation_timestamp,
                            origin_timestamp=origin_timestamp,
@@ -453,7 +457,7 @@ def coded_video_grains(src_id=None,
                            is_key_frame=is_key_frame,
                            temporal_offset=temporal_offset,
                            unit_offsets=unit_offsets,
-                           layout=layout)
+                           cog_frame_layout=cog_frame_layout)
 
 
 def grains(grain_type, **kwargs):
@@ -501,7 +505,9 @@ def grains_from_template_with_data(grain, data=None):
                 ln = grain.expected_length//4
                 data = lists(floats(width=32,
                                     allow_nan=False,
-                                    allow_infinity=False),
+                                    allow_infinity=False,
+                                    min_value=0.0),  # Avoids ending up comparing unequal Grains that have +0.0 and -0.0
+                                                     # (which compare as equal)
                              min_size=ln,
                              max_size=ln).map(lambda x: struct.pack('@' + ('f'*ln), *x))
             elif grain.format in [CogAudioFormat.DOUBLE_PLANES,
@@ -510,7 +516,9 @@ def grains_from_template_with_data(grain, data=None):
                 ln = grain.expected_length//8
                 data = lists(floats(width=64,
                                     allow_nan=False,
-                                    allow_infinity=False),
+                                    allow_infinity=False,
+                                    min_value=0.0),  # Avoids ending up comparing unequal Grains that have +0.0 and -0.0
+                                                     # (which compare as equal)
                              min_size=ln,
                              max_size=ln).map(lambda x: struct.pack('@' + ('d'*ln), *x))
             else:
@@ -575,7 +583,7 @@ def event_grains(src_id=None,
         duration = Fraction(1, 25)
 
     def event_grain(
-     source_id,
+     src_id,
      flow_id,
      origin_timestamp,
      sync_timestamp,
@@ -586,7 +594,7 @@ def event_grains(src_id=None,
      topic,
      event_data):
         grain = EventGrain(
-            src_id=source_id,
+            src_id=src_id,
             flow_id=flow_id,
             creation_timestamp=creation_timestamp,
             origin_timestamp=origin_timestamp,
@@ -600,7 +608,7 @@ def event_grains(src_id=None,
         return grain
 
     return _grain_strategy(event_grain, "event",
-                           source_id=src_id,
+                           src_id=src_id,
                            flow_id=flow_id,
                            origin_timestamp=origin_timestamp,
                            sync_timestamp=sync_timestamp,

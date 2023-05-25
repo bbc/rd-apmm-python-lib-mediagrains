@@ -5,12 +5,10 @@ Modify the SubModules block to include submodules that aren't exposed through __
 These submodules need to be included in the module list passed to pdoc.
 #}
 {% block nav_submodules %}
-    {% if module.submodules or module.fullname == "mediagrains.patterngenerators" %}
+    {# {% if module.submodules or module.fullname == "mediagrains.patterngenerators" %} #}
+    {% if module.fullname == "mediagrains" or module.fullname == "mediagrains.patterngenerators" %}
         <h2>Submodules</h2>
         <ul>
-            {% for submodule in module.submodules if is_public(submodule) | trim %}
-                <li>{{ submodule.taken_from | link(text=submodule.name) }}</li>
-            {% endfor %}
             {% if module.fullname == "mediagrains" %}
                 <li><a href="mediagrains/comparison.html">comparison</a></li>
                 <li><a href="mediagrains/grains.html">grains</a></li>

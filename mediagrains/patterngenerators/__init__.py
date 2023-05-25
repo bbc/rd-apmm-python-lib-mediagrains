@@ -16,8 +16,6 @@
 """\
 This submodule contains classes which can be used to generate various test
 grains in a wide variety of formats in a random access fashion.
-
-This is intended to replace mediagrains.testsignalgenerator, which is now deprecated.
 """
 
 from .abc import PatternGenerator, FixedRatePatternGenerator
