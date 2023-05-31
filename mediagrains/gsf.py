@@ -219,7 +219,7 @@ class GSFDecodeBadFileTypeError(GSFDecodeError):
 
 
 class GSFDecodeBadVersionError(GSFDecodeError):
-    """The version was not 7.0
+    """The version was unsupported
 
     properties:
 
@@ -416,7 +416,7 @@ class AsyncGSFBlock():
 
         return UUID(bytes=uuid_data)
 
-    async def read_timestamp(self) -> datetime:
+    async def read_datetime(self) -> datetime:
         """Read a date-time (with seconds resolution) stored in 7 bytes
 
         :returns: Datetime
@@ -430,7 +430,7 @@ class AsyncGSFBlock():
         second = await self.read_uint(1)
         return datetime(year, month, day, hour, minute, second)
 
-    async def read_ippts(self) -> Timestamp:
+    async def read_timestamp(self) -> Timestamp:
         """Read a mediatimestamp.Timestamp
 
         :returns: Timestamp
@@ -640,7 +640,7 @@ class SyncGSFBlock():
 
         return UUID(bytes=uuid_data)
 
-    def read_timestamp(self) -> datetime:
+    def read_datetime(self) -> datetime:
         """Read a date-time (with seconds resolution) stored in 7 bytes
 
         :returns: Datetime
@@ -654,7 +654,7 @@ class SyncGSFBlock():
         second = self.read_uint(1)
         return datetime(year, month, day, hour, minute, second)
 
-    def read_ippts(self) -> Timestamp:
+    def read_timestamp(self) -> Timestamp:
         """Read a mediatimestamp.Timestamp
 
         :returns: Timestamp
@@ -716,6 +716,8 @@ class GSFAsyncDecoderSession(object):
             raise RuntimeError("Cannot decode a stream that is not at least forward seekable")
 
         self.Grain = parse_grain
+        self.major = 0
+        self.minor = 0
         self.file_headers: Optional[GSFFileHeaderDict] = None
 
         self._exiting = False
@@ -751,7 +753,7 @@ class GSFAsyncDecoderSession(object):
         """
         head: GSFFileHeaderDict = {}
         head['id'] = await head_block.read_uuid()
-        head['created'] = await head_block.read_timestamp()
+        head['created'] = await head_block.read_datetime()
 
         head['segments'] = []
         head['tags'] = []
@@ -821,9 +823,10 @@ class GSFAsyncDecoderSession(object):
 
         meta['grain']['source_id'] = await gbhd_block.read_uuid()
         meta['grain']['flow_id'] = await gbhd_block.read_uuid()
-        self.file_data.seek(16, 1)  # Skip over deprecated byte array
-        meta['grain']['origin_timestamp'] = await gbhd_block.read_ippts()
-        meta['grain']['sync_timestamp'] = await gbhd_block.read_ippts()
+        if self.major == 7:
+            self.file_data.seek(16, 1)  # Skip over deprecated byte array
+        meta['grain']['origin_timestamp'] = await gbhd_block.read_timestamp()
+        meta['grain']['sync_timestamp'] = await gbhd_block.read_timestamp()
         meta['grain']['rate'] = await gbhd_block.read_rational()
         meta['grain']['duration'] = await gbhd_block.read_rational()
 
@@ -854,22 +857,24 @@ class GSFAsyncDecoderSession(object):
                     }
 
                 meta['grain']['cog_frame']['components'] = []
-                if gbhd_child.has_child_block():
-                    async with AsyncGSFBlock(self.file_data) as comp_block:
-                        if comp_block.tag != "comp":
-                            continue  # Skip unknown/unexpected block
+                async for comp_block in gbhd_child.child_blocks():
+                    if comp_block.tag != 'comp':
+                        continue
 
-                        comp_count = await comp_block.read_uint(2)
-                        offset = 0
-                        for i in range(0, comp_count):
-                            comp = {}
-                            comp['width'] = await comp_block.read_uint(4)
-                            comp['height'] = await comp_block.read_uint(4)
-                            comp['stride'] = await comp_block.read_uint(4)
-                            comp['length'] = await comp_block.read_uint(4)
-                            comp['offset'] = offset
-                            offset += comp['length']
-                            meta['grain']['cog_frame']['components'].append(comp)
+                    # Guard against bad files with multiple 'comp'
+                    meta['grain']['cog_frame']['components'] = []
+
+                    comp_count = await comp_block.read_uint(2)
+                    offset = 0
+                    for i in range(0, comp_count):
+                        comp = {}
+                        comp['width'] = await comp_block.read_uint(4)
+                        comp['height'] = await comp_block.read_uint(4)
+                        comp['stride'] = await comp_block.read_uint(4)
+                        comp['length'] = await comp_block.read_uint(4)
+                        comp['offset'] = offset
+                        offset += comp['length']
+                        meta['grain']['cog_frame']['components'].append(comp)
 
             elif gbhd_child.tag == 'cghd':
                 meta['grain']['grain_type'] = "coded_video"
@@ -883,13 +888,15 @@ class GSFAsyncDecoderSession(object):
                 meta['grain']['cog_coded_frame']['is_key_frame'] = await gbhd_child.read_bool()
                 meta['grain']['cog_coded_frame']['temporal_offset'] = await gbhd_child.read_sint(4)
 
-                if gbhd_child.has_child_block():
-                    async with AsyncGSFBlock(self.file_data) as unof_block:
-                        meta['grain']['cog_coded_frame']['unit_offsets'] = []
+                async for unof_block in gbhd_child.child_block():
+                    if unof_block.tag != 'unof':
+                        continue
 
-                        unit_offsets = await unof_block.read_uint(2)
-                        for i in range(0, unit_offsets):
-                            meta['grain']['cog_coded_frame']['unit_offsets'].append(await unof_block.read_uint(4))
+                    meta['grain']['cog_coded_frame']['unit_offsets'] = []
+
+                    unit_offsets = await unof_block.read_uint(2)
+                    for i in range(0, unit_offsets):
+                        meta['grain']['cog_coded_frame']['unit_offsets'].append(await unof_block.read_uint(4))
 
             elif gbhd_child.tag == "aghd":
                 meta['grain']['grain_type'] = "audio"
@@ -911,12 +918,6 @@ class GSFAsyncDecoderSession(object):
 
             elif gbhd_child.tag == "eghd":
                 meta['grain']['grain_type'] = "event"
-            else:
-                raise GSFDecodeError(
-                    "Unknown type {} at offset {}".format(gbhd_child.tag, gbhd_child.block_start),
-                    gbhd_child.block_start,
-                    length=gbhd_child.size
-                )
 
         return cast(GrainMetadataDict, meta)
 
@@ -927,9 +928,9 @@ class GSFAsyncDecoderSession(object):
         :raises GSFDecodeBadFileTypeError: If this isn't a GSF file
         :raises GSFDecodeError: If the file doesn't have a "head" block
         """
-        (major, minor) = await self._decode_ssb_header()
-        if (major, minor) != (7, 0):
-            raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
+        (self.major, self.minor) = await self._decode_ssb_header()
+        if self.major not in [7, 8]:
+            raise GSFDecodeBadVersionError(f"Unknown Version {self.major}.{self.minor}", 0, self.major, self.minor)
 
         try:
             async with AsyncGSFBlock(self.file_data, want_tag="head") as head_block:
@@ -1055,6 +1056,8 @@ class GSFSyncDecoderSession(object):
         self.file_data = file_data
 
         self.Grain = parse_grain
+        self.major = 0
+        self.minor = 0
         self.file_headers: Optional[GSFFileHeaderDict] = None
 
         self._exiting = False
@@ -1086,7 +1089,7 @@ class GSFSyncDecoderSession(object):
         """
         head: GSFFileHeaderDict = {}
         head['id'] = head_block.read_uuid()
-        head['created'] = head_block.read_timestamp()
+        head['created'] = head_block.read_datetime()
 
         head['segments'] = []
         head['tags'] = []
@@ -1156,9 +1159,10 @@ class GSFSyncDecoderSession(object):
 
         meta['grain']['source_id'] = gbhd_block.read_uuid()
         meta['grain']['flow_id'] = gbhd_block.read_uuid()
-        self.file_data.seek(16, 1)  # Skip over deprecated byte array
-        meta['grain']['origin_timestamp'] = gbhd_block.read_ippts()
-        meta['grain']['sync_timestamp'] = gbhd_block.read_ippts()
+        if self.major == 7:
+            self.file_data.seek(16, 1)  # Skip over deprecated byte array
+        meta['grain']['origin_timestamp'] = gbhd_block.read_timestamp()
+        meta['grain']['sync_timestamp'] = gbhd_block.read_timestamp()
         meta['grain']['rate'] = gbhd_block.read_rational()
         meta['grain']['duration'] = gbhd_block.read_rational()
 
@@ -1189,22 +1193,24 @@ class GSFSyncDecoderSession(object):
                     }
 
                 meta['grain']['cog_frame']['components'] = []
-                if gbhd_child.has_child_block():
-                    with SyncGSFBlock(self.file_data) as comp_block:
-                        if comp_block.tag != "comp":
-                            continue  # Skip unknown/unexpected block
+                for comp_block in gbhd_child.child_blocks():
+                    if comp_block.tag != 'comp':
+                        continue
 
-                        comp_count = comp_block.read_uint(2)
-                        offset = 0
-                        for i in range(0, comp_count):
-                            comp = {}
-                            comp['width'] = comp_block.read_uint(4)
-                            comp['height'] = comp_block.read_uint(4)
-                            comp['stride'] = comp_block.read_uint(4)
-                            comp['length'] = comp_block.read_uint(4)
-                            comp['offset'] = offset
-                            offset += comp['length']
-                            meta['grain']['cog_frame']['components'].append(comp)
+                    # Guard against bad files with multiple 'comp'
+                    meta['grain']['cog_frame']['components'] = []
+
+                    comp_count = comp_block.read_uint(2)
+                    offset = 0
+                    for i in range(0, comp_count):
+                        comp = {}
+                        comp['width'] = comp_block.read_uint(4)
+                        comp['height'] = comp_block.read_uint(4)
+                        comp['stride'] = comp_block.read_uint(4)
+                        comp['length'] = comp_block.read_uint(4)
+                        comp['offset'] = offset
+                        offset += comp['length']
+                        meta['grain']['cog_frame']['components'].append(comp)
 
             elif gbhd_child.tag == 'cghd':
                 meta['grain']['grain_type'] = "coded_video"
@@ -1218,13 +1224,15 @@ class GSFSyncDecoderSession(object):
                 meta['grain']['cog_coded_frame']['is_key_frame'] = gbhd_child.read_bool()
                 meta['grain']['cog_coded_frame']['temporal_offset'] = gbhd_child.read_sint(4)
 
-                if gbhd_child.has_child_block():
-                    with SyncGSFBlock(self.file_data) as unof_block:
-                        meta['grain']['cog_coded_frame']['unit_offsets'] = []
+                for unof_block in gbhd_child.child_blocks():
+                    if unof_block.tag != 'unof':
+                        continue
 
-                        unit_offsets = unof_block.read_uint(2)
-                        for i in range(0, unit_offsets):
-                            meta['grain']['cog_coded_frame']['unit_offsets'].append(unof_block.read_uint(4))
+                    meta['grain']['cog_coded_frame']['unit_offsets'] = []
+
+                    unit_offsets = unof_block.read_uint(2)
+                    for i in range(0, unit_offsets):
+                        meta['grain']['cog_coded_frame']['unit_offsets'].append(unof_block.read_uint(4))
 
             elif gbhd_child.tag == "aghd":
                 meta['grain']['grain_type'] = "audio"
@@ -1246,12 +1254,6 @@ class GSFSyncDecoderSession(object):
 
             elif gbhd_child.tag == "eghd":
                 meta['grain']['grain_type'] = "event"
-            else:
-                raise GSFDecodeError(
-                    "Unknown type {} at offset {}".format(gbhd_child.tag, gbhd_child.block_start),
-                    gbhd_child.block_start,
-                    length=gbhd_child.size
-                )
 
         return cast(GrainMetadataDict, meta)
 
@@ -1262,9 +1264,9 @@ class GSFSyncDecoderSession(object):
         :raises GSFDecodeBadFileTypeError: If this isn't a GSF file
         :raises GSFDecodeError: If the file doesn't have a "head" block
         """
-        (major, minor) = self._decode_ssb_header()
-        if (major, minor) != (7, 0):
-            raise GSFDecodeBadVersionError("Unknown Version {}.{}".format(major, minor), 0, major, minor)
+        (self.major, self.minor) = self._decode_ssb_header()
+        if self.major not in [7, 8]:
+            raise GSFDecodeBadVersionError(f"Unknown Version {self.major}.{self.minor}", 0, self.major, self.minor)
 
         try:
             with SyncGSFBlock(self.file_data, want_tag="head") as head_block:
@@ -1858,19 +1860,19 @@ class GSFEncoder(object):
 
     In addition the following properties provide access to file-level metadata:
 
-    major    -- an integer (default 7)
+    major    -- an integer (default 8)
     minor    -- an integer (default 0)
     id       -- a uuid.UUID
     created  -- a datetime.datetime
     tags     -- a tuple of tags
     segments -- a frozendict of GSFEncoderSegments
 
-    The current version of the library is designed for compatibility with v.7.0 of the GSF format. Setting a
+    The current version of the library is designed for compatibility with v.8.0 of the GSF format. Setting a
     different version number will simply change the reported version number in the file, but will not alter the
     syntax at all. If future versions of this code add support for other versions of GSF then this will change."""
     def __init__(self,
                  file: Union[IO[bytes], AsyncBinaryIO, OpenAsyncBinaryIO],
-                 major: int = 7,
+                 major: int = 8,
                  minor: int = 0,
                  id: Optional[UUID] = None,
                  created: Optional[datetime] = None,
@@ -2192,6 +2194,10 @@ class GSFEncoderSegment(object):
     def encode_grain(self, grain: Grain) -> bytes:
         gbhd_size = self._gbhd_size_for_grain(grain)
 
+        version_7_deprecated_bytes = b""
+        if self._parent is not None and self._parent.major == 7:
+            version_7_deprecated_bytes = b"\x00"*16
+
         data = (
             b"grai" +
             _encode_uint(10 + gbhd_size + 8 + grain.length, 4) +
@@ -2202,7 +2208,7 @@ class GSFEncoderSegment(object):
 
             _encode_uuid(grain.source_id) +
             _encode_uuid(grain.flow_id) +
-            b"\x00"*16 +
+            version_7_deprecated_bytes +
             _encode_ts(grain.origin_timestamp) +
             _encode_ts(grain.sync_timestamp) +
             _encode_rational(grain.rate) +
@@ -2249,7 +2255,9 @@ class GSFEncoderSegment(object):
         return data
 
     def _gbhd_size_for_grain(self, grain: Grain) -> int:
-        size = 92
+        size = 76
+        if self._parent is not None and self._parent.major == 7:
+            size += 16  # deprecated bytes
         if len(grain.timelabels) > 0:
             size += 10 + 29*len(grain.timelabels)
         if grain.grain_type == "video":
