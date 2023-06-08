@@ -1463,9 +1463,27 @@ class TestGSFBlock(IsolatedAsyncioTestCase):
 
             self.assertEqual(test_datetime, UUT.read_datetime())
 
-    def test_read_timestamp(self):
+    def test_read_timestamp_v7(self):
         test_timestamp = Timestamp(1536422400, 500)
         test_data = b"\x00\xf2\x93\x5b\x00\x00\xf4\x01\x00\x00"
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertEqual(test_timestamp, UUT.read_timestamp_v7())
+
+    def test_read_timestamp(self):
+        test_timestamp = Timestamp(1536422400, 500)
+        test_data = b"\x01\x00\xf2\x93\x5b\x00\x00\xf4\x01\x00\x00"
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertEqual(test_timestamp, UUT.read_timestamp())
+
+    def test_read_timestamp__negative(self):
+        test_timestamp = Timestamp(1536422400, 500, -1)
+        test_data = b"\x00\x00\xf2\x93\x5b\x00\x00\xf4\x01\x00\x00"
 
         with BytesIO(test_data) as fp:
             UUT = SyncGSFBlock(fp)
@@ -1654,10 +1672,10 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         with GSFDecoder(file_data=video_data_stream) as dec:
             head = dec.file_headers
 
-        self.assertEqual(head['created'], datetime(2023, 5, 24, 15, 35, 47))
-        self.assertEqual(head['id'], UUID('45c4be81-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['id'], UUID('fcff8083-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('45c4be82-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['segments'][0]['id'], UUID('fcff8084-05e7-11ee-9cef-ff48f7f81acf'))
 
     def test_generate_grains(self):
         """Test that the generator yields each grain"""
@@ -1680,10 +1698,10 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         async with GSFDecoder(file_data=video_data_stream) as dec:
             head = dec.file_headers
 
-        self.assertEqual(head['created'], datetime(2023, 5, 24, 15, 35, 47))
-        self.assertEqual(head['id'], UUID('45c4be81-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['id'], UUID('fcff8083-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('45c4be82-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['segments'][0]['id'], UUID('fcff8084-05e7-11ee-9cef-ff48f7f81acf'))
 
     async def test_async_generate_grains(self):
         """Test that the generator yields each grain"""
@@ -1743,10 +1761,10 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         UUT = GSFDecoder(file_data=video_data_stream)
         head = UUT.decode_file_headers()
 
-        self.assertEqual(head['created'], datetime(2023, 5, 24, 15, 35, 47))
-        self.assertEqual(head['id'], UUID('45c4be81-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['id'], UUID('fcff8083-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('45c4be82-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['segments'][0]['id'], UUID('fcff8084-05e7-11ee-9cef-ff48f7f81acf'))
 
     @suppress_deprecation_warnings
     def test_generate_grains__deprecated(self):
@@ -2021,10 +2039,10 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
 
 class TestGSFLoads(IsolatedAsyncioTestCase):
     def _verify_loaded_video(self, head, segments):
-        self.assertEqual(head['created'], datetime(2023, 5, 24, 15, 35, 47))
-        self.assertEqual(head['id'], UUID('45c4be81-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['id'], UUID('fcff8083-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('45c4be82-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['segments'][0]['id'], UUID('fcff8084-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertIn(head['segments'][0]['local_id'], segments)
         self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
 
@@ -2113,10 +2131,10 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
     def test_loads_audio(self):
         (head, segments) = loads(AUDIO_DATA_8)
 
-        self.assertEqual(head['created'], datetime(2023, 5, 24, 15, 35, 47))
-        self.assertEqual(head['id'], UUID('45c4be76-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['id'], UUID('fcff8078-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('45c4be77-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['segments'][0]['id'], UUID('fcff8079-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertIn(head['segments'][0]['local_id'], segments)
         self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
 
@@ -2142,10 +2160,10 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
     def test_loads_coded_video(self):
         (head, segments) = loads(CODED_VIDEO_DATA_8)
 
-        self.assertEqual(head['created'], datetime(2023, 5, 24, 15, 35, 47))
-        self.assertEqual(head['id'], UUID('45c4be7a-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['id'], UUID('fcff807c-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('45c4be7b-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['segments'][0]['id'], UUID('fcff807d-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertIn(head['segments'][0]['local_id'], segments)
         self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
 
@@ -2428,10 +2446,10 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
     def test_loads_coded_audio(self):
         (head, segments) = loads(CODED_AUDIO_DATA_8)
 
-        self.assertEqual(head['created'], datetime(2023, 5, 24, 15, 35, 47))
-        self.assertEqual(head['id'], UUID('45c4be78-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['id'], UUID('fcff807a-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('45c4be79-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['segments'][0]['id'], UUID('fcff807b-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertIn(head['segments'][0]['local_id'], segments)
         self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
 
@@ -2471,10 +2489,10 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
         self.maxDiff = None
         (head, segments) = loads(EVENT_DATA_8)
 
-        self.assertEqual(head['created'], datetime(2023, 5, 24, 15, 35, 47))
-        self.assertEqual(head['id'], UUID('45c4be7c-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['id'], UUID('fcff807e-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('45c4be7d-fa40-11ed-89bd-bdb8ed9008d6'))
+        self.assertEqual(head['segments'][0]['id'], UUID('fcff807f-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertIn(head['segments'][0]['local_id'], segments)
         self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
 
