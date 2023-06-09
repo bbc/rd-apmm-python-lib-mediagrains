@@ -19,7 +19,8 @@ from unittest import IsolatedAsyncioTestCase, mock
 from uuid import UUID
 from mediagrains.grains import VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
 from mediagrains.grains import GrainFactory as Grain
-from mediagrains.gsf import loads, load, dumps, GSFEncoder, GSFDecoder, AsyncGSFBlock, GrainDataLoadingMode
+from mediagrains.gsf import loads, load, dumps
+from mediagrains.gsf import GSFEncoder, GSFDecoder, SyncGSFBlock, AsyncGSFBlock, GrainDataLoadingMode
 from mediagrains.gsf import GSFDecodeError
 from mediagrains.gsf import GSFEncodeError
 from mediagrains.gsf import GSFDecodeBadVersionError
@@ -1376,7 +1377,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
 class TestGSFBlock(IsolatedAsyncioTestCase):
     """Test the GSF decoder block handler correctly parses various types"""
 
-    async def test_read_uint(self):
+    async def test_async_read_uint(self):
         test_number = 4132
         test_data = b"\x24\x10\x00\x00"
 
@@ -1385,26 +1386,7 @@ class TestGSFBlock(IsolatedAsyncioTestCase):
 
             self.assertEqual(test_number, await UUT.read_uint(4))
 
-    async def test_read_bool(self):
-        test_data = b"\x00\x01\x02"  # False, True (0x01 != 0), True (0x02 != 0)
-
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
-
-            self.assertFalse(await UUT.read_bool())
-            self.assertTrue(await UUT.read_bool())
-            self.assertTrue(await UUT.read_bool())
-
-    async def test_read_sint(self):
-        test_number = -12856
-        test_data = b"\xC8\xCD\xFF"
-
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
-
-            self.assertEqual(test_number, await UUT.read_sint(3))
-
-    async def test_read_string(self):
+    async def test_async_read_string(self):
         """Test we can read a string, with Unicode characters"""
         test_string = u"Strings😁✔"
 
@@ -1415,89 +1397,128 @@ class TestGSFBlock(IsolatedAsyncioTestCase):
 
             self.assertEqual(test_string, await UUT.read_string(14))
 
-    async def test_read_varstring(self):
+    def test_read_uint(self):
+        test_number = 4132
+        test_data = b"\x24\x10\x00\x00"
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertEqual(test_number, UUT.read_uint(4))
+
+    def test_read_bool(self):
+        test_data = b"\x00\x01\x02"  # False, True (0x01 != 0), True (0x02 != 0)
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertFalse(UUT.read_bool())
+            self.assertTrue(UUT.read_bool())
+            self.assertTrue(UUT.read_bool())
+
+    def test_read_sint(self):
+        test_number = -12856
+        test_data = b"\xC8\xCD\xFF"
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertEqual(test_number, UUT.read_sint(3))
+
+    def test_read_string(self):
+        """Test we can read a string, with Unicode characters"""
+        test_string = u"Strings😁✔"
+
+        test_data = b"Strings\xf0\x9f\x98\x81\xe2\x9c\x94"
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertEqual(test_string, UUT.read_string(14))
+
+    def test_read_varstring(self):
         test_string = u"Strings😁✔"
         test_data = b"\x0e\x00Strings\xf0\x9f\x98\x81\xe2\x9c\x94"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
-            self.assertEqual(test_string, await UUT.read_varstring())
+            self.assertEqual(test_string, UUT.read_varstring())
 
-    async def test_read_uuid(self):
+    def test_read_uuid(self):
         test_uuid = UUID("b06c65c8-51ac-4ad1-a839-2ef37107cc16")
         test_data = b"\xb0\x6c\x65\xc8\x51\xac\x4a\xd1\xa8\x39\x2e\xf3\x71\x07\xcc\x16"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
-            self.assertEqual(test_uuid, await UUT.read_uuid())
+            self.assertEqual(test_uuid, UUT.read_uuid())
 
-    async def test_read_datetime(self):
+    def test_read_datetime(self):
         test_datetime = datetime(2018, 9, 8, 16, 0, 0)
         test_data = b"\xe2\x07\x09\x08\x10\x00\x00"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
-            self.assertEqual(test_datetime, await UUT.read_datetime())
+            self.assertEqual(test_datetime, UUT.read_datetime())
 
-    async def test_read_timestamp(self):
+    def test_read_timestamp(self):
         test_timestamp = Timestamp(1536422400, 500)
         test_data = b"\x00\xf2\x93\x5b\x00\x00\xf4\x01\x00\x00"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
-            self.assertEqual(test_timestamp, await UUT.read_timestamp())
+            self.assertEqual(test_timestamp, UUT.read_timestamp())
 
-    async def test_read_rational(self):
+    def test_read_rational(self):
         test_fraction = Fraction(4, 3)
         test_data = b"\x04\x00\x00\x00\x03\x00\x00\x00"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
-            self.assertEqual(test_fraction, await UUT.read_rational())
+            self.assertEqual(test_fraction, UUT.read_rational())
 
-    async def test_read_rational_zero_denominator(self):
+    def test_read_rational_zero_denominator(self):
         """Ensure the reader considers a Rational with zero denominator to be 0, not an error"""
         test_data = b"\x04\x00\x00\x00\x00\x00\x00\x00"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
-            self.assertEqual(Fraction(0), await UUT.read_rational())
+            self.assertEqual(Fraction(0), UUT.read_rational())
 
-    async def test_read_uint_past_eof(self):
+    def test_read_uint_past_eof(self):
         """read_uint calls read() directly - test it raises EOFError correctly"""
         test_data = b"\x04\x00"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
             with self.assertRaises(EOFError):
-                await UUT.read_uint(4)
+                UUT.read_uint(4)
 
-    async def test_read_string_past_eof(self):
+    def test_read_string_past_eof(self):
         """read_string() calls read() directly - test it raises EOFError correctly"""
         test_data = b"Strin"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
             with self.assertRaises(EOFError):
-                await UUT.read_string(6)
+                UUT.read_string(6)
 
-    async def test_read_uuid_past_eof(self):
+    def test_read_uuid_past_eof(self):
         """read_uuid() calls read() directly - test it raises EOFError correctly"""
         test_data = b"\xb0\x6c\x65\xc8\x51\xac\x4a\xd1\xa8\x39\x2e"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
             with self.assertRaises(EOFError):
-                await UUT.read_uuid()
+                UUT.read_uuid()
 
     def _make_sample_stream(self, post_child_len=0):
         """Generate a stream of sample blocks for testing the context manager
