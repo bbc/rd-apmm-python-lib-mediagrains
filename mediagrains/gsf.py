@@ -648,8 +648,8 @@ class SyncGSFBlock():
         second = self.read_uint(1)
         return datetime(year, month, day, hour, minute, second)
 
-    def read_timestamp(self) -> Timestamp:
-        """Read a mediatimestamp.Timestamp
+    def read_timestamp_v7(self) -> Timestamp:
+        """Read a version 7 mediatimestamp.Timestamp with no sign
 
         :returns: Timestamp
         :raises EOFError: If there are fewer than 10 bytes left in the source
@@ -657,6 +657,20 @@ class SyncGSFBlock():
         secs = self.read_uint(6)
         nano = self.read_uint(4)
         return Timestamp(secs, nano)
+
+    def read_timestamp(self) -> Timestamp:
+        """Read a mediatimestamp.Timestamp
+
+        :returns: Timestamp
+        :raises EOFError: If there are fewer than 11 bytes left in the source
+        """
+        if self.read_bool():
+            sign = 1
+        else:
+            sign = -1
+        secs = self.read_uint(6)
+        nano = self.read_uint(4)
+        return Timestamp(secs, nano, sign)
 
     def read_rational(self) -> Fraction:
         """Read a rational (fraction)
@@ -793,8 +807,11 @@ class BaseGSFDecoderSession(object):
         meta['grain']['flow_id'] = gbhd_block.read_uuid()
         if self.major == 7:
             gbhd_block.skip(16)  # Skip over deprecated byte array
-        meta['grain']['origin_timestamp'] = gbhd_block.read_timestamp()
-        meta['grain']['sync_timestamp'] = gbhd_block.read_timestamp()
+            meta['grain']['origin_timestamp'] = gbhd_block.read_timestamp_v7()
+            meta['grain']['sync_timestamp'] = gbhd_block.read_timestamp_v7()
+        else:
+            meta['grain']['origin_timestamp'] = gbhd_block.read_timestamp()
+            meta['grain']['sync_timestamp'] = gbhd_block.read_timestamp()
         meta['grain']['rate'] = gbhd_block.read_rational()
         meta['grain']['duration'] = gbhd_block.read_rational()
 
@@ -1352,12 +1369,22 @@ def _encode_sint(val: int, size: int) -> bytes:
     return _encode_uint(val, size)
 
 
+def _encode_bool(val: bool) -> bytes:
+    return _encode_uint(1 if val else 0, 1)
+
+
 def _encode_uuid(val: UUID) -> bytes:
     return val.bytes
 
 
-def _encode_ts(ts: Timestamp) -> bytes:
+def _encode_ts_v7(ts: Timestamp) -> bytes:
     return (_encode_uint(ts.sec, 6) +
+            _encode_uint(ts.ns, 4))
+
+
+def _encode_ts(ts: Timestamp) -> bytes:
+    return (_encode_bool(ts.sign >= 0) +
+            _encode_uint(ts.sec, 6) +
             _encode_uint(ts.ns, 4))
 
 
@@ -2022,8 +2049,10 @@ class GSFEncoderSegment(object):
     def encode_grain(self, grain: Grain) -> bytes:
         gbhd_size = self._gbhd_size_for_grain(grain)
 
+        encode_ts_f = _encode_ts
         version_7_deprecated_bytes = b""
         if self._parent is not None and self._parent.major == 7:
+            encode_ts_f = _encode_ts_v7
             version_7_deprecated_bytes = b"\x00"*16
 
         data = (
@@ -2037,8 +2066,8 @@ class GSFEncoderSegment(object):
             _encode_uuid(grain.source_id) +
             _encode_uuid(grain.flow_id) +
             version_7_deprecated_bytes +
-            _encode_ts(grain.origin_timestamp) +
-            _encode_ts(grain.sync_timestamp) +
+            encode_ts_f(grain.origin_timestamp) +
+            encode_ts_f(grain.sync_timestamp) +
             _encode_rational(grain.rate) +
             _encode_rational(grain.duration))
 
@@ -2083,9 +2112,10 @@ class GSFEncoderSegment(object):
         return data
 
     def _gbhd_size_for_grain(self, grain: Grain) -> int:
-        size = 76
+        size = 78
         if self._parent is not None and self._parent.major == 7:
             size += 16  # deprecated bytes
+            size -= 2  # No sign byte in 2 x Timestamp
         if len(grain.timelabels) > 0:
             size += 10 + 29*len(grain.timelabels)
         if grain.grain_type == "video":
