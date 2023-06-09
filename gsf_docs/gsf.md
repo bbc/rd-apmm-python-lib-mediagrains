@@ -32,7 +32,7 @@ As such the overall structure of the file is (count shown in brackets):
         * [tag](#tag-block) (0..*): segment tags
     * [tag](#tag-block) (0..*): file tags
 * [grai](#grai-block) (0..*): grain info and data
-    * [gbhd](#gbhd-block) (0..1): grain header
+    * [gbhd](#gbhd-block) (1): grain header
         * [tils](#tils-block) (0..1): time labels
         * [vghd](#vghd-block) (0..1): video grain header
             * [comp](#comp-block) (0..1): video component info
