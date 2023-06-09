@@ -276,6 +276,8 @@ class AsyncGSFBlock():
         :returns: Instance of GSFBlock
         :raises GSFDecodeError: If the block tag failed to decode as UTF-8, or an unwanted tag was found
         """
+        assert self.file_data.tell() == self.block_start, "Can't enter context manager after the block start"
+
         while True:
             tag_bytes = await self.file_data.read(4)
 
@@ -354,8 +356,6 @@ class AsyncGSFBlock():
 
     async def read_remaining_block(self) -> "SyncGSFBlock":
         """Reads the remaining data into a SyncGSFBlock
-
-        The returned block must not be used as a context manager as a parent already provides a context.
         """
         assert self.size is not None, "read_remaining_block() only works in a context manager"
 
@@ -424,9 +424,9 @@ class SyncGSFBlock():
         """Constructor. Records the start byte of the block in `block_start`
 
         :param file_data: An instance of io.BufferedReader or SyncGSFBlock positioned at the start of this block
+        :param file_data_start: Base file position of first byte in file_data. Ignored if file_data is a SyncGSFBlock
         :param want_tag: If set to a tag string, and in a context manager, skip any block without that tag
         :param raise_on_wrong_tag: Set to True to raise a GSFDecodeError if the next block isn't `want_tag`
-        :param file_data_start: Base file position of first byte in file_data. Non-zero for buffered block data
         """
         self.file_data: IO[bytes]
         self.file_data_start: int
@@ -458,6 +458,8 @@ class SyncGSFBlock():
         :returns: Instance of GSFBlock
         :raises GSFDecodeError: If the block tag failed to decode as UTF-8, or an unwanted tag was found
         """
+        assert self._base_file_tell() == self.block_start, "Can't enter context manager after the block start"
+
         # NOTE: Ensure that changes to the state set here is also changed in read_remaining_block
         # in SyncGSFBlock and AsyncGSFBlock
         while True:
@@ -538,8 +540,6 @@ class SyncGSFBlock():
 
     def read_remaining_block(self) -> "SyncGSFBlock":
         """Reads the remaining data into a SyncGSFBlock
-
-        The returned block must not be used as a context manager as a parent already provides a context.
         """
         assert self.size is not None, "read_remaining_block() only works in a context manager"
 
