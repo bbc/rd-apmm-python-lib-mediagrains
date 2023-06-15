@@ -53,6 +53,9 @@ A number of data types are defined for the SSB format structures and the data it
 |               | Hour        | 1              | *Unsigned* hour of day, 0 - 23                                 |
 |               | Minute      | 1              | *Unsigned* minute, 0 - 59                                      |
 |               | Second      | 1              | *Unsigned* second, 0 - 59                                      |
+| VarByteArray  |             | 4 + Length     | A variable size array of *Unsigned* with size 1.               |
+|               | Length      | 4              | *Unsigned* data length                                         |
+|               | Value       | Length         | Array of bytes with size equal to Length                       |
 | FixByteArray  |             | Fixed size     | A fixed size array of *Unsigned* with size 1. The fixed size   |
 |               |             |                | is provided by the property definition                         |
 

@@ -30,6 +30,7 @@ As such the overall structure of the file is (count shown in brackets):
 * [head](#head-block) (1): file identify and creation time
     * [segm](#segm-block) (0..*): segment info
         * [tag](#tag-block) (0..*): segment tags
+        * [flow](#flow-block) (0..1): flow metadata
     * [tag](#tag-block) (0..*): file tags
 * [grai](#grai-block) (0..*): grain info and data
     * [gbhd](#gbhd-block) (1): grain header
@@ -84,7 +85,11 @@ followed by some special header fields:
 | id            |            | UUID     | 16 octets |
 | count         |            | Signed   | 8 octets  |
 
-where *local_id* is a numerical identifier for the segment, which is unique within the file, *id* is a UUID for the segment, and *count* is the number of grains considered part of this segment or -1 to indicate the number of grains is unknown. The *id* could be used to transfer and persist a global unique identifier for the segment but it is generally not used as the GSF (segment) is a transient representation for the grains. A segment, which is defined locally by the *local_id*, contains grains from a single flow.
+where *local_id* is a numerical identifier for the segment, which is unique within the file, *id* is a UUID for the segment, and *count* is the number of grains considered part of this segment or -1 to indicate the number of grains is unknown. The *id* could be used to transfer and persist a global unique identifier for the GSF segment instance, but it is generally not used for that purpose as the GSF segment is a transient representation for the grains.
+
+A segment, which is defined locally by the *local_id*, always contains grains from a single flow.
+
+The [segm](#segm-block) block may contain a [flow](#flow-block) block and any number of [tag](#tag-block) blocks.
 
 ## "tag " Block
 
@@ -107,6 +112,31 @@ followed by two variable length string fields, one for *key* and one for *val*:
 where the maximum string length for either *key* or *val* is 65535 octets. Note that the VarString *size* includes 2 octets to encode the string length.
 
 A [tag](#tag-block) block will not have any child blocks.
+
+## "flow" Block
+
+A [flow](#gbhd-block) block contains the Flow metadata for the grains in the segment. It begins with a standard block header:
+
+| Name          | Data       | Type     | Size      |
+|---------------|------------|----------|-----------|
+| tag           | "flow"     | Tag      | 4 octets  |
+| size          |            | Unsigned | 4 octets  |
+
+followed by the Flow metadata:
+
+| Name          | Data       | Type         | Size      |
+|---------------|------------|--------------|-----------|
+| src_id        |            | UUID         | 16 octets |
+| flow_id       |            | UUID         | 16 octets |
+| format        |            | FixString    | 64 octets |
+| data          |            | VarByteArray | variable  |
+
+The *src_id* is the source identifier, *flow_id* is the flow identifier, *format* is a Flow format URN and *data* contains the Flow metadata as a UTF-8 encoded JSON string. The *src_id*, *flow_id* and *format* are extractions of the Flow properties contained in *data*.
+
+The known *format* values are defined in the [FlowFormat](https://github.com/bbc/rd-cloudfit-media-models/blob/main/cloudfitmediamodels/base_flow.py#L25) enum type and are as follows:
+* "urn:x-nmos:format:video" for video
+* "urn:x-nmos:format:audio" for audio
+* "urn:x-nmos:format:data" for data
 
 ## "grai" Block
 
