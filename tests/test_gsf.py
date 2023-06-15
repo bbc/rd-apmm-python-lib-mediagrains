@@ -35,6 +35,7 @@ from io import BytesIO
 from mediagrains.utils.asyncbinaryio import AsyncBytesIO
 from frozendict import frozendict
 from os import SEEK_SET
+import json
 
 from .fixtures import suppress_deprecation_warnings
 
@@ -1293,6 +1294,38 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         self.assertEqual(len(head['segments'][0]['tags']), 1)
         self.assertIn(('rainbow', 'dash'), head['segments'][0]['tags'])
 
+    async def test_sync_encode_flow(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        format = "urn:x-nmos:format:video"
+        grain = VideoGrain(src_id=src_id, flow_id=flow_id)
+
+        f = BytesIO()
+        with GSFEncoder(f) as enc:
+            enc.add_grains([grain])
+            enc.segments[1].add_flow(src_id, flow_id, format, "{}")
+        (head, segments) = loads(f.getvalue())
+
+        self.assertEqual(head['segments'][0]['flow']['source_id'], src_id)
+        self.assertEqual(head['segments'][0]['flow']['flow_id'], flow_id)
+        self.assertEqual(head['segments'][0]['flow']['format'], format)
+
+    async def test_async_encode_flow(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        format = "urn:x-nmos:format:video"
+        grain = VideoGrain(src_id=src_id, flow_id=flow_id)
+
+        f = BytesIO()
+        async with GSFEncoder(f) as enc:
+            await enc.add_grains([grain])
+            enc.segments[1].add_flow(src_id, flow_id, format, "{}")
+        (head, segments) = loads(f.getvalue())
+
+        self.assertEqual(head['segments'][0]['flow']['source_id'], src_id)
+        self.assertEqual(head['segments'][0]['flow']['flow_id'], flow_id)
+        self.assertEqual(head['segments'][0]['flow']['format'], format)
+
     def test_encoder_access_methods(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1508,6 +1541,15 @@ class TestGSFBlock(IsolatedAsyncioTestCase):
 
             self.assertEqual(Fraction(0), UUT.read_rational())
 
+    def test_read_varbytes(self):
+        test_bytes = b'{"test"}'
+        test_data = b'\x08\x00\x00\x00{"test"}'
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertEqual(test_bytes, UUT.read_varbytes())
+
     def test_read_uint_past_eof(self):
         """read_uint calls read() directly - test it raises EOFError correctly"""
         test_data = b"\x04\x00"
@@ -1672,10 +1714,10 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         with GSFDecoder(file_data=video_data_stream) as dec:
             head = dec.file_headers
 
-        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
-        self.assertEqual(head['id'], UUID('fcff8083-05e7-11ee-9cef-ff48f7f81acf'))
+        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44))
+        self.assertEqual(head['id'], UUID('a71aee4a-0b9b-11ee-9004-09742b0a3ff2'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('fcff8084-05e7-11ee-9cef-ff48f7f81acf'))
+        self.assertEqual(head['segments'][0]['id'], UUID('a71aee4b-0b9b-11ee-9004-09742b0a3ff2'))
 
     def test_generate_grains(self):
         """Test that the generator yields each grain"""
@@ -1698,10 +1740,10 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         async with GSFDecoder(file_data=video_data_stream) as dec:
             head = dec.file_headers
 
-        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
-        self.assertEqual(head['id'], UUID('fcff8083-05e7-11ee-9cef-ff48f7f81acf'))
+        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44))
+        self.assertEqual(head['id'], UUID('a71aee4a-0b9b-11ee-9004-09742b0a3ff2'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('fcff8084-05e7-11ee-9cef-ff48f7f81acf'))
+        self.assertEqual(head['segments'][0]['id'], UUID('a71aee4b-0b9b-11ee-9004-09742b0a3ff2'))
 
     async def test_async_generate_grains(self):
         """Test that the generator yields each grain"""
@@ -1761,10 +1803,10 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         UUT = GSFDecoder(file_data=video_data_stream)
         head = UUT.decode_file_headers()
 
-        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
-        self.assertEqual(head['id'], UUID('fcff8083-05e7-11ee-9cef-ff48f7f81acf'))
+        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44))
+        self.assertEqual(head['id'], UUID('a71aee4a-0b9b-11ee-9004-09742b0a3ff2'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('fcff8084-05e7-11ee-9cef-ff48f7f81acf'))
+        self.assertEqual(head['segments'][0]['id'], UUID('a71aee4b-0b9b-11ee-9004-09742b0a3ff2'))
 
     @suppress_deprecation_warnings
     def test_generate_grains__deprecated(self):
@@ -2039,10 +2081,10 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
 
 class TestGSFLoads(IsolatedAsyncioTestCase):
     def _verify_loaded_video(self, head, segments):
-        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
-        self.assertEqual(head['id'], UUID('fcff8083-05e7-11ee-9cef-ff48f7f81acf'))
+        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44))
+        self.assertEqual(head['id'], UUID('a71aee4a-0b9b-11ee-9004-09742b0a3ff2'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('fcff8084-05e7-11ee-9cef-ff48f7f81acf'))
+        self.assertEqual(head['segments'][0]['id'], UUID('a71aee4b-0b9b-11ee-9004-09742b0a3ff2'))
         self.assertIn(head['segments'][0]['local_id'], segments)
         self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
 
@@ -2197,6 +2239,18 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
             self.assertEqual(grain.temporal_offset, 0)
             self.assertEqual(grain.unit_offsets, unit_offsets[0][0])
             unit_offsets.pop(0)
+
+    def test_loads_flow(self):
+        (head, segments) = loads(VIDEO_DATA_8)
+
+        self.assertIn('flow', head['segments'][0])
+        self.assertEqual(head['segments'][0]['flow']['source_id'], UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
+        self.assertEqual(head['segments'][0]['flow']['flow_id'], UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
+        self.assertEqual(head['segments'][0]['flow']['format'], "urn:x-nmos:format:video")
+        flow = json.loads(head['segments'][0]['flow']['data'])
+        self.assertEqual(flow['source_id'], '49578552-fb9e-4d3e-a197-3e3c437a895d')
+        self.assertEqual(flow['id'], '6e55f251-f75a-4d56-b3af-edb8b7993c3c')
+        self.assertEqual(flow['format'], "urn:x-nmos:format:video")
 
     def test_loads_rejects_incorrect_type_file(self):
         with self.assertRaises(GSFDecodeBadFileTypeError) as cm:

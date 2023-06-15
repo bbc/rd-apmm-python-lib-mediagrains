@@ -48,7 +48,8 @@ from typing import (
     Sequence,
     AsyncIterable,
     Awaitable,
-    overload)
+    overload,
+    NamedTuple)
 from typing_extensions import TypedDict
 from .typing import GrainMetadataDict, RationalTypes, ParseGrainType
 
@@ -608,7 +609,10 @@ class SyncGSFBlock():
         if (len(string_data) != length):
             raise EOFError("Unable to read enough bytes from source")
 
-        return string_data.decode(encoding='utf-8')
+        string = string_data.decode(encoding='utf-8').rstrip('\x00')
+        if not string or string[0] == '\x00':
+            return ""
+        return string
 
     def read_varstring(self) -> str:
         """Read a variable length string
@@ -687,6 +691,17 @@ class SyncGSFBlock():
         else:
             return Fraction(numerator, denominator)
 
+    def read_varbytes(self) -> bytes:
+        """Read a variable length byte array
+
+        Reads a 4 byte uint to get the byte array length, then reads bytes of that length
+
+        :returns: bytes
+        :raises EOFError: If there are too few bytes left in the source
+        """
+        length = self.read_uint(4)
+        return self.file_data.read(length)
+
     def skip(self, length: int) -> None:
         """Skip length bytes
 
@@ -752,10 +767,21 @@ class BaseGSFDecoderSession(object):
 
                 # Segment blocks can have child tags as well
                 while head_child.has_child_block():
-                    with SyncGSFBlock(head_block) as segm_tag:
-                        if segm_tag.tag == "tag ":
-                            key = segm_tag.read_varstring()
-                            value = segm_tag.read_varstring()
+                    with SyncGSFBlock(head_block) as segm_child:
+                        if segm_child.tag == "flow":
+                            src_id = segm_child.read_uuid()
+                            flow_id = segm_child.read_uuid()
+                            format = segm_child.read_string(64)
+                            data = segm_child.read_varbytes()
+                            segm['flow'] = {
+                                'source_id': src_id,
+                                'flow_id': flow_id,
+                                'format': format,
+                                'data': data
+                            }
+                        elif segm_child.tag == "tag ":
+                            key = segm_child.read_varstring()
+                            value = segm_child.read_varstring()
                             segm['tags'].append((key, value))
 
                 head['segments'].append(segm)
@@ -1930,6 +1956,13 @@ class GSFEncoder(object):
             self._open_encoder = None
 
 
+class GSFEncoderFlow(NamedTuple):
+    src_id: UUID
+    flow_id: UUID
+    format: str
+    data: bytes
+
+
 class GSFEncoderTag(object):
     """A class to represent a tag,
 
@@ -1983,6 +2016,7 @@ class GSFEncoderSegment(object):
         self._count_pos = -1
         self._active_dump: bool = False
         self._tags: List[GSFEncoderTag] = []
+        self._gsf_flow: Optional[GSFEncoderFlow] = None
         self._grains: List[Grain] = []
         self._parent = parent
 
@@ -2006,8 +2040,14 @@ class GSFEncoderSegment(object):
         return len(self._grains) + self._write_count
 
     @property
+    def flow_block_size(self) -> int:
+        if self._gsf_flow is None:
+            return 0
+        return 108 + len(self._gsf_flow.data)
+
+    @property
     def segm_block_size(self) -> int:
-        return 34 + sum(tag.tag_block_size for tag in self._tags)
+        return 34 + self.flow_block_size + sum(tag.tag_block_size for tag in self._tags)
 
     @property
     def tags(self) -> Tuple[GSFEncoderTag, ...]:
@@ -2029,6 +2069,18 @@ class GSFEncoderSegment(object):
             data += _encode_sint(self.count, 8)
         else:
             data += _encode_sint(-1, 8)
+
+        if self._gsf_flow is not None:
+            data += (
+                b"flow" +
+                _encode_uint(self.flow_block_size, 4) +
+
+                _encode_uuid(self._gsf_flow.src_id) +
+                _encode_uuid(self._gsf_flow.flow_id) +
+                (self._gsf_flow.format.encode("utf-8") + (b"\x00" * 64))[:64] +
+                _encode_uint(len(self._gsf_flow.data), 4) +
+                self._gsf_flow.data
+            )
 
         for tag in self._tags:
             data += bytes(tag)
@@ -2239,6 +2291,20 @@ class GSFEncoderSegment(object):
         if self._active_dump:
             raise GSFEncodeAddToActiveDump("Cannot add a tag to a segment which is part of an active export")
         self._tags.append(GSFEncoderTag(key, value))
+
+    def add_flow(self, src_id: UUID, flow_id: UUID, format: str, data: str | bytes) -> None:
+        """Add flow metadata to the segment
+
+        :param src_id: The source ID for the flow
+        :param flow_id: The flow ID
+        :param format: The flow format URN
+        :param data: The flow metadata JSON string or bytes
+        """
+        if self._active_dump:
+            raise GSFEncodeAddToActiveDump("Cannot add a 'flow' to a segment which is part of an active export")
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+        self._gsf_flow = GSFEncoderFlow(src_id=src_id, flow_id=flow_id, format=format, data=data)
 
     def add_grain(self, grain: Grain):
         """Add a grain to the segment, which should be a Grain object"""
