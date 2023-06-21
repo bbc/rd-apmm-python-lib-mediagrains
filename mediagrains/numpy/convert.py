@@ -152,6 +152,7 @@ def _convert_rgb_to_yuv444(grain_in: VideoGrain, grain_out: VideoGrain) -> None:
                  grain_in.component_data.G,
                  grain_in.component_data.B)
 
+    # Note that NumPy requires the `unsafe` cast here due to the slight loss of precision in RGB<->YUV conversion
     np.clip((R*0.2126 + G*0.7152 + B*0.0722),
             0, 1 << bd, out=grain_out.component_data.Y, casting="unsafe")  # type: ignore
     np.clip((R*-0.114572 - G*0.385428 + B*0.5 + (1 << (bd - 1))),  # type: ignore
@@ -166,6 +167,7 @@ def _convert_yuv444_to_rgb(grain_in: VideoGrain, grain_out: VideoGrain) -> None:
                  grain_in.component_data.U.astype(np.dtype(np.double)) - (1 << (bd - 1)),
                  grain_in.component_data.V.astype(np.dtype(np.double)) - (1 << (bd - 1)))
 
+    # Note that NumPy requires the `unsafe` cast here due to the slight loss of precision in RGB<->YUV conversion
     np.clip((Y + V*1.5748),
             0, 1 << bd, out=grain_out.component_data.R, casting="unsafe")  # type: ignore
     np.clip((Y - U*0.187324 - V*0.468124),
