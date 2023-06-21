@@ -18,7 +18,7 @@ from unittest import TestCase
 from sys import version_info
 import uuid
 
-from mediagrains import VideoGrain
+from mediagrains.grains import VideoGrain
 from mediagrains.cogenums import CogFrameFormat
 from mediagrains.comparison import compute_psnr
 
@@ -43,7 +43,7 @@ pixel_ranges = {
 
 
 def _create_grain(cog_frame_format):
-    return VideoGrain(SRC_ID, FLOW_ID,
+    return VideoGrain(src_id=SRC_ID, flow_id=FLOW_ID,
                       cog_frame_format=cog_frame_format,
                       width=480, height=270)
 
@@ -55,7 +55,7 @@ def _set_colour_bars(vg, noise_mask=0xffff):
     :params vg: A video GRAIN
     :params noise_mask: A mask applied to the colour bar line pixels
     """
-    cog_frame_format = vg.format
+    cog_frame_format = vg.cog_frame_format
     intensity = 0.75
 
     _bpp = pixel_ranges[cog_frame_format][0]

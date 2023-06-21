@@ -128,9 +128,19 @@ class ComparisonResult(Generic[CR]):
 
     def excluded(self) -> bool:
         """Return a boolean value to show whether the identifier is Included or Excluded from the result."""
+        # Some Grain parameters have equivalent alternative parameters: deduplicate accordingly
+        alternative_attrs = {
+            "{}.src_id": "{}.source_id",
+            "{}.cog_frame_format": "{}.format",
+            "{}.cog_audio_format": "{}.format",
+            "{}.cog_frame_layout": "{}.layout"
+        }
+
         return bool(len([
-            option for option in self._options if isinstance(
-                option, ComparisonExclude) and self._identifier == option.path]) != 0)
+            option for option in self._options if (
+                isinstance(option, ComparisonExclude) and
+                (self._identifier == option.path or option.path == alternative_attrs.get(self._identifier, []))
+            )]) != 0)
 
     def ownoptions(self) -> list[ComparisonOption]:
         """Return any ComparisonOptions to do with what is being compared in the ComparisonResult (identifier)."""
@@ -624,7 +634,7 @@ class GrainComparisonResult(ComparisonResult):
 
     def compare_audio_grains(self, a: AudioGrain, b: AudioGrain, children) -> None:
         # We are comparing audio grains, so compare their audio grain specific features
-        for key in ['format',
+        for key in ['cog_audio_format',
                     'samples',
                     'channels',
                     'sample_rate']:
@@ -632,7 +642,7 @@ class GrainComparisonResult(ComparisonResult):
             children[key] = EqualityComparisonResult(
                 path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
 
-        if a.format == b.format:
+        if a.cog_audio_format == b.cog_audio_format:
             path = self._identifier + '.data'
             compare_psnr = len(
                 [option for option in self._options if isinstance(option, ComparisonPSNR) and path == option.path]
@@ -645,29 +655,29 @@ class GrainComparisonResult(ComparisonResult):
             else:
                 words_per_sample = 1
                 force_signed = False
-                if a.format in [CogAudioFormat.S16_PLANES,
-                                CogAudioFormat.S16_PAIRS,
-                                CogAudioFormat.S16_INTERLEAVED]:
+                if a.cog_audio_format in [CogAudioFormat.S16_PLANES,
+                                          CogAudioFormat.S16_PAIRS,
+                                          CogAudioFormat.S16_INTERLEAVED]:
                     word_code = 'h'
-                elif a.format in [CogAudioFormat.S24_PLANES,
-                                  CogAudioFormat.S24_PAIRS,
-                                  CogAudioFormat.S24_INTERLEAVED]:
+                elif a.cog_audio_format in [CogAudioFormat.S24_PLANES,
+                                            CogAudioFormat.S24_PAIRS,
+                                            CogAudioFormat.S24_INTERLEAVED]:
                     word_code = 'B'
                     words_per_sample = 3
                     force_signed = True
-                elif a.format in [CogAudioFormat.S32_PLANES,
-                                  CogAudioFormat.S32_PAIRS,
-                                  CogAudioFormat.S32_INTERLEAVED]:
+                elif a.cog_audio_format in [CogAudioFormat.S32_PLANES,
+                                            CogAudioFormat.S32_PAIRS,
+                                            CogAudioFormat.S32_INTERLEAVED]:
                     word_code = 'i'
-                elif a.format in [CogAudioFormat.S64_INVALID]:
+                elif a.cog_audio_format in [CogAudioFormat.S64_INVALID]:
                     word_code = 'l'
-                elif a.format in [CogAudioFormat.FLOAT_PLANES,
-                                  CogAudioFormat.FLOAT_PAIRS,
-                                  CogAudioFormat.FLOAT_INTERLEAVED]:
+                elif a.cog_audio_format in [CogAudioFormat.FLOAT_PLANES,
+                                            CogAudioFormat.FLOAT_PAIRS,
+                                            CogAudioFormat.FLOAT_INTERLEAVED]:
                     word_code = 'f'
-                elif a.format in [CogAudioFormat.DOUBLE_PLANES,
-                                  CogAudioFormat.DOUBLE_PAIRS,
-                                  CogAudioFormat.DOUBLE_INTERLEAVED]:
+                elif a.cog_audio_format in [CogAudioFormat.DOUBLE_PLANES,
+                                            CogAudioFormat.DOUBLE_PAIRS,
+                                            CogAudioFormat.DOUBLE_INTERLEAVED]:
                     word_code = 'd'
                 else:
                     word_code = 'B'
@@ -690,7 +700,7 @@ class GrainComparisonResult(ComparisonResult):
 
     def compare_coded_audio_grains(self, a: CodedAudioGrain, b: CodedAudioGrain, children) -> None:
         # We are comparing coded_audio grains, so compare their coded_audio grain specific features
-        for key in ['format',
+        for key in ['cog_audio_format',
                     'samples',
                     'channels',
                     'sample_rate',
@@ -700,7 +710,7 @@ class GrainComparisonResult(ComparisonResult):
             children[key] = EqualityComparisonResult(
                 path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
 
-        if a.format == b.format:
+        if a.cog_audio_format == b.cog_audio_format:
             children['data'] = DataEqualityComparisonResult(self._identifier + ".data",
                                                             a.data,
                                                             b.data,
@@ -715,15 +725,15 @@ class GrainComparisonResult(ComparisonResult):
 
     def compare_video_grains(self, a: VideoGrain, b: VideoGrain, children) -> None:
         # We are comparing video grains, so compare their video grain specific features
-        for key in ['format',
+        for key in ['cog_frame_format',
                     'width',
                     'height',
-                    'layout']:
+                    'cog_frame_layout']:
             path = self._identifier + '.' + key
             children[key] = EqualityComparisonResult(
                 path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
 
-        if a.format == b.format:
+        if a.cog_frame_format == b.cog_frame_format:
             path = self._identifier + '.data'
             compare_psnr = len(
                 [option for option in self._options if isinstance(option, ComparisonPSNR) and path == option.path]
@@ -734,20 +744,20 @@ class GrainComparisonResult(ComparisonResult):
                                                         b,
                                                         options=self._options)
             else:
-                if COG_FRAME_IS_COMPRESSED(a.format):
+                if COG_FRAME_IS_COMPRESSED(a.cog_frame_format):
                     word_code = 'B'
-                elif a.format == CogFrameFormat.v210:
+                elif a.cog_frame_format == CogFrameFormat.v210:
                     word_code = 'I'
-                elif a.format == CogFrameFormat.v216:
+                elif a.cog_frame_format == CogFrameFormat.v216:
                     word_code = 'H'
-                elif COG_FRAME_IS_PACKED(a.format):
+                elif COG_FRAME_IS_PACKED(a.cog_frame_format):
                     word_code = 'B'
                 else:
-                    if COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 1:
+                    if COG_FRAME_FORMAT_BYTES_PER_VALUE(a.cog_frame_format) == 1:
                         word_code = 'B'
-                    elif COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 2:
+                    elif COG_FRAME_FORMAT_BYTES_PER_VALUE(a.cog_frame_format) == 2:
                         word_code = 'H'
-                    elif COG_FRAME_FORMAT_BYTES_PER_VALUE(a.format) == 4:
+                    elif COG_FRAME_FORMAT_BYTES_PER_VALUE(a.cog_frame_format) == 4:
                         word_code = 'I'
 
                 children['data'] = DataEqualityComparisonResult(self._identifier + ".data",
@@ -766,14 +776,14 @@ class GrainComparisonResult(ComparisonResult):
 
     def compare_coded_video_grains(self, a: CodedVideoGrain, b: CodedVideoGrain, children) -> None:
         # We are comparing coded_video grains, so compare their coded_video grain specific features
-        for key in ['format',
+        for key in ['cog_frame_format',
                     'coded_width',
                     'coded_height',
                     'origin_width',
                     'origin_height',
                     'is_key_frame',
                     'temporal_offset',
-                    'layout']:
+                    'cog_frame_layout']:
             path = self._identifier + '.' + key
             children[key] = EqualityComparisonResult(
                 path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
@@ -786,7 +796,7 @@ class GrainComparisonResult(ComparisonResult):
                                                              comparison_class=DifferenceComparisonResult,
                                                              options=self._options, attr=key)
 
-        if a.format == b.format:
+        if a.cog_frame_format == b.cog_frame_format:
             children['data'] = DataEqualityComparisonResult(self._identifier + ".data",
                                                             a.data,
                                                             b.data,
@@ -806,7 +816,7 @@ class GrainComparisonResult(ComparisonResult):
             self._options.append(Exclude.creation_timestamp)
 
         for key in ['grain_type',
-                    'source_id',
+                    'src_id',
                     'flow_id',
                     'rate',
                     'duration',

@@ -255,10 +255,10 @@ class VideoGrain (bytesgrain.VideoGrain):
         self.component_data: ComponentDataList
 
         if self._data is not None:
-            self._data = np.frombuffer(self._data, dtype=_dtype_from_cogframeformat(self.format))
+            self._data = np.frombuffer(self._data, dtype=_dtype_from_cogframeformat(self.cog_frame_format))
             self.component_data = ComponentDataList(
-                _component_arrays_for_data_and_type(self._data, self.format, self.components),
-                arrangement=_component_arrangement_from_format(self.format))
+                _component_arrays_for_data_and_type(self._data, self.cog_frame_format, self.components),
+                arrangement=_component_arrangement_from_format(self.cog_frame_format))
         else:
             self.component_data = ComponentDataList([])
 
@@ -288,10 +288,10 @@ class VideoGrain (bytesgrain.VideoGrain):
             self.component_data = ComponentDataList([])
         else:
             self._data_fetcher_coroutine = None
-            self._data = np.frombuffer(cast(bytes, value), dtype=_dtype_from_cogframeformat(self.format))
+            self._data = np.frombuffer(cast(bytes, value), dtype=_dtype_from_cogframeformat(self.cog_frame_format))
             self.component_data = ComponentDataList(
-                _component_arrays_for_data_and_type(self._data, self.format, self.components),
-                arrangement=_component_arrangement_from_format(self.format))
+                _component_arrays_for_data_and_type(self._data, self.cog_frame_format, self.components),
+                arrangement=_component_arrangement_from_format(self.cog_frame_format))
 
     def __array__(self) -> np.ndarray:
         return np.array(self.data)
@@ -370,7 +370,7 @@ class VideoGrain (bytesgrain.VideoGrain):
                           height=self.height,
                           rate=self.rate,
                           duration=self.duration,
-                          cog_frame_layout=self.layout)
+                          cog_frame_layout=self.cog_frame_layout)
 
     def convert(self, fmt: CogFrameFormat) -> "VideoGrain":
         """Used to convert this grain to a different cog format. Always produces a new grain.
@@ -379,11 +379,11 @@ class VideoGrain (bytesgrain.VideoGrain):
         :returns: A new grain of the specified format. Notably converting to the same format is the same as a deepcopy
         :raises: NotImplementedError if the requested conversion is not possible
         """
-        if self.format == fmt:
+        if self.cog_frame_format == fmt:
             return deepcopy(self)
         else:
             grain_out = self._similar_grain(fmt)
-            self.__class__._get_grain_conversion_function(self.format, fmt)(self, grain_out)
+            self.__class__._get_grain_conversion_function(self.cog_frame_format, fmt)(self, grain_out)
             return grain_out
 
     def asformat(self, fmt: CogFrameFormat) -> "VideoGrain":
@@ -393,7 +393,7 @@ class VideoGrain (bytesgrain.VideoGrain):
         :returns: self or a new grain.
         :raises NotImplementedError if the requested conversion is not possible.
         """
-        if self.format == fmt:
+        if self.cog_frame_format == fmt:
             return self
         else:
             return self.convert(fmt)

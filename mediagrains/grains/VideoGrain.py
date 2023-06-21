@@ -11,6 +11,7 @@ from typing import (
     Iterable)
 from typing_extensions import Literal
 from uuid import UUID
+from deprecated import deprecated
 
 from mediatimestamp.immutable import Timestamp, SupportsMediaTimestamp, mediatimestamp
 from ..typing import (
@@ -446,10 +447,12 @@ length
         self.components = VideoGrain.COMPONENT_LIST(self)
 
     @property
+    @deprecated(version="4.0.0", reason="Referencing `format` directly is deprecated in favour of `cog_frame_format`")
     def format(self) -> CogFrameFormat:
         return CogFrameFormat(self.meta['grain']['cog_frame']['format'])
 
     @format.setter
+    @deprecated(version="4.0.0", reason="Referencing `format` directly is deprecated in favour of `cog_frame_format`")
     def format(self, value: CogFrameFormat) -> None:
         self.meta['grain']['cog_frame']['format'] = int(value)
 
@@ -478,10 +481,12 @@ length
         self.meta['grain']['cog_frame']['height'] = value
 
     @property
+    @deprecated(version="4.0.0", reason="Referencing `layout` directly is deprecated in favour of `cog_frame_layout`")
     def layout(self) -> CogFrameLayout:
         return CogFrameLayout(self.meta['grain']['cog_frame']['layout'])
 
     @layout.setter
+    @deprecated(version="4.0.0", reason="Referencing `layout` directly is deprecated in favour of `cog_frame_layout`")
     def layout(self, value: CogFrameLayout) -> None:
         self.meta['grain']['cog_frame']['layout'] = int(value)
 

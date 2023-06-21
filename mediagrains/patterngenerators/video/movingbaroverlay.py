@@ -17,7 +17,7 @@
 from typing import Optional, cast
 from mediatimestamp import TimeValue
 
-from ...grain import VIDEOGRAIN
+from ...grains import VideoGrain
 from .abc import VideoPatternGenerator
 from .constants import pixel_ranges
 from ...cogenums import COG_FRAME_FORMAT_H_SHIFT, COG_FRAME_FORMAT_V_SHIFT
@@ -66,7 +66,7 @@ class MovingBarOverlay (VideoPatternGenerator):
 
         self._bar = bar
 
-    def get(self, key: TimeValue, default: Optional[VIDEOGRAIN] = None) -> Optional[VIDEOGRAIN]:
+    def get(self, key: TimeValue, default: Optional[VideoGrain] = None) -> Optional[VideoGrain]:
         tv = TimeValue(key, rate=self.rate)
 
         grain = self._source[tv]

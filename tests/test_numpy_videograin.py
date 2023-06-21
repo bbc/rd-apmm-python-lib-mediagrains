@@ -17,8 +17,8 @@
 from unittest import IsolatedAsyncioTestCase, mock
 
 import uuid
-from mediagrains.numpy import VideoGrain, VIDEOGRAIN
-from mediagrains.numpy.videograin import _dtype_from_cogframeformat
+from mediagrains.numpy.numpy_grains import VideoGrain
+from mediagrains.numpy.numpy_grains.VideoGrain import _dtype_from_cogframeformat
 from mediagrains.cogenums import (
     CogFrameFormat,
     CogFrameLayout,
@@ -30,7 +30,7 @@ from mediagrains.cogenums import (
     COG_FRAME_FORMAT_ACTIVE_BITS)
 from mediagrains.gsf import loads, dumps
 from mediagrains.comparison import compare_grain
-from mediagrains import grain_constructors as bytesgrain_constructors
+import mediagrains.grains as bytesgrain_constructors
 from mediatimestamp.immutable import Timestamp, TimeRange
 from fractions import Fraction
 from copy import copy, deepcopy
@@ -118,7 +118,7 @@ class TestGrain (IsolatedAsyncioTestCase):
     def assertComponentsAreModifiable(self, grain):
         width = grain.width
         height = grain.height
-        fmt = grain.format
+        fmt = grain.cog_frame_format
 
         (hs, vs, _) = self._get_hs_vs_and_bps(fmt)
 
@@ -214,10 +214,10 @@ class TestGrain (IsolatedAsyncioTestCase):
             self.assertEqual(grain.rate, rate)
             self.assertEqual(grain.duration, 1/rate)
             self.assertEqual(grain.timelabels, [])
-            self.assertEqual(grain.format, fmt)
+            self.assertEqual(grain.cog_frame_format, fmt)
             self.assertEqual(grain.width, width)
             self.assertEqual(grain.height, height)
-            self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
+            self.assertEqual(grain.cog_frame_layout, CogFrameLayout.FULL_FRAME)
             self.assertEqual(grain.extension, 0)
             self.assertIsNone(grain.source_aspect_ratio)
             self.assertIsNone(grain.pixel_aspect_ratio)
@@ -411,7 +411,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         return output
 
     def write_test_pattern(self, grain):
-        fmt = grain.format
+        fmt = grain.cog_frame_format
 
         if self._is_rgb(fmt):
             (R, G, B) = self._test_pattern_rgb(fmt)
@@ -437,8 +437,8 @@ class TestGrain (IsolatedAsyncioTestCase):
             self.assertTrue(np.amax(np.absolute(a - b)) <= max_diff,
                             msg="{} - {} = {} (allowing up to {} difference)".format(a, b, a - b, max_diff))
 
-    def assertMatchesTestPattern(self, grain: VIDEOGRAIN, max_diff: Optional[int] = None):
-        fmt = grain.format
+    def assertMatchesTestPattern(self, grain: VideoGrain, max_diff: Optional[int] = None):
+        fmt = grain.cog_frame_format
 
         if self._is_rgb(fmt):
             (R, G, B) = self._test_pattern_rgb(fmt)
@@ -496,7 +496,7 @@ class TestGrain (IsolatedAsyncioTestCase):
                     CogFrameFormat.v210]:
             with self.subTest(fmt=fmt):
                 with mock.patch.object(Timestamp, "get_time", return_value=cts):
-                    grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                    grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                        cog_frame_format=fmt,
                                        width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
@@ -513,7 +513,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         sts = Timestamp.from_tai_sec_nsec("417798915:10")
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id,
+            grain = VideoGrain(src_id=src_id, flow_id=flow_id,
                                origin_timestamp=ConvertibleToTimestamp(ots),
                                sync_timestamp=ConvertibleToTimestamp(sts),
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
@@ -540,7 +540,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         data_awaitable = _get_data()
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=CogFrameFormat.U8_444,
                                width=16, height=16, cog_frame_layout=CogFrameLayout.FULL_FRAME,
                                data=data_awaitable)
@@ -609,7 +609,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         for (fmt_in, fmt_out) in pairs_from(fmts):
             with self.subTest(fmt_in=fmt_in, fmt_out=fmt_out):
                 with mock.patch.object(Timestamp, "get_time", return_value=cts):
-                    grain_in = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                    grain_in = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                           cog_frame_format=fmt_in,
                                           width=16, height=16, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
@@ -693,7 +693,7 @@ class TestGrain (IsolatedAsyncioTestCase):
 
         data = bytearray(11*1024*1024)
 
-        grain = VideoGrain({
+        grain = VideoGrain(meta={
             "grain": {
                 "grain_type": "video",
                 "source_id": src_id,
@@ -740,7 +740,7 @@ class TestGrain (IsolatedAsyncioTestCase):
                     ]
                 }
             }
-        }, data)
+        }, data=data)
 
         for y in range(0, 16):
             for x in range(0, 16):
@@ -772,7 +772,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         sts = Timestamp.from_tai_sec_nsec("417798915:10")
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
                                width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
@@ -794,7 +794,7 @@ class TestGrain (IsolatedAsyncioTestCase):
         sts = Timestamp.from_tai_sec_nsec("417798915:10")
 
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+            grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                cog_frame_format=CogFrameFormat.S16_422_10BIT,
                                width=1920, height=1080, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
@@ -814,10 +814,10 @@ class TestGrain (IsolatedAsyncioTestCase):
         flow_id = uuid.UUID("f79ce4da-0841-11e8-9a5b-dfedb11bafeb")
         cts = Timestamp.from_tai_sec_nsec("417798915:0")
         with mock.patch.object(Timestamp, "get_time", return_value=cts):
-            grain = bytesgrain_constructors.VideoGrain(src_id, flow_id,
+            grain = bytesgrain_constructors.VideoGrain(src_id=src_id, flow_id=flow_id,
                                                        cog_frame_format=CogFrameFormat.S16_422_10BIT,
                                                        width=480, height=270)
-            np_grain = VideoGrain(grain).convert(CogFrameFormat.v210)
+            np_grain = VideoGrain(grain=grain).convert(CogFrameFormat.v210)
 
         self.assertEqual(np_grain.length, (480+47)//48*128*270)
 
@@ -862,7 +862,7 @@ class TestGrain (IsolatedAsyncioTestCase):
                     CogFrameFormat.v210]:
             with self.subTest(fmt=fmt):
                 with mock.patch.object(Timestamp, "get_time", return_value=cts):
-                    grain = VideoGrain(src_id, flow_id, origin_timestamp=ots, sync_timestamp=sts,
+                    grain = VideoGrain(src_id=src_id, flow_id=flow_id, origin_timestamp=ots, sync_timestamp=sts,
                                        cog_frame_format=fmt,
                                        width=16, height=16, cog_frame_layout=CogFrameLayout.FULL_FRAME)
 
@@ -874,6 +874,6 @@ class TestGrain (IsolatedAsyncioTestCase):
                 self.assertIn(1, segments)
                 self.assertEqual(len(segments[1]), 1)
 
-                new_grain = VideoGrain(segments[1][0])
+                new_grain = VideoGrain(grain=segments[1][0])
                 comp = compare_grain(new_grain, grain)
                 self.assertTrue(comp, msg=str(comp))

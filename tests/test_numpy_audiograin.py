@@ -19,7 +19,7 @@ from unittest import IsolatedAsyncioTestCase
 import uuid
 from fractions import Fraction
 
-from mediagrains.numpy import AudioGrain
+from mediagrains.numpy.numpy_grains import AudioGrain
 from mediagrains.cogenums import (
     CogAudioFormat,
     COG_AUDIO_FORMAT_DEPTH,
@@ -29,9 +29,9 @@ from mediagrains.cogenums import (
     COG_AUDIO_IS_FLOAT,
     COG_AUDIO_IS_DOUBLE
 )
-from mediagrains import grain_constructors as bytesgrain_constructors
+import mediagrains.grains as bytesgrain_constructors
 
-from audio_utils import construct_audio_grain_data
+from .audio_utils import construct_audio_grain_data
 
 PCM_FORMATS = [
     CogAudioFormat.S16_PLANES,
@@ -155,7 +155,7 @@ class TestGrain (IsolatedAsyncioTestCase):
                     bytes_grain = self._create_audio_grain(
                         fmt, test_data, constructor=bytesgrain_constructors.AudioGrain
                     )
-                    grain = AudioGrain(bytes_grain)
+                    grain = AudioGrain(grain=bytes_grain)
                     self._assert_channel_data_equal(grain, test_data)
 
     def test_mod_channel_data(self):
@@ -175,7 +175,7 @@ class TestGrain (IsolatedAsyncioTestCase):
                         mod_grain.channel_data[c][:] = test_data[c][:]
 
                     # Create a new grain from the metadata and data
-                    grain = AudioGrain(mod_grain.meta, mod_grain.data)
+                    grain = AudioGrain(meta=mod_grain.meta, data=mod_grain.data)
 
                     self._assert_channel_data_equal(grain, test_data)
 

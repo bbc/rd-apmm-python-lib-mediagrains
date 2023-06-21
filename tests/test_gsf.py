@@ -17,15 +17,16 @@
 
 from unittest import IsolatedAsyncioTestCase, mock
 from uuid import UUID
-from mediagrains import Grain, VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
-from mediagrains.grain import VIDEOGRAIN, AUDIOGRAIN, CODEDVIDEOGRAIN, CODEDAUDIOGRAIN, EVENTGRAIN
-from mediagrains.gsf import loads, load, dumps, GSFEncoder, GSFDecoder, AsyncGSFBlock, GrainDataLoadingMode
+from mediagrains.grains import VideoGrain, AudioGrain, CodedVideoGrain, CodedAudioGrain, EventGrain
+from mediagrains.grains import GrainFactory as Grain
+from mediagrains.gsf import loads, load, dumps
+from mediagrains.gsf import GSFEncoder, GSFDecoder, SyncGSFBlock, AsyncGSFBlock, GrainDataLoadingMode
 from mediagrains.gsf import GSFDecodeError
 from mediagrains.gsf import GSFEncodeError
 from mediagrains.gsf import GSFDecodeBadVersionError
 from mediagrains.gsf import GSFDecodeBadFileTypeError
 from mediagrains.gsf import GSFEncodeAddToActiveDump
-from mediagrains.comparison import compare_grain
+from mediagrains.comparison import compare_grain, compare_grains_pairwise
 from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from mediatimestamp.immutable import Timestamp, TimeOffset
 from datetime import datetime
@@ -34,27 +35,46 @@ from io import BytesIO
 from mediagrains.utils.asyncbinaryio import AsyncBytesIO
 from frozendict import frozendict
 from os import SEEK_SET
+import json
 
-from fixtures import suppress_deprecation_warnings
+from .fixtures import suppress_deprecation_warnings
 
 
-with open('examples/video.gsf', 'rb') as f:
-    VIDEO_DATA = f.read()
+with open('examples/video_8.gsf', 'rb') as f:
+    VIDEO_DATA_8 = f.read()
 
-with open('examples/coded_video.gsf', 'rb') as f:
-    CODED_VIDEO_DATA = f.read()
+with open('examples/coded_video_8.gsf', 'rb') as f:
+    CODED_VIDEO_DATA_8 = f.read()
 
-with open('examples/audio.gsf', 'rb') as f:
-    AUDIO_DATA = f.read()
+with open('examples/audio_8.gsf', 'rb') as f:
+    AUDIO_DATA_8 = f.read()
 
-with open('examples/coded_audio.gsf', 'rb') as f:
-    CODED_AUDIO_DATA = f.read()
+with open('examples/coded_audio_8.gsf', 'rb') as f:
+    CODED_AUDIO_DATA_8 = f.read()
 
-with open('examples/event.gsf', 'rb') as f:
-    EVENT_DATA = f.read()
+with open('examples/event_8.gsf', 'rb') as f:
+    EVENT_DATA_8 = f.read()
 
-with open('examples/interleaved.gsf', 'rb') as f:
-    INTERLEAVED_DATA = f.read()
+with open('examples/interleaved_8.gsf', 'rb') as f:
+    INTERLEAVED_DATA_8 = f.read()
+
+with open('examples/video_7.gsf', 'rb') as f:
+    VIDEO_DATA_7 = f.read()
+
+with open('examples/coded_video_7.gsf', 'rb') as f:
+    CODED_VIDEO_DATA_7 = f.read()
+
+with open('examples/audio_7.gsf', 'rb') as f:
+    AUDIO_DATA_7 = f.read()
+
+with open('examples/coded_audio_7.gsf', 'rb') as f:
+    CODED_AUDIO_DATA_7 = f.read()
+
+with open('examples/event_7.gsf', 'rb') as f:
+    EVENT_DATA_7 = f.read()
+
+with open('examples/interleaved_7.gsf', 'rb') as f:
+    INTERLEAVED_DATA_7 = f.read()
 
 
 class TestGSFDumps(IsolatedAsyncioTestCase):
@@ -126,7 +146,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_videograin(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                           width=1920, height=1080)
         for i in range(0, len(grain.data)):
             grain.data[i] = i & 0xFF
         grain.source_aspect_ratio = Fraction(16, 9)
@@ -162,7 +183,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         self.assertEqual(segments[1][0].source_id, src_id)
         self.assertEqual(segments[1][0].flow_id, flow_id)
         self.assertEqual(segments[1][0].grain_type, 'video')
-        self.assertEqual(segments[1][0].format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(segments[1][0].cog_frame_format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(segments[1][0].width, 1920)
         self.assertEqual(segments[1][0].height, 1080)
         self.assertEqual(segments[1][0].source_aspect_ratio, Fraction(16, 9))
@@ -173,7 +194,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_videograin(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                           width=1920, height=1080)
         for i in range(0, len(grain.data)):
             grain.data[i] = i & 0xFF
         grain.source_aspect_ratio = Fraction(16, 9)
@@ -212,7 +234,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         self.assertEqual(segments[1][0].source_id, src_id)
         self.assertEqual(segments[1][0].flow_id, flow_id)
         self.assertEqual(segments[1][0].grain_type, 'video')
-        self.assertEqual(segments[1][0].format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(segments[1][0].cog_frame_format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(segments[1][0].width, 1920)
         self.assertEqual(segments[1][0].height, 1080)
         self.assertEqual(segments[1][0].source_aspect_ratio, Fraction(16, 9))
@@ -223,8 +245,10 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_videograins(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain0 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                            width=1920, height=1080)
+        grain1 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT,
+                            width=1920, height=1080)
         for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
         for i in range(0, len(grain1.data)):
@@ -262,7 +286,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         self.assertEqual(segments[1][0].source_id, src_id)
         self.assertEqual(segments[1][0].flow_id, flow_id)
         self.assertEqual(segments[1][0].grain_type, 'video')
-        self.assertEqual(segments[1][0].format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(segments[1][0].cog_frame_format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(segments[1][0].width, 1920)
         self.assertEqual(segments[1][0].height, 1080)
         self.assertEqual(segments[1][0].source_aspect_ratio, Fraction(16, 9))
@@ -273,7 +297,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         self.assertEqual(segments[1][1].source_id, src_id)
         self.assertEqual(segments[1][1].flow_id, flow_id)
         self.assertEqual(segments[1][1].grain_type, 'video')
-        self.assertEqual(segments[1][1].format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(segments[1][1].cog_frame_format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(segments[1][1].width, 1920)
         self.assertEqual(segments[1][1].height, 1080)
         self.assertIsNone(segments[1][1].source_aspect_ratio)
@@ -284,8 +308,10 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_videograins(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain0 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
+        grain1 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
         for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
         for i in range(0, len(grain1.data)):
@@ -326,7 +352,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         self.assertEqual(segments[1][0].source_id, src_id)
         self.assertEqual(segments[1][0].flow_id, flow_id)
         self.assertEqual(segments[1][0].grain_type, 'video')
-        self.assertEqual(segments[1][0].format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(segments[1][0].cog_frame_format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(segments[1][0].width, 1920)
         self.assertEqual(segments[1][0].height, 1080)
         self.assertEqual(segments[1][0].source_aspect_ratio, Fraction(16, 9))
@@ -337,7 +363,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         self.assertEqual(segments[1][1].source_id, src_id)
         self.assertEqual(segments[1][1].flow_id, flow_id)
         self.assertEqual(segments[1][1].grain_type, 'video')
-        self.assertEqual(segments[1][1].format, CogFrameFormat.S16_422_10BIT)
+        self.assertEqual(segments[1][1].cog_frame_format, CogFrameFormat.S16_422_10BIT)
         self.assertEqual(segments[1][1].width, 1920)
         self.assertEqual(segments[1][1].height, 1080)
         self.assertIsNone(segments[1][1].source_aspect_ratio)
@@ -349,9 +375,9 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = AudioGrain(
-            src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
+            src_id=src_id, flow_id=flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
         grain1 = AudioGrain(
-            src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
+            src_id=src_id, flow_id=flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
         for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
         for i in range(0, len(grain1.data)):
@@ -406,9 +432,9 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = AudioGrain(
-            src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
+            src_id=src_id, flow_id=flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
         grain1 = AudioGrain(
-            src_id, flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
+            src_id=src_id, flow_id=flow_id, cog_audio_format=CogAudioFormat.S16_PLANES, samples=1920, sample_rate=48000)
         for i in range(0, len(grain0.data)):
             grain0.data[i] = i & 0xFF
         for i in range(0, len(grain1.data)):
@@ -466,8 +492,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = CodedVideoGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_frame_format=CogFrameFormat.VC2,
             origin_width=1920,
             origin_height=1080,
@@ -478,8 +504,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
             length=1024,
             unit_offsets=[5, 15, 105])
         grain1 = CodedVideoGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_frame_format=CogFrameFormat.VC2,
             origin_width=1920,
             origin_height=1080,
@@ -551,8 +577,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = CodedVideoGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_frame_format=CogFrameFormat.VC2,
             origin_width=1920,
             origin_height=1080,
@@ -563,8 +589,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
             length=1024,
             unit_offsets=[5, 15, 105])
         grain1 = CodedVideoGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_frame_format=CogFrameFormat.VC2,
             origin_width=1920,
             origin_height=1080,
@@ -639,8 +665,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = CodedAudioGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_audio_format=CogAudioFormat.AAC,
             samples=1920,
             sample_rate=48000,
@@ -648,8 +674,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
             remainder=17,
             length=1024)
         grain1 = CodedAudioGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_audio_format=CogAudioFormat.AAC,
             samples=1920,
             sample_rate=48000,
@@ -714,8 +740,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
         grain0 = CodedAudioGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_audio_format=CogAudioFormat.AAC,
             samples=1920,
             sample_rate=48000,
@@ -723,8 +749,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
             remainder=17,
             length=1024)
         grain1 = CodedAudioGrain(
-            src_id,
-            flow_id,
+            src_id=src_id,
+            flow_id=flow_id,
             cog_audio_format=CogAudioFormat.AAC,
             samples=1920,
             sample_rate=48000,
@@ -791,11 +817,11 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_eventgrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = EventGrain(src_id, flow_id)
+        grain0 = EventGrain(src_id=src_id, flow_id=flow_id)
         grain0.event_type = "urn:x-testing:stupid/type"
         grain0.topic = "/watashi"
         grain0.append("/inu", post="desu")
-        grain1 = EventGrain(src_id, flow_id)
+        grain1 = EventGrain(src_id=src_id, flow_id=flow_id)
         grain1.event_type = "urn:x-testing:clever/type"
         grain1.topic = "/inu"
         grain1.append("/sukimono", pre="da")
@@ -850,11 +876,11 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_eventgrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = EventGrain(src_id, flow_id)
+        grain0 = EventGrain(src_id=src_id, flow_id=flow_id)
         grain0.event_type = "urn:x-testing:stupid/type"
         grain0.topic = "/watashi"
         grain0.append("/inu", post="desu")
-        grain1 = EventGrain(src_id, flow_id)
+        grain1 = EventGrain(src_id=src_id, flow_id=flow_id)
         grain1.event_type = "urn:x-testing:clever/type"
         grain1.topic = "/inu"
         grain1.append("/sukimono", pre="da")
@@ -912,7 +938,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_emptygrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = Grain(src_id, flow_id)
+        grain0 = Grain(src_id=src_id, flow_id=flow_id)
         grain0.timelabels = [{
             'tag': 'tiggle',
             'timelabel': {
@@ -922,7 +948,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
                 'drop_frame': False
             }
         }]
-        grain1 = Grain(src_id, flow_id)
+        grain1 = Grain(src_id=src_id, flow_id=flow_id)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
         created = datetime(1983, 3, 29, 15, 15)
@@ -973,7 +999,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_emptygrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = Grain(src_id, flow_id)
+        grain0 = Grain(src_id=src_id, flow_id=flow_id)
         grain0.timelabels = [{
             'tag': 'tiggle',
             'timelabel': {
@@ -983,7 +1009,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
                 'drop_frame': False
             }
         }]
-        grain1 = Grain(src_id, flow_id)
+        grain1 = Grain(src_id=src_id, flow_id=flow_id)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
         created = datetime(1983, 3, 29, 15, 15)
@@ -1037,7 +1063,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_invalidgrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain = Grain(src_id, flow_id)
+        grain = Grain(src_id=src_id, flow_id=flow_id)
         grain.grain_type = "invalid"
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1050,7 +1076,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_invalidgrains(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain = Grain(src_id, flow_id)
+        grain = Grain(src_id=src_id, flow_id=flow_id)
         grain.grain_type = "invalid"
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1065,8 +1091,10 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dump_progressively__deprecated(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain0 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
+        grain1 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
 
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1106,8 +1134,10 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dump_progressively_with_segments__deprecated(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain0 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
+        grain1 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
 
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1146,8 +1176,10 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dump_progressively(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain0 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
+        grain1 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
 
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1185,8 +1217,10 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     async def test_async_encode_progressively(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
-        grain1 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain0 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
+        grain1 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
 
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1260,6 +1294,38 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         self.assertEqual(len(head['segments'][0]['tags']), 1)
         self.assertIn(('rainbow', 'dash'), head['segments'][0]['tags'])
 
+    async def test_sync_encode_flow(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        format = "urn:x-nmos:format:video"
+        grain = VideoGrain(src_id=src_id, flow_id=flow_id)
+
+        f = BytesIO()
+        with GSFEncoder(f) as enc:
+            enc.add_grains([grain])
+            enc.segments[1].add_flow(src_id, flow_id, format, "{}")
+        (head, segments) = loads(f.getvalue())
+
+        self.assertEqual(head['segments'][0]['flow']['source_id'], src_id)
+        self.assertEqual(head['segments'][0]['flow']['flow_id'], flow_id)
+        self.assertEqual(head['segments'][0]['flow']['format'], format)
+
+    async def test_async_encode_flow(self):
+        src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
+        flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
+        format = "urn:x-nmos:format:video"
+        grain = VideoGrain(src_id=src_id, flow_id=flow_id)
+
+        f = BytesIO()
+        async with GSFEncoder(f) as enc:
+            await enc.add_grains([grain])
+            enc.segments[1].add_flow(src_id, flow_id, format, "{}")
+        (head, segments) = loads(f.getvalue())
+
+        self.assertEqual(head['segments'][0]['flow']['source_id'], src_id)
+        self.assertEqual(head['segments'][0]['flow']['flow_id'], flow_id)
+        self.assertEqual(head['segments'][0]['flow']['format'], format)
+
     def test_encoder_access_methods(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
@@ -1326,7 +1392,8 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_encoder_can_add_grains_to_nonexistent_segment(self):
         src_id = UUID('e14e9d58-1567-11e8-8dd3-831a068eb034')
         flow_id = UUID('ee1eed58-1567-11e8-a971-3b901a2dd8ab')
-        grain0 = VideoGrain(src_id, flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920, height=1080)
+        grain0 = VideoGrain(src_id=src_id, flow_id=flow_id, cog_frame_format=CogFrameFormat.S16_422_10BIT, width=1920,
+                            height=1080)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
         created = datetime(1983, 3, 29, 15, 15)
@@ -1343,7 +1410,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
 class TestGSFBlock(IsolatedAsyncioTestCase):
     """Test the GSF decoder block handler correctly parses various types"""
 
-    async def test_read_uint(self):
+    async def test_async_read_uint(self):
         test_number = 4132
         test_data = b"\x24\x10\x00\x00"
 
@@ -1352,26 +1419,7 @@ class TestGSFBlock(IsolatedAsyncioTestCase):
 
             self.assertEqual(test_number, await UUT.read_uint(4))
 
-    async def test_read_bool(self):
-        test_data = b"\x00\x01\x02"  # False, True (0x01 != 0), True (0x02 != 0)
-
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
-
-            self.assertFalse(await UUT.read_bool())
-            self.assertTrue(await UUT.read_bool())
-            self.assertTrue(await UUT.read_bool())
-
-    async def test_read_sint(self):
-        test_number = -12856
-        test_data = b"\xC8\xCD\xFF"
-
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
-
-            self.assertEqual(test_number, await UUT.read_sint(3))
-
-    async def test_read_string(self):
+    async def test_async_read_string(self):
         """Test we can read a string, with Unicode characters"""
         test_string = u"Strings😁✔"
 
@@ -1382,89 +1430,155 @@ class TestGSFBlock(IsolatedAsyncioTestCase):
 
             self.assertEqual(test_string, await UUT.read_string(14))
 
-    async def test_read_varstring(self):
+    def test_read_uint(self):
+        test_number = 4132
+        test_data = b"\x24\x10\x00\x00"
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertEqual(test_number, UUT.read_uint(4))
+
+    def test_read_bool(self):
+        test_data = b"\x00\x01\x02"  # False, True (0x01 != 0), True (0x02 != 0)
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertFalse(UUT.read_bool())
+            self.assertTrue(UUT.read_bool())
+            self.assertTrue(UUT.read_bool())
+
+    def test_read_sint(self):
+        test_number = -12856
+        test_data = b"\xC8\xCD\xFF"
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertEqual(test_number, UUT.read_sint(3))
+
+    def test_read_string(self):
+        """Test we can read a string, with Unicode characters"""
+        test_string = u"Strings😁✔"
+
+        test_data = b"Strings\xf0\x9f\x98\x81\xe2\x9c\x94"
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertEqual(test_string, UUT.read_string(14))
+
+    def test_read_varstring(self):
         test_string = u"Strings😁✔"
         test_data = b"\x0e\x00Strings\xf0\x9f\x98\x81\xe2\x9c\x94"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
-            self.assertEqual(test_string, await UUT.read_varstring())
+            self.assertEqual(test_string, UUT.read_varstring())
 
-    async def test_read_uuid(self):
+    def test_read_uuid(self):
         test_uuid = UUID("b06c65c8-51ac-4ad1-a839-2ef37107cc16")
         test_data = b"\xb0\x6c\x65\xc8\x51\xac\x4a\xd1\xa8\x39\x2e\xf3\x71\x07\xcc\x16"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
-            self.assertEqual(test_uuid, await UUT.read_uuid())
+            self.assertEqual(test_uuid, UUT.read_uuid())
 
-    async def test_read_timestamp(self):
-        test_timestamp = datetime(2018, 9, 8, 16, 0, 0)
+    def test_read_datetime(self):
+        test_datetime = datetime(2018, 9, 8, 16, 0, 0)
         test_data = b"\xe2\x07\x09\x08\x10\x00\x00"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
-            self.assertEqual(test_timestamp, await UUT.read_timestamp())
+            self.assertEqual(test_datetime, UUT.read_datetime())
 
-    async def test_read_ippts(self):
+    def test_read_timestamp_v7(self):
         test_timestamp = Timestamp(1536422400, 500)
         test_data = b"\x00\xf2\x93\x5b\x00\x00\xf4\x01\x00\x00"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
-            self.assertEqual(test_timestamp, await UUT.read_ippts())
+            self.assertEqual(test_timestamp, UUT.read_timestamp_v7())
 
-    async def test_read_rational(self):
+    def test_read_timestamp(self):
+        test_timestamp = Timestamp(1536422400, 500)
+        test_data = b"\x01\x00\xf2\x93\x5b\x00\x00\xf4\x01\x00\x00"
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertEqual(test_timestamp, UUT.read_timestamp())
+
+    def test_read_timestamp__negative(self):
+        test_timestamp = Timestamp(1536422400, 500, -1)
+        test_data = b"\x00\x00\xf2\x93\x5b\x00\x00\xf4\x01\x00\x00"
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertEqual(test_timestamp, UUT.read_timestamp())
+
+    def test_read_rational(self):
         test_fraction = Fraction(4, 3)
         test_data = b"\x04\x00\x00\x00\x03\x00\x00\x00"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
-            self.assertEqual(test_fraction, await UUT.read_rational())
+            self.assertEqual(test_fraction, UUT.read_rational())
 
-    async def test_read_rational_zero_denominator(self):
+    def test_read_rational_zero_denominator(self):
         """Ensure the reader considers a Rational with zero denominator to be 0, not an error"""
         test_data = b"\x04\x00\x00\x00\x00\x00\x00\x00"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
-            self.assertEqual(Fraction(0), await UUT.read_rational())
+            self.assertEqual(Fraction(0), UUT.read_rational())
 
-    async def test_read_uint_past_eof(self):
+    def test_read_varbytes(self):
+        test_bytes = b'{"test"}'
+        test_data = b'\x08\x00\x00\x00{"test"}'
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertEqual(test_bytes, UUT.read_varbytes())
+
+    def test_read_uint_past_eof(self):
         """read_uint calls read() directly - test it raises EOFError correctly"""
         test_data = b"\x04\x00"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
             with self.assertRaises(EOFError):
-                await UUT.read_uint(4)
+                UUT.read_uint(4)
 
-    async def test_read_string_past_eof(self):
+    def test_read_string_past_eof(self):
         """read_string() calls read() directly - test it raises EOFError correctly"""
         test_data = b"Strin"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
             with self.assertRaises(EOFError):
-                await UUT.read_string(6)
+                UUT.read_string(6)
 
-    async def test_read_uuid_past_eof(self):
+    def test_read_uuid_past_eof(self):
         """read_uuid() calls read() directly - test it raises EOFError correctly"""
         test_data = b"\xb0\x6c\x65\xc8\x51\xac\x4a\xd1\xa8\x39\x2e"
 
-        async with AsyncBytesIO(test_data) as fp:
-            UUT = AsyncGSFBlock(fp)
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
 
             with self.assertRaises(EOFError):
-                await UUT.read_uuid()
+                UUT.read_uuid()
 
     def _make_sample_stream(self, post_child_len=0):
         """Generate a stream of sample blocks for testing the context manager
@@ -1595,24 +1709,24 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
     Note that very little testing of the decoded data happens here, that's handled by TestGSFLoads()
     """
     def test_decode_headers(self):
-        video_data_stream = BytesIO(VIDEO_DATA)
+        video_data_stream = BytesIO(VIDEO_DATA_8)
 
         with GSFDecoder(file_data=video_data_stream) as dec:
             head = dec.file_headers
 
-        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 22))
-        self.assertEqual(head['id'], UUID('163fd9b7-bef4-4d92-8488-31f3819be008'))
+        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44))
+        self.assertEqual(head['id'], UUID('a71aee4a-0b9b-11ee-9004-09742b0a3ff2'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('c6a3d3ff-74c0-446d-b59e-de1041f27e8a'))
+        self.assertEqual(head['segments'][0]['id'], UUID('a71aee4b-0b9b-11ee-9004-09742b0a3ff2'))
 
     def test_generate_grains(self):
         """Test that the generator yields each grain"""
-        video_data_stream = BytesIO(VIDEO_DATA)
+        video_data_stream = BytesIO(VIDEO_DATA_8)
 
         with GSFDecoder(file_data=video_data_stream) as dec:
             grain_count = 0
             for (grain, local_id) in dec.grains():
-                self.assertIsInstance(grain, VIDEOGRAIN)
+                self.assertIsInstance(grain, VideoGrain)
                 self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
                 self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
 
@@ -1621,24 +1735,24 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         self.assertEqual(10, grain_count)  # There are 10 grains in the file
 
     async def test_async_decode_headers(self):
-        video_data_stream = AsyncBytesIO(VIDEO_DATA)
+        video_data_stream = AsyncBytesIO(VIDEO_DATA_8)
 
         async with GSFDecoder(file_data=video_data_stream) as dec:
             head = dec.file_headers
 
-        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 22))
-        self.assertEqual(head['id'], UUID('163fd9b7-bef4-4d92-8488-31f3819be008'))
+        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44))
+        self.assertEqual(head['id'], UUID('a71aee4a-0b9b-11ee-9004-09742b0a3ff2'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('c6a3d3ff-74c0-446d-b59e-de1041f27e8a'))
+        self.assertEqual(head['segments'][0]['id'], UUID('a71aee4b-0b9b-11ee-9004-09742b0a3ff2'))
 
     async def test_async_generate_grains(self):
         """Test that the generator yields each grain"""
-        video_data_stream = AsyncBytesIO(VIDEO_DATA)
+        video_data_stream = AsyncBytesIO(VIDEO_DATA_8)
 
         async with GSFDecoder(file_data=video_data_stream) as dec:
             grain_count = 0
             async for (grain, local_id) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY):
-                self.assertIsInstance(grain, VIDEOGRAIN)
+                self.assertIsInstance(grain, VideoGrain)
                 self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
                 self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
 
@@ -1648,12 +1762,12 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
 
     async def test_async_to_sync_generate_grains(self):
         """Test that the generator yields each grain when run snchronously from asynchronous code"""
-        video_data_stream = BytesIO(VIDEO_DATA)
+        video_data_stream = BytesIO(VIDEO_DATA_8)
 
         with GSFDecoder(file_data=video_data_stream) as dec:
             grain_count = 0
             for (grain, local_id) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY):
-                self.assertIsInstance(grain, VIDEOGRAIN)
+                self.assertIsInstance(grain, VideoGrain)
                 self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
                 self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
 
@@ -1663,12 +1777,12 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
 
     async def test_async_generate_grains_load_lazily(self):
         """Test that the generator yields each grain"""
-        video_data_stream = AsyncBytesIO(VIDEO_DATA)
+        video_data_stream = AsyncBytesIO(VIDEO_DATA_8)
 
         async with GSFDecoder(file_data=video_data_stream) as dec:
             grain_count = 0
             async for (grain, local_id) in dec.grains(loading_mode=GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE):
-                self.assertIsInstance(grain, VIDEOGRAIN)
+                self.assertIsInstance(grain, VideoGrain)
                 self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
                 self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
 
@@ -1684,27 +1798,27 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
 
     @suppress_deprecation_warnings
     def test_decode_headers__deprecated(self):
-        video_data_stream = BytesIO(VIDEO_DATA)
+        video_data_stream = BytesIO(VIDEO_DATA_8)
 
         UUT = GSFDecoder(file_data=video_data_stream)
         head = UUT.decode_file_headers()
 
-        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 22))
-        self.assertEqual(head['id'], UUID('163fd9b7-bef4-4d92-8488-31f3819be008'))
+        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44))
+        self.assertEqual(head['id'], UUID('a71aee4a-0b9b-11ee-9004-09742b0a3ff2'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('c6a3d3ff-74c0-446d-b59e-de1041f27e8a'))
+        self.assertEqual(head['segments'][0]['id'], UUID('a71aee4b-0b9b-11ee-9004-09742b0a3ff2'))
 
     @suppress_deprecation_warnings
     def test_generate_grains__deprecated(self):
         """Test that the generator yields each grain"""
-        video_data_stream = BytesIO(VIDEO_DATA)
+        video_data_stream = BytesIO(VIDEO_DATA_8)
 
         UUT = GSFDecoder(file_data=video_data_stream)
         UUT.decode_file_headers()
 
         grain_count = 0
         for (grain, local_id) in UUT.grains():
-            self.assertIsInstance(grain, VIDEOGRAIN)
+            self.assertIsInstance(grain, VideoGrain)
             self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
             self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
 
@@ -1713,12 +1827,12 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         self.assertEqual(10, grain_count)  # There are 10 grains in the file
 
     async def test_async_comparison_of_lazy_loaded_grains(self):
-        async with GSFDecoder(file_data=AsyncBytesIO(VIDEO_DATA)) as dec:
+        async with GSFDecoder(file_data=AsyncBytesIO(VIDEO_DATA_8)) as dec:
             grains = [
                 grain async for (grain, local_id) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY)]
 
         # Restart the decoder
-        async with GSFDecoder(file_data=AsyncBytesIO(VIDEO_DATA)) as dec:
+        async with GSFDecoder(file_data=AsyncBytesIO(VIDEO_DATA_8)) as dec:
             # Annoyingly anext isn't a global in python 3.6
             grain = (await dec.grains(loading_mode=GrainDataLoadingMode.ALWAYS_DEFER_LOAD_IF_POSSIBLE).__anext__())[0]
             await grain
@@ -1726,7 +1840,7 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
             self.assertTrue(comp, msg="{!r}".format(comp))
 
     def test_comparison_of_lazy_loaded_grains(self):
-        video_data_stream = BytesIO(VIDEO_DATA)
+        video_data_stream = BytesIO(VIDEO_DATA_8)
 
         with GSFDecoder(file_data=video_data_stream) as dec:
             grains = [grain for (grain, local_id) in dec.grains(loading_mode=GrainDataLoadingMode.LOAD_IMMEDIATELY)]
@@ -1740,7 +1854,7 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
 
     @suppress_deprecation_warnings
     def test_comparison_of_lazy_loaded_grains__deprecated(self):
-        video_data_stream = BytesIO(VIDEO_DATA)
+        video_data_stream = BytesIO(VIDEO_DATA_8)
 
         UUT = GSFDecoder(file_data=video_data_stream)
         UUT.decode_file_headers()
@@ -1755,7 +1869,7 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         self.assertTrue(compare_grain(grains[0], next(UUT.grains(load_lazily=True))[0]))
 
     async def test_async_local_id_filtering(self):
-        interleaved_data_stream = AsyncBytesIO(INTERLEAVED_DATA)
+        interleaved_data_stream = AsyncBytesIO(INTERLEAVED_DATA_8)
 
         async with GSFDecoder(file_data=interleaved_data_stream) as dec:
             local_ids = set()
@@ -1770,20 +1884,20 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
 
         async with GSFDecoder(file_data=interleaved_data_stream) as dec:
             async for (grain, local_id) in dec.grains(local_ids=[1]):
-                self.assertIsInstance(grain, AUDIOGRAIN)
+                self.assertIsInstance(grain, AudioGrain)
                 self.assertEqual(grain.source_id, UUID('1f8fd27e-3517-11e9-8da2-5065f34ed007'))
                 self.assertEqual(grain.flow_id, UUID('28e4e09e-3517-11e9-8da2-5065f34ed007'))
                 self.assertEqual(local_id, 1)
 
         async with GSFDecoder(file_data=interleaved_data_stream) as dec:
             async for (grain, local_id) in dec.grains(local_ids=[2]):
-                self.assertIsInstance(grain, VIDEOGRAIN)
+                self.assertIsInstance(grain, VideoGrain)
                 self.assertEqual(grain.source_id, UUID('1f8fd27e-3517-11e9-8da2-5065f34ed007'))
                 self.assertEqual(grain.flow_id, UUID('2472f38e-3517-11e9-8da2-5065f34ed007'))
                 self.assertEqual(local_id, 2)
 
     def test_local_id_filtering(self):
-        interleaved_data_stream = BytesIO(INTERLEAVED_DATA)
+        interleaved_data_stream = BytesIO(INTERLEAVED_DATA_8)
 
         with GSFDecoder(file_data=interleaved_data_stream) as dec:
             local_ids = set()
@@ -1799,7 +1913,7 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         interleaved_data_stream.seek(0)
         with GSFDecoder(file_data=interleaved_data_stream) as dec:
             for (grain, local_id) in dec.grains(local_ids=[1]):
-                self.assertIsInstance(grain, AUDIOGRAIN)
+                self.assertIsInstance(grain, AudioGrain)
                 self.assertEqual(grain.source_id, UUID('1f8fd27e-3517-11e9-8da2-5065f34ed007'))
                 self.assertEqual(grain.flow_id, UUID('28e4e09e-3517-11e9-8da2-5065f34ed007'))
                 self.assertEqual(local_id, 1)
@@ -1807,14 +1921,14 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         interleaved_data_stream.seek(0)
         with GSFDecoder(file_data=interleaved_data_stream) as dec:
             for (grain, local_id) in dec.grains(local_ids=[2]):
-                self.assertIsInstance(grain, VIDEOGRAIN)
+                self.assertIsInstance(grain, VideoGrain)
                 self.assertEqual(grain.source_id, UUID('1f8fd27e-3517-11e9-8da2-5065f34ed007'))
                 self.assertEqual(grain.flow_id, UUID('2472f38e-3517-11e9-8da2-5065f34ed007'))
                 self.assertEqual(local_id, 2)
 
     @suppress_deprecation_warnings
     def test_local_id_filtering__deprecated(self):
-        interleaved_data_stream = BytesIO(INTERLEAVED_DATA)
+        interleaved_data_stream = BytesIO(INTERLEAVED_DATA_8)
 
         UUT = GSFDecoder(file_data=interleaved_data_stream)
         UUT.decode_file_headers()
@@ -1833,7 +1947,7 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         UUT.decode_file_headers()
 
         for (grain, local_id) in UUT.grains(local_ids=[1]):
-            self.assertIsInstance(grain, AUDIOGRAIN)
+            self.assertIsInstance(grain, AudioGrain)
             self.assertEqual(grain.source_id, UUID('1f8fd27e-3517-11e9-8da2-5065f34ed007'))
             self.assertEqual(grain.flow_id, UUID('28e4e09e-3517-11e9-8da2-5065f34ed007'))
             self.assertEqual(local_id, 1)
@@ -1842,7 +1956,7 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         UUT.decode_file_headers()
 
         for (grain, local_id) in UUT.grains(local_ids=[2]):
-            self.assertIsInstance(grain, VIDEOGRAIN)
+            self.assertIsInstance(grain, VideoGrain)
             self.assertEqual(grain.source_id, UUID('1f8fd27e-3517-11e9-8da2-5065f34ed007'))
             self.assertEqual(grain.flow_id, UUID('2472f38e-3517-11e9-8da2-5065f34ed007'))
             self.assertEqual(local_id, 2)
@@ -1854,7 +1968,7 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         grdt_block_size = 194408  # Parsed from examples/video.gsf hex dump
         grain_header_size = grain_size - grdt_block_size
 
-        video_data_stream = BytesIO(VIDEO_DATA)
+        video_data_stream = BytesIO(VIDEO_DATA_8)
 
         UUT = GSFDecoder(file_data=video_data_stream)
         UUT.decode_file_headers()
@@ -1883,7 +1997,7 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         grain_header_size = grain_size - grdt_block_size
         grain_data_size = grdt_block_size - 8
 
-        video_data_stream = BytesIO(VIDEO_DATA)
+        video_data_stream = BytesIO(VIDEO_DATA_8)
 
         reader_mock = mock.MagicMock(side_effect=video_data_stream.read)
         with mock.patch.object(video_data_stream, "read", new=reader_mock):
@@ -1928,7 +2042,7 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         grain_header_size = grain_size - grdt_block_size
         grain_data_size = grdt_block_size - 8
 
-        video_data_stream = BytesIO(VIDEO_DATA)
+        video_data_stream = BytesIO(VIDEO_DATA_8)
 
         UUT = GSFDecoder(file_data=video_data_stream)
         UUT.decode_file_headers()
@@ -1966,27 +2080,25 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
 
 
 class TestGSFLoads(IsolatedAsyncioTestCase):
-    def test_loads_video(self):
-        (head, segments) = loads(VIDEO_DATA)
-
-        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 22))
-        self.assertEqual(head['id'], UUID('163fd9b7-bef4-4d92-8488-31f3819be008'))
+    def _verify_loaded_video(self, head, segments):
+        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44))
+        self.assertEqual(head['id'], UUID('a71aee4a-0b9b-11ee-9004-09742b0a3ff2'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('c6a3d3ff-74c0-446d-b59e-de1041f27e8a'))
+        self.assertEqual(head['segments'][0]['id'], UUID('a71aee4b-0b9b-11ee-9004-09742b0a3ff2'))
         self.assertIn(head['segments'][0]['local_id'], segments)
         self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
 
         ots = Timestamp(1420102800, 0)
         for grain in segments[head['segments'][0]['local_id']]:
-            self.assertIsInstance(grain, VIDEOGRAIN)
+            self.assertIsInstance(grain, VideoGrain)
             self.assertEqual(grain.grain_type, "video")
             self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
             self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
             self.assertEqual(grain.origin_timestamp, ots)
             ots += TimeOffset.from_nanosec(20000000)
 
-            self.assertEqual(grain.format, CogFrameFormat.U8_420)
-            self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
+            self.assertEqual(grain.cog_frame_format, CogFrameFormat.U8_420)
+            self.assertEqual(grain.cog_frame_layout, CogFrameLayout.FULL_FRAME)
             self.assertEqual(grain.width, 480)
             self.assertEqual(grain.height, 270)
 
@@ -1996,72 +2108,40 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
             self.assertEqual(grain.components[0].height, 270)
             self.assertEqual(grain.components[0].stride, 480)
             self.assertEqual(grain.components[0].length, 480*270)
-            self.assertEqual(grain.components[0].offset, 0)
 
             self.assertEqual(grain.components[1].width, 240)
             self.assertEqual(grain.components[1].height, 135)
             self.assertEqual(grain.components[1].stride, 240)
             self.assertEqual(grain.components[1].length, 240*135)
-            self.assertEqual(grain.components[1].offset, 480*270)
 
             self.assertEqual(grain.components[2].width, 240)
             self.assertEqual(grain.components[2].height, 135)
             self.assertEqual(grain.components[2].stride, 240)
             self.assertEqual(grain.components[2].length, 240*135)
-            self.assertEqual(grain.components[2].offset, 480*270 + 240*135)
 
             self.assertEqual(
                 len(grain.data),
                 grain.components[0].length + grain.components[1].length + grain.components[2].length)
+
+    def test_loads_video(self):
+        (head, segments) = loads(VIDEO_DATA_8)
+
+        self._verify_loaded_video(head, segments)
 
     def test_load_video(self):
-        file = BytesIO(VIDEO_DATA)
+        file = BytesIO(VIDEO_DATA_8)
         (head, segments) = load(file)
 
-        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 22))
-        self.assertEqual(head['id'], UUID('163fd9b7-bef4-4d92-8488-31f3819be008'))
-        self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('c6a3d3ff-74c0-446d-b59e-de1041f27e8a'))
-        self.assertIn(head['segments'][0]['local_id'], segments)
-        self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
+        self._verify_loaded_video(head, segments)
 
-        ots = Timestamp(1420102800, 0)
-        for grain in segments[head['segments'][0]['local_id']]:
-            self.assertIsInstance(grain, VIDEOGRAIN)
-            self.assertEqual(grain.grain_type, "video")
-            self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
-            self.assertEqual(grain.flow_id, UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
-            self.assertEqual(grain.origin_timestamp, ots)
-            ots += TimeOffset.from_nanosec(20000000)
+    async def test_async_load_video(self):
+        file = AsyncBytesIO(VIDEO_DATA_8)
+        (head, segments) = await load(file)
 
-            self.assertEqual(grain.format, CogFrameFormat.U8_420)
-            self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
-            self.assertEqual(grain.width, 480)
-            self.assertEqual(grain.height, 270)
-
-            self.assertEqual(len(grain.components), 3)
-
-            self.assertEqual(grain.components[0].width, 480)
-            self.assertEqual(grain.components[0].height, 270)
-            self.assertEqual(grain.components[0].stride, 480)
-            self.assertEqual(grain.components[0].length, 480*270)
-
-            self.assertEqual(grain.components[1].width, 240)
-            self.assertEqual(grain.components[1].height, 135)
-            self.assertEqual(grain.components[1].stride, 240)
-            self.assertEqual(grain.components[1].length, 240*135)
-
-            self.assertEqual(grain.components[2].width, 240)
-            self.assertEqual(grain.components[2].height, 135)
-            self.assertEqual(grain.components[2].stride, 240)
-            self.assertEqual(grain.components[2].length, 240*135)
-
-            self.assertEqual(
-                len(grain.data),
-                grain.components[0].length + grain.components[1].length + grain.components[2].length)
+        self._verify_loaded_video(head, segments)
 
     def test_load_uses_custom_grain_function(self):
-        file = BytesIO(VIDEO_DATA)
+        file = BytesIO(VIDEO_DATA_8)
         grain_parser = mock.MagicMock(name="grain_parser")
         (head, segments) = load(file, parse_grain=grain_parser)
 
@@ -2071,7 +2151,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
         self.assertEqual(grain_parser.call_count, 10)
 
     async def test_async_load_uses_custom_grain_function(self):
-        file = AsyncBytesIO(VIDEO_DATA)
+        file = AsyncBytesIO(VIDEO_DATA_8)
         grain_parser = mock.MagicMock(name="grain_parser")
         (head, segments) = await load(file, parse_grain=grain_parser)
 
@@ -2081,7 +2161,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
         self.assertEqual(grain_parser.call_count, 10)
 
     def test_loads_uses_custom_grain_function(self):
-        s = VIDEO_DATA
+        s = VIDEO_DATA_8
         grain_parser = mock.MagicMock(name="grain_parser")
         (head, segments) = loads(s, parse_grain=grain_parser)
 
@@ -2091,12 +2171,12 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
         self.assertEqual(grain_parser.call_count, 10)
 
     def test_loads_audio(self):
-        (head, segments) = loads(AUDIO_DATA)
+        (head, segments) = loads(AUDIO_DATA_8)
 
-        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 37, 50))
-        self.assertEqual(head['id'], UUID('781fb6c5-d22f-4df5-ba69-69059efd5ced'))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['id'], UUID('fcff8078-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('fc4c5533-3fad-4437-93c0-8668cb876578'))
+        self.assertEqual(head['segments'][0]['id'], UUID('fcff8079-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertIn(head['segments'][0]['local_id'], segments)
         self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
 
@@ -2104,7 +2184,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
         ots = start_ots
         total_samples = 0
         for grain in segments[head['segments'][0]['local_id']]:
-            self.assertIsInstance(grain, AUDIOGRAIN)
+            self.assertIsInstance(grain, AudioGrain)
             self.assertEqual(grain.grain_type, "audio")
             self.assertEqual(grain.source_id, UUID('38bfd902-b35f-40d6-9ecf-dc95869130cf'))
             self.assertEqual(grain.flow_id, UUID('f1c8c095-5739-46f4-9bbc-3d7050c9ba23'))
@@ -2120,12 +2200,12 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
             ots = start_ots + TimeOffset.from_count(total_samples, grain.sample_rate)
 
     def test_loads_coded_video(self):
-        (head, segments) = loads(CODED_VIDEO_DATA)
+        (head, segments) = loads(CODED_VIDEO_DATA_8)
 
-        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 41))
-        self.assertEqual(head['id'], UUID('8875f02c-2528-4566-9e9a-23efc3a9bbe5'))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['id'], UUID('fcff807c-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('bdfa1343-0a20-4a98-92f5-0f7f0eb75479'))
+        self.assertEqual(head['segments'][0]['id'], UUID('fcff807d-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertIn(head['segments'][0]['local_id'], segments)
         self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
 
@@ -2142,7 +2222,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
             ([0, 6, 14], 25),
             ([0, 6, 14], 6241)]
         for grain in segments[head['segments'][0]['local_id']]:
-            self.assertIsInstance(grain, CODEDVIDEOGRAIN)
+            self.assertIsInstance(grain, CodedVideoGrain)
             self.assertEqual(grain.grain_type, "coded_video")
             self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
             self.assertEqual(grain.flow_id, UUID('b6b05efb-6067-4ff8-afac-ec735a85674e'))
@@ -2160,17 +2240,47 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
             self.assertEqual(grain.unit_offsets, unit_offsets[0][0])
             unit_offsets.pop(0)
 
+    def test_loads_flow(self):
+        (head, segments) = loads(VIDEO_DATA_8)
+
+        self.assertIn('flow', head['segments'][0])
+        self.assertEqual(head['segments'][0]['flow']['source_id'], UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
+        self.assertEqual(head['segments'][0]['flow']['flow_id'], UUID('6e55f251-f75a-4d56-b3af-edb8b7993c3c'))
+        self.assertEqual(head['segments'][0]['flow']['format'], "urn:x-nmos:format:video")
+        flow = json.loads(head['segments'][0]['flow']['data'])
+        self.assertEqual(flow['source_id'], '49578552-fb9e-4d3e-a197-3e3c437a895d')
+        self.assertEqual(flow['id'], '6e55f251-f75a-4d56-b3af-edb8b7993c3c')
+        self.assertEqual(flow['format'], "urn:x-nmos:format:video")
+
     def test_loads_rejects_incorrect_type_file(self):
         with self.assertRaises(GSFDecodeBadFileTypeError) as cm:
             loads(b"POTATO23\x07\x00\x00\x00")
         self.assertEqual(cm.exception.offset, 0)
         self.assertEqual(cm.exception.filetype, "POTATO23")
 
-    def test_loads_rejects_incorrect_version_file(self):
+    def test_loads_accepts_version_7_file(self):
+        loads(b"SSBBgrsg\x07\x00\x00\x00" +
+              b"head\x1f\x00\x00\x00" +
+              b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+              b"\xbf\x07\x03\x1d\x0f\x0f\x0f")
+
+    def test_loads_accepts_version_8_file(self):
+        loads(b"SSBBgrsg\x08\x00\x00\x00" +
+              b"head\x1f\x00\x00\x00" +
+              b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+              b"\xbf\x07\x03\x1d\x0f\x0f\x0f")
+
+    def test_loads_accepts_unknown_minor_version_file(self):
+        loads(b"SSBBgrsg\x07\x00\x03\x00" +
+              b"head\x1f\x00\x00\x00" +
+              b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+              b"\xbf\x07\x03\x1d\x0f\x0f\x0f")
+
+    def test_loads_rejects_unknown_version_file(self):
         with self.assertRaises(GSFDecodeBadVersionError) as cm:
-            loads(b"SSBBgrsg\x08\x00\x03\x00")
+            loads(b"SSBBgrsg\x09\x00\x03\x00")
         self.assertEqual(cm.exception.offset, 0)
-        self.assertEqual(cm.exception.major, 8)
+        self.assertEqual(cm.exception.major, 9)
         self.assertEqual(cm.exception.minor, 3)
 
     def test_loads_rejects_bad_head_tag(self):
@@ -2346,32 +2456,6 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
                 'frame_rate_denominator': 1,
                 'drop_frame': False}}])
 
-    def test_loads_raises_when_grain_type_unknown(self):
-        with self.assertRaises(GSFDecodeError) as cm:
-            src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
-            flow_id = UUID('da78668a-1596-11e8-a577-dca904824eec')
-            (head, segments) = loads(b"SSBBgrsg\x07\x00\x00\x00" +
-                                     (b"head\x41\x00\x00\x00" +
-                                      b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
-                                      b"\xbf\x07\x03\x1d\x0f\x0f\x0f" +
-                                      (b"segm\x22\x00\x00\x00" +
-                                       b"\x01\x00" +
-                                       b"\xd3\xe1\x91\xf0\x15\x94\x11\xe8\x91\xac\xdc\xa9\x04\x82N\xec" +
-                                       b"\x01\x00\x00\x00\x00\x00\x00\x00")) +
-                                     (b"grai\x8d\x00\x00\x00" +
-                                      b"\x01\x00" +
-                                      (b"gbhd\x83\x00\x00\x00" +
-                                       src_id.bytes +
-                                       flow_id.bytes +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       b"\x00\x00\x00\x00\x00\x00\x00\x00" +
-                                       (b"dumy\x08\x00\x00\x00"))))
-
-        self.assertEqual(cm.exception.offset, 179)
-
     def test_loads_decodes_empty_grains(self):
         src_id = UUID('c707d64c-1596-11e8-a3fb-dca904824eec')
         flow_id = UUID('da78668a-1596-11e8-a577-dca904824eec')
@@ -2414,12 +2498,12 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
         self.assertIsNone(segments[1][1].data)
 
     def test_loads_coded_audio(self):
-        (head, segments) = loads(CODED_AUDIO_DATA)
+        (head, segments) = loads(CODED_AUDIO_DATA_8)
 
-        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 38, 5))
-        self.assertEqual(head['id'], UUID('2dbc5889-15f1-427c-b727-5201dd3b053c'))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['id'], UUID('fcff807a-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('6ca3a217-f2c2-4344-832b-6ea87bc5ddb8'))
+        self.assertEqual(head['segments'][0]['id'], UUID('fcff807b-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertIn(head['segments'][0]['local_id'], segments)
         self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
 
@@ -2437,7 +2521,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
                    690,
                    689]
         for grain in segments[head['segments'][0]['local_id']]:
-            self.assertIsInstance(grain, CODEDAUDIOGRAIN)
+            self.assertIsInstance(grain, CodedAudioGrain)
             self.assertEqual(grain.grain_type, "coded_audio")
             self.assertEqual(grain.source_id, UUID('38bfd902-b35f-40d6-9ecf-dc95869130cf'))
             self.assertEqual(grain.flow_id, UUID('e615296b-ff40-4d95-8398-6a4082305f3a'))
@@ -2457,12 +2541,12 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
 
     def test_loads_event(self):
         self.maxDiff = None
-        (head, segments) = loads(EVENT_DATA)
+        (head, segments) = loads(EVENT_DATA_8)
 
-        self.assertEqual(head['created'], datetime(2018, 2, 7, 10, 37, 35))
-        self.assertEqual(head['id'], UUID('3c45f8b5-1853-4723-808a-ab5cbf598ccc'))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['id'], UUID('fcff807e-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
-        self.assertEqual(head['segments'][0]['id'], UUID('db095cb5-050b-4b8c-92e8-31351422e93a'))
+        self.assertEqual(head['segments'][0]['id'], UUID('fcff807f-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertIn(head['segments'][0]['local_id'], segments)
         self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
 
@@ -2471,7 +2555,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
         line = ''
         seqnum = 3107787894242499264
         for grain in segments[head['segments'][0]['local_id']]:
-            self.assertIsInstance(grain, EVENTGRAIN)
+            self.assertIsInstance(grain, EventGrain)
             self.assertEqual(grain.grain_type, "event")
             self.assertEqual(grain.source_id, UUID('2db4268e-82ef-49f9-bc0f-1726e8352d76'))
             self.assertEqual(grain.flow_id, UUID('5333bae9-0768-4e31-be1c-fbd5dc2e34ac'))
@@ -2511,3 +2595,20 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
 
             ots = ots + TimeOffset.from_nanosec(20000000)
             seqnum += 20000000
+
+    def test_read_version_7(self):
+        test_data = [
+            (VIDEO_DATA_7, VIDEO_DATA_8),
+            (CODED_VIDEO_DATA_7, CODED_VIDEO_DATA_8),
+            (AUDIO_DATA_7, AUDIO_DATA_8),
+            (CODED_AUDIO_DATA_7, CODED_AUDIO_DATA_8),
+            (EVENT_DATA_7, EVENT_DATA_8),
+            (INTERLEAVED_DATA_7, INTERLEAVED_DATA_8)
+        ]
+        for data in test_data:
+            with self.subTest(data=data):
+                (_, segments_7) = loads(data[0])
+                (_, segments_8) = loads(data[1])
+                for local_id in segments_7.keys():
+                    comp = compare_grains_pairwise(segments_7[local_id], segments_8[local_id])
+                    self.assertTrue(comp, msg=f"{comp!r}")

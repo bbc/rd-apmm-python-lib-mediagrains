@@ -20,7 +20,7 @@ from __future__ import absolute_import
 from hypothesis.strategies import lists, sampled_from, just, tuples, fixed_dictionaries
 from mediagrains.hypothesis.strategies import grains, strategy_for_grain_attribute, grains_from_template_with_data
 
-from mediagrains.grain import attributes_for_grain_type
+from mediagrains.grains import attributes_for_grain_type
 
 from copy import deepcopy
 
@@ -65,7 +65,7 @@ def attribute_and_pairs_of_grains_of_type_differing_only_in_one_attribute(grain_
     For some types of grain the attribute drawn can include "data" which is generated a little differently from other
     types of attribute as befits its unusual nature"""
 
-    attr_strat = attributes_for_grain_type(grain_type)
+    attr_strat = attributes_for_grain_type(grain_type, new=True)
     grain_strat = sampled_from(attr_strat).flatmap(
         lambda attr: tuples(
             just(attr),
