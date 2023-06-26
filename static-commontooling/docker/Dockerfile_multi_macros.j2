@@ -104,7 +104,7 @@ COPY wheels/ ./wheels
 # Install test requirements
 COPY constraints.txt ./
 COPY test-requirements.txt ./
-RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert python -m pip install -f ./wheels --user -c constraints.txt -r ./test-requirements.txt flake8 "mypy>=0.910"
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert python -m pip install -f ./wheels --user -c constraints.txt -r ./test-requirements.txt flake8 "mypy>=1.4.1"
 {%- endmacro %}
 
 {% macro tests(include_extra_layers=[]) -%}
