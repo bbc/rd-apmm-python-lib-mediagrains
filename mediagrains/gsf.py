@@ -777,7 +777,7 @@ class BaseGSFDecoderSession(object):
                                 'source_id': src_id,
                                 'flow_id': flow_id,
                                 'format': format,
-                                'data': data
+                                'data': data.decode('utf-8')
                             }
                         elif segm_child.tag == "tag ":
                             key = segm_child.read_varstring()
