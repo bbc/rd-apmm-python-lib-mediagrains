@@ -31,7 +31,15 @@ RUN python3 setup.py sdist
 {%- endmacro %}
 
 
-{% macro layer(base_image="${CLOUDFIT_BASE_NAME}:${CLOUDFIT_BASE_LABEL}", entrypoint=True, extra_requirements_file="", install_target=None, extra_commands=[]) -%}
+{% macro cloudfit_base() -%}
+###############################################################################
+# Stage: cloudfit_base - provides certificates and pip conf
+###############################################################################
+FROM ap-docker.artifactory.labs.bbc/cloudfit/cloudfit_base:latest AS cloudfit_base
+{%- endmacro %}
+
+
+{% macro layer(base_image="${CLOUDFIT_BASE_NAME}:${CLOUDFIT_BASE_LABEL}", entrypoint=True, override_entrypoint=True, extra_requirements_file="", install_target=None, extra_commands=[], external_base=False) -%}
 ###############################################################################
 # Stage: layer - Has layer package and its requirements installed
 ###############################################################################
@@ -41,6 +49,15 @@ WORKDIR /{{ modname }}/
 {% for command in extra_commands -%}
 {{ command }}
 {% endfor -%}
+
+{% if external_base -%}
+# Add RD Root CA certs from the Cloudfit Python base image
+COPY --from=cloudfit_base /usr/local/share/ca-certificates/bbc-root-ca-1.crt /usr/local/share/ca-certificates/bbcrd-lt.crt /etc/pki/ca-trust/source/anchors/
+RUN update-ca-trust
+
+# Add artifactory repo
+COPY --from=cloudfit_base "/etc/pip.conf" "/etc/pip.conf"
+{%- endif %}
 
 # Copy in wheels if provided
 COPY wheels/ ./wheels
@@ -74,7 +91,9 @@ RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert 
 {%   if entrypoint -%}
 ENTRYPOINT ["{{ modname }}"]
 {%-  else -%}
+{%     if override_entrypoint -%}
 ENTRYPOINT []
+{%-    endif %}
 {%-  endif %}
 {%- endmacro %}
 
@@ -91,12 +110,21 @@ RUN yum -y install zip
 ENTRYPOINT ["zip", "-r", "-", "."]
 {%- endmacro %}
 
-{% macro testdeps() -%}
+{% macro testdeps(external_base=False) -%}
 ###############################################################################
 # Stage: testdeps - Has test dependencies installed only
 ###############################################################################
 FROM ${CLOUDFIT_BASE_NAME}:${CLOUDFIT_BASE_LABEL} AS testdeps
 WORKDIR /testdeps/
+
+{% if external_base -%}
+# Add RD Root CA certs from the Cloudfit Python base image
+COPY --from=cloudfit_base /usr/local/share/ca-certificates/bbc-root-ca-1.crt /usr/local/share/ca-certificates/bbcrd-lt.crt /etc/pki/ca-trust/source/anchors/
+RUN update-ca-trust
+
+# Add artifactory repo
+COPY --from=cloudfit_base "/etc/pip.conf" "/etc/pip.conf"
+{%-  endif %}
 
 # Copy in wheels if provided
 COPY wheels/ ./wheels
@@ -107,7 +135,7 @@ COPY test-requirements.txt ./
 RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert python -m pip install -f ./wheels --user -c constraints.txt -r ./test-requirements.txt flake8 "mypy>=1.4.1"
 {%- endmacro %}
 
-{% macro tests(include_extra_layers=[]) -%}
+{% macro tests(include_extra_layers=[], install_target=None) -%}
 ###############################################################################
 # Stage: tests - Combines Layer with test dependencies
 ###############################################################################
@@ -121,6 +149,11 @@ COPY --from=testdeps /root/.local/lib/ /root/.local/lib/
 # Copy the dependencies from the {{ layer }} layer
 COPY --from={{ layer }} /root/.local/lib/ /root/.local/lib/
 {% endfor -%}
+
+{% if install_target != None -%}
+# Add the layer's install directory to the Python module search path
+ENV PYTHONPATH={{ install_target }}
+{%- endif %}
 
 ENTRYPOINT []
 {%- endmacro %}
