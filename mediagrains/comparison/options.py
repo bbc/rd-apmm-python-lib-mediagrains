@@ -176,7 +176,7 @@ class ComparisonExclude(ComparisonOption):
         return "Exclude" + self.path[2:]
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.path == other.path
+        return type(self) is type(other) and self.path == other.path
 
 
 class ComparisonInclude(ComparisonOption):
@@ -184,7 +184,7 @@ class ComparisonInclude(ComparisonOption):
         return "Include" + self.path[2:]
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.path == other.path
+        return type(self) is type(other) and self.path == other.path
 
 
 class ComparisonExpectDifferenceMatches(ComparisonOption):
