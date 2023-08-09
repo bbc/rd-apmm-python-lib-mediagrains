@@ -23,7 +23,7 @@ for documentation of the GSF format.
 
 from .grains import Grain, GrainFactory
 from uuid import UUID, uuid1
-from datetime import datetime
+from datetime import datetime, timezone
 from io import BytesIO, RawIOBase, BufferedIOBase
 from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
@@ -650,7 +650,7 @@ class SyncGSFBlock():
         hour = self.read_uint(1)
         minute = self.read_uint(1)
         second = self.read_uint(1)
-        return datetime(year, month, day, hour, minute, second)
+        return datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
 
     def read_timestamp_v7(self) -> Timestamp:
         """Read a version 7 mediatimestamp.Timestamp with no sign
@@ -1420,6 +1420,28 @@ def _encode_rational(value: RationalTypes) -> bytes:
             _encode_uint(value.denominator, 4))
 
 
+def _ensure_utc_datetime(value: datetime) -> datetime:
+    utc_value = datetime(
+        value.year,
+        value.month,
+        value.day,
+        value.hour,
+        value.minute,
+        value.second,
+        value.microsecond,
+        tzinfo=timezone.utc
+    )
+
+    # If the value is timezone aware then subtract the UTC offset to get the actual UTC value
+    # else the timezone is assumed to be UTC
+    if value.tzinfo is not None:
+        utc_offset = value.tzinfo.utcoffset(value)
+        if utc_offset is not None:
+            utc_value = utc_value - utc_offset
+
+    return utc_value
+
+
 class OpenGSFEncoderBase(object):
     def __init__(self,
                  major: int,
@@ -1435,7 +1457,7 @@ class OpenGSFEncoderBase(object):
         self._tags = tags
         self.streaming = streaming
         self.id = id
-        self.created = created
+        self.created = _ensure_utc_datetime(created)
         self._segments = segments
         self._next_local = next_local
         self._active_dump = False
@@ -1775,9 +1797,9 @@ class GSFEncoder(object):
             self.id = id
 
         if created is None:
-            self.created = datetime.now()
+            self.created = datetime.now(timezone.utc)
         else:
-            self.created = created
+            self.created = _ensure_utc_datetime(created)
 
         self._segments: Dict[int, "GSFEncoderSegment"] = {}
 
