@@ -45,8 +45,9 @@ A number of data types are defined for the SSB format structures and the data it
 |               | Tag         | 16             | A *FixString* with fixed size equal to 16. The tag used to     |
 |               |             |                | identify the origination of the timecode for example           |
 |               | Timecode    | 13             | A Timecode                                                     |
-| DateTime      |             | 7              | A date-time structure with seconds resolution. A date-time     |
-|               |             |                | could have a 0 value for all members to indicate a null value  |
+| DateTime      |             | 7              | A date-time structure with seconds resolution and timezone set |
+|               |             |                | to UTC. A null date-time can be indicated by using a 0 value   |
+|               |             |                | for all members.                                               |
 |               | Year        | 2              | *Signed* year                                                  |
 |               | Month       | 1              | *Unsigned* month, 1 - 12                                       |
 |               | Day         | 1              | *Unsigned* day of month, 1 - 31                                |

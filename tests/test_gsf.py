@@ -26,10 +26,11 @@ from mediagrains.gsf import GSFEncodeError
 from mediagrains.gsf import GSFDecodeBadVersionError
 from mediagrains.gsf import GSFDecodeBadFileTypeError
 from mediagrains.gsf import GSFEncodeAddToActiveDump
+from mediagrains.gsf import _ensure_utc_datetime
 from mediagrains.comparison import compare_grain, compare_grains_pairwise
 from mediagrains.cogenums import CogFrameFormat, CogFrameLayout, CogAudioFormat
 from mediatimestamp.immutable import Timestamp, TimeOffset
-from datetime import datetime
+from datetime import datetime, timezone
 from fractions import Fraction
 from io import BytesIO
 from mediagrains.utils.asyncbinaryio import AsyncBytesIO
@@ -80,7 +81,7 @@ with open('examples/interleaved_7.gsf', 'rb') as f:
 class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_no_grains(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'), UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 (head, segments) = loads(dumps([], tags=[('potato', 'harvest')], segment_tags=[('upside', 'down')]))
@@ -110,7 +111,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
 
     async def test_async_encode_no_grains(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'), UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 f = BytesIO()
@@ -154,7 +155,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         grain.pixel_aspect_ratio = 1
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 (head, segments) = loads(dumps([grain]))
@@ -202,7 +203,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         grain.pixel_aspect_ratio = 1
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 f = BytesIO()
@@ -257,7 +258,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         grain0.pixel_aspect_ratio = 1
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 (head, segments) = loads(dumps([grain0, grain1]))
@@ -320,7 +321,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         grain0.pixel_aspect_ratio = 1
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 f = BytesIO()
@@ -384,7 +385,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
             grain1.data[i] = 0xFF - (i & 0xFF)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 (head, segments) = loads(dumps([grain0, grain1]))
@@ -441,7 +442,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
             grain1.data[i] = 0xFF - (i & 0xFF)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 f = BytesIO()
@@ -519,7 +520,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
             grain1.data[i] = 0xFF - (i & 0xFF)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 (head, segments) = loads(dumps([grain0, grain1]))
@@ -604,7 +605,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
             grain1.data[i] = 0xFF - (i & 0xFF)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 f = BytesIO()
@@ -688,7 +689,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
             grain1.data[i] = 0xFF - (i & 0xFF)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 (head, segments) = loads(dumps([grain0, grain1]))
@@ -763,7 +764,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
             grain1.data[i] = 0xFF - (i & 0xFF)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 f = BytesIO()
@@ -827,7 +828,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         grain1.append("/sukimono", pre="da")
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 (head, segments) = loads(dumps([grain0, grain1]))
@@ -886,7 +887,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         grain1.append("/sukimono", pre="da")
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 f = BytesIO()
@@ -951,7 +952,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         grain1 = Grain(src_id=src_id, flow_id=flow_id)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 (head, segments) = loads(dumps([grain0, grain1]))
@@ -1012,7 +1013,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         grain1 = Grain(src_id=src_id, flow_id=flow_id)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 f = BytesIO()
@@ -1067,7 +1068,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         grain.grain_type = "invalid"
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with self.assertRaises(GSFEncodeError):
             with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
                 with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
@@ -1080,7 +1081,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         grain.grain_type = "invalid"
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with self.assertRaises(GSFEncodeError):
             with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
                 with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
@@ -1098,7 +1099,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
 
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
 
         file = BytesIO()
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
@@ -1141,7 +1142,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
 
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
 
         file = BytesIO()
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
@@ -1183,7 +1184,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
 
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
 
         file = BytesIO()
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
@@ -1224,7 +1225,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
 
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
 
         file = BytesIO()
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
@@ -1258,7 +1259,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_end_dump_without_start_does_nothing(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
 
         file = BytesIO()
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
@@ -1274,7 +1275,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_fails_with_invalid_tags(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with self.assertRaises(GSFEncodeError):
             with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
                 with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
@@ -1283,7 +1284,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_can_set_tags(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 (head, segments) = loads(dumps([], tags=[('potato', 'harvest')], segment_tags=[('rainbow', 'dash')]))
@@ -1329,7 +1330,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_encoder_access_methods(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
                 enc = GSFEncoder([], tags=[('potato', 'harvest')])
@@ -1343,7 +1344,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_encoder_raises_when_adding_to_active_encode__deprecated(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         file = BytesIO()
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
@@ -1368,7 +1369,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_encoder_raises_when_adding_to_active_encode(self):
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         file = BytesIO()
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
@@ -1396,7 +1397,7 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
                             height=1080)
         uuids = [UUID('7920b394-1565-11e8-86e0-8b42d4647ba8'),
                  UUID('80af875c-1565-11e8-8f44-87ef081b48cd')]
-        created = datetime(1983, 3, 29, 15, 15)
+        created = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
         file = BytesIO()
         with mock.patch('mediagrains.gsf.datetime', side_effect=datetime, now=mock.MagicMock(return_value=created)):
             with mock.patch('mediagrains.gsf.uuid1', side_effect=uuids):
@@ -1405,6 +1406,21 @@ class TestGSFDumps(IsolatedAsyncioTestCase):
         enc.add_grain(grain0, segment_local_id=2)
 
         self.assertEqual(enc.segments[2]._grains[0], grain0)
+
+    def test_ensure_utc_datetime(self):
+        expected = datetime(1983, 3, 29, 15, 15, tzinfo=timezone.utc)
+
+        # Timezone UTC
+        value = datetime.fromisoformat('1983-03-29T15:15:00+00:00')
+        self.assertEqual(expected, _ensure_utc_datetime(value))
+
+        # Timezone UTC offset
+        value = datetime.fromisoformat('1983-03-29T19:15:00+04:00')
+        self.assertEqual(expected, _ensure_utc_datetime(value))
+
+        # Timezone unaware
+        value = datetime.fromisoformat('1983-03-29T15:15:00')
+        self.assertEqual(expected, _ensure_utc_datetime(value))
 
 
 class TestGSFBlock(IsolatedAsyncioTestCase):
@@ -1488,7 +1504,7 @@ class TestGSFBlock(IsolatedAsyncioTestCase):
             self.assertEqual(test_uuid, UUT.read_uuid())
 
     def test_read_datetime(self):
-        test_datetime = datetime(2018, 9, 8, 16, 0, 0)
+        test_datetime = datetime(2018, 9, 8, 16, 0, 0, tzinfo=timezone.utc)
         test_data = b"\xe2\x07\x09\x08\x10\x00\x00"
 
         with BytesIO(test_data) as fp:
@@ -1714,7 +1730,7 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         with GSFDecoder(file_data=video_data_stream) as dec:
             head = dec.file_headers
 
-        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44))
+        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44, tzinfo=timezone.utc))
         self.assertEqual(head['id'], UUID('a71aee4a-0b9b-11ee-9004-09742b0a3ff2'))
         self.assertEqual(len(head['segments']), 1)
         self.assertEqual(head['segments'][0]['id'], UUID('a71aee4b-0b9b-11ee-9004-09742b0a3ff2'))
@@ -1740,7 +1756,7 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         async with GSFDecoder(file_data=video_data_stream) as dec:
             head = dec.file_headers
 
-        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44))
+        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44, tzinfo=timezone.utc))
         self.assertEqual(head['id'], UUID('a71aee4a-0b9b-11ee-9004-09742b0a3ff2'))
         self.assertEqual(len(head['segments']), 1)
         self.assertEqual(head['segments'][0]['id'], UUID('a71aee4b-0b9b-11ee-9004-09742b0a3ff2'))
@@ -1803,7 +1819,7 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
         UUT = GSFDecoder(file_data=video_data_stream)
         head = UUT.decode_file_headers()
 
-        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44))
+        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44, tzinfo=timezone.utc))
         self.assertEqual(head['id'], UUID('a71aee4a-0b9b-11ee-9004-09742b0a3ff2'))
         self.assertEqual(len(head['segments']), 1)
         self.assertEqual(head['segments'][0]['id'], UUID('a71aee4b-0b9b-11ee-9004-09742b0a3ff2'))
@@ -2081,7 +2097,7 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
 
 class TestGSFLoads(IsolatedAsyncioTestCase):
     def _verify_loaded_video(self, head, segments):
-        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44))
+        self.assertEqual(head['created'], datetime(2023, 6, 15, 17, 42, 44, tzinfo=timezone.utc))
         self.assertEqual(head['id'], UUID('a71aee4a-0b9b-11ee-9004-09742b0a3ff2'))
         self.assertEqual(len(head['segments']), 1)
         self.assertEqual(head['segments'][0]['id'], UUID('a71aee4b-0b9b-11ee-9004-09742b0a3ff2'))
@@ -2173,7 +2189,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
     def test_loads_audio(self):
         (head, segments) = loads(AUDIO_DATA_8)
 
-        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3, tzinfo=timezone.utc))
         self.assertEqual(head['id'], UUID('fcff8078-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
         self.assertEqual(head['segments'][0]['id'], UUID('fcff8079-05e7-11ee-9cef-ff48f7f81acf'))
@@ -2202,7 +2218,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
     def test_loads_coded_video(self):
         (head, segments) = loads(CODED_VIDEO_DATA_8)
 
-        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3, tzinfo=timezone.utc))
         self.assertEqual(head['id'], UUID('fcff807c-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
         self.assertEqual(head['segments'][0]['id'], UUID('fcff807d-05e7-11ee-9cef-ff48f7f81acf'))
@@ -2302,7 +2318,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
                                  b"\xbf\x07\x03\x1d\x0f\x0f\x0f")
 
         self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
-        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))
+        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15, tzinfo=timezone.utc))
         self.assertEqual(head['segments'], [])
         self.assertEqual(head['tags'], [])
 
@@ -2314,7 +2330,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
                                  b"dumy\x08\x00\x00\x00")
 
         self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
-        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))
+        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15, tzinfo=timezone.utc))
         self.assertEqual(head['segments'], [])
         self.assertEqual(head['tags'], [])
 
@@ -2330,7 +2346,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
                                    b"\x00\x00\x00\x00\x00\x00\x00\x00")))
 
         self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
-        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))
+        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15, tzinfo=timezone.utc))
         self.assertEqual(len(head['segments']), 1)
         self.assertEqual(head['segments'][0]['local_id'], 1)
         self.assertEqual(head['segments'][0]['id'], UUID('d3e191f0-1594-11e8-91ac-dca904824eec'))
@@ -2395,7 +2411,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
                                  (b"grai\x08\x00\x00\x00"))
 
         self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
-        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))
+        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15, tzinfo=timezone.utc))
         self.assertEqual(len(head['segments']), 1)
         self.assertEqual(head['segments'][0]['local_id'], 1)
         self.assertEqual(head['segments'][0]['id'], UUID('d3e191f0-1594-11e8-91ac-dca904824eec'))
@@ -2441,7 +2457,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
         (head, segments) = await load(fp)
 
         self.assertEqual(head['id'], UUID('d19c0b91-1590-11e8-8580-dca904824eec'))
-        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15))
+        self.assertEqual(head['created'], datetime(1983, 3, 29, 15, 15, 15, tzinfo=timezone.utc))
         self.assertEqual(len(head['segments']), 1)
         self.assertEqual(head['segments'][0]['local_id'], 1)
         self.assertEqual(head['segments'][0]['id'], UUID('d3e191f0-1594-11e8-91ac-dca904824eec'))
@@ -2500,7 +2516,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
     def test_loads_coded_audio(self):
         (head, segments) = loads(CODED_AUDIO_DATA_8)
 
-        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3, tzinfo=timezone.utc))
         self.assertEqual(head['id'], UUID('fcff807a-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
         self.assertEqual(head['segments'][0]['id'], UUID('fcff807b-05e7-11ee-9cef-ff48f7f81acf'))
@@ -2543,7 +2559,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
         self.maxDiff = None
         (head, segments) = loads(EVENT_DATA_8)
 
-        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3))
+        self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3, tzinfo=timezone.utc))
         self.assertEqual(head['id'], UUID('fcff807e-05e7-11ee-9cef-ff48f7f81acf'))
         self.assertEqual(len(head['segments']), 1)
         self.assertEqual(head['segments'][0]['id'], UUID('fcff807f-05e7-11ee-9cef-ff48f7f81acf'))
