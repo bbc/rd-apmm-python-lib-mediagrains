@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from io import BytesIO, RawIOBase, BufferedIOBase
 from mediatimestamp.immutable import Timestamp
 from fractions import Fraction
-from frozendict import frozendict  # type: ignore
+from frozendict import frozendict
 from .utils import IOBytes
 from os import SEEK_SET, SEEK_CUR
 import warnings
@@ -1468,7 +1468,7 @@ class OpenGSFEncoderBase(object):
 
     @property
     def segments(self) -> Mapping[int, "GSFEncoderSegment"]:
-        return frozendict(self._segments)  # type: ignore[operator]
+        return frozendict(self._segments)
 
     def add_tag(self, key: str, value: str):
         """Add a tag to the file"""
@@ -1874,7 +1874,7 @@ class GSFEncoder(object):
 
     @property
     def segments(self) -> Mapping[int, "GSFEncoderSegment"]:
-        return frozendict(self._segments)  # type: ignore[operator]
+        return frozendict(self._segments)
 
     def add_tag(self, key: str, value: str):
         """Add a tag to the file"""
