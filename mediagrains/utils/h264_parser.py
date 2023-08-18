@@ -15,10 +15,10 @@
 
 """H.264 raw bitstream parser"""
 
-from typing import Optional, Dict, Iterator, Iterable, List, Tuple
+from typing import Optional, Dict, Iterator, Iterable, List, Tuple, cast
 from enum import IntEnum
 from itertools import chain
-from bitstring import BitStream, ReadError, Bits
+from bitstring import BitStream, ReadError, ConstBitStream
 from fractions import Fraction
 
 
@@ -435,7 +435,7 @@ class H264Parser(object):
         else:
             return None
 
-    def _parse_nal_unit_type(self, bits: Bits) -> int:
+    def _parse_nal_unit_type(self, bits: ConstBitStream) -> int:
         """Peek NALU for NAL Unit Type
 
         :param bits: NALU bits
@@ -449,7 +449,7 @@ class H264Parser(object):
 
         return nal_unit_type
 
-    def _parse_sps(self, rbsp_bits: Bits) -> SPS:
+    def _parse_sps(self, rbsp_bits: ConstBitStream) -> SPS:
         """Parse SPS NALU
 
         :param bits: RBSP bits
@@ -560,7 +560,7 @@ class H264Parser(object):
 
         return sps
 
-    def _parse_pps(self, rbsp_bits: Bits) -> PPS:
+    def _parse_pps(self, rbsp_bits: ConstBitStream) -> PPS:
         """Parse PPS NALU
 
         :param bits: RBSP bits
@@ -613,7 +613,7 @@ class H264Parser(object):
 
         return pps
 
-    def _parse_slice_header(self, rbsp_bits: Bits) -> SliceHeader:
+    def _parse_slice_header(self, rbsp_bits: ConstBitStream) -> SliceHeader:
         """Parse slice header NALU
 
         :param bits: RBSP bits
@@ -663,7 +663,7 @@ class H264Parser(object):
 
         return slice_header
 
-    def _get_nalu_offsets(self, bits: Bits) -> Iterator[int]:
+    def _get_nalu_offsets(self, bits: ConstBitStream) -> Iterator[int]:
         """Returns a generator of NALU offsets in the frame
 
         The offsets are at the prefix 0x000001.
@@ -671,9 +671,9 @@ class H264Parser(object):
         :param bits: the frame bits
         :returns: a generator of bit offsets
         """
-        return bits.findall('0x000001', bytealigned=True)
+        return iter(bits.findall('0x000001', bytealigned=True))
 
-    def _parse_rbsp_bits(self, bits: Bits) -> Bits:
+    def _parse_rbsp_bits(self, bits: ConstBitStream) -> ConstBitStream:
         """Return raw byte sequence payload that excludes emulation prevention bytes
 
         :param bits: the NALU bits
@@ -682,7 +682,7 @@ class H264Parser(object):
         self._parse_start_code_prefix(bits)
         rbsp_start = bits.pos
 
-        emu_offsets = bits.findall('0x000003', bytealigned=True)
+        emu_offsets = iter(bits.findall('0x000003', bytealigned=True))
         emu_offset = next(emu_offsets, None)
         if emu_offset is None:
             return bits
@@ -693,9 +693,11 @@ class H264Parser(object):
             emu_offset = next_emu_offset
         rbsp_bits.append(bits[emu_offset+3*8:])
 
+        rbsp_bits.pos = 0
+
         return rbsp_bits
 
-    def _parse_start_code_prefix(self, bits: Bits) -> List[int]:
+    def _parse_start_code_prefix(self, bits: ConstBitStream) -> List[int]:
         """Parse the 3 or 4 byte start code prefix
 
         :param bits: the NALU bits
@@ -708,4 +710,4 @@ class H264Parser(object):
         if start_code_prefix[-1] != 0x01 or start_code_prefix[-2] != 0x00 or start_code_prefix[-3] != 0x00:
             raise ValueError("Invalid NALUs start code prefix")
 
-        return start_code_prefix
+        return cast(list[int], start_code_prefix)
