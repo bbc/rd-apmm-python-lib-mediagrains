@@ -167,7 +167,9 @@ pipeline {
             steps{
                 withBBCDockerRegistry {
                     withBBCAWSCredentialsFile(awsAccountID: '613414153832', role: 'jenkins-ecr-access') {
-                        bbcMake("push")
+                        withBBCCloudfitPipConfFile {
+                          bbcMake("push")
+                        }
                     }
                 }
             }
