@@ -58,7 +58,7 @@ packages_required = [
     "frozendict >= 1.2",
     'numpy >= 1.23.0',
     'deprecated >= 1.2.6',
-    "bitstring >= 4.0.1, < 4.1.0",  # Ticket to remove pin https://www.pivotaltracker.com/story/show/185860418
+    "bitstring >= 4.1.0"
 ]
 
 console_scripts = [
