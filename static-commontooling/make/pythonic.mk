@@ -57,6 +57,8 @@ endif
 WHEEL_FILE?=$(topbuilddir)/dist/$(MODNAME)-$(VERSION)-py3-none-any.whl
 SDIST_FILE?=$(topbuilddir)/dist/$(MODNAME)-$(VERSION).tar.gz
 
+EXTRA_DOCKER_BUILD_ARGS += --secret id=pipconf,src=$(PIP_CONFIG_FILE)
+
 wheel: $(WHEEL_FILE)
 source: source-pythonic
 source-pythonic: $(SDIST_FILE)

@@ -70,21 +70,21 @@ RUN cat {{ extra_requirements_file }} >> ./requirements.txt
 {%-  endif %}
 
 {% if install_target != None -%}
-RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert mkdir -p {{ install_target }} && pip install -f ./wheels -r requirements.txt -t {{ install_target }}
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=pipconf,target=/etc/pip.conf mkdir -p {{ install_target }} && pip install -f ./wheels -r requirements.txt -t {{ install_target }}
 
 # Copy in everything else and install the package
 ARG VERSION
 COPY --from=source /{{ modname }}/dist/{{ modname }}-${VERSION}.tar.gz ./
-RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert tar -xvzp --strip-components=1 -f ./{{ modname }}-${VERSION}.tar.gz && cp -r ./{{ modname }} {{ install_target }}
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=pipconf,target=/etc/pip.conf tar -xvzp --strip-components=1 -f ./{{ modname }}-${VERSION}.tar.gz && cp -r ./{{ modname }} {{ install_target }}
 
 ENV PYTHONPATH={{ install_target }}
 {% else -%}
-RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert pip install -f ./wheels -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=pipconf,target=/etc/pip.conf pip install -f ./wheels -r requirements.txt
 
 # Copy in everything else and install the package
 ARG VERSION
 COPY --from=source /{{ modname }}/dist/{{ modname }}-${VERSION}.tar.gz ./
-RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert tar -xvzp --strip-components=1 -f ./{{ modname }}-${VERSION}.tar.gz && pip install -f ./wheels -e .
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=pipconf,target=/etc/pip.conf tar -xvzp --strip-components=1 -f ./{{ modname }}-${VERSION}.tar.gz && pip install -f ./wheels -e .
 {%-  endif %}
 
 # Set the default command
@@ -132,7 +132,7 @@ COPY wheels/ ./wheels
 # Install test requirements
 COPY constraints.txt ./
 COPY test-requirements.txt ./
-RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert python -m pip install -f ./wheels --user -c constraints.txt -r ./test-requirements.txt flake8 "mypy>=1.4.1"
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=pipconf,target=/etc/pip.conf python -m pip install -f ./wheels --user -c constraints.txt -r ./test-requirements.txt flake8 "mypy>=1.4.1"
 {%- endmacro %}
 
 {% macro tests(include_extra_layers=[], install_target=None) -%}
@@ -229,7 +229,7 @@ WORKDIR /docs/
 COPY --from=source /{{ modname }}/module.html.jinja2 /{{ modname }}/
 {%-  endif %}
 
-RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert pip install pdoc
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=pipconf,target=/etc/pip.conf pip install pdoc
 
 ENTRYPOINT ["/run_with_dir_modes.sh", ".", "pdoc"]
 CMD [ \
@@ -257,7 +257,7 @@ RUN chmod a+w /data
 
 COPY --from=alembic_base /data/requirements.txt /data/alembic.ini.j2 /data/default_entrypoint.sh .
 
-RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=forgecert pip install -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=pipconf,target=/etc/pip.conf pip install -r requirements.txt
 
 ENTRYPOINT ["./default_entrypoint.sh"]
 {%- endmacro %}

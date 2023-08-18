@@ -181,9 +181,8 @@ ifeq "${MS_DOCKER_MYPY}" "TRUE"
 ifeq "${COMMONTOOLING_BUILD_ENV}" "internal"
 ms_docker-build-mypy: $(topdir)/.mypy.ini
 endif
-ifneq "${FORGE_CERT}" ""
-ms_docker-run-mypy: EXTRA_DOCKER_RUN_ARGS+=--mount type=bind,source=${FORGE_CERT},target=/run/secrets/forgecert,readonly
-endif
+
+ms_docker-run-mypy: EXTRA_DOCKER_RUN_ARGS+=--mount type=bind,source=$(PIP_CONFIG_FILE),target=/etc/pip.conf,readonly
 mypy: ms_docker-run-mypy
 endif
 

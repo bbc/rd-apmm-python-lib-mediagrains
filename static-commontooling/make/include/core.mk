@@ -33,6 +33,13 @@ J2CLI_DOCKER_LABEL?=latest
 CLOUDFIT_BASE_LABEL?=latest
 endif
 
+# Set python pip config location
+ifeq "${BUILD_TAG}" "local"
+PIP_CONFIG_FILE?=/etc/pip.conf
+else
+PIP_CONFIG_FILE?=$(project_root_dir)/.pip.conf
+endif
+
 CLOUDFIT_BASE_NAME?=python
 
 J2CLI_DOCKER_CONTAINER?=public.ecr.aws/o4o2s1w1/cloudfit/j2cli

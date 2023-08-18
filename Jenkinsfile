@@ -53,61 +53,79 @@ pipeline {
         }
         stage ("make check-static-files") {
             steps {
-                bbcMake 'check-static-files'
+                withBBCCloudfitPipConfFile {
+                    bbcMake 'check-static-files'
+                }
             }
             post {
                 always {
                     bbcGithubNotify(context: "check-static-files", status: env.result)
+                    bbcSh "rm -f ${WORKSPACE}/.pip.conf"
                 }
             }
         }
         stage ("make lint") {
             steps {
-                bbcMake 'lint'
+                withBBCCloudfitPipConfFile {
+                    bbcMake 'lint'
+                }
             }
             post {
                 always {
                     bbcGithubNotify(context: "lint", status: env.result)
+                    bbcSh "rm -f ${WORKSPACE}/.pip.conf"
                 }
             }
         }
         stage ("make mypy") {
             steps {
-                bbcMake 'mypy'
+                withBBCCloudfitPipConfFile {
+                    bbcMake 'mypy'
+                }
             }
             post {
                 always {
                     bbcGithubNotify(context: "mypy", status: env.result)
+                    bbcSh "rm -f ${WORKSPACE}/.pip.conf"
                 }
             }
         }
         stage ("make docs") {
             steps {
-                bbcMake 'docs'
+                withBBCCloudfitPipConfFile {
+                    bbcMake 'docs'
+                }
             }
             post {
                 always {
                     bbcGithubNotify(context: "docs", status: env.result)
+                    bbcSh "rm -f ${WORKSPACE}/.pip.conf"
                 }
             }
         }
         stage ("make test") {
             steps {
-                bbcMake 'test'
+                withBBCCloudfitPipConfFile {
+                    bbcMake 'test'
+                }
             }
             post {
                 always {
                     bbcGithubNotify(context: "test", status: env.result)
+                    bbcSh "rm -f ${WORKSPACE}/.pip.conf"
                 }
             }
         }
         stage ("make wheel") {
             steps {
-                bbcMake 'wheel'
+                withBBCCloudfitPipConfFile {
+                    bbcMake 'wheel'
+                }
             }
             post {
                 always {
                     bbcGithubNotify(context: "wheel", status: env.result)
+                    bbcSh "rm -f ${WORKSPACE}/.pip.conf"
                 }
             }
         }

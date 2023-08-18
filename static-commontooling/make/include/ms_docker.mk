@@ -15,10 +15,6 @@ include $(commontooling_dir)/make/include/ecr_docker.mk
 MS_DOCKERFILE?=Dockerfile.multi
 MS_DOCKERFILE_TEMPLATE?=Dockerfile_multi.j2
 
-ifneq "${FORGE_CERT}" ""
-	EXTRA_DOCKER_BUILD_ARGS += --secret id=forgecert,src=${FORGE_CERT}
-endif
-
 MS_DOCKER_BUILD_ARGS:=\
 	-f ${MS_DOCKERFILE} \
 	--build-arg VERSION=${VERSION_IN_PYTHON} \
