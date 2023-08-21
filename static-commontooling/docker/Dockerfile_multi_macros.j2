@@ -54,9 +54,6 @@ WORKDIR /{{ modname }}/
 # Add RD Root CA certs from the Cloudfit Python base image
 COPY --from=cloudfit_base /usr/local/share/ca-certificates/bbc-root-ca-1.crt /usr/local/share/ca-certificates/bbcrd-lt.crt /etc/pki/ca-trust/source/anchors/
 RUN update-ca-trust
-
-# Add artifactory repo
-COPY --from=cloudfit_base "/etc/pip.conf" "/etc/pip.conf"
 {%- endif %}
 
 # Copy in wheels if provided
@@ -121,9 +118,6 @@ WORKDIR /testdeps/
 # Add RD Root CA certs from the Cloudfit Python base image
 COPY --from=cloudfit_base /usr/local/share/ca-certificates/bbc-root-ca-1.crt /usr/local/share/ca-certificates/bbcrd-lt.crt /etc/pki/ca-trust/source/anchors/
 RUN update-ca-trust
-
-# Add artifactory repo
-COPY --from=cloudfit_base "/etc/pip.conf" "/etc/pip.conf"
 {%-  endif %}
 
 # Copy in wheels if provided

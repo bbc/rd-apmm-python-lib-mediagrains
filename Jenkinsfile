@@ -144,7 +144,9 @@ pipeline {
                         passwordVariable: 'TWINE_REPO_PASSWORD',
                         usernameVariable: 'TWINE_REPO_USERNAME')]) {
                     withEnv(["TWINE_REPO=https://upload.pypi.org/legacy/"]) {
-                        bbcMake "upload-wheels"
+                        withBBCCloudfitPipConfFile {
+                            bbcMake "upload-wheels"
+                        }
                     }
                 }
             }
