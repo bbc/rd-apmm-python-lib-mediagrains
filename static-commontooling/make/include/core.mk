@@ -108,10 +108,27 @@ $(topbuilddir)/dist:
 $(topbuilddir)/.tmp:
 	mkdir -p $@
 
+$(topbuilddir)/docs:
+	mkdir -p $@
+
+# Target to generate docs index
+DOC_FILES = $(shell find $(topbuilddir)/docs/ -type f -name '*.html')
+FILTERED_DOC_FILES = $(filter-out $(topbuilddir)/docs/index.html, $(DOC_FILES))
+STRIPPED_DOC_FILES = $(patsubst $(topbuilddir)/docs/%,%,$(FILTERED_DOC_FILES))
+
+$(topbuilddir)/docs/index.html: $(topbuilddir)/docs
+	rm -f $@
+	echo "<html><body>" >> $@
+	echo "<h1>$(PROJECT) Documentation</h1><p>" >> $@ && \
+	set -f; for docfile in $(STRIPPED_DOC_FILES); do \
+		echo "<li><a href=\"./$$docfile\">$$docfile</li>" >> $@ ; \
+	done
+	echo "</p></body></html>" >> $@
+
 all: help-static-files
 
 help-static-files:
 	@echo "make static-files                - Update static commontooling files"
 	@echo "make check-static-files          - Check that the current static commontooling files are up to date"
 
-.PHONY: prepcode test lint clean install source all forcerebuild help-title push push-check-changes help-static-files static-files check-static-files
+.PHONY: prepcode test lint clean install source all forcerebuild help-title push push-check-changes help-static-files static-files check-static-files $(topbuilddir)/docs/index.html

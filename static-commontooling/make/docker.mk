@@ -209,7 +209,14 @@ $(topdir)/docs:
 ms_docker-build-docs: $(topbuilddir)/.tmp/run_with_dir_modes.sh $(topbuilddir)/.tmp/_full_version.py
 
 ms_docker-run-docs: EXTRA_DOCKER_RUN_ARGS+=--mount type=bind,source=${topbuilddir}/docs,target=/docs
-docs: $(topbuilddir)/docs ms_docker-run-docs
+docs-files: $(topbuilddir)/docs ms_docker-run-docs
+ifeq "${CLOUDFIT_MAKE_MODE}" "standalone"
+docs: $(topbuilddir)/docs/index.html
+$(topbuilddir)/docs/index.html: docs-files
+else
+docs: docs-files
+endif
+
 $(topbuilddir)/docs/$(MODNAME)/index.html: $(topbuilddir)/docs ms_docker-run-docs
 endif
 
