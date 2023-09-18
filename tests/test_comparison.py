@@ -37,7 +37,10 @@ GRAIN_TYPES_TO_TEST = ["empty", "event", "audio", "video", "coded_audio", "coded
 
 
 class TestCompareGrain(TestCase):
+    # This strategy is complicated and hence quite slow, as a result we turn off the standard timeout deadline for
+    # hypothesis tests
     @given(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains_with_data))
+    @settings(deadline=None)
     def test_equal_grains_compare_as_equal(self, a):
         b = deepcopy(a)
         c = compare_grain(a, b, Include.creation_timestamp)
@@ -45,7 +48,10 @@ class TestCompareGrain(TestCase):
             c, msg="Comparison of {!r} and {!r} was unequal when equality was expected:\n\n{}".format(a, b, str(c)))
         self.assertEqual(c.failing_attributes(), [])
 
+    # This strategy is complicated and hence quite slow, as a result we turn off the standard timeout deadline for
+    # hypothesis tests
     @given(pairs_of(sampled_from(GRAIN_TYPES_TO_TEST).flatmap(grains_with_data)))
+    @settings(deadline=None)
     def test_unequal_grains_compare_as_unequal(self, pair):
         (a, b) = pair
         assume(a != b)
