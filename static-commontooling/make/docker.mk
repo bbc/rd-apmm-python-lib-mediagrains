@@ -149,6 +149,7 @@ include $(commontooling_dir)/make/include/dockerignore.mk
 MS_DOCKER_ARTEFACT?=TRUE
 ifeq "${MS_DOCKER_ARTEFACT}" "TRUE"
 artefact: ms_docker-build
+artefacts: artefact
 endif
 
 MS_DOCKER_SOURCE?=TRUE
@@ -184,6 +185,7 @@ endif
 
 ms_docker-run-mypy: EXTRA_DOCKER_RUN_ARGS+=--mount type=bind,source=$(PIP_CONFIG_FILE),target=/etc/pip.conf,readonly
 mypy: ms_docker-run-mypy
+typecheck: mypy
 endif
 
 $(topbuilddir)/.tmp/run_with_dir_modes.sh: $(commontooling_dir)/misc/run_with_dir_modes.sh $(topbuilddir)/.tmp
@@ -256,7 +258,7 @@ $(topbuilddir)/wheels:
 
 help-docker:
 ifeq "${MS_DOCKER_ARTEFACT}" "TRUE"
-	@echo "make artefact                    - Build the docker container for this layer"
+	@echo "make artefacts                   - Build the docker container for this layer"
 endif
 ifeq "${MS_DOCKER_UNITTEST}" "TRUE"
 	@echo "make test                        - Run unit tests in docker"
@@ -265,7 +267,7 @@ ifeq "${MS_DOCKER_FLAKE8}" "TRUE"
 	@echo "make lint                        - Run flake8 on python code"
 endif
 ifeq "${MS_DOCKER_MYPY}" "TRUE"
-	@echo "make mypy                        - Run mypy on python code"
+	@echo "make typecheck                   - Run mypy on python code"
 endif
 ifeq "${MS_DOCKER_WHEEL}" "TRUE"
 	@echo "make wheel                       - Make wheel for layer"
@@ -282,4 +284,4 @@ endif
 		echo "  $(DOCKER_COMPOSE) <ARGS>"; \
 	fi
 
-.PHONY: help-docker artefact upload-docker mypy
+.PHONY: help-docker artefact upload-docker mypy typecheck artefacts
