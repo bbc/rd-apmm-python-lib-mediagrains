@@ -37,6 +37,12 @@ endif
 # Set this to prompt another directory (e.g. a common layer) to build first
 BASE_MOD_DIR?=
 
+ifeq "$(ALLOW_LOCAL_WHEELS)" "true"
+WHEELS_DIR_TARGET:=$(topbuilddir)/wheels
+else
+WHEELS_DIR_TARGET:=
+endif
+
 check-allow-local-wheels:
 ifneq ($(ALLOW_LOCAL_WHEELS),TRUE)
 ifneq ($(shell ls -A "$(topbuilddir)/wheels" 2> /dev/null),)
@@ -57,12 +63,12 @@ endif
 
 # These generic targets can be used to trigger various types of docker builds, they aren't intended
 # to be directly used by users, but instead are an api for other makefile targets to make use of
-ms_docker-build: check-allow-local-wheels ${BUILD_ARTEFACT} ${MS_DOCKERFILE} $(topbuilddir)/wheels prepcode pull-cloudfit-base ms_docker-build-base
+ms_docker-build: check-allow-local-wheels ${BUILD_ARTEFACT} ${MS_DOCKERFILE} ${WHEELS_DIR_TARGET} prepcode pull-cloudfit-base ms_docker-build-base
 	${MS_DOCKER_BUILD} --target layer -t ${MODNAME}:${BUILD_TAG} .
 
 # This target builds the "layer" stage and add the image name suffix to _alt_<alt name>. This target can be
 # use on conjunction with the CLOUDFIT_BASE_NAME option to build the "layer" using a different base image.
-ms_docker-alt-build-%: check-allow-local-wheels ${BUILD_ARTEFACT} ${MS_DOCKERFILE} $(topbuilddir)/wheels prepcode pull-cloudfit-base ms_docker-build-base
+ms_docker-alt-build-%: check-allow-local-wheels ${BUILD_ARTEFACT} ${MS_DOCKERFILE} ${WHEELS_DIR_TARGET} prepcode pull-cloudfit-base ms_docker-build-base
 	${MS_DOCKER_BUILD} --target layer -t ${MODNAME}_alt_$*:${BUILD_TAG} .
 
 MOD_WITH_API?=false
@@ -73,9 +79,9 @@ endif
 # NOTE: Addition of prerequisits to pattern rules doesn't work as expected, hence alternet definition of
 # full target definition
 ifeq "$(MOD_WITH_API)" "true"
-ms_docker-build-%: check-allow-local-wheels ${BUILD_ARTEFACT} ${MS_DOCKERFILE} $(topbuilddir)/wheels prepcode pull-cloudfit-base ms_docker-build-base ms_external-layer-docker-build-api
+ms_docker-build-%: check-allow-local-wheels ${BUILD_ARTEFACT} ${MS_DOCKERFILE} ${WHEELS_DIR_TARGET} prepcode pull-cloudfit-base ms_docker-build-base ms_external-layer-docker-build-api
 else
-ms_docker-build-%: check-allow-local-wheels ${BUILD_ARTEFACT} ${MS_DOCKERFILE} $(topbuilddir)/wheels prepcode pull-cloudfit-base ms_docker-build-base
+ms_docker-build-%: check-allow-local-wheels ${BUILD_ARTEFACT} ${MS_DOCKERFILE} ${WHEELS_DIR_TARGET} prepcode pull-cloudfit-base ms_docker-build-base
 endif
 	${MS_DOCKER_BUILD} --target $* -t ${MODNAME}_$*:${BUILD_TAG} .
 
