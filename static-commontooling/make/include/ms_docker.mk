@@ -37,7 +37,8 @@ endif
 # Set this to prompt another directory (e.g. a common layer) to build first
 BASE_MOD_DIR?=
 
-ifeq "$(ALLOW_LOCAL_WHEELS)" "true"
+# Only enable creation of wheels dir if this is a python build
+ifneq "$(SDIST_FILE)" ""
 WHEELS_DIR_TARGET:=$(topbuilddir)/wheels
 else
 WHEELS_DIR_TARGET:=
