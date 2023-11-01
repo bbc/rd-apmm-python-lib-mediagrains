@@ -1,0 +1,53 @@
+name: CI Workflow
+run-name: ${{ format('{0} triggered by {1} on {2} {3}', github.workflow, (github.event_name == 'workflow_dispatch' && format('user {0}', github.actor) || format('{0} event', github.event_name) ), github.repository, github.ref_name) }}
+on:
+  schedule:
+    - cron: '0 4 * * 1-5'
+
+  # Pull requests and pushes will not trigger a run if the only changes are on workflows other than this one
+  pull_request:
+    paths-ignore:
+      - '.github/workflows/**'
+      - '!.github/workflows/ci-workflow.yml'
+
+  push:
+    paths-ignore:
+      - '.github/workflows/**'
+      - '!.github/workflows/ci-workflow.yml'
+    branches:
+      - 'main'
+
+  workflow_dispatch:
+    # NOTE: Defaults here are only for the dispatch run dialogue box. See the shared workflow calls below for defaults for runs triggered by other means
+    inputs:
+      forceDocsUpload:
+        description: 'Force docs upload'
+        required: false
+        type: boolean
+      pythonVersion:
+        description: 'Python version to use'
+        required: true
+        default: '3.10'
+        type: string
+      commontoolingBranch:
+        description: 'Commontooling branch or tag to use'
+        required: true
+        default: 'main'
+        type: string
+
+jobs:
+  SharedCIWorkflow:
+    name: Shared Workflow
+    permissions:
+      actions: read
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/shared-ext-ci-workflow.yml
+    with:
+      # workflow_dispatch inputs are always strings. Convert to boolean.
+      forceDocsUpload: ${{ inputs.forceDocsUpload == true }}
+      pythonVersion: ${{ inputs.pythonVersion || '3.10' }}
+      commontoolingBranch: ${{ inputs.commontoolingBranch || 'main' }}
+      enableUploadDocker: true
+    secrets: inherit

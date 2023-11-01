@@ -1,0 +1,42 @@
+name: Release Workflow
+run-name: ${{ format('{0} triggered by {1} on {2} {3}', github.workflow, (github.event_name == 'workflow_dispatch' && format('user {0}', github.actor) || format('{0} event', github.event_name) ), github.repository, github.ref_name) }}
+on:
+  workflow_dispatch:
+    # Defaults here are only for the dispatch run dialogue box. See the shared workflow calls below for defaults for runs triggered by other means
+    inputs:
+      commontoolingBranch:
+        description: 'Commontooling branch or tag to use'
+        required: true
+        default: 'main'
+        type: string
+      pythonVersion:
+        description: 'Python version to use'
+        required: true
+        default: '3.10'
+        type: string
+
+jobs:
+  SharedReleaseWorkflow:
+    name: Release
+    permissions:
+      contents: write
+    uses: ./.github/workflows/shared-ext-release-workflow.yml
+    with:
+      commontoolingBranch: ${{ inputs.commontoolingBranch || 'main' }}
+    secrets: inherit
+
+  SharedCIWorkflow:
+    name: CI
+    permissions:
+      actions: read
+      contents: read
+      pages: write
+      id-token: write
+    needs: SharedReleaseWorkflow
+    uses: ./.github/workflows/shared-ci-workflow.yml
+    with:
+      commontoolingBranch: ${{ inputs.commontoolingBranch || 'main' }}
+      pythonVersion: ${{ inputs.pythonVersion || '3.10' }}
+      enableUploadDocker: true
+      checkoutRef: ${{ needs.SharedReleaseWorkflow.outputs.releaseRef }}
+    secrets: inherit
