@@ -33,7 +33,7 @@ jobs:
       pages: write
       id-token: write
     needs: SharedReleaseWorkflow
-    uses: ./.github/workflows/shared-ci-workflow.yml
+    uses: ./.github/workflows/shared-ext-ci-workflow.yml
     with:
       commontoolingBranch: ${{ inputs.commontoolingBranch || 'main' }}
       pythonVersion: ${{ inputs.pythonVersion || '3.10' }}
