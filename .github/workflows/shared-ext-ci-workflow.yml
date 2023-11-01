@@ -1,0 +1,181 @@
+# This workflow is manged centrally in CommonTooling
+
+name: Shared CI Workflow
+on:
+  workflow_call:
+    inputs:
+      forceDocsUpload:
+        description: 'Force upload of documentation'
+        required: false
+        type: boolean
+      pythonVersion:
+        description: 'Python version to use'
+        required: false
+        default: '3.10'
+        type: string
+      commontoolingBranch:
+        description: 'Commontooling branch or tag to use'
+        required: true
+        default: 'main'
+        type: string
+      checkoutRef:
+        description: 'Overrides the branch of the repo under test to checkout'
+        required: false
+        default: ''
+        type: string
+      ciEnvironment:
+        description: 'The Actions Environment to use when running CI'
+        required: false
+        default: ''
+        type: string
+      enableUploadDocker:
+        description: 'Enable docker upload step. NOTE: Docker images will only be uploaded if the build is on a tag.'
+        required: false
+        type: boolean
+    secrets:
+      COMMONTOOLING_DEPLOY_KEY:
+        description: 'A deploy key that may be used to fetch Commontooling'
+        required: true
+      AWS_ACCOUNT_ID:
+        description: 'An AWS Account ID'
+        required: true
+
+
+env:
+  PYTHON_VERSION: ${{ inputs.pythonVersion == '' && '3.10' || inputs.pythonVersion }}
+  COMMONTOOLING_BRANCH: ${{ inputs.commontoolingBranch == '' && 'main' || inputs.commontoolingBranch }}
+  BUILD_TAG: ${{ github.run_id }}  # This is currently used by commontooling to detect CI environments
+  CHECKOUT_REF: ${{ inputs.checkoutRef == '' && github.ref || inputs.checkoutRef }}
+
+jobs:
+  CheckStaticFiles:
+    name: Check Static Files
+    permissions:
+      contents: read
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ env.CHECKOUT_REF }}
+
+      - name: Initialise commontooling
+        uses: actions/checkout@v3
+        with:
+          repository: bbc/rd-cloudfit-commontooling
+          ref: ${{ env.COMMONTOOLING_BRANCH }}
+          path: commontooling
+          fetch-depth: 1
+          ssh-key: ${{ secrets.COMMONTOOLING_DEPLOY_KEY }}
+
+      - name: Check static files
+        run: make check-static-files
+
+  CI:
+    name: CI
+    permissions:
+      actions: read
+      contents: read
+      pages: read
+      id-token: write
+    runs-on: ubuntu-22.04
+    needs: CheckStaticFiles
+    environment:
+      name: ${{ startsWith(inputs.checkoutRef == '' && github.ref || inputs.checkoutRef, 'refs/tags/') && 'publish-packages' || '' }}
+    steps:
+      ####################
+      ## Initialise run ##
+      ####################
+
+      - name: Check out repository code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # check out entire repo for version calculation
+          ref: ${{ env.CHECKOUT_REF }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ (((inputs.enableUploadDocker && startsWith(env.CHECKOUT_REF, 'refs/tags/')) && 'gha_ecr_public_write') || 'gha_ecr_public_read')  }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          registry-type: public
+          mask-password: true
+
+      - name: Create pip conf
+        run: touch ${{ github.workspace }}/.pip.conf
+
+      ###############
+      ## Run tests ##
+      ###############
+
+      - name: Build artefacts
+        run: make artefacts
+
+      - name: Lint
+        run: make lint
+
+      - name: Typecheck
+        run: make typecheck
+
+      - name: Tests
+        run: make test
+
+      ##########################################
+      ## Build remaining deployable artefacts ##
+      ##########################################
+
+      - name: Build docs
+        run: make docs
+
+      - name: Build wheels
+        run: make wheel
+
+      #################################
+      ## Upload deployable artefacts ##
+      #################################
+      - name: Upload wheels
+        if: ${{ startsWith(env.CHECKOUT_REF, 'refs/tags/') }}
+        uses: pypa/gh-action-pypi-publish@b7f401de30cb6434a1e19f805ff006643653240e  # v1.8.10
+        with:
+          skip-existing: true
+
+      - name: ${{ format('{0}Upload docker images', ((! inputs.enableUploadDocker) && 'NOT ENABLED | ' || '') ) }}
+        if: ${{ inputs.enableUploadDocker && startsWith(env.CHECKOUT_REF, 'refs/tags/') }}
+        run: make upload-docker
+
+      - name: Setup pages
+        if: ${{ inputs.forceDocsUpload || startsWith(env.CHECKOUT_REF, 'refs/tags/') }}
+        uses: actions/configure-pages@v3
+
+      - name: Upload documentation artifact
+        if: ${{ inputs.forceDocsUpload || startsWith(env.CHECKOUT_REF, 'refs/tags/') }}
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: './docs'
+
+  DeployPages:
+    name: Deploy Pages
+    # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    runs-on: ubuntu-22.04
+    needs: CI
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    if: ${{ startsWith(inputs.checkoutRef == '' && github.ref || inputs.checkoutRef, 'refs/tags/') }}
+    steps:
+      - name: Deploy documentation to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+      - name: Adding summary
+        run: |
+          echo "Documentation URL: ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,94 @@
+# This workflow is manged centrally in CommonTooling
+
+name: Shared Release Workflow
+on:
+  workflow_call:
+    inputs:
+      commontoolingBranch:
+        description: 'Commontooling branch or tag to use'
+        required: true
+        default: 'main'
+        type: string
+    outputs:
+      releaseRef:
+        description: "The tag ref of the created release"
+        value: ${{ jobs.Release.outputs.releaseRef }}
+    secrets:
+      COMMONTOOLING_DEPLOY_KEY:
+        description: 'A deploy key that may be used to fetch Commontooling'
+        required: true
+
+env:
+  COMMONTOOLING_BRANCH: ${{ inputs.commontoolingBranch == '' && 'main' || inputs.commontoolingBranch }}
+  BUILD_TAG: ${{ github.run_id }}  # This is currently used by commontooling to detect CI environments
+
+jobs:
+  CheckStaticFiles:
+    name: Check Static Files
+    permissions:
+      contents: read
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+
+      - name: Initialise commontooling
+        uses: actions/checkout@v3
+        with:
+          repository: bbc/rd-cloudfit-commontooling
+          ref: ${{ env.COMMONTOOLING_BRANCH }}
+          path: commontooling
+          fetch-depth: 1
+          ssh-key: ${{ secrets.COMMONTOOLING_DEPLOY_KEY }}
+
+      - name: Check static files
+        run: make check-static-files
+
+  Release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    needs: CheckStaticFiles
+    environment:
+      name: releases
+      url: ${{ steps.release.outputs.url }}
+    outputs:
+      releaseRef: refs/tags/${{ steps.nextVersion.outputs.version }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # check out entire repo for version calculation
+
+      - name: Get next version number
+        id: nextVersion
+        run: echo "version=$(make next-version)" >> $GITHUB_OUTPUT
+
+      - name: Create tag
+        run: |
+          git tag -a ${{ steps.nextVersion.outputs.version }} -m "v.${{ steps.nextVersion.outputs.version }}"
+          git push origin --tags
+
+      - name: Create release
+        id: release
+        uses: actions/github-script@v6
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          script: |
+            try {
+              const response = await github.rest.repos.createRelease({
+                generate_release_notes: true,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: '${{ steps.nextVersion.outputs.version }}'
+              });
+
+              core.setOutput('url', response.data.html_url);
+            } catch (error) {
+              core.setFailed(error.message);
+            }
+
+      - name: Adding summary
+        run: |
+          echo "Release Version: ${{ steps.nextVersion.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "Release URL: ${{ steps.release.outputs.url }}" >> $GITHUB_STEP_SUMMARY
