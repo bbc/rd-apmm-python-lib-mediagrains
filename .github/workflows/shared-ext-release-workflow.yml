@@ -66,6 +66,8 @@ jobs:
 
       - name: Create tag
         run: |
+          git config --global user.email "cloudfit-opensource@rd.bbc.co.uk"
+          git config --global user.name "BBC RD"
           git tag -a ${{ steps.nextVersion.outputs.version }} -m "v.${{ steps.nextVersion.outputs.version }}"
           git push origin --tags
 
