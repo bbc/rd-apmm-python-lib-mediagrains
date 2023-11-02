@@ -187,12 +187,7 @@ An additional feature is provided in the form of numpy array access to the data 
 
 ## Documentation
 
-The API is well documented in the docstrings of the module mediagrains, to view:
-
-```bash
-make docs
-```
-This command will render documentation as HTML in the `/docs` directory.
+The API is well documented in the docstrings of the module mediagrains. A rendered version of this documentation is available [here](https://bbc.github.io/rd-apmm-python-lib-mediagrains/mediagrains/mediagrains.html).
 
 Instructions for using the 'new style' grains can be find in [new_style_grains.md](new_style_grains.md)
 
