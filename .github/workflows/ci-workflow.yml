@@ -48,6 +48,6 @@ jobs:
       # workflow_dispatch inputs are always strings. Convert to boolean.
       forceDocsUpload: ${{ inputs.forceDocsUpload == true }}
       pythonVersion: ${{ inputs.pythonVersion || '3.10' }}
-      commontoolingBranch: ${{ inputs.commontoolingBranch || 'main' }}
+      commontoolingBranch: jamessa-ghaECR
       enableUploadDocker: true
     secrets: inherit
