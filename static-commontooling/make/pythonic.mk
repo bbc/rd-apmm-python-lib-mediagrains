@@ -60,6 +60,7 @@ SDIST_FILE?=$(topbuilddir)/dist/$(MODNAME)-$(VERSION).tar.gz
 EXTRA_DOCKER_BUILD_ARGS += --secret id=pipconf,src=$(PIP_CONFIG_FILE)
 
 wheel: $(WHEEL_FILE)
+wheels: wheel
 source: source-pythonic
 source-pythonic: $(SDIST_FILE)
 
