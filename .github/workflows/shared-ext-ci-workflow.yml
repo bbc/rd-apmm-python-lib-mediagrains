@@ -28,14 +28,15 @@ on:
         required: false
         default: ''
         type: string
-      enableArtifactoryPip:
-        description: 'Enable PIP access to artifactory'
+      enableArtifactory:
+        description: 'Upload to artifactory instead of PyPi'
         required: false
         default: false
         type: boolean
       enableUploadDocker:
         description: 'Enable docker upload step. NOTE: Docker images will only be uploaded if the build is on a tag.'
         required: false
+        default: false
         type: boolean
     secrets:
       COMMONTOOLING_DEPLOY_KEY:
@@ -121,18 +122,6 @@ jobs:
       - name: Create pip conf
         run: touch ${{ github.workspace }}/.pip.conf
 
-      - name: ${{ format('{0}Configure Artifactory PIP registry', ((!inputs.enableArtifactoryPip) && 'NOT ENABLED | ' || '') ) }}
-        if: ${{ inputs.enableArtifactoryPip }}
-        run: |
-          touch ${{ github.workspace }}/.pip.conf
-          cat <<EOF >> ${{ github.workspace }}/.pip.conf
-          [global]
-          extra-index-url = https://${{ secrets.ARTIFACTORY_USERNAME }}:${{ secrets.ARTIFACTORY_TOKEN }}@api.artifactory.labs.bbc/artifactory/api/pypi/ap-python/simple/
-
-          [search]
-          extra-index = https://${{ secrets.ARTIFACTORY_USERNAME }}:${{ secrets.ARTIFACTORY_TOKEN }}@api.artifactory.labs.bbc/artifactory/api/pypi/ap-python/
-          EOF
-
       ###############
       ## Run tests ##
       ###############
@@ -162,11 +151,19 @@ jobs:
       #################################
       ## Upload deployable artefacts ##
       #################################
-      - name: Upload wheels
-        if: ${{ startsWith(env.CHECKOUT_REF, 'refs/tags/') }}
+      - name: ${{ format('{0}Upload wheels to PyPi', ((inputs.enableArtifactory) && 'NOT ENABLED | ' || '') ) }}
+        if: ${{ (!inputs.enableArtifactory) && startsWith(env.CHECKOUT_REF, 'refs/tags/') }}
         uses: pypa/gh-action-pypi-publish@b7f401de30cb6434a1e19f805ff006643653240e  # v1.8.10
         with:
           skip-existing: true
+
+      - name: ${{ format('{0}Upload wheels to Artifactory', ((!inputs.enableArtifactory) && 'NOT ENABLED | ' || '') ) }}
+        if: ${{ inputs.enableArtifactory && startsWith(env.CHECKOUT_REF, 'refs/tags/') }}
+        env:
+          TWINE_REPO: ${{ secrets.ARTIFACTORY_REPO }}
+          TWINE_REPO_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          TWINE_REPO_PASSWORD: ${{ secrets.ARTIFACTORY_TOKEN }}
+        run: make upload-wheels
 
       - name: ${{ format('{0}Upload docker images', ((! inputs.enableUploadDocker) && 'NOT ENABLED | ' || '') ) }}
         if: ${{ inputs.enableUploadDocker && startsWith(env.CHECKOUT_REF, 'refs/tags/') }}
