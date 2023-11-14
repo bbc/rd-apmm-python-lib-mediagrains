@@ -28,6 +28,11 @@ on:
         required: false
         default: ''
         type: string
+      enableArtifactoryPip:
+        description: 'Enable PIP access to artifactory'
+        required: false
+        default: false
+        type: boolean
       enableUploadDocker:
         description: 'Enable docker upload step. NOTE: Docker images will only be uploaded if the build is on a tag.'
         required: false
@@ -36,6 +41,12 @@ on:
       COMMONTOOLING_DEPLOY_KEY:
         description: 'A deploy key that may be used to fetch Commontooling'
         required: true
+      ARTIFACTORY_USERNAME:
+        description: 'An artifactory username with read/write access'
+        required: false
+      ARTIFACTORY_TOKEN:
+        description: 'An artifactory token with read/write access'
+        required: false
       AWS_ACCOUNT_ID:
         description: 'An AWS Account ID'
         required: true
@@ -110,6 +121,18 @@ jobs:
       - name: Create pip conf
         run: touch ${{ github.workspace }}/.pip.conf
 
+      - name: ${{ format('{0}Configure Artifactory PIP registry', ((!inputs.enableArtifactoryPip) && 'NOT ENABLED | ' || '') ) }}
+        if: ${{ inputs.enableArtifactoryPip }}
+        run: |
+          touch ${{ github.workspace }}/.pip.conf
+          cat <<EOF >> ${{ github.workspace }}/.pip.conf
+          [global]
+          extra-index-url = https://${{ secrets.ARTIFACTORY_USERNAME }}:${{ secrets.ARTIFACTORY_TOKEN }}@api.artifactory.labs.bbc/artifactory/api/pypi/ap-python/simple/
+
+          [search]
+          extra-index = https://${{ secrets.ARTIFACTORY_USERNAME }}:${{ secrets.ARTIFACTORY_TOKEN }}@api.artifactory.labs.bbc/artifactory/api/pypi/ap-python/
+          EOF
+
       ###############
       ## Run tests ##
       ###############
@@ -158,6 +181,15 @@ jobs:
         uses: actions/upload-pages-artifact@v2
         with:
           path: './docs'
+
+      ######################
+      ## Post-Job cleanup ##
+      ######################
+
+      - name: Post job - cleanup pip config
+        if: ${{ always() }}
+        run: |
+          rm ${{ github.workspace }}/.pip.conf
 
   DeployPages:
     name: Deploy Pages
