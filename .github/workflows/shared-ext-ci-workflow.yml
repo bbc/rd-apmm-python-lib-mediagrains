@@ -203,7 +203,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    if: ${{ startsWith(inputs.checkoutRef == '' && github.ref || inputs.checkoutRef, 'refs/tags/') }}
+    if: ${{ inputs.forceDocsUpload || startsWith(inputs.checkoutRef == '' && github.ref || inputs.checkoutRef, 'refs/tags/') }}
     steps:
       - name: Deploy documentation to GitHub Pages
         id: deployment
