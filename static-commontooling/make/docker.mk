@@ -148,8 +148,7 @@ include $(commontooling_dir)/make/include/dockerignore.mk
 # Some standard patterns with some variables to turn them on and off
 MS_DOCKER_ARTEFACT?=TRUE
 ifeq "${MS_DOCKER_ARTEFACT}" "TRUE"
-artefact: ms_docker-build
-artefacts: artefact
+artefacts: ms_docker-build
 endif
 
 MS_DOCKER_SOURCE?=TRUE
@@ -184,8 +183,7 @@ ms_docker-build-mypy: $(topdir)/.mypy.ini
 endif
 
 ms_docker-run-mypy: EXTRA_DOCKER_RUN_ARGS+=--mount type=bind,source=$(PIP_CONFIG_FILE),target=/etc/pip.conf,readonly
-mypy: ms_docker-run-mypy
-typecheck: mypy
+typecheck: ms_docker-run-mypy
 endif
 
 $(topbuilddir)/.tmp/run_with_dir_modes.sh: $(commontooling_dir)/misc/run_with_dir_modes.sh $(topbuilddir)/.tmp
@@ -227,7 +225,7 @@ upload-docker:
 enable_push=FALSE
 ifneq "${VERSION}" "${NEXT_VERSION}"
 enable_push=TRUE
-else ifneq "${BUILD_TAG}" "local"
+else ifeq "${GITHUB_ACTIONS}" "true"
 enable_push=TRUE
 endif
 
@@ -284,4 +282,4 @@ endif
 		echo "  $(DOCKER_COMPOSE) <ARGS>"; \
 	fi
 
-.PHONY: help-docker artefact upload-docker mypy typecheck artefacts
+.PHONY: help-docker upload-docker typecheck artefacts

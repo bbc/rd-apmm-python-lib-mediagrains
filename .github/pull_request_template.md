@@ -17,7 +17,6 @@ _(tick as appropriate)_
 - [ ] PR completes task/fixes bug
 - [ ] Tests exercise code appropriately
 - [ ] New features and API breaks are flagged in commit messages using magic strings
-- [ ] Repo maintainer is notified that a release is required
 - [ ] Documentation updated (README, Confluence, Docstrings, API spec, Engineering Guide, etc.)
 - [ ] Downstream repos have been checked for potential breaks & fixed as needed
 - [ ] APIs/UIs/CLIs updated as required

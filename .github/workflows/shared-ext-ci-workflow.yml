@@ -56,7 +56,6 @@ on:
 env:
   PYTHON_VERSION: ${{ inputs.pythonVersion == '' && '3.10' || inputs.pythonVersion }}
   COMMONTOOLING_BRANCH: ${{ inputs.commontoolingBranch == '' && 'main' || inputs.commontoolingBranch }}
-  BUILD_TAG: ${{ github.run_id }}  # This is currently used by commontooling to detect CI environments
   CHECKOUT_REF: ${{ inputs.checkoutRef == '' && github.ref || inputs.checkoutRef }}
 
 jobs:

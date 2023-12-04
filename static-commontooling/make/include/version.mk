@@ -32,18 +32,9 @@ version:
 next-version:
 	@echo $(NEXT_VERSION)
 
-ifeq "${topdir}" "${project_root_dir}"
-release:
-	git tag -a $(NEXT_VERSION) -m "v.$(NEXT_VERSION)"
-	@echo "Added tag $(NEXT_VERSION) at commit $(GITCOMMIT), to push it up use: git push origin --tags"
-endif
-
 help-version:
 	@echo "$(PROJECT)-$(VERSION)"
 	@echo "make version                     - Print the current version of the code in the repo, including pre-release indicators"
 	@echo "make next-version                - Print the version the code should have if it is released as it currently is"
-ifeq "${topdir}" "${project_root_dir}"
-	@echo "make release                     - Add a tag to the repo marking the current commit as a release"
-endif
 
-.PHONY: version next-version help-version release
+.PHONY: version next-version help-version
