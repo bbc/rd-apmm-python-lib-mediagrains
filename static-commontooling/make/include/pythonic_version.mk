@@ -68,11 +68,11 @@ $(topdir)/.tmp/_next_version.py: $(topdir)/.tmp
 	@echo "git_commit = '0000000'" >> $(topdir)/.tmp/_next_version.py
 
 
-ifeq "${BUILD_TAG}" "local"
-$(VERSIONFILE): $(topdir)/.tmp/_next_version.py
+ifeq "${GITHUB_ACTIONS}" "true"
+$(VERSIONFILE): $(topdir)/.tmp/_full_version.py
 	cp $< $@
 else
-$(VERSIONFILE): $(topdir)/.tmp/_full_version.py
+$(VERSIONFILE): $(topdir)/.tmp/_next_version.py
 	cp $< $@
 endif
 

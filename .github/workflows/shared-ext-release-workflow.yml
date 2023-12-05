@@ -20,7 +20,6 @@ on:
 
 env:
   COMMONTOOLING_BRANCH: ${{ inputs.commontoolingBranch == '' && 'main' || inputs.commontoolingBranch }}
-  BUILD_TAG: ${{ github.run_id }}  # This is currently used by commontooling to detect CI environments
 
 jobs:
   CheckStaticFiles:

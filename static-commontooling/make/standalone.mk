@@ -48,7 +48,6 @@ commontooling_dir?=$(project_root_dir)/commontooling
 endif
 
 include $(commontooling_dir)/make/include/core.mk
--include $(project_root_dir)/commontooling/make/include/jenkinsfile.mk
 -include $(project_root_dir)/commontooling/make/include/pull_request_template.mk
 include $(commontooling_dir)/make/include/gitignore.mk
 

@@ -34,10 +34,10 @@ CLOUDFIT_BASE_LABEL?=latest
 endif
 
 # Set python pip config location
-ifeq "${BUILD_TAG}" "local"
-PIP_CONFIG_FILE?=/etc/pip.conf
-else
+ifeq "${GITHUB_ACTIONS}" "true"
 PIP_CONFIG_FILE?=$(project_root_dir)/.pip.conf
+else
+PIP_CONFIG_FILE?=/etc/pip.conf
 endif
 
 CLOUDFIT_BASE_NAME?=python

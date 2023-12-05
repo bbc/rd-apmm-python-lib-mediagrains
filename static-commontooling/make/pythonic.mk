@@ -48,10 +48,10 @@ CLEAN_FILES += $(topbuilddir)/dist
 # Add extra dependencies to the core targets
 all: help-pythonic
 
-ifeq "${BUILD_TAG}" "local"
-VERSION_IN_PYTHON=${NEXT_VERSION}
-else
+ifeq "${GITHUB_ACTIONS}" "true"
 VERSION_IN_PYTHON=${VERSION}
+else
+VERSION_IN_PYTHON=${NEXT_VERSION}
 endif
 
 WHEEL_FILE?=$(topbuilddir)/dist/$(MODNAME)-$(VERSION)-py3-none-any.whl
