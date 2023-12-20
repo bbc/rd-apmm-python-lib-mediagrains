@@ -1,0 +1,12 @@
+name: Commit Message Check
+run-name: ${{ format('{0} triggered by {1} on {2} {3}', github.workflow, (github.event_name == 'workflow_dispatch' && format('user {0}', github.actor) || format('{0} event', github.event_name) ), github.repository, github.ref_name) }}
+on:
+  pull_request:
+
+jobs:
+  CheckCommitMessages:
+    name: Check Commit Messages
+    permissions:
+      contents: read
+    uses: ./.github/workflows/shared-ext-commit-check-workflow.yml
+
