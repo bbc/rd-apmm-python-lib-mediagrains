@@ -586,6 +586,17 @@ class SyncGSFBlock():
         n = self.read_uint(1)
         return (n != 0)
 
+    def read_optional_bool(self):
+        """Read an optional boolean value
+
+        :returns: Boolean | None value
+        :raises EOFError: If there are no more bytes left in the source"""
+        n = self.read_uint(1)
+        if n > 1:
+            return None
+        else:
+            return (n != 0)
+
     def read_sint(self, length: int) -> int:
         """Read a 2's complement signed integer
 
@@ -594,6 +605,21 @@ class SyncGSFBlock():
         :raises EOFError: If there are fewer than `length` bytes left in the source
         """
         r = self.read_uint(length)
+        if (r >> ((8*length) - 1)) == 1:
+            r -= (1 << (8*length))
+        return r
+
+    def read_optional_sint(self, length: int, null_value: int) -> int | None:
+        """Read an optional 2's complement signed integer
+
+        :param length: Number of bytes used to store the integer
+        :param null_value: Value that indicates it is null
+        :returns: Signed integer
+        :raises EOFError: If there are fewer than `length` bytes left in the source
+        """
+        r = self.read_uint(length)
+        if r == null_value:
+            return None
         if (r >> ((8*length) - 1)) == 1:
             r -= (1 << (8*length))
         return r
@@ -896,8 +922,16 @@ class BaseGSFDecoderSession(object):
                 meta['grain']['cog_coded_frame']['origin_height'] = gbhd_child.read_uint(4)
                 meta['grain']['cog_coded_frame']['coded_width'] = gbhd_child.read_uint(4)
                 meta['grain']['cog_coded_frame']['coded_height'] = gbhd_child.read_uint(4)
-                meta['grain']['cog_coded_frame']['is_key_frame'] = gbhd_child.read_bool()
-                meta['grain']['cog_coded_frame']['temporal_offset'] = gbhd_child.read_sint(4)
+                if self.major < 9:
+                    meta['grain']['cog_coded_frame']['is_key_frame'] = gbhd_child.read_bool()
+                    meta['grain']['cog_coded_frame']['temporal_offset'] = gbhd_child.read_sint(4)
+                else:
+                    is_key_frame = gbhd_child.read_optional_bool()
+                    if is_key_frame is not None:
+                        meta['grain']['cog_coded_frame']['is_key_frame'] = is_key_frame
+                    temporal_offset = gbhd_child.read_optional_sint(4, 0x7fffffff)
+                    if temporal_offset is not None:
+                        meta['grain']['cog_coded_frame']['temporal_offset'] = temporal_offset
 
                 for unof_block in gbhd_child.child_blocks():
                     if unof_block.tag != 'unof':
@@ -979,7 +1013,7 @@ class GSFAsyncDecoderSession(BaseGSFDecoderSession):
         :raises GSFDecodeError: If the file doesn't have a "head" block
         """
         (self.major, self.minor) = await self._decode_ssb_header()
-        if self.major not in [7, 8]:
+        if self.major not in [7, 8, 9]:
             raise GSFDecodeBadVersionError(f"Unknown Version {self.major}.{self.minor}", 0, self.major, self.minor)
 
         try:
@@ -1136,7 +1170,7 @@ class GSFSyncDecoderSession(BaseGSFDecoderSession):
         :raises GSFDecodeError: If the file doesn't have a "head" block
         """
         (self.major, self.minor) = self._decode_ssb_header()
-        if self.major not in [7, 8]:
+        if self.major not in [7, 8, 9]:
             raise GSFDecodeBadVersionError(f"Unknown Version {self.major}.{self.minor}", 0, self.major, self.minor)
 
         try:
@@ -1770,12 +1804,10 @@ class GSFEncoder(object):
     tags     -- a tuple of tags
     segments -- a frozendict of GSFEncoderSegments
 
-    The current version of the library is designed for compatibility with v.8.0 of the GSF format. Setting a
-    different version number will simply change the reported version number in the file, but will not alter the
-    syntax at all. If future versions of this code add support for other versions of GSF then this will change."""
+    The current version of the library is designed for compatibility with v.9.0 of the GSF format."""
     def __init__(self,
                  file: Union[IO[bytes], AsyncBinaryIO, OpenAsyncBinaryIO],
-                 major: int = 8,
+                 major: int = 9,
                  minor: int = 0,
                  id: Optional[UUID] = None,
                  created: Optional[datetime] = None,
@@ -2281,8 +2313,8 @@ class GSFEncoderSegment(object):
                 _encode_uint(int(grain.origin_height), 4) +
                 _encode_uint(int(grain.coded_width), 4) +
                 _encode_uint(int(grain.coded_height), 4) +
-                _encode_uint(1 if grain.is_key_frame else 0, 1) +
-                _encode_uint(int(grain.temporal_offset), 4))
+                _encode_uint(int(grain.is_key_frame) if grain.is_key_frame is not None else 3, 1) +
+                _encode_sint(int(grain.temporal_offset) if grain.temporal_offset is not None else 0x7fffffff, 4))
 
         if len(grain.unit_offsets) > 0:
             data += (b"unof" +

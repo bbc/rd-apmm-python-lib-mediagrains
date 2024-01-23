@@ -146,11 +146,11 @@ class H264GrainWrapper(object):
 
             new_grain = copy.deepcopy(self.template_grain)
             new_grain.origin_timestamp = norm_origin_ts
-            if frame_info is not None and frame_info.key_frame is not None:
+            if frame_info is not None:
                 new_grain.is_key_frame = frame_info.key_frame
             else:
-                new_grain.is_key_frame = False
-            new_grain.temporal_offset = 0  # Not parsed
+                new_grain.is_key_frame = None
+            new_grain.temporal_offset = None  # Not parsed
             new_grain.unit_offsets = unit_offsets  # type: ignore
             new_grain.data = frame_data
 

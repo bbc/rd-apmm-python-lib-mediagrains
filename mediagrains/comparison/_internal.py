@@ -786,7 +786,7 @@ class GrainComparisonResult(ComparisonResult):
                     'cog_frame_layout']:
             path = self._identifier + '.' + key
             children[key] = EqualityComparisonResult(
-                path, getattr(a, key), getattr(b, key), options=self._options, attr=key)
+                path, getattr(a, key, None), getattr(b, key, None), options=self._options, attr=key)
 
         for key in ['unit_offsets']:
             path = self._identifier + '.' + key

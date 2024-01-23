@@ -1,10 +1,10 @@
 # Grain Sequence Format
 
-**Version 8.0**
+**Version 9.0**
 
 A Grain Sequence Format (GSF) file contains a sequence of grains from one or more flows. It has the mimetype application/x-ips-gsf and a filename typically uses the suffix `.gsf`.
 
-The GSF file uses version **2.0** of the [SSB format](ssb.md) that defines the base file structure and data types.
+The GSF file uses version **2.1** of the [SSB format](ssb.md) that defines the base file structure and data types.
 
 
 ## General File Structure
@@ -15,10 +15,10 @@ Each file begins with a 12 octet [SSB header](ssb.md#general-file-structure):
 |---------------|------------|----------|----------|
 | signature     | "SSBB"     | Tag      | 4 octets |
 | file_type     | "grsg"     | Tag      | 4 octets |
-| major_version | 0x0008     | Unsigned | 2 octets |
+| major_version | 0x0009     | Unsigned | 2 octets |
 | minor_version | 0x0000     | Unsigned | 2 octets |
 
-The current GSF version is 8.0. See the [SSB Versioning ](ssb.md#versioning) section for a description of how versioning works from a reader's perspective.
+The current GSF version is 9.0. See the [SSB Versioning ](ssb.md#versioning) section for a description of how versioning works from a reader's perspective.
 
 Every GSF file starts with a single [head](#head-block) block, which itself contains other types of blocks, followed by a (possibly empty) sequence of [grai](#grai-block) blocks and finally a [grai](#grai-block) terminator block.
 
@@ -359,7 +359,11 @@ The *format* and *layout* parameters are enumerated values as defined in [cogenu
 | UNKNOWN       | 0xfffffffe    |
 | INVALID       | 0xffffffff    |
 
-The *layouts* are the same as those described in the [vghd](#vghd-block) block. The *origin_width* and *origin_height* are the original frame dimensions that were input to the encoder and is the output of the decoder after applying any clipping. The *coded_width* and *coded_height* are the frame dimensions used to encode from, eg. including padding to meet the fixed macroblock size requirement. The *key_frame* is set to true if the video frame is a key frame, eg. an I-frame. The *temporal_offset* is the offset between display and stored order for inter-frame coding schemes (offset = display - stored).
+The *layouts* are the same as those described in the [vghd](#vghd-block) block. The *origin_width* and *origin_height* are the original frame dimensions that were input to the encoder and is the output of the decoder after applying any clipping. The *coded_width* and *coded_height* are the frame dimensions used to encode from, eg. including padding to meet the fixed macroblock size requirement.
+
+The *key_frame* is set to 1 if the video frame is a key frame, eg. an I-frame, or 0 if it is not a key frame. A value >= 2 indicates that the *key_frame* value is unknown.
+
+The *temporal_offset* is the offset between display and stored order for inter-frame coding schemes (offset = display - stored). A value 2147483647 (0x7fffffff) indicates the *temporal_offset* value is unknown.
 
 The [cghd](#cghd-block) block is followed by an optional [unof](#unof-block) block (with any other blocks in-between).
 

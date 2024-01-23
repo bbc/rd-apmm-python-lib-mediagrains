@@ -47,6 +47,9 @@ with open('examples/video_8.gsf', 'rb') as f:
 with open('examples/coded_video_8.gsf', 'rb') as f:
     CODED_VIDEO_DATA_8 = f.read()
 
+with open('examples/coded_video_9.gsf', 'rb') as f:
+    CODED_VIDEO_DATA_9 = f.read()
+
 with open('examples/audio_8.gsf', 'rb') as f:
     AUDIO_DATA_8 = f.read()
 
@@ -1465,6 +1468,16 @@ class TestGSFBlock(IsolatedAsyncioTestCase):
             self.assertTrue(UUT.read_bool())
             self.assertTrue(UUT.read_bool())
 
+    def test_read_optional_bool(self):
+        test_data = b"\x00\x01\x02"  # False, True (0x01 != 0), Null (0x02 != 0)
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertFalse(UUT.read_optional_bool())
+            self.assertTrue(UUT.read_optional_bool())
+            self.assertIsNone(UUT.read_optional_bool())
+
     def test_read_sint(self):
         test_number = -12856
         test_data = b"\xC8\xCD\xFF"
@@ -1473,6 +1486,25 @@ class TestGSFBlock(IsolatedAsyncioTestCase):
             UUT = SyncGSFBlock(fp)
 
             self.assertEqual(test_number, UUT.read_sint(3))
+
+    def test_read_optional_sint_notnull(self):
+        test_null_number = 100
+        test_number = -12856
+        test_data = b"\xC8\xCD\xFF"
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertEqual(test_number, UUT.read_optional_sint(3, test_null_number))
+
+    def test_read_optional_sint_null(self):
+        test_null_number = 100
+        test_data = b"\x64\x00\x00\x00"
+
+        with BytesIO(test_data) as fp:
+            UUT = SyncGSFBlock(fp)
+
+            self.assertIsNone(UUT.read_optional_sint(4, test_null_number))
 
     def test_read_string(self):
         """Test we can read a string, with Unicode characters"""
@@ -2215,7 +2247,7 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
             total_samples += grain.samples
             ots = start_ots + TimeOffset.from_count(total_samples, grain.sample_rate)
 
-    def test_loads_coded_video(self):
+    def test_loads_coded_video_version_8(self):
         (head, segments) = loads(CODED_VIDEO_DATA_8)
 
         self.assertEqual(head['created'], datetime(2023, 6, 8, 11, 34, 3, tzinfo=timezone.utc))
@@ -2252,7 +2284,50 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
             self.assertEqual(grain.coded_width, 0)
             self.assertEqual(grain.coded_height, 0)
             self.assertEqual(grain.length, unit_offsets[0][1])
+            self.assertTrue(isinstance(grain.is_key_frame, bool))
             self.assertEqual(grain.temporal_offset, 0)
+            self.assertEqual(grain.unit_offsets, unit_offsets[0][0])
+            unit_offsets.pop(0)
+
+    def test_loads_coded_video(self):
+        (head, segments) = loads(CODED_VIDEO_DATA_9)
+
+        self.assertEqual(head['created'], datetime(2024, 1, 23, 19, 9, 40, tzinfo=timezone.utc))
+        self.assertEqual(head['id'], UUID('f56fbcc0-ba22-11ee-ac24-c9ac92c955d2'))
+        self.assertEqual(len(head['segments']), 1)
+        self.assertEqual(head['segments'][0]['id'], UUID('f56fbcc1-ba22-11ee-ac24-c9ac92c955d2'))
+        self.assertIn(head['segments'][0]['local_id'], segments)
+        self.assertEqual(len(segments[head['segments'][0]['local_id']]), head['segments'][0]['count'])
+
+        ots = Timestamp(1420102800, 0)
+        unit_offsets = [
+            ([0, 6, 34, 42, 711, 719], 36114),
+            ([0, 6, 14], 380),
+            ([0, 6, 14], 8277),
+            ([0, 6, 14], 4914),
+            ([0, 6, 14], 4961),
+            ([0, 6, 14], 3777),
+            ([0, 6, 14], 1950),
+            ([0, 6, 14], 31),
+            ([0, 6, 14], 25),
+            ([0, 6, 14], 6241)]
+        for grain in segments[head['segments'][0]['local_id']]:
+            self.assertIsInstance(grain, CodedVideoGrain)
+            self.assertEqual(grain.grain_type, "coded_video")
+            self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
+            self.assertEqual(grain.flow_id, UUID('b6b05efb-6067-4ff8-afac-ec735a85674e'))
+            self.assertEqual(grain.origin_timestamp, ots)
+            ots += TimeOffset.from_nanosec(20000000)
+
+            self.assertEqual(grain.format, CogFrameFormat.H264)
+            self.assertEqual(grain.layout, CogFrameLayout.FULL_FRAME)
+            self.assertEqual(grain.origin_width, 1920)
+            self.assertEqual(grain.origin_height, 1080)
+            self.assertEqual(grain.coded_width, 0)
+            self.assertEqual(grain.coded_height, 0)
+            self.assertEqual(grain.length, unit_offsets[0][1])
+            self.assertIsNone(grain.temporal_offset)
+            self.assertTrue(grain.is_key_frame or grain.is_key_frame is None)
             self.assertEqual(grain.unit_offsets, unit_offsets[0][0])
             unit_offsets.pop(0)
 
@@ -2286,6 +2361,12 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
               b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
               b"\xbf\x07\x03\x1d\x0f\x0f\x0f")
 
+    def test_loads_accepts_version_9_file(self):
+        loads(b"SSBBgrsg\x09\x00\x00\x00" +
+              b"head\x1f\x00\x00\x00" +
+              b"\xd1\x9c\x0b\x91\x15\x90\x11\xe8\x85\x80\xdc\xa9\x04\x82N\xec" +
+              b"\xbf\x07\x03\x1d\x0f\x0f\x0f")
+
     def test_loads_accepts_unknown_minor_version_file(self):
         loads(b"SSBBgrsg\x07\x00\x03\x00" +
               b"head\x1f\x00\x00\x00" +
@@ -2294,9 +2375,9 @@ class TestGSFLoads(IsolatedAsyncioTestCase):
 
     def test_loads_rejects_unknown_version_file(self):
         with self.assertRaises(GSFDecodeBadVersionError) as cm:
-            loads(b"SSBBgrsg\x09\x00\x03\x00")
+            loads(b"SSBBgrsg\x0a\x00\x03\x00")
         self.assertEqual(cm.exception.offset, 0)
-        self.assertEqual(cm.exception.major, 9)
+        self.assertEqual(cm.exception.major, 10)
         self.assertEqual(cm.exception.minor, 3)
 
     def test_loads_rejects_bad_head_tag(self):
