@@ -97,7 +97,7 @@ coded_height
     The coded video height in pixels
 
 temporal_offset
-    A signed integer value indicating the offset from the origin timestamp of
+    An optional signed integer value indicating the offset from the origin timestamp of
     this grain to the expected presentation time of the picture in frames.
 
 unit_offsets
@@ -119,8 +119,8 @@ unit_offsets
                  origin_height: int = 1080,
                  coded_width: Optional[int] = None,
                  coded_height: Optional[int] = None,
-                 is_key_frame: bool = False,
-                 temporal_offset: int = 0,
+                 is_key_frame: Optional[bool] = None,
+                 temporal_offset: Optional[int] = None,
                  length: Optional[int] = None,
                  cog_frame_layout: CogFrameLayout = CogFrameLayout.UNKNOWN,
                  unit_offsets: Optional[List[int]] = None):
@@ -170,12 +170,14 @@ unit_offsets
                         "origin_height": origin_height,
                         "coded_width": coded_width,
                         "coded_height": coded_height,
-                        "layout": cog_frame_layout,
-                        "is_key_frame": is_key_frame,
-                        "temporal_offset": temporal_offset
+                        "layout": cog_frame_layout
                     }
                 },
             }
+            if is_key_frame is not None:
+                meta["grain"]["cog_coded_frame"]["is_key_frame"] = is_key_frame
+            if temporal_offset is not None:
+                meta["grain"]["cog_coded_frame"]["temporal_offset"] = temporal_offset
 
         if data is None:
             data = bytearray(length)
@@ -202,12 +204,8 @@ unit_offsets
             self.meta['grain']['cog_coded_frame']['coded_width'] = 0
         if 'coded_height' not in self.meta['grain']['cog_coded_frame']:
             self.meta['grain']['cog_coded_frame']['coded_height'] = 0
-        if 'temporal_offset' not in self.meta['grain']['cog_coded_frame']:
-            self.meta['grain']['cog_coded_frame']['temporal_offset'] = 0
         if 'length' not in self.meta['grain']['cog_coded_frame']:
             self.meta['grain']['cog_coded_frame']['length'] = 0
-        if 'is_key_frame' not in self.meta['grain']['cog_coded_frame']:
-            self.meta['grain']['cog_coded_frame']['is_key_frame'] = False
         self.meta['grain']['cog_coded_frame']['format'] = int(self.meta['grain']['cog_coded_frame']['format'])
         self.meta['grain']['cog_coded_frame']['layout'] = int(self.meta['grain']['cog_coded_frame']['layout'])
 
@@ -276,20 +274,32 @@ unit_offsets
         self.meta['grain']['cog_coded_frame']['coded_height'] = value
 
     @property
-    def is_key_frame(self) -> bool:
-        return self.meta['grain']['cog_coded_frame']['is_key_frame']
+    def is_key_frame(self) -> bool | None:
+        return self.meta['grain']['cog_coded_frame'].get('is_key_frame')
 
     @is_key_frame.setter
-    def is_key_frame(self, value: bool) -> None:
-        self.meta['grain']['cog_coded_frame']['is_key_frame'] = bool(value)
+    def is_key_frame(self, value: bool | None) -> None:
+        if value is not None:
+            self.meta['grain']['cog_coded_frame']['is_key_frame'] = bool(value)
+        else:
+            try:
+                del self.meta['grain']['cog_coded_frame']['is_key_frame']
+            except KeyError:
+                pass
 
     @property
-    def temporal_offset(self) -> int:
-        return self.meta['grain']['cog_coded_frame']['temporal_offset']
+    def temporal_offset(self) -> int | None:
+        return self.meta['grain']['cog_coded_frame'].get('temporal_offset')
 
     @temporal_offset.setter
-    def temporal_offset(self, value: int) -> None:
-        self.meta['grain']['cog_coded_frame']['temporal_offset'] = value
+    def temporal_offset(self, value: int | None) -> None:
+        if value is not None:
+            self.meta['grain']['cog_coded_frame']['temporal_offset'] = value
+        else:
+            try:
+                del self.meta['grain']['cog_coded_frame']['temporal_offset']
+            except KeyError:
+                pass
 
     @property
     def source_aspect_ratio(self) -> Optional[Fraction]:

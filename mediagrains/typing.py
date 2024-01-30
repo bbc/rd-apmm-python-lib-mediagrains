@@ -173,11 +173,11 @@ class _GrainGrainMetadataDict_cogcodedframe_MANDATORY (TypedDict):
     coded_width: int
     coded_height: int
     layout: Union[int, CogFrameLayout]
-    is_key_frame: bool
-    temporal_offset: int
 
 
 class _GrainGrainMetadataDict_cogcodedframe (_GrainGrainMetadataDict_cogcodedframe_MANDATORY, total=False):
+    is_key_frame: bool
+    temporal_offset: int
     unit_offsets: Sequence[int]
     length: int
     source_aspect_ratio: Union[FractionDict, Fraction, RationalTypes]

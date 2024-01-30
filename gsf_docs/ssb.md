@@ -1,6 +1,6 @@
 # Sequence Store Binary Format
 
-**Version 2.0**
+**Version 2.1**
 
 The Sequence Store Binary (SSB) format is a basic format for binary encoding data for storage or transfer. It is the basis for the storage segment data files as well as the [Grain Sequence Format (GSF)](gsf.md) used for external storage and transfer. A SSB file would typically use the filename suffix `.ssb`, but some file types would have their own preferred suffix, eg. `.gsf` for GSF.
 
@@ -20,6 +20,7 @@ A number of data types are defined for the SSB format structures and the data it
 | Unsigned      |             | 1 to 8         | An unsigned integer                                            |
 | Signed        |             | 1 to 8         | A two's-complement signed integer                              |
 | Boolean       |             | 1              | 0 is false and 1 is true. Readers must treat a non-0 as true   |
+|               |             |                | unless the property definition states otherwise.               |
 | Rational      |             | 8              | An unsigned rational number. A null value is where the         |
 |               |             |                | Numerator equals 0. Readers need to be aware that the          |
 |               |             |                | Denominator can also be 0 and treat it as null or invalid.     |
