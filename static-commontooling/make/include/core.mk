@@ -26,12 +26,12 @@ reldir=$(eval reldir := $(shell realpath --relative-to $(project_root_dir) $(top
 DEFAULT_PYTHON_VERSION:=3.10
 PYTHON_VERSION?=${DEFAULT_PYTHON_VERSION}
 ifneq "${PYTHON_VERSION}" "${DEFAULT_PYTHON_VERSION}"
-J2CLI_DOCKER_LABEL?=python${PYTHON_VERSION}
 CLOUDFIT_BASE_LABEL?=python${PYTHON_VERSION}
 else
-J2CLI_DOCKER_LABEL?=latest
 CLOUDFIT_BASE_LABEL?=latest
 endif
+
+J2CLI_DOCKER_LABEL?=latest
 
 # Set python pip config location
 ifeq "${GITHUB_ACTIONS}" "true"

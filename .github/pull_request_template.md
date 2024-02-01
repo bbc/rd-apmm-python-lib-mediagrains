@@ -13,7 +13,6 @@ _Where appropriate, if separate to default CI run_
 # Submitter PR Checks
 _(tick as appropriate)_
 
-- [ ] Added bbc/rd-apmm-cloudfit team as a reviewer
 - [ ] PR completes task/fixes bug
 - [ ] Tests exercise code appropriately
 - [ ] New features and API breaks are flagged in commit messages using magic strings

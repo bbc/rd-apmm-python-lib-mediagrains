@@ -24,8 +24,7 @@
 #       Change the container image used for processing Jinja templates, such as to one built locally
 #
 #    J2CLI_DOCKER_LABEL?=latest
-#       Change the label used for the Jinja template container. Note that the default is `latest` unless PYTHON_VERSION
-#       is set, in which case it defaults to the one corresponding to that Python version.
+#       Change the label used for the Jinja template container
 #
 #    PBRVERSION_CONTAINER?=public.ecr.aws/o4o2s1w1/cloudfit/pbrversion
 #       Change the container image used for calculating version numbers, such as to one built locally
@@ -48,7 +47,7 @@ commontooling_dir?=$(project_root_dir)/commontooling
 endif
 
 include $(commontooling_dir)/make/include/core.mk
--include $(project_root_dir)/commontooling/make/include/pull_request_template.mk
+-include $(project_root_dir)/commontooling/make/include/github.mk
 include $(commontooling_dir)/make/include/gitignore.mk
 
 .PHONY: prepcode
