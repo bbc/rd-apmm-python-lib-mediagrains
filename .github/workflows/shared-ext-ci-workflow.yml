@@ -66,12 +66,12 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ env.CHECKOUT_REF }}
 
       - name: Initialise commontooling
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: bbc/rd-cloudfit-commontooling
           ref: ${{ env.COMMONTOOLING_BRANCH }}
@@ -99,7 +99,7 @@ jobs:
       ####################
 
       - name: Check out repository code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0 # check out entire repo for version calculation
           ref: ${{ env.CHECKOUT_REF }}
@@ -113,7 +113,7 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
         with:
           registry-type: public
           mask-password: true
@@ -170,11 +170,11 @@ jobs:
 
       - name: Setup pages
         if: ${{ inputs.forceDocsUpload || startsWith(env.CHECKOUT_REF, 'refs/tags/') }}
-        uses: actions/configure-pages@v3
+        uses: actions/configure-pages@v4
 
       - name: Upload documentation artifact
         if: ${{ inputs.forceDocsUpload || startsWith(env.CHECKOUT_REF, 'refs/tags/') }}
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
           path: './docs'
 
@@ -203,7 +203,7 @@ jobs:
     steps:
       - name: Deploy documentation to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
       - name: Adding summary
         run: |
           echo "Documentation URL: ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
