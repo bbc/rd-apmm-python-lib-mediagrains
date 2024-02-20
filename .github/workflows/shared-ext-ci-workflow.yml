@@ -21,22 +21,18 @@ on:
       checkoutRef:
         description: 'Overrides the branch of the repo under test to checkout'
         required: false
-        default: ''
         type: string
       ciEnvironment:
         description: 'The Actions Environment to use when running CI'
         required: false
-        default: ''
         type: string
       enableArtifactory:
         description: 'Upload to artifactory instead of PyPi'
         required: false
-        default: false
         type: boolean
       enableUploadDocker:
         description: 'Enable docker upload step. NOTE: Docker images will only be uploaded if the build is on a tag.'
         required: false
-        default: false
         type: boolean
     secrets:
       COMMONTOOLING_DEPLOY_KEY:
