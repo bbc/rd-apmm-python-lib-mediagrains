@@ -72,7 +72,15 @@ def attribute_and_pairs_of_grains_of_type_differing_only_in_one_attribute(grain_
             pairs_of_grains_of_type_differing_only_at_specified_attribute(
                 grain_type, attr)))
 
-    if grain_type in ("audio", "video", "coded_audio", "coded_video"):
+    if grain_type == "video":
+        return grain_strat | grains(grain_type, width=16, height=9).flatmap(
+            lambda g: tuples(
+                just("data"), pairs_of(grains_from_template_with_data(g))))
+    elif grain_type == "coded_video":
+        return grain_strat | grains(grain_type, origin_width=16, origin_height=9).flatmap(
+            lambda g: tuples(
+                just("data"), pairs_of(grains_from_template_with_data(g))))
+    elif grain_type in ("audio", "coded_audio"):
         return grain_strat | grains(grain_type).flatmap(
             lambda g: tuples(
                 just("data"), pairs_of(grains_from_template_with_data(g))))
