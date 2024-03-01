@@ -483,7 +483,11 @@ def grains_with_data(grain_type):
     """Strategy giving grains which have data payloads filled out using an appropriate strategy for the grain type.
 
     :param grain_type: The type of grains to generate"""
-    if grain_type in ("audio", "video", "coded_audio", "coded_video"):
+    if grain_type == "video":
+        return grains(grain_type, width=16, height=9).flatmap(lambda g: grains_from_template_with_data(g))
+    elif grain_type == "coded_video":
+        return grains(grain_type, origin_width=16, origin_height=9).flatmap(lambda g: grains_from_template_with_data(g))
+    elif grain_type in ("audio", "coded_audio"):
         return grains(grain_type).flatmap(lambda g: grains_from_template_with_data(g))
     else:
         return grains(grain_type)
