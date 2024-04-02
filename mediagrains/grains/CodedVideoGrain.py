@@ -10,7 +10,7 @@ from typing import (
     Sized,
     Iterable)
 from uuid import UUID
-from mediatimestamp.immutable import Timestamp, SupportsMediaTimestamp, mediatimestamp
+from mediatimestamp.immutable import Timestamp, TimeRange, SupportsMediaTimestamp, mediatimestamp
 from ..typing import (
     CodedVideoGrainMetadataDict,
     FractionDict,
@@ -412,3 +412,33 @@ unit_offsets
             return self.rate
         else:
             return None
+
+    @property
+    def presentation_origin_timestamp(self) -> Timestamp:
+        if self.rate is not None and self.temporal_offset is not None:
+            return self.origin_timestamp + Timestamp.from_count(self.temporal_offset, self.rate)
+        else:
+            return self.origin_timestamp
+
+    def final_presentation_origin_timestamp(self) -> Timestamp:
+        if self.rate is not None and self.temporal_offset is not None:
+            return self.final_origin_timestamp() + Timestamp.from_count(self.temporal_offset, self.rate)
+        else:
+            return self.final_origin_timestamp()
+
+    def presentation_origin_timerange(self) -> TimeRange:
+        origin_tr = self.origin_timerange()
+        if self.rate is not None and self.temporal_offset is not None:
+            if origin_tr.start is not None:
+                start = origin_tr.start + Timestamp.from_count(self.temporal_offset, self.rate)
+            else:
+                start = None
+
+            if origin_tr.end is not None:
+                end = origin_tr.end + Timestamp.from_count(self.temporal_offset, self.rate)
+            else:
+                end = None
+
+            return TimeRange(start, end, origin_tr.inclusivity)
+        else:
+            return origin_tr
