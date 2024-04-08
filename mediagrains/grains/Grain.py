@@ -251,6 +251,16 @@ final_origin_timestamp()
 origin_timerange()
     The origin time range covered by the samples in the grain.
 
+presentation_origin_timestamp
+    The presentation timeline origin timestamp for the grain.
+
+final_presentation_origin_timestamp()
+    The presentation origin timestamp of the final sample in the grain. For most grain types this is the same as
+    presentation_origin_timestamp, but not for audio grains.
+
+presentation_origin_timerange()
+    The presentation timeline origin time range covered by the samples in the grain.
+
 normalise_time(value)
     Returns a normalised Timestamp, TimeOffset or TimeRange using the media rate.
 
@@ -448,6 +458,16 @@ media_rate
 
     def origin_timerange(self) -> TimeRange:
         return TimeRange(self.origin_timestamp, self.final_origin_timestamp(), TimeRange.INCLUSIVE)
+
+    @property
+    def presentation_origin_timestamp(self) -> Timestamp:
+        return self.origin_timestamp
+
+    def final_presentation_origin_timestamp(self) -> Timestamp:
+        return self.final_origin_timestamp()
+
+    def presentation_origin_timerange(self) -> TimeRange:
+        return self.origin_timerange()
 
     @overload
     def normalise_time(self, value: TimeOffset) -> TimeOffset: ...
