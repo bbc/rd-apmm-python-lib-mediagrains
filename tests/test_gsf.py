@@ -80,6 +80,9 @@ with open('examples/event_7.gsf', 'rb') as f:
 with open('examples/interleaved_7.gsf', 'rb') as f:
     INTERLEAVED_DATA_7 = f.read()
 
+with open('examples/concat_coded_video_9.gsf', 'rb') as f:
+    CONCAT_CODED_VIDEO_DATA_9 = f.read()
+
 
 class TestGSFDumps(IsolatedAsyncioTestCase):
     def test_dumps_no_grains(self):
@@ -2125,6 +2128,24 @@ class TestGSFDecoder(IsolatedAsyncioTestCase):
 
                 self.assertEqual(bytes_read, grain_data_size)
                 self.assertEqual(grain.length, grain_data_size)
+
+    def test_load_concatenated_gsf_grains(self):
+        """Test that the generator yields each grain from a concatenated file"""
+        video_data_stream = BytesIO(CONCAT_CODED_VIDEO_DATA_9)
+
+        start_ts = Timestamp.from_str("1420102800:0")
+        grain_count = 0
+
+        with GSFDecoder(file_data=video_data_stream) as dec:
+            for (grain, local_id) in dec.grains():
+                self.assertIsInstance(grain, CodedVideoGrain)
+                self.assertEqual(grain.source_id, UUID('49578552-fb9e-4d3e-a197-3e3c437a895d'))
+                self.assertEqual(grain.flow_id, UUID('b6b05efb-6067-4ff8-afac-ec735a85674e'))
+                self.assertEqual(grain.origin_timestamp, start_ts + Timestamp.from_count(grain_count, grain.rate))
+
+                grain_count += 1
+
+        self.assertEqual(10, grain_count)  # There are 5 grains in each of the concatenated files
 
 
 class TestGSFLoads(IsolatedAsyncioTestCase):
