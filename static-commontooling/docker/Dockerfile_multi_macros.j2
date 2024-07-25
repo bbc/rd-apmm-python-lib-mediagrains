@@ -11,7 +11,7 @@ ARG CLOUDFIT_BASE_LABEL=latest
 ###############################################################################
 # Stage: api - Alias for api specification layer
 ###############################################################################
-FROM {{ apimodname }}:${BUILD_TAG} as api
+FROM {{ apimodname }}:${BUILD_TAG} AS api
 {%- endmacro %}
 
 
@@ -242,7 +242,7 @@ CMD [ \
 ###############################################################################
 # Stage: alembic - The alembic DB migration tool configured for this layer
 ###############################################################################
-FROM ap-docker.artifactory.labs.bbc/cloudfit/alembic:latest as alembic_base
+FROM ap-docker.artifactory.labs.bbc/cloudfit/alembic:latest AS alembic_base
 
 FROM layer AS alembic
 
