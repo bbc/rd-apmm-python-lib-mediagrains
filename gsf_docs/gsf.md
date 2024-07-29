@@ -46,6 +46,13 @@ As such the overall structure of the file is (count shown in brackets):
 * [grai](#grai-block) (0..1): terminator block
 
 
+## Concatenated Files
+
+A reader may support concatenated GSF files by handling the occurence of the [SSB header](#general-file-structure) when a [grai](#grai-block) block is expected or after a terminator [grai](#grai-block) block.
+
+A basic reader implementation could detect the SSBB file signature and skip the [file header](#ssb.md#general-file-structure) and the following [head](#head-block) block.  A reader could also read the [head](#head-block) block, replace existing metadata and do some checks to ensure the data is consistent given knowledge of what it acceptable, e.g. if grains are from the same flow. The mediagrains implementation reads the [head](#head-block) block, replacing what is stored in the decoder object.
+
+
 ## "head" Block
 
 The unique "head" block consists of a standard block header
