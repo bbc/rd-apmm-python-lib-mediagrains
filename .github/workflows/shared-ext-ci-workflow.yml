@@ -181,7 +181,7 @@ jobs:
       - name: Post job - cleanup pip config
         if: ${{ always() }}
         run: |
-          rm ${{ github.workspace }}/.pip.conf
+          rm -f ${{ github.workspace }}/.pip.conf
 
   DeployPages:
     name: Deploy Pages
