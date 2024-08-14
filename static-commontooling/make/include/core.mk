@@ -50,7 +50,9 @@ endif
 
 # Create simple aliases for running some useful tools
 DOCKER?=docker
-DOCKER_RUN?=${DOCKER} run --pull always --rm
+# --pull supports "always", "missing" (pull from remote if not in the local cache) and "never" (don't pull from remote)
+DOCKER_RUN_PULL?=always
+DOCKER_RUN?=${DOCKER} run --pull ${DOCKER_RUN_PULL} --rm
 J2?=$(DOCKER_RUN) -v $(project_root_dir):/data:ro -w /data/$(reldir) ${J2CLI_DOCKER_CONTAINER}:${J2CLI_DOCKER_LABEL}
 
 # Use docker compose V1 if present, else use the docker plugin for V2
