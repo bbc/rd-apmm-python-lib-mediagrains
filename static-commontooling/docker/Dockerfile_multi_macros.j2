@@ -27,6 +27,8 @@ COPY --from=api /api ./{{ modname }}/apidocs
 {% endif -%}
 COPY . .
 
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=pipconf,target=/etc/pip.conf pip install setuptools
+
 RUN python3 setup.py sdist
 {%- endmacro %}
 
@@ -65,6 +67,9 @@ COPY requirements.txt ./
 COPY {{ extra_requirements_file }} ./
 RUN cat {{ extra_requirements_file }} >> ./requirements.txt
 {%-  endif %}
+
+# Ensure setuptools is installed
+RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=pipconf,target=/etc/pip.conf pip install setuptools
 
 {% if install_target != None -%}
 RUN --mount=type=cache,target=/root/.cache/pip --mount=type=secret,id=pipconf,target=/etc/pip.conf mkdir -p {{ install_target }} && pip install -f ./wheels -r requirements.txt -t {{ install_target }}
