@@ -1,0 +1,21 @@
+name: Update Static Files Workflow
+run-name: ${{ format('{0} triggered by {1} on {2} {3}', github.workflow, (github.event_name == 'workflow_dispatch' && format('user {0}', github.actor) || format('{0} event', github.event_name) ), github.repository, github.ref_name) }}
+on:
+  workflow_dispatch:
+    inputs:
+      commontoolingBranch:
+        description: 'Commontooling branch or tag to use. NOTE: This input cannot be used to change the branch of the github actions shared workflows'
+        required: true
+        default: 'main'
+        type: string
+
+jobs:
+  SharedUpdateStaticFilesWorkflow:
+    name: Shared Workflow
+    permissions:
+      contents: read
+    # Github Actions doesn't allow the use of parameters in `uses` statements. If you want to use a different shared workflow branch, change it here
+    uses: bbc/rd-cloudfit-commontooling/.github/workflows/shared-update-static-files-workflow.yml@main
+    with:
+      commontoolingBranch: ${{ inputs.commontoolingBranch || 'main' }}
+    secrets: inherit
