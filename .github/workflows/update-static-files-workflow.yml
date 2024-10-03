@@ -15,7 +15,7 @@ jobs:
     permissions:
       contents: read
     # Github Actions doesn't allow the use of parameters in `uses` statements. If you want to use a different shared workflow branch, change it here
-    uses: bbc/rd-cloudfit-commontooling/.github/workflows/shared-update-static-files-workflow.yml@main
+    uses: ./.github/workflows/shared-ext-update-static-files-workflow.yml
     with:
       commontoolingBranch: ${{ inputs.commontoolingBranch || 'main' }}
     secrets: inherit

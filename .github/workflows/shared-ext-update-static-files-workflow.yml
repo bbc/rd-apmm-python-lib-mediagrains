@@ -1,0 +1,87 @@
+name: Shared Update Static Files Workflow
+on:
+  workflow_call:
+    inputs:
+      commontoolingBranch:
+        description: 'Commontooling branch or tag to use'
+        required: true
+        default: 'main'
+        type: string
+    secrets:
+      WRITE_ACCESS_DEPLOY_KEY:
+        description: 'A deploy key that is used to checkout code with write access'
+        required: true
+      COMMONTOOLING_DEPLOY_KEY:
+        description: 'A deploy key that is used to fetch Commontooling'
+        required: true
+
+env:
+  COMMONTOOLING_BRANCH: ${{ inputs.commontoolingBranch == '' && 'main' || inputs.commontoolingBranch }}
+
+jobs:
+  UpdateStaticFiles:
+    permissions:
+      contents: read
+    runs-on: ubuntu-22.04
+    environment:
+      name: update-static-files
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ssh-key: ${{ secrets.WRITE_ACCESS_DEPLOY_KEY }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry-type: public
+          mask-password: true
+
+      - name: Initialise commontooling
+        uses: actions/checkout@v4
+        with:
+          repository: bbc/rd-cloudfit-commontooling
+          ref: ${{ env.COMMONTOOLING_BRANCH }}
+          path: commontooling
+          fetch-depth: 1
+          ssh-key: ${{ secrets.COMMONTOOLING_DEPLOY_KEY }}
+
+      - name: Configure git user info
+        run: |
+          git config --local user.email "github-actions@github.com"
+          git config --local user.name "GitHub Actions"
+
+      - name: Update static files
+        run: |
+          make static-files
+
+      - name: Show git status
+        run: |
+          git status
+
+      - name: Commit static file changes
+        id: commitStaticFileChanges
+        run: |
+          git add .
+          if git commit -a -m "Regenerate static files"
+          then
+            echo "haveChanges=true" >> $GITHUB_OUTPUT;
+          else
+            echo "haveChanges=false" >> $GITHUB_OUTPUT;
+          fi
+
+      - name: Push static file changes
+        if: ${{ steps.commitStaticFileChanges.outputs.haveChanges == 'true' }}
+        run: |
+          git push
+
+      - name: Adding summary
+        run: |
+          if [ '${{ steps.commitStaticFileChanges.outputs.haveChanges }}' == 'true' ]
+          then
+            echo "The static files have been updated" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "There are no static file updates" >> $GITHUB_STEP_SUMMARY
+          fi
