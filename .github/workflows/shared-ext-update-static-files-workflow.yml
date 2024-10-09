@@ -14,6 +14,9 @@ on:
       COMMONTOOLING_DEPLOY_KEY:
         description: 'A deploy key that is used to fetch Commontooling'
         required: true
+      AWS_ACCOUNT_ID:
+        description: 'An AWS Account ID, used to access ECR'
+        required: true
 
 env:
   COMMONTOOLING_BRANCH: ${{ inputs.commontoolingBranch == '' && 'main' || inputs.commontoolingBranch }}
@@ -22,6 +25,7 @@ jobs:
   UpdateStaticFiles:
     permissions:
       contents: read
+      id-token: write
     runs-on: ubuntu-22.04
     environment:
       name: update-static-files
@@ -31,6 +35,13 @@ jobs:
         with:
           fetch-depth: 1
           ssh-key: ${{ secrets.WRITE_ACCESS_DEPLOY_KEY }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/gha_ecr_public_read
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: us-east-1
 
       - name: Login to Amazon ECR
         id: login-ecr
