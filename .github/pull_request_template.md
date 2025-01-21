@@ -1,8 +1,8 @@
 # Details
 _Brief description of what this PR does._
 
-# Pivotal Story
-Story URL:
+# Jira Issue
+Jira URL:
 
 # Related PRs
 _Where appropriate. Indicate order to be merged._
@@ -19,8 +19,8 @@ _(tick as appropriate)_
 - [ ] Documentation updated (README, Confluence, Docstrings, API spec, Engineering Guide, etc.)
 - [ ] Downstream repos have been checked for potential breaks & fixed as needed
 - [ ] APIs/UIs/CLIs updated as required
-- [ ] PR added to Pivotal story
-- [ ] Follow-up stories added to Pivotal
+- [ ] PR added to Jira Issue
+- [ ] Follow-up stories added to Jira
 - [ ] Any temporary code/configuration removed (e.g. test deployment environment, temporary commontooling branch)
 - [ ] Any pins against pre-releases have been removed
 
