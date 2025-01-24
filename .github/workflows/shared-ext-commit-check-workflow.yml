@@ -30,6 +30,9 @@ jobs:
       - name: Check PR commit messages don't start with 'DONOTMERGE'
         run: "[ $(git log --grep '^DONOTMERGE' | wc -c) -eq 0 ]"
 
+      - name: Check PR commit messages don't start with 'DNM'
+        run: "[ $(git log --grep '^DNM' | wc -c) -eq 0 ]"
+
       - name: Check PR commit messages don't start with 'WIP'
         run: "[ $(git log --grep '^WIP' | wc -c) -eq 0 ]"
 
