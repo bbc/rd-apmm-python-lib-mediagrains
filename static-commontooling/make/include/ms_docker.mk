@@ -97,7 +97,13 @@ ms_docker-run-%: ms_docker-build-%
 
 ms_docker-push: ms_docker-ver-push-$(DOCKERISED_VERSION)
 
-ms_docker-ver-push-%: push-check-changes ms_docker-build
+ms_docker-check-allow-push:
+	@if [ "$(MS_DOCKER_ALLOW_PUSH)" != "TRUE" ]; then \
+		echo ERROR: Docker image push has been disabled. $(MS_DOCKER_ALLOW_PUSH); \
+		exit 1; \
+	fi
+
+ms_docker-ver-push-%: push-check-changes ms_docker-check-allow-push ms_docker-build
 	docker tag $(MODNAME):$(BUILD_TAG) $(DOCKER_REPO)/$(MODNAME):$*
 ifeq (${IS_ECR_REGISTRY},true)
 	$(call ecr_docker_push,$(DOCKER_REPO)/$(MODNAME):$*)
@@ -105,7 +111,7 @@ else
 	docker push $(DOCKER_REPO)/$(MODNAME):$*
 endif
 
-ms_docker-push-%: push-check-changes ms_docker-build-%
+ms_docker-push-%: push-check-changes ms_docker-check-allow-push ms_docker-build-%
 	docker tag $(MODNAME)_$*:$(BUILD_TAG) $(DOCKER_REPO)/$(MODNAME)_$*:$(DOCKERISED_VERSION)
 ifeq (${IS_ECR_REGISTRY},true)
 	$(call ecr_docker_push,$(DOCKER_REPO)/$(MODNAME)_$*:$(DOCKERISED_VERSION))
@@ -113,7 +119,7 @@ else
 	docker push $(DOCKER_REPO)/$(MODNAME)_$*:$(DOCKERISED_VERSION)
 endif
 
-ms_docker-push-latest-%: push-check-changes ms_docker-build-%
+ms_docker-push-latest-%: push-check-changes ms_docker-check-allow-push ms_docker-build-%
 	docker tag $(MODNAME)_$*:$(BUILD_TAG) $(DOCKER_REPO)/$(MODNAME)_$*:latest
 ifeq (${IS_ECR_REGISTRY},true)
 	$(call ecr_docker_push,$(DOCKER_REPO)/$(MODNAME)_$*:latest)
@@ -138,4 +144,4 @@ $(topbuilddir)/externals.json:
 ${MS_DOCKERFILE}: $(MS_DOCKERFILE_TEMPLATE) $(commontooling_dir)/docker/Dockerfile_multi_macros.j2 $(topbuilddir)/externals.json
 	$(J2) $< externals.json > $@
 
-.PHONY: check-allow-local-wheels ms_docker-build ms_docker-run ms_docker-clean ms_docker-push pull-cloudfit-base
+.PHONY: check-allow-local-wheels ms_docker-build ms_docker-run ms_docker-clean ms_docker-push pull-cloudfit-base ms_docker-check-allow-push

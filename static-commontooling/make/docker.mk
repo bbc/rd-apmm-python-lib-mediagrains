@@ -79,6 +79,9 @@
 #    MS_DOCKER_PUSH_LATEST?=FALSE
 #       Set to TRUE to automatically run ms_docker-push-latest when make push is run, i.e. push with the "latest" tag
 #
+#    MS_DOCKER_ALLOW_PUSH?=TRUE
+#       Set to a value not equal to TRUE to prevent pushing Docker images. This value is output in the error message and may be used to provide the reason for the failure.
+#
 #    CLOUDFIT_BASE_NAME?=python
 #
 #    CLOUDFIT_BASE_LABEL?=latest
@@ -127,6 +130,7 @@ BUILD_ARTEFACT?=$(topbuilddir)/requirements.txt $(topbuilddir)/constraints.txt
 EXTRA_DOCKER_RUN_ARGS?=
 BASE_MOD_DIR?=
 ALLOW_LOCAL_WHEELS?=FALSE
+MS_DOCKER_ALLOW_PUSH?=TRUE
 
 ifndef DOCKER_TAGS
 export DOCKER_TAGS := $(shell $(PBRVERSION) --docker-tag)
