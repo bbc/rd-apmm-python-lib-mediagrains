@@ -176,7 +176,7 @@ class Tone(AudioPatternGenerator):
             rate=self.rate,
             sample_rate=self.sample_rate)
 
-        ag.data = bytearray(self._get_samples(offs)[:ag.expected_length])
+        ag.data = self._get_samples(offs)[:ag.expected_length]
 
         return ag
 
