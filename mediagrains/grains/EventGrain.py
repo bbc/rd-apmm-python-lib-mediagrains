@@ -184,7 +184,8 @@ append(path, pre=None, post=None)
                            'topic': self.topic,
                            'data': [dict(datum) for datum in self.event_data]}).encode('utf-8')
 
-    @data.setter
+    # ignoring typing here because mypy does not accept narrowing of the type here
+    @data.setter  # type: ignore
     def data(self, value: Union[str, bytes]):
         if not isinstance(value, str):
             payload = json.loads(value.decode('utf-8'))
