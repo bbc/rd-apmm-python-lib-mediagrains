@@ -106,9 +106,7 @@ TWINE_REPO_PASSWORD?=
 
 TWINE_VOLUMES=-v $(shell realpath $(topdir)):/data:ro
 
-TWINE_FLAGS= \
-	--skip-existing \
-	--non-interactive
+TWINE_FLAGS=--non-interactive
 
 ifneq "${TWINE_REPO}" ""
 	TWINE_FLAGS += --repository-url ${TWINE_REPO}
@@ -136,6 +134,9 @@ TWINE=$(DOCKER) run --rm $(TWINE_VOLUMES) public.ecr.aws/o4o2s1w1/cloudfit/twine
 enable_push=TRUE
 ifneq "$(TWINE_REPO)" "https://artifactory.labs.bbc/artifactory/api/pypi/ap-python"
 ifneq "$(TWINE_REPO)" "https://api.artifactory.labs.bbc/artifactory/api/pypi/ap-python"
+
+TWINE_FLAGS += --skip-existing
+
 ifneq "${NEXT_VERSION}" "${VERSION}"
 enable_push=FALSE
 endif

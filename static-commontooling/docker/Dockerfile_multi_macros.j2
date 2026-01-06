@@ -107,7 +107,7 @@ ENTRYPOINT []
 FROM layer AS zip
 WORKDIR {{ workdir }}
 
-RUN yum -y install zip
+RUN dnf -y install zip
 
 ENTRYPOINT ["zip", "-r", "-", "."]
 {%- endmacro %}
