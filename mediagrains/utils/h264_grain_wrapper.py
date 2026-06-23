@@ -78,7 +78,7 @@ class H264GrainWrapper(object):
                     if data:
                         self.input_data_buffer += data
 
-                (frame_size, nalu_byte_offsets, frame_info) = h264_parser.parse_frame(self.input_data_buffer)
+                (frame_size, nalu_byte_offsets, frame_info) = h264_parser.parse_frame(bytes(self.input_data_buffer))
 
                 if frame_size is not None:
                     # Parsed a new frame
@@ -93,17 +93,17 @@ class H264GrainWrapper(object):
                 assert (nalu_byte_offsets is not None)
 
                 frame_data = self.input_data_buffer[:frame_size]
-                yield (frame_data, list(nalu_byte_offsets), frame_info)
+                yield (bytes(frame_data), list(nalu_byte_offsets), frame_info)
 
                 self.input_data_buffer = self.input_data_buffer[frame_size:]
 
         # Assume the remainder is a frame an yield it if there are NAL units
         if len(self.input_data_buffer) > 0:
             frame_data = self.input_data_buffer
-            unit_offsets = list(h264_parser.get_nalu_byte_offsets(frame_data))
+            unit_offsets = list(h264_parser.get_nalu_byte_offsets(bytes(frame_data)))
             if len(unit_offsets) > 0:
-                frame_info = h264_parser.parse_frame_info(frame_data, nalu_byte_offsets=unit_offsets)
-                yield (frame_data, unit_offsets, frame_info)
+                frame_info = h264_parser.parse_frame_info(bytes(frame_data), nalu_byte_offsets=unit_offsets)
+                yield (bytes(frame_data), unit_offsets, frame_info)
 
     def grains(self) -> typing.Iterator[CodedVideoGrain]:
         """Generator that yields Grains read from the input given
