@@ -58,7 +58,7 @@ packages_required = [
     "frozendict >= 1.2",
     'numpy >= 1.23.0, < 2',
     'deprecated >= 1.2.6',
-    "bitstring >= 4.1.0"
+    "bitstring >= 4.1.0, < 5"
 ]
 
 console_scripts = [
